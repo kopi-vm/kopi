@@ -31,21 +31,63 @@ Key features:
 - `cargo test -- --nocapture` - Run tests with stdout/stderr output
 - `cargo test [test_name]` - Run specific test
 
+**Test Organization**:
+- Unit tests should be placed in the same file as the code being tested using `#[cfg(test)]`
+- Integration tests go in the `tests/` directory
+- Example:
+```rust
+// src/jdk.rs
+pub fn parse_version(version: &str) -> Result<Version> {
+    // implementation
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_version() {
+        assert_eq!(parse_version("11.0.2"), Ok(Version::new(11, 0, 2)));
+    }
+}
+```
+
 ## Development Workflow
 
 ### Completing Work
 When finishing any coding task, always run the following commands in order and fix any issues:
 
 1. `cargo fmt` - Auto-format code
-2. `cargo test` - Run all unit tests
-3. `cargo clippy` - Check for type and linting errors
-4. `cargo check` - Fast error checking without building
+2. `cargo clippy` - Check for type and linting errors
+3. `cargo check` - Fast error checking without building
+4. `cargo test` - Run all unit tests
 
 Address any errors from each command before proceeding to the next. All four must pass successfully before considering the work complete.
 
 ## Architecture
 
-The project structure:
+### Project Structure
+
+```
+kopi/
+├── src/
+│   ├── main.rs          # Application entry point with CLI command parsing
+│   ├── lib.rs           # Library root (if needed for integration tests)
+│   ├── cli.rs           # CLI argument structures and parsing
+│   ├── commands.rs      # Command implementations (or commands/ module)
+│   ├── config.rs        # Configuration management
+│   ├── jdk.rs           # JDK installation and metadata handling
+│   ├── shell.rs         # Shell integration and shim generation
+│   └── error.rs         # Error types and handling
+├── tests/               # Integration tests
+│   └── integration.rs   # End-to-end command tests
+├── docs/
+│   ├── adr/             # Architecture Decision Records
+│   └── reference.md     # User reference manual
+└── Cargo.toml           # Project dependencies and metadata
+```
+
+Key files:
 - `/src/main.rs` - Application entry point with CLI command parsing
 - `/docs/adr/` - Architecture Decision Records documenting design choices
 - `/docs/reference.md` - User reference manual with command documentation
@@ -102,3 +144,34 @@ Primary commands to implement:
 - `kopi list` - List installed JDKs
 - `kopi current` - Show active JDK
 - `kopi which` - Show JDK installation path
+
+## Error Handling Guidelines
+
+### Error Types
+1. **User Errors**: Invalid input, missing arguments, or incorrect usage
+   - Return clear, actionable error messages
+   - Include examples of correct usage
+   - Use exit code 1
+
+2. **Network Errors**: Failed API calls or downloads
+   - Implement retry logic with exponential backoff
+   - Provide offline fallback when possible (cached metadata)
+   - Show progress indicators for long operations
+
+3. **System Errors**: Permission issues, disk space, missing dependencies
+   - Check permissions before operations
+   - Validate available disk space before downloads
+   - Provide platform-specific guidance
+
+### Error Message Format
+```rust
+// Use anyhow for error handling with context
+use anyhow::{Context, Result};
+
+// Add context to errors
+operation()
+    .context("Failed to download JDK")?;
+
+// User-friendly error messages
+bail!("JDK version '{}' not found. Run 'kopi list-remote' to see available versions.", version);
+```
