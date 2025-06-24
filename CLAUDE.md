@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Rust command-line application named "kopi" (v0.1.0) that uses the `clap` crate for argument parsing. The project is in early development stage.
+Kopi is a JDK version management tool written in Rust that integrates with your shell to seamlessly switch between different Java Development Kit versions. It fetches JDK metadata from foojay.io and provides a simple, fast interface similar to tools like volta, nvm, and pyenv.
+
+Key features:
+- Automatic JDK version switching based on project configuration
+- Multiple JDK vendor support (AdoptOpenJDK, Amazon Corretto, Azul Zulu, etc.)
+- Shell integration via shims for transparent version management
+- Project-specific JDK pinning
+- Fast performance using Rust
 
 ## Development Commands
 
@@ -38,11 +45,21 @@ Address any errors from each command before proceeding to the next. All three mu
 
 ## Architecture
 
-The project currently has a minimal structure:
-- `/src/main.rs` - Application entry point
+The project structure:
+- `/src/main.rs` - Application entry point with CLI command parsing
+- `/docs/adr/` - Architecture Decision Records documenting design choices
 - Uses `clap` v4.5.40 with derive feature for CLI argument parsing
 
-This is a standard Rust binary crate structure. When extending the application:
-- Add modules in `/src/` as the codebase grows
-- Consider organizing with `mod.rs` files for complex module hierarchies
-- Use the builder pattern with clap's derive API for command-line interfaces
+Key architectural components:
+- **Command Interface**: Subcommand-based CLI using clap derive API
+- **JDK Metadata**: Fetches available JDK versions from foojay.io API
+- **Version Management**: Installs and manages multiple JDK versions in `~/.kopi/`
+- **Shell Integration**: Creates shims in `~/.kopi/bin/` for Java executables
+- **Project Configuration**: Reads `.kopi-version` or `.java-version` files
+
+Dependencies:
+- `attohttpc`: HTTP client for foojay.io API calls
+- `serde`/`serde_json`: JSON parsing for API responses
+- `tar`/`zip`: Archive extraction for JDK downloads
+- `tempfile`: Safe temporary file handling during downloads
+- Platform-specific: `winreg` (Windows), `junction` (Windows symlinks)
