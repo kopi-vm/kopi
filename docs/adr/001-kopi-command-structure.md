@@ -1,4 +1,4 @@
-# ADR: Kopi Command Structure
+# ADR-001: Kopi Command Structure
 
 ## Status
 Proposed

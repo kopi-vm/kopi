@@ -1,4 +1,4 @@
-# ADR: Serialization Format for foojay.io Metadata Storage
+# ADR-002: Serialization Format for foojay.io Metadata Storage
 
 ## Status
 Proposed
