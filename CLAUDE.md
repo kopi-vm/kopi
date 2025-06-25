@@ -107,6 +107,12 @@ Storage locations:
 - Config: `~/.kopi/config.toml`
 - Cache: `~/.kopi/cache/`
 
+Configuration System:
+- Global config stored at `~/.kopi/config.toml`
+- Loaded automatically by components via `KopiConfig::load()`
+- Supports `default_distribution` and `[storage]` section with `min_disk_space_mb`
+- Uses sensible defaults when config file is missing
+
 ## Key Dependencies
 
 Core functionality:
