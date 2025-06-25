@@ -205,6 +205,17 @@ kopi doctor                              # Diagnose kopi installation issues
 
 Stores default distribution preference and global settings.
 
+Example configuration:
+
+```toml
+# Default JDK distribution for installations
+default_distribution = "temurin"
+
+[storage]
+# Minimum required disk space in MB for JDK installation (default: 500)
+min_disk_space_mb = 1024
+```
+
 ### Project Config: `.kopi-version` or `.java-version`
 
 Simple text file with single line specifying version:
@@ -263,3 +274,13 @@ Kopi supports flexible version specifications:
 - `corretto@21` - Latest Java 21 from Amazon Corretto
 - `latest` - Latest available version
 - `latest --lts` - Latest LTS version
+
+## Environment Variables
+
+Kopi respects the following environment variables:
+
+- `KOPI_HOME` - Override default kopi home directory (default: `~/.kopi`)
+- `JAVA_HOME` - Set by kopi when switching JDK versions
+- `PATH` - Modified by kopi to include JDK bin directory
+
+Note: Minimum disk space requirement is configured via `~/.kopi/config.toml` (see Global Config section above)
