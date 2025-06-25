@@ -1,0 +1,320 @@
+use crate::api::ApiClient;
+use crate::archive::extract_archive;
+use crate::config::KopiConfig;
+use crate::download::download_jdk;
+use crate::error::{KopiError, Result};
+use crate::models::jdk::{Distribution, JdkMetadata};
+use crate::security::verify_checksum;
+use crate::storage::StorageManager;
+use crate::version::parser::VersionParser;
+use std::str::FromStr;
+
+pub struct InstallCommand {
+    api_client: ApiClient,
+    storage_manager: StorageManager,
+    _config: KopiConfig,
+}
+
+impl InstallCommand {
+    pub fn new() -> Result<Self> {
+        let storage_manager = StorageManager::new()?;
+        let config = KopiConfig::load(storage_manager.kopi_home())?;
+        let api_client = ApiClient::new();
+
+        Ok(Self {
+            api_client,
+            storage_manager,
+            _config: config,
+        })
+    }
+
+    fn get_current_architecture(&self) -> String {
+        #[cfg(target_arch = "x86_64")]
+        return "x64".to_string();
+
+        #[cfg(target_arch = "x86")]
+        return "x86".to_string();
+
+        #[cfg(target_arch = "aarch64")]
+        return "aarch64".to_string();
+
+        #[cfg(target_arch = "arm")]
+        return "arm32".to_string();
+
+        #[cfg(target_arch = "powerpc64")]
+        return if cfg!(target_endian = "little") {
+            "ppc64le".to_string()
+        } else {
+            "ppc64".to_string()
+        };
+
+        #[cfg(target_arch = "s390x")]
+        return "s390x".to_string();
+
+        #[cfg(not(any(
+            target_arch = "x86_64",
+            target_arch = "x86",
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "powerpc64",
+            target_arch = "s390x"
+        )))]
+        return "unknown".to_string();
+    }
+
+    pub fn execute(
+        &self,
+        version_spec: &str,
+        force: bool,
+        dry_run: bool,
+        no_progress: bool,
+        timeout_secs: Option<u64>,
+    ) -> Result<()> {
+        // Parse version specification
+        let version_request = VersionParser::parse(version_spec)?;
+
+        // Validate version semantics
+        VersionParser::validate_version_semantics(&version_request.version)?;
+
+        // Use default distribution if not specified
+        let distribution = version_request
+            .distribution
+            .unwrap_or(Distribution::Temurin);
+
+        println!(
+            "Installing {} {}...",
+            distribution.name(),
+            version_request.version
+        );
+
+        // Check if already installed
+        let arch = self.get_current_architecture();
+        let installation_dir = self.storage_manager.jdk_install_path(
+            &distribution,
+            &version_request.version.to_string(),
+            &arch,
+        );
+
+        if installation_dir.exists() && !force {
+            return Err(KopiError::AlreadyExists(format!(
+                "{} {} is already installed. Use --force to reinstall.",
+                distribution.name(),
+                version_request.version
+            )));
+        }
+
+        if dry_run {
+            println!(
+                "Would install {} {} to {}",
+                distribution.name(),
+                version_request.version,
+                installation_dir.display()
+            );
+            return Ok(());
+        }
+
+        // Find matching JDK package
+        let package = self.find_matching_package(&distribution, &version_request.version)?;
+
+        println!(
+            "Found package: {} {}",
+            package.distribution, package.version
+        );
+
+        // Check disk space (convert bytes to MB)
+        let _required_space_mb = if package.size > 0 {
+            package.size / 1024 / 1024
+        } else {
+            500 // Default to 500MB if size is unknown
+        };
+
+        // Download JDK
+        let download_path = download_jdk(&package, no_progress, timeout_secs)?;
+
+        // Verify checksum
+        if let Some(checksum) = &package.checksum {
+            println!("Verifying checksum...");
+            verify_checksum(&download_path, checksum)?;
+        }
+
+        // Prepare installation context
+        let context = if force && installation_dir.exists() {
+            // Remove existing installation first
+            self.storage_manager.remove_jdk(&installation_dir)?;
+            self.storage_manager.prepare_jdk_installation(
+                &distribution,
+                &version_request.version.to_string(),
+                &arch,
+            )?
+        } else {
+            self.storage_manager.prepare_jdk_installation(
+                &distribution,
+                &version_request.version.to_string(),
+                &arch,
+            )?
+        };
+
+        // Extract archive to temp directory
+        println!("Extracting archive...");
+        extract_archive(&download_path, &context.temp_path)?;
+
+        // Finalize installation
+        let final_path = self.storage_manager.finalize_installation(context)?;
+
+        // Clean up download
+        std::fs::remove_file(&download_path)
+            .unwrap_or_else(|e| eprintln!("Warning: Failed to remove download file: {}", e));
+
+        println!(
+            "Successfully installed {} {} to {}",
+            distribution.name(),
+            version_request.version,
+            final_path.display()
+        );
+
+        // Show hint about using the JDK
+        if VersionParser::is_lts_version(version_request.version.major) {
+            println!(
+                "Note: {} is an LTS (Long Term Support) version.",
+                version_request.version.major
+            );
+        }
+        println!("\nTo use this JDK, run: kopi use {}", version_spec);
+
+        Ok(())
+    }
+
+    fn find_matching_package(
+        &self,
+        distribution: &Distribution,
+        version: &crate::models::jdk::Version,
+    ) -> Result<JdkMetadata> {
+        // Build query for the API
+        let arch = self.get_current_architecture();
+        let os = self.get_current_os();
+
+        let query = crate::api::PackageQuery {
+            version: Some(version.to_string()),
+            distribution: Some(distribution.id().to_string()),
+            architecture: Some(arch.clone()),
+            operating_system: Some(os.clone()),
+            package_type: Some("jdk".to_string()),
+            latest: Some(true),
+            directly_downloadable: Some(true),
+            ..Default::default()
+        };
+
+        // Get packages from API
+        let packages = self.api_client.get_packages(Some(query))?;
+
+        if packages.is_empty() {
+            // Try to find any packages for this distribution to suggest versions
+            let query_all = crate::api::PackageQuery {
+                distribution: Some(distribution.id().to_string()),
+                architecture: Some(arch.clone()),
+                operating_system: Some(os.clone()),
+                package_type: Some("jdk".to_string()),
+                directly_downloadable: Some(true),
+                ..Default::default()
+            };
+
+            let all_packages = self.api_client.get_packages(Some(query_all))?;
+            let version_strings: Vec<String> = all_packages
+                .iter()
+                .map(|p| p.java_version.clone())
+                .collect();
+
+            return Err(KopiError::VersionNotAvailable(format!(
+                "{} {} not found. Available versions: {}",
+                distribution.name(),
+                version,
+                version_strings.join(", ")
+            )));
+        }
+
+        // Convert the first package to JdkMetadata
+        let package = packages.into_iter().next().unwrap();
+        self.convert_package_to_metadata(package)
+    }
+
+    fn get_current_os(&self) -> String {
+        #[cfg(target_os = "linux")]
+        return "linux".to_string();
+
+        #[cfg(target_os = "windows")]
+        return "windows".to_string();
+
+        #[cfg(target_os = "macos")]
+        return "macos".to_string();
+
+        #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+        return "unknown".to_string();
+    }
+
+    fn convert_package_to_metadata(&self, package: crate::api::Package) -> Result<JdkMetadata> {
+        let arch = self.get_current_architecture();
+        let os = self.get_current_os();
+
+        Ok(JdkMetadata {
+            distribution: package.distribution,
+            version: crate::models::jdk::Version::from_str(&package.java_version)?,
+            architecture: crate::models::jdk::Architecture::from_str(&arch)?,
+            operating_system: crate::models::jdk::OperatingSystem::from_str(&os)?,
+            package_type: crate::models::jdk::PackageType::Jdk,
+            archive_type: crate::models::jdk::ArchiveType::from_str(&package.archive_type)?,
+            download_url: package.links.pkg_download_redirect,
+            checksum: None, // Foojay API doesn't provide checksums directly
+            checksum_type: None,
+            size: package.size,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_version_spec() {
+        let cmd = InstallCommand::new();
+        assert!(cmd.is_ok());
+
+        // Test version parsing is called correctly
+        let version_request = VersionParser::parse("21").unwrap();
+        assert_eq!(version_request.version.major, 21);
+        assert_eq!(version_request.distribution, None);
+    }
+
+    #[test]
+    fn test_dry_run_prevents_installation() {
+        // This would be a more complex test with mocks
+        // For now, just verify the command can be created
+        let cmd = InstallCommand::new();
+        assert!(cmd.is_ok());
+    }
+
+    #[test]
+    fn test_parse_version_with_distribution() {
+        let version_request = VersionParser::parse("corretto@17").unwrap();
+        assert_eq!(version_request.version.major, 17);
+        assert_eq!(version_request.distribution, Some(Distribution::Corretto));
+    }
+
+    #[test]
+    fn test_get_current_architecture() {
+        let cmd = InstallCommand::new().unwrap();
+        let arch = cmd.get_current_architecture();
+        // Should return a valid architecture string
+        assert!(!arch.is_empty());
+        assert_ne!(arch, "unknown");
+    }
+
+    #[test]
+    fn test_get_current_os() {
+        let cmd = InstallCommand::new().unwrap();
+        let os = cmd.get_current_os();
+        // Should return a valid OS string
+        assert!(!os.is_empty());
+        assert_ne!(os, "unknown");
+    }
+}

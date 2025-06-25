@@ -396,6 +396,61 @@ impl HttpResponse for AttohttpcResponse {
     }
 }
 
+/// Download a JDK package from the given URL
+pub fn download_jdk(
+    package: &crate::models::jdk::JdkMetadata,
+    no_progress: bool,
+    timeout_secs: Option<u64>,
+) -> Result<PathBuf> {
+    // Security validation
+    let security_manager = crate::security::SecurityManager::new();
+    security_manager.verify_https_security(&package.download_url)?;
+
+    // Create download manager
+    let mut download_manager = DownloadManager::new();
+
+    // Set timeout if provided
+    if let Some(timeout) = timeout_secs {
+        download_manager
+            .http_client
+            .set_timeout(Duration::from_secs(timeout));
+    }
+
+    // Add progress reporter unless disabled
+    if !no_progress {
+        download_manager =
+            download_manager.with_progress_reporter(Box::new(ConsoleProgressReporter::new()));
+    }
+
+    // Prepare download options
+    let options = DownloadOptions {
+        checksum: package.checksum.clone(),
+        resume: true,
+        timeout: timeout_secs
+            .map(Duration::from_secs)
+            .unwrap_or(DEFAULT_TIMEOUT),
+        max_size: MAX_DOWNLOAD_SIZE,
+    };
+
+    // Determine download path
+    let temp_dir = tempfile::tempdir()?;
+    let file_name = package
+        .download_url
+        .split('/')
+        .next_back()
+        .unwrap_or("jdk.tar.gz");
+    let download_path = temp_dir.path().join(file_name);
+
+    // Download the file
+    let result_path = download_manager.download(&package.download_url, &download_path, &options)?;
+
+    // Keep the temp directory alive by leaking it
+    // The caller is responsible for cleaning up the file
+    std::mem::forget(temp_dir);
+
+    Ok(result_path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

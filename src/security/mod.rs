@@ -230,6 +230,12 @@ impl Default for SecurityManager {
     }
 }
 
+/// Verify the checksum of a file
+pub fn verify_checksum(file_path: &Path, expected_checksum: &str) -> Result<()> {
+    let manager = SecurityManager::new();
+    manager.verify_checksum(file_path, expected_checksum)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

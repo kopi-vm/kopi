@@ -292,6 +292,12 @@ pub struct ArchiveInfo {
     pub uncompressed_size: u64,
 }
 
+/// Extract a JDK archive to the specified destination
+pub fn extract_archive(archive_path: &Path, destination: &Path) -> Result<()> {
+    let handler = ArchiveHandler::new();
+    handler.extract(archive_path, destination)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
