@@ -68,6 +68,9 @@ pub enum KopiError {
     #[error("Insufficient disk space: {0}")]
     DiskSpaceError(String),
 
+    #[error("System error: {0}")]
+    SystemError(String),
+
     #[error(transparent)]
     Io(#[from] std::io::Error),
 

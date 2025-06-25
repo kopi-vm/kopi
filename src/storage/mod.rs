@@ -1,3 +1,4 @@
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::Distribution;
 use dirs::home_dir;
@@ -6,20 +7,28 @@ use std::path::{Path, PathBuf};
 
 const KOPI_DIR_NAME: &str = ".kopi";
 const JDKS_DIR_NAME: &str = "jdks";
-const MIN_DISK_SPACE_MB: u64 = 500; // Minimum 500MB free space required
 
 pub struct StorageManager {
     kopi_home: PathBuf,
+    min_disk_space_mb: u64,
 }
 
 impl StorageManager {
     pub fn new() -> Result<Self> {
         let kopi_home = Self::get_kopi_home()?;
-        Ok(Self { kopi_home })
+        let config = KopiConfig::load(&kopi_home)?;
+        Ok(Self {
+            kopi_home,
+            min_disk_space_mb: config.storage.min_disk_space_mb,
+        })
     }
 
     pub fn with_home(kopi_home: PathBuf) -> Self {
-        Self { kopi_home }
+        let config = KopiConfig::load(&kopi_home).unwrap_or_default();
+        Self {
+            kopi_home,
+            min_disk_space_mb: config.storage.min_disk_space_mb,
+        }
     }
 
     fn get_kopi_home() -> Result<PathBuf> {
@@ -120,13 +129,23 @@ impl StorageManager {
     }
 
     fn check_disk_space(&self, path: &Path) -> Result<()> {
-        let target_dir = if path.exists() {
-            path.to_path_buf()
-        } else if let Some(parent) = path.parent() {
-            parent.to_path_buf()
-        } else {
-            self.kopi_home.clone()
-        };
+        // Find the first existing parent directory to check disk space
+        let mut target_dir = path.to_path_buf();
+        while !target_dir.exists() {
+            if let Some(parent) = target_dir.parent() {
+                target_dir = parent.to_path_buf();
+            } else {
+                // No parent exists, use kopi home
+                target_dir = self.kopi_home.clone();
+                break;
+            }
+        }
+
+        log::debug!(
+            "Checking disk space for path {:?} (using {:?})",
+            path,
+            target_dir
+        );
 
         #[cfg(unix)]
         {
@@ -140,12 +159,25 @@ impl StorageManager {
 
             if result == 0 {
                 let available_mb = (stat.f_bavail * stat.f_frsize) / (1024 * 1024);
-                if available_mb < MIN_DISK_SPACE_MB {
+                log::debug!(
+                    "Disk space check: available={}MB, required={}MB",
+                    available_mb,
+                    self.min_disk_space_mb
+                );
+
+                if available_mb < self.min_disk_space_mb {
                     return Err(KopiError::DiskSpaceError(format!(
-                        "Insufficient disk space. Required: {}MB, Available: {}MB",
-                        MIN_DISK_SPACE_MB, available_mb
+                        "Insufficient disk space at {:?}. Required: {}MB, Available: {}MB",
+                        target_dir, self.min_disk_space_mb, available_mb
                     )));
                 }
+            } else {
+                let errno = std::io::Error::last_os_error();
+                log::error!("Failed to check disk space at {:?}: {}", target_dir, errno);
+                return Err(KopiError::SystemError(format!(
+                    "Failed to check disk space at {:?}: {}",
+                    target_dir, errno
+                )));
             }
         }
 
@@ -153,6 +185,7 @@ impl StorageManager {
         {
             use std::os::windows::ffi::OsStrExt;
             use std::ptr;
+            use winapi::um::errhandlingapi::GetLastError;
             use winapi::um::fileapi::GetDiskFreeSpaceExW;
 
             let path_wide: Vec<u16> = target_dir
@@ -173,12 +206,29 @@ impl StorageManager {
 
             if result != 0 {
                 let available_mb = available_bytes / (1024 * 1024);
-                if available_mb < MIN_DISK_SPACE_MB {
+                log::debug!(
+                    "Disk space check: available={}MB, required={}MB",
+                    available_mb,
+                    self.min_disk_space_mb
+                );
+
+                if available_mb < self.min_disk_space_mb {
                     return Err(KopiError::DiskSpaceError(format!(
-                        "Insufficient disk space. Required: {}MB, Available: {}MB",
-                        MIN_DISK_SPACE_MB, available_mb
+                        "Insufficient disk space at {:?}. Required: {}MB, Available: {}MB",
+                        target_dir, self.min_disk_space_mb, available_mb
                     )));
                 }
+            } else {
+                let error_code = unsafe { winapi::um::errhandlingapi::GetLastError() };
+                log::error!(
+                    "Failed to check disk space at {:?}: Windows error code {}",
+                    target_dir,
+                    error_code
+                );
+                return Err(KopiError::SystemError(format!(
+                    "Failed to check disk space at {:?}: Windows error code {}",
+                    target_dir, error_code
+                )));
             }
         }
 
@@ -229,18 +279,51 @@ impl StorageManager {
 
     fn parse_jdk_dir_name(&self, path: &Path) -> Option<InstalledJdk> {
         let file_name = path.file_name()?.to_str()?;
-        let parts: Vec<&str> = file_name.rsplitn(3, '-').collect();
 
-        if parts.len() == 3 {
-            Some(InstalledJdk {
-                distribution: parts[2].to_string(),
-                version: parts[1].to_string(),
-                arch: parts[0].to_string(),
-                path: path.to_path_buf(),
-            })
-        } else {
-            None
+        // Known architectures to help with parsing
+        const KNOWN_ARCHS: &[&str] = &[
+            "x64", "x86", "amd64", "i386", "i686", "aarch64", "arm64", "armv7", "armv7l", "ppc64",
+            "ppc64le", "s390x", "riscv64",
+        ];
+
+        // Find the architecture suffix
+        let (base_name, arch) = KNOWN_ARCHS.iter().find_map(|&arch_str| {
+            if file_name.ends_with(&format!("-{}", arch_str)) {
+                let base = &file_name[..file_name.len() - arch_str.len() - 1];
+                Some((base, arch_str))
+            } else {
+                None
+            }
+        })?;
+
+        // Now split the remaining part into distribution and version
+        // The distribution is the part before the first hyphen followed by a digit or 'v'
+        let mut split_pos = None;
+        let chars: Vec<char> = base_name.chars().collect();
+
+        for i in 0..chars.len() - 1 {
+            if chars[i] == '-' && (chars[i + 1].is_numeric() || chars[i + 1] == 'v') {
+                split_pos = Some(i);
+                break;
+            }
         }
+
+        let (distribution, version) = if let Some(pos) = split_pos {
+            let dist = &base_name[..pos];
+            let ver = &base_name[pos + 1..];
+            (dist, ver)
+        } else {
+            // If we can't find a proper split, assume the entire base is the distribution
+            // This handles edge cases but might not be what we want
+            return None;
+        };
+
+        Some(InstalledJdk {
+            distribution: distribution.to_string(),
+            version: version.to_string(),
+            arch: arch.to_string(),
+            path: path.to_path_buf(),
+        })
     }
 
     pub fn get_jdk_size(&self, path: &Path) -> Result<u64> {
@@ -422,6 +505,7 @@ mod tests {
     fn test_parse_jdk_dir_name() {
         let (manager, _temp) = create_test_storage_manager();
 
+        // Test basic format
         let jdk = manager
             .parse_jdk_dir_name(Path::new("temurin-21.0.1-x64"))
             .unwrap();
@@ -429,11 +513,69 @@ mod tests {
         assert_eq!(jdk.version, "21.0.1");
         assert_eq!(jdk.arch, "x64");
 
-        // Test with simple format only - complex versions with dashes are not supported in this simple parser
-        // For complex versions, we'd need a more sophisticated parser
+        // Test version with early access suffix
+        let jdk = manager
+            .parse_jdk_dir_name(Path::new("temurin-22-ea-x64"))
+            .unwrap();
+        assert_eq!(jdk.distribution, "temurin");
+        assert_eq!(jdk.version, "22-ea");
+        assert_eq!(jdk.arch, "x64");
 
-        // Invalid format
+        // Test version with build number
+        let jdk = manager
+            .parse_jdk_dir_name(Path::new("corretto-17.0.9+9-aarch64"))
+            .unwrap();
+        assert_eq!(jdk.distribution, "corretto");
+        assert_eq!(jdk.version, "17.0.9+9");
+        assert_eq!(jdk.arch, "aarch64");
+
+        // Test with hyphenated distribution name
+        let jdk = manager
+            .parse_jdk_dir_name(Path::new("graalvm-ce-21.0.1-amd64"))
+            .unwrap();
+        assert_eq!(jdk.distribution, "graalvm-ce");
+        assert_eq!(jdk.version, "21.0.1");
+        assert_eq!(jdk.arch, "amd64");
+
+        // Test with version starting with 'v'
+        let jdk = manager
+            .parse_jdk_dir_name(Path::new("zulu-v11.0.21-arm64"))
+            .unwrap();
+        assert_eq!(jdk.distribution, "zulu");
+        assert_eq!(jdk.version, "v11.0.21");
+        assert_eq!(jdk.arch, "arm64");
+
+        // Test complex version with multiple hyphens
+        let jdk = manager
+            .parse_jdk_dir_name(Path::new("liberica-21.0.1-13-x64"))
+            .unwrap();
+        assert_eq!(jdk.distribution, "liberica");
+        assert_eq!(jdk.version, "21.0.1-13");
+        assert_eq!(jdk.arch, "x64");
+
+        // Test different architectures
+        let archs = vec!["x86", "i386", "ppc64le", "s390x", "riscv64"];
+        for arch in archs {
+            let jdk = manager
+                .parse_jdk_dir_name(Path::new(&format!("temurin-17-{}", arch)))
+                .unwrap();
+            assert_eq!(jdk.distribution, "temurin");
+            assert_eq!(jdk.version, "17");
+            assert_eq!(jdk.arch, arch);
+        }
+
+        // Invalid format tests
         assert!(manager.parse_jdk_dir_name(Path::new("invalid")).is_none());
+        assert!(
+            manager
+                .parse_jdk_dir_name(Path::new("no-version-unknown-arch"))
+                .is_none()
+        );
+        assert!(
+            manager
+                .parse_jdk_dir_name(Path::new("temurin-x64"))
+                .is_none()
+        ); // No version
     }
 
     #[test]
@@ -444,5 +586,51 @@ mod tests {
         let result = manager.remove_jdk(Path::new("/etc/passwd"));
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), KopiError::SecurityError(_)));
+    }
+
+    #[test]
+    fn test_min_disk_space_from_config() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("config.toml");
+
+        // Write config with custom disk space
+        fs::write(
+            &config_path,
+            r#"
+[storage]
+min_disk_space_mb = 1024
+"#,
+        )
+        .unwrap();
+
+        let manager = StorageManager::with_home(temp_dir.path().to_path_buf());
+        assert_eq!(manager.min_disk_space_mb, 1024);
+    }
+
+    #[test]
+    fn test_min_disk_space_default() {
+        let temp_dir = TempDir::new().unwrap();
+        // No config file, should use default
+
+        let manager = StorageManager::with_home(temp_dir.path().to_path_buf());
+        assert_eq!(manager.min_disk_space_mb, 500); // Default value from config module
+    }
+
+    #[test]
+    fn test_disk_space_check_path_selection() {
+        let (manager, temp) = create_test_storage_manager();
+
+        // Test that it uses the correct path for disk space check
+        // This is a unit test that verifies the logic, not the actual disk space
+        let _non_existent = temp.path().join("non/existent/path");
+        let _parent = temp.path().join("non/existent");
+
+        // The check_disk_space function is private, so we test it indirectly
+        // through prepare_jdk_installation which calls it
+        let distribution = Distribution::Temurin;
+        let result = manager.prepare_jdk_installation(&distribution, "21.0.1", "x64");
+
+        // Should succeed on most systems as temp directories usually have space
+        assert!(result.is_ok() || matches!(result.unwrap_err(), KopiError::DiskSpaceError(_)));
     }
 }

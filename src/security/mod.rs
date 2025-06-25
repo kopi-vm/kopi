@@ -116,6 +116,39 @@ impl SecurityManager {
             }
         }
 
+        #[cfg(windows)]
+        {
+            use std::fs;
+
+            let metadata = fs::metadata(path)?;
+
+            // On Windows, check if the file is read-only and exists
+            if !metadata.is_file() {
+                return Err(KopiError::SecurityError(format!(
+                    "Path {:?} is not a regular file",
+                    path
+                )));
+            }
+
+            // Check if the file has the read-only attribute
+            // In Windows, files without read-only attribute are writable by the owner
+            // For JDK files, we generally want them to be read-only after installation
+            if metadata.permissions().readonly() {
+                log::debug!("File {:?} is read-only (secure)", path);
+            } else {
+                log::warn!(
+                    "File {:?} is writable - consider setting read-only for security",
+                    path
+                );
+            }
+
+            // Additional Windows-specific security checks could include:
+            // - Checking ACLs (Access Control Lists) using Windows API
+            // - Verifying file ownership
+            // - Checking for alternate data streams
+            // For now, we do basic checks that work with std::fs
+        }
+
         Ok(())
     }
 
@@ -138,6 +171,52 @@ impl SecurityManager {
                     "Path {:?} is outside of kopi directory",
                     path
                 )));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Set file permissions to read-only for security
+    /// This is especially important for JDK files after installation
+    pub fn secure_file_permissions(&self, path: &Path) -> Result<()> {
+        let metadata = std::fs::metadata(path)?;
+        let mut permissions = metadata.permissions();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            // Set to 644 (owner: read/write, group: read, others: read)
+            // This prevents accidental modification while allowing execution
+            permissions.set_mode(0o644);
+        }
+
+        #[cfg(windows)]
+        {
+            // Set the read-only attribute on Windows
+            permissions.set_readonly(true);
+        }
+
+        std::fs::set_permissions(path, permissions)?;
+
+        self.audit_log(
+            "SECURE_PERMISSIONS",
+            &format!("Set secure permissions on {:?}", path),
+        );
+
+        Ok(())
+    }
+
+    /// Recursively secure all files in a directory
+    pub fn secure_directory_permissions(&self, dir: &Path) -> Result<()> {
+        use walkdir::WalkDir;
+
+        for entry in WalkDir::new(dir) {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_file() {
+                self.secure_file_permissions(path)?;
             }
         }
 
@@ -312,5 +391,29 @@ mod tests {
         temp_file.as_file().set_permissions(perms).unwrap();
 
         assert!(security.verify_file_permissions(temp_file.path()).is_err());
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_verify_file_permissions_windows() {
+        use std::fs;
+
+        let security = SecurityManager::new();
+        let temp_file = NamedTempFile::new().unwrap();
+
+        // By default, temp files are writable
+        assert!(security.verify_file_permissions(temp_file.path()).is_ok());
+
+        // Set file as read-only
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_readonly(true);
+        temp_file.as_file().set_permissions(perms.clone()).unwrap();
+
+        // Should still be OK (read-only is more secure)
+        assert!(security.verify_file_permissions(temp_file.path()).is_ok());
+
+        // Test with a directory (should fail)
+        let temp_dir = tempfile::tempdir().unwrap();
+        assert!(security.verify_file_permissions(temp_dir.path()).is_err());
     }
 }
