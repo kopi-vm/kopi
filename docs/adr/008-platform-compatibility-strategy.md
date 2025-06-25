@@ -117,34 +117,24 @@ The Foojay API returns different `lib_c_type` values based on the platform:
 - Amazon Corretto (musl-compatible builds)
 - Azul Zulu (Alpine support)
 
-### Error Handling Strategy
-Fail fast with clear, actionable error messages based on platform mismatch:
+### Platform-Specific Error Handling
+Since kopi automatically filters JDKs based on its own libc type, platform compatibility errors are largely prevented. The primary platform-related error scenario is:
 
-1. **Linux: Kopi built with musl, attempting to install glibc JDK**:
-   ```
-   Error: This JDK is built for glibc systems but kopi is using musl libc.
-   Please install an Alpine-compatible JDK using:
-   kopi install temurin@11-alpine
-   ```
+**No compatible variant available**:
+```
+Error: No Alpine-compatible (musl) variant found for temurin@11.
+Available distributions with Alpine support: liberica, zulu, corretto
+Try: kopi install liberica@11
+```
 
-2. **Linux: Kopi built with glibc, attempting to install musl JDK**:
-   ```
-   Error: This JDK is built for Alpine Linux (musl libc) but kopi is using glibc.
-   Please install a standard JDK using:
-   kopi install temurin@11
-   ```
+This occurs when a requested JDK distribution doesn't provide a variant matching kopi's platform (e.g., requesting a distribution that only provides glibc builds on an Alpine/musl system).
 
-3. **Cross-platform mismatch**:
-   ```
-   Error: This JDK is built for [target_platform] but kopi is running on [current_platform].
-   Please install a JDK for your platform using:
-   kopi install temurin@11
-   ```
+**Automatic platform detection message**:
+```
+Info: Detected Alpine Linux (musl), automatically selecting Alpine-compatible JDK variants...
+```
 
-4. **Automatic selection message**:
-   ```
-   Info: Detected platform: [linux-musl/linux-glibc/macos/windows], selecting compatible JDK variant...
-   ```
+This informational message ensures transparency about the automatic variant selection process.
 
 ### Implementation Phases
 
@@ -163,10 +153,10 @@ Fail fast with clear, actionable error messages based on platform mismatch:
 - Add informational messages about automatic platform matching
 
 **Phase 3**: Error Handling and Validation
-- Add pre-download validation to check JDK libc compatibility
-- Implement clear error messages for libc mismatches
-- Add `kopi doctor` command to show kopi's libc type and validate installed JDKs
-- Create migration guide for users switching between musl/glibc environments
+- Implement error handling for missing compatible variants
+- Add clear error messages when no matching JDK is available
+- Add `kopi doctor` command to show kopi's libc type and compatible distributions
+- Handle API failures gracefully with retry logic
 
 **Phase 4**: Distribution and Testing
 - Set up CI/CD to build both musl and glibc variants of kopi
