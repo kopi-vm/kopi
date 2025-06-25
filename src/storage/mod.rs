@@ -101,11 +101,36 @@ impl StorageManager {
             fs::create_dir_all(parent)?;
         }
 
-        // Atomic move from temp to final location
-        fs::rename(&context.temp_path, &context.final_path).inspect_err(|_| {
+        // Check if the extracted archive has a single top-level directory
+        // (common for JDK archives like jdk-21+35/)
+        let entries: Vec<_> = fs::read_dir(&context.temp_path)?
+            .filter_map(|entry| entry.ok())
+            .collect();
+
+        let source_path = if entries.len() == 1 {
+            let entry = &entries[0];
+            if entry.file_type()?.is_dir() {
+                // Archive has a single top-level directory, use its contents
+                entry.path()
+            } else {
+                // Single file at top level, use temp_path as is
+                context.temp_path.clone()
+            }
+        } else {
+            // Multiple entries at top level, use temp_path as is
+            context.temp_path.clone()
+        };
+
+        // Atomic move from source to final location
+        fs::rename(&source_path, &context.final_path).inspect_err(|_| {
             // Clean up temp directory on failure
             let _ = fs::remove_dir_all(&context.temp_path);
         })?;
+
+        // If we used a subdirectory, clean up the now-empty temp directory
+        if source_path != context.temp_path {
+            let _ = fs::remove_dir_all(&context.temp_path);
+        }
 
         Ok(context.final_path)
     }

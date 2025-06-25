@@ -45,35 +45,56 @@ impl ApiClient {
         self.execute_with_version_fallback(|version| {
             let url = format!("{}/{}/packages", self.base_url, version);
             let query = query.clone();
+
             self.execute_with_retry(move || {
                 let mut request = self.session.get(&url);
+
+                // Build query parameters for logging
+                let mut query_params = Vec::new();
 
                 if let Some(ref q) = query {
                     if let Some(ref version) = q.version {
                         request = request.param("version", version);
+                        query_params.push(format!("version={}", version));
                     }
                     if let Some(ref distribution) = q.distribution {
                         request = request.param("distribution", distribution);
+                        query_params.push(format!("distribution={}", distribution));
                     }
                     if let Some(ref architecture) = q.architecture {
                         request = request.param("architecture", architecture);
+                        query_params.push(format!("architecture={}", architecture));
                     }
                     if let Some(ref package_type) = q.package_type {
                         request = request.param("package_type", package_type);
+                        query_params.push(format!("package_type={}", package_type));
                     }
                     if let Some(ref operating_system) = q.operating_system {
                         request = request.param("operating_system", operating_system);
+                        query_params.push(format!("operating_system={}", operating_system));
                     }
                     if let Some(ref archive_type) = q.archive_type {
                         request = request.param("archive_type", archive_type);
+                        query_params.push(format!("archive_type={}", archive_type));
                     }
                     if let Some(latest) = q.latest {
                         request = request.param("latest", latest.to_string());
+                        query_params.push(format!("latest={}", latest));
                     }
                     if let Some(directly_downloadable) = q.directly_downloadable {
                         request = request
                             .param("directly_downloadable", directly_downloadable.to_string());
+                        query_params
+                            .push(format!("directly_downloadable={}", directly_downloadable));
                     }
+
+                    // Log the complete URL with query parameters
+                    let full_url = if query_params.is_empty() {
+                        url.clone()
+                    } else {
+                        format!("{}?{}", url, query_params.join("&"))
+                    };
+                    eprintln!("API Request: {}", full_url);
                 }
 
                 request
@@ -113,14 +134,17 @@ impl ApiClient {
         // Try each API version in order
         let mut last_error = None;
         for version in API_VERSIONS {
+            eprintln!("Trying API version: {}", version);
             match operation(version) {
                 Ok(result) => {
+                    eprintln!("API version {} succeeded", version);
                     // Cache the working version for future requests
                     // Note: In a real implementation, we'd want to make this mutable
                     // or use interior mutability
                     return Ok(result);
                 }
                 Err(e) => {
+                    eprintln!("API version {} failed: {:?}", version, e);
                     last_error = Some(e);
                 }
             }
@@ -185,11 +209,57 @@ impl ApiClient {
                     return OperationResult::Err(KopiError::MetadataFetch(error_msg));
                 }
 
-                match response.json::<T>() {
-                    Ok(data) => OperationResult::Ok(data),
-                    Err(_) => OperationResult::Err(KopiError::MetadataFetch(
-                        "Failed to parse response from server. The API response format may have changed.".to_string()
-                    )),
+                // Try to get response text for debugging
+                match response.text() {
+                    Ok(body) => {
+                        // First try to parse as a JSON value to handle wrapped responses
+                        match serde_json::from_str::<serde_json::Value>(&body) {
+                            Ok(json_value) => {
+                                // Check if response is wrapped with "result" field
+                                if let Some(result) = json_value.get("result") {
+                                    // Try to deserialize the result field
+                                    match serde_json::from_value::<T>(result.clone()) {
+                                        Ok(data) => OperationResult::Ok(data),
+                                        Err(e) => {
+                                            eprintln!("Failed to parse 'result' field: {}", e);
+                                            eprintln!("Result field: {:?}", result);
+                                            OperationResult::Err(KopiError::MetadataFetch(format!(
+                                                "Failed to parse wrapped response: {}",
+                                                e
+                                            )))
+                                        }
+                                    }
+                                } else {
+                                    // No "result" field, try to parse the entire value as T
+                                    match serde_json::from_value::<T>(json_value) {
+                                        Ok(data) => OperationResult::Ok(data),
+                                        Err(e) => {
+                                            eprintln!("JSON parse error: {}", e);
+                                            eprintln!(
+                                                "Response body (first 500 chars): {}",
+                                                &body.chars().take(500).collect::<String>()
+                                            );
+                                            OperationResult::Err(KopiError::MetadataFetch(format!(
+                                                "Failed to parse response: {}",
+                                                e
+                                            )))
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to parse as JSON: {}", e);
+                                OperationResult::Err(KopiError::MetadataFetch(format!(
+                                    "Invalid JSON response: {}",
+                                    e
+                                )))
+                            }
+                        }
+                    }
+                    Err(e) => OperationResult::Err(KopiError::MetadataFetch(format!(
+                        "Failed to read response body: {}",
+                        e
+                    ))),
                 }
             },
         );
@@ -202,6 +272,14 @@ impl Default for ApiClient {
     fn default() -> Self {
         Self::new()
     }
+}
+
+// Wrapper for v3.0 API responses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ApiV3Response<T> {
+    result: T,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -231,6 +309,7 @@ pub struct Package {
     pub free_use_in_production: bool,
     pub tck_tested: String,
     pub size: u64,
+    pub operating_system: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

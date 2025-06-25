@@ -18,6 +18,7 @@ pub trait HttpClient: Send + Sync {
 pub trait HttpResponse: Read + Send {
     fn status(&self) -> u16;
     fn header(&self, name: &str) -> Option<&str>;
+    fn final_url(&self) -> Option<&str>;
 }
 
 pub struct DownloadManager {
@@ -349,7 +350,8 @@ impl HttpClient for AttohttpcClient {
         let mut request_builder = session
             .get(url)
             .timeout(self.timeout)
-            .header("User-Agent", &self.user_agent);
+            .header("User-Agent", &self.user_agent)
+            .follow_redirects(true);
 
         // For Range header specifically, we can use a match pattern
         // This avoids the generic loop that causes lifetime issues
@@ -393,6 +395,10 @@ impl HttpResponse for AttohttpcResponse {
 
     fn header(&self, name: &str) -> Option<&str> {
         self.response.headers().get(name)?.to_str().ok()
+    }
+
+    fn final_url(&self) -> Option<&str> {
+        Some(self.response.url().as_ref())
     }
 }
 
@@ -528,6 +534,10 @@ mod tests {
                 .iter()
                 .find(|(k, _)| k.eq_ignore_ascii_case(name))
                 .map(|(_, v)| v.as_str())
+        }
+
+        fn final_url(&self) -> Option<&str> {
+            None
         }
     }
 

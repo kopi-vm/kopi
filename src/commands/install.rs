@@ -116,9 +116,17 @@ impl InstallCommand {
         // Find matching JDK package
         let package = self.find_matching_package(&distribution, &version_request.version)?;
 
+        // Show the actual package found (for debugging purposes)
+        if package.distribution.to_lowercase() != distribution.id() {
+            eprintln!(
+                "Warning: Requested {} but found {} package",
+                distribution.name(),
+                package.distribution
+            );
+        }
         println!(
-            "Found package: {} {}",
-            package.distribution, package.version
+            "Downloading {} {} (id: {})...",
+            package.distribution, package.version, package.id
         );
 
         // Check disk space (convert bytes to MB)
@@ -207,6 +215,21 @@ impl InstallCommand {
         // Get packages from API
         let packages = self.api_client.get_packages(Some(query))?;
 
+        // Debug: Log the response
+        eprintln!("API returned {} packages", packages.len());
+        for (i, pkg) in packages.iter().enumerate() {
+            eprintln!(
+                "Package[{}]: distribution={}, version={}, filename={}, archive_type={}, os={}, id={}",
+                i,
+                pkg.distribution,
+                pkg.java_version,
+                pkg.filename,
+                pkg.archive_type,
+                pkg.operating_system,
+                pkg.id
+            );
+        }
+
         if packages.is_empty() {
             // Try to find any packages for this distribution to suggest versions
             let query_all = crate::api::PackageQuery {
@@ -232,8 +255,18 @@ impl InstallCommand {
             )));
         }
 
-        // Convert the first package to JdkMetadata
-        let package = packages.into_iter().next().unwrap();
+        // Find the first package that matches the requested distribution
+        let package = packages
+            .into_iter()
+            .find(|p| p.distribution.to_lowercase() == distribution.id())
+            .ok_or_else(|| {
+                KopiError::VersionNotAvailable(format!(
+                    "{} {} not found in the returned packages",
+                    distribution.name(),
+                    version
+                ))
+            })?;
+
         self.convert_package_to_metadata(package)
     }
 
@@ -256,6 +289,7 @@ impl InstallCommand {
         let os = self.get_current_os();
 
         Ok(JdkMetadata {
+            id: package.id,
             distribution: package.distribution,
             version: crate::models::jdk::Version::from_str(&package.java_version)?,
             architecture: crate::models::jdk::Architecture::from_str(&arch)?,

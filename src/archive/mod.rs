@@ -1,5 +1,6 @@
 use crate::error::{KopiError, Result};
 use std::fs::{self, File};
+use std::io::Read;
 use std::path::Path;
 use tar::Archive as TarArchive;
 use zip::ZipArchive;
@@ -37,28 +38,47 @@ impl ArchiveHandler {
     }
 
     fn detect_archive_type(&self, path: &Path) -> Result<ArchiveType> {
-        let extension = path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .map(|s| s.to_lowercase());
-
-        match extension.as_deref() {
-            Some("gz") => {
-                // Check if it's a .tar.gz file
-                if path.to_string_lossy().ends_with(".tar.gz") {
-                    Ok(ArchiveType::TarGz)
-                } else {
-                    Err(KopiError::ValidationError(
-                        "Unsupported archive format: .gz without .tar".to_string(),
-                    ))
-                }
-            }
-            Some("zip") => Ok(ArchiveType::Zip),
-            _ => Err(KopiError::ValidationError(format!(
-                "Unsupported archive format: {:?}",
-                path
-            ))),
+        // First try by extension
+        let path_str = path.to_string_lossy().to_lowercase();
+        if path_str.ends_with(".tar.gz") || path_str.ends_with(".tgz") {
+            return Ok(ArchiveType::TarGz);
         }
+        if path_str.ends_with(".zip") {
+            return Ok(ArchiveType::Zip);
+        }
+
+        // If extension doesn't match, try to detect by file content
+        self.detect_by_content(path)
+    }
+
+    fn detect_by_content(&self, path: &Path) -> Result<ArchiveType> {
+        let mut file = File::open(path)?;
+        let mut magic_bytes = [0u8; 4];
+        file.read_exact(&mut magic_bytes).map_err(|_| {
+            KopiError::ValidationError(format!(
+                "Cannot read file to determine archive type: {:?}",
+                path
+            ))
+        })?;
+
+        // Check for gzip magic bytes (1f 8b)
+        if magic_bytes[0] == 0x1f && magic_bytes[1] == 0x8b {
+            // It's a gzip file, assume it's tar.gz
+            return Ok(ArchiveType::TarGz);
+        }
+
+        // Check for ZIP magic bytes (50 4b 03 04 or 50 4b 05 06 or 50 4b 07 08)
+        if magic_bytes[0] == 0x50
+            && magic_bytes[1] == 0x4b
+            && (magic_bytes[2] == 0x03 || magic_bytes[2] == 0x05 || magic_bytes[2] == 0x07)
+        {
+            return Ok(ArchiveType::Zip);
+        }
+
+        Err(KopiError::ValidationError(format!(
+            "Unsupported archive format. File does not appear to be tar.gz or zip: {:?}",
+            path
+        )))
     }
 
     fn verify_integrity(&self, archive_path: &Path, archive_type: &ArchiveType) -> Result<()> {
@@ -359,11 +379,26 @@ mod tests {
             ArchiveType::TarGz
         ));
         assert!(matches!(
+            handler.detect_archive_type(Path::new("file.tgz")).unwrap(),
+            ArchiveType::TarGz
+        ));
+        assert!(matches!(
             handler.detect_archive_type(Path::new("file.zip")).unwrap(),
             ArchiveType::Zip
         ));
-        assert!(handler.detect_archive_type(Path::new("file.txt")).is_err());
-        assert!(handler.detect_archive_type(Path::new("file.gz")).is_err());
+
+        // Test actual files with content detection
+        let tar_path = create_test_tar_gz().unwrap();
+        assert!(matches!(
+            handler.detect_archive_type(&tar_path).unwrap(),
+            ArchiveType::TarGz
+        ));
+
+        let zip_path = create_test_zip().unwrap();
+        assert!(matches!(
+            handler.detect_archive_type(&zip_path).unwrap(),
+            ArchiveType::Zip
+        ));
     }
 
     #[test]

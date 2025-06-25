@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JdkMetadata {
+    pub id: String,
     pub distribution: String,
     pub version: Version,
     pub architecture: Architecture,

@@ -191,9 +191,11 @@ fn test_storage_installation_workflow() {
 
     assert!(context.temp_path.exists());
 
-    // Simulate JDK extraction to temp directory
-    fs::create_dir_all(context.temp_path.join("bin")).unwrap();
-    fs::write(context.temp_path.join("bin/java"), "java executable").unwrap();
+    // Simulate JDK extraction to temp directory with single top-level directory
+    // (like real JDK archives: jdk-21+35/)
+    let jdk_dir = context.temp_path.join("jdk-21.0.1");
+    fs::create_dir_all(jdk_dir.join("bin")).unwrap();
+    fs::write(jdk_dir.join("bin/java"), "java executable").unwrap();
 
     // Finalize installation
     let final_path = storage.finalize_installation(context).unwrap();
