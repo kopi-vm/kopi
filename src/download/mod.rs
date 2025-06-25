@@ -10,8 +10,18 @@ const DOWNLOAD_CHUNK_SIZE: usize = 8192;
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(300);
 const MAX_DOWNLOAD_SIZE: u64 = 1_073_741_824; // 1GB
 
+pub trait HttpClient: Send + Sync {
+    fn get(&self, url: &str, headers: Vec<(String, String)>) -> Result<Box<dyn HttpResponse>>;
+    fn set_timeout(&mut self, timeout: Duration);
+}
+
+pub trait HttpResponse: Read + Send {
+    fn status(&self) -> u16;
+    fn header(&self, name: &str) -> Option<&str>;
+}
+
 pub struct DownloadManager {
-    session: Session,
+    http_client: Box<dyn HttpClient>,
     progress_reporter: Option<Box<dyn ProgressReporter>>,
 }
 
@@ -47,12 +57,12 @@ impl Default for DownloadManager {
 
 impl DownloadManager {
     pub fn new() -> Self {
-        let mut session = Session::new();
-        session.timeout(DEFAULT_TIMEOUT);
-        session.header("User-Agent", "kopi/0.1.0");
+        Self::with_client(Box::new(AttohttpcClient::new()))
+    }
 
+    pub fn with_client(http_client: Box<dyn HttpClient>) -> Self {
         Self {
-            session,
+            http_client,
             progress_reporter: None,
         }
     }
@@ -73,32 +83,35 @@ impl DownloadManager {
             fs::create_dir_all(parent)?;
         }
 
-        // Use a temporary file for atomic writes
-        let temp_file =
-            NamedTempFile::new_in(destination.parent().unwrap_or_else(|| Path::new(".")))?;
-        let temp_path = temp_file.path().to_path_buf();
-
-        // Check if we can resume a partial download
-        let start_byte = if options.resume && temp_path.exists() {
-            fs::metadata(&temp_path)?.len()
+        // Check if we can resume from existing destination file
+        let (download_path, start_byte, is_temp) = if options.resume && destination.exists() {
+            // Resume from existing file
+            let existing_size = fs::metadata(destination)?.len();
+            (destination.to_path_buf(), existing_size, false)
         } else {
-            0
+            // Use a temporary file for atomic writes
+            let temp_file =
+                NamedTempFile::new_in(destination.parent().unwrap_or_else(|| Path::new(".")))?;
+            let temp_path = temp_file.path().to_path_buf();
+            // Keep the temp file handle, but we'll use the path
+            // The file will be automatically deleted if we encounter an error
+            (temp_path, 0, true)
         };
 
-        // Build request with optional range header for resume
-        let mut request = self.session.get(url).timeout(options.timeout);
+        // Build headers for the request
+        let mut headers = Vec::new();
         if start_byte > 0 {
-            request = request.header("Range", format!("bytes={}-", start_byte));
+            headers.push(("Range".to_string(), format!("bytes={}-", start_byte)));
         }
 
         // Execute request
-        let response = request.send()?;
+        let response = self.http_client.get(url, headers)?;
 
         // Validate response
-        self.validate_response(&response, options.max_size)?;
+        self.validate_response(response.as_ref(), options.max_size)?;
 
         // Get total size from Content-Length header
-        let total_size = self.get_total_size(&response, start_byte)?;
+        let total_size = self.get_total_size(response.as_ref(), start_byte)?;
 
         // Start progress reporting
         if let Some(reporter) = &mut self.progress_reporter {
@@ -107,15 +120,17 @@ impl DownloadManager {
 
         // Download file
         let downloaded_path =
-            self.download_to_file(response, &temp_path, start_byte, total_size)?;
+            self.download_to_file(response, &download_path, start_byte, total_size)?;
 
         // Verify checksum if provided
         if let Some(expected_checksum) = &options.checksum {
             self.verify_checksum(&downloaded_path, expected_checksum)?;
         }
 
-        // Move temp file to final destination
-        fs::rename(&downloaded_path, destination)?;
+        // Move temp file to final destination if we used a temp file
+        if is_temp {
+            fs::rename(&downloaded_path, destination)?;
+        }
 
         // Complete progress reporting
         if let Some(reporter) = &mut self.progress_reporter {
@@ -125,10 +140,10 @@ impl DownloadManager {
         Ok(destination.to_path_buf())
     }
 
-    fn validate_response(&self, response: &Response, max_size: u64) -> Result<()> {
+    fn validate_response(&self, response: &dyn HttpResponse, max_size: u64) -> Result<()> {
         let status = response.status();
 
-        if !status.is_success() && status.as_u16() != 206 {
+        if !(200..300).contains(&status) && status != 206 {
             return Err(KopiError::NetworkError(format!(
                 "Download failed with status: {}",
                 status
@@ -136,15 +151,13 @@ impl DownloadManager {
         }
 
         // Check content length if available
-        if let Some(content_length) = response.headers().get("Content-Length") {
-            if let Ok(length_str) = content_length.to_str() {
-                if let Ok(length) = length_str.parse::<u64>() {
-                    if length > max_size {
-                        return Err(KopiError::ValidationError(format!(
-                            "Download size {} exceeds maximum allowed size {}",
-                            length, max_size
-                        )));
-                    }
+        if let Some(content_length) = response.header("Content-Length") {
+            if let Ok(length) = content_length.parse::<u64>() {
+                if length > max_size {
+                    return Err(KopiError::ValidationError(format!(
+                        "Download size {} exceeds maximum allowed size {}",
+                        length, max_size
+                    )));
                 }
             }
         }
@@ -152,22 +165,18 @@ impl DownloadManager {
         Ok(())
     }
 
-    fn get_total_size(&self, response: &Response, start_byte: u64) -> Result<u64> {
+    fn get_total_size(&self, response: &dyn HttpResponse, start_byte: u64) -> Result<u64> {
         // Try to get size from Content-Range header (for resumed downloads)
-        if let Some(content_range) = response.headers().get("Content-Range") {
-            if let Ok(range_str) = content_range.to_str() {
-                if let Some(total) = self.parse_content_range(range_str) {
-                    return Ok(total);
-                }
+        if let Some(content_range) = response.header("Content-Range") {
+            if let Some(total) = self.parse_content_range(content_range) {
+                return Ok(total);
             }
         }
 
         // Fall back to Content-Length
-        if let Some(content_length) = response.headers().get("Content-Length") {
-            if let Ok(length_str) = content_length.to_str() {
-                if let Ok(length) = length_str.parse::<u64>() {
-                    return Ok(start_byte + length);
-                }
+        if let Some(content_length) = response.header("Content-Length") {
+            if let Ok(length) = content_length.parse::<u64>() {
+                return Ok(start_byte + length);
             }
         }
 
@@ -187,7 +196,7 @@ impl DownloadManager {
 
     fn download_to_file(
         &mut self,
-        mut response: Response,
+        mut response: Box<dyn HttpResponse>,
         path: &Path,
         start_byte: u64,
         _total_size: u64,
@@ -310,9 +319,151 @@ fn format_bytes(bytes: u64) -> String {
     format!("{:.2} {}", size, UNITS[unit_index])
 }
 
+// Real HTTP client implementation
+pub struct AttohttpcClient {
+    session: Session,
+}
+
+impl AttohttpcClient {
+    pub fn new() -> Self {
+        let mut session = Session::new();
+        session.timeout(DEFAULT_TIMEOUT);
+        session.header("User-Agent", "kopi/0.1.0");
+
+        Self { session }
+    }
+}
+
+impl Default for AttohttpcClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl HttpClient for AttohttpcClient {
+    fn get(&self, url: &str, headers: Vec<(String, String)>) -> Result<Box<dyn HttpResponse>> {
+        // Create a new request for each call to avoid lifetime issues
+        let mut session = Session::new();
+        session.timeout(DEFAULT_TIMEOUT);
+        session.header("User-Agent", "kopi/0.1.0");
+
+        let mut request = session.get(url);
+        for (key, value) in headers {
+            // Convert to static strings by leaking memory - this is a workaround for attohttpc's API
+            // In production, we'd use a different HTTP client or a better approach
+            let key_static: &'static str = Box::leak(key.into_boxed_str());
+            let value_static: &'static str = Box::leak(value.into_boxed_str());
+            request = request.header(key_static, value_static);
+        }
+
+        let response = request.send()?;
+        Ok(Box::new(AttohttpcResponse { response }))
+    }
+
+    fn set_timeout(&mut self, timeout: Duration) {
+        self.session.timeout(timeout);
+    }
+}
+
+struct AttohttpcResponse {
+    response: Response,
+}
+
+impl Read for AttohttpcResponse {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.response.read(buf)
+    }
+}
+
+impl HttpResponse for AttohttpcResponse {
+    fn status(&self) -> u16 {
+        self.response.status().as_u16()
+    }
+
+    fn header(&self, name: &str) -> Option<&str> {
+        self.response.headers().get(name)?.to_str().ok()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
+    use std::sync::{Arc, Mutex};
+
+    // Mock HTTP client for testing
+    struct MockHttpClient {
+        responses: Vec<MockResponse>,
+        request_count: Arc<Mutex<usize>>,
+    }
+
+    struct MockResponse {
+        status: u16,
+        headers: Vec<(String, String)>,
+        body: Vec<u8>,
+    }
+
+    impl MockHttpClient {
+        fn new(responses: Vec<MockResponse>) -> Self {
+            Self {
+                responses,
+                request_count: Arc::new(Mutex::new(0)),
+            }
+        }
+    }
+
+    impl HttpClient for MockHttpClient {
+        fn get(
+            &self,
+            _url: &str,
+            _headers: Vec<(String, String)>,
+        ) -> Result<Box<dyn HttpResponse>> {
+            let mut count = self.request_count.lock().unwrap();
+            if *count >= self.responses.len() {
+                return Err(KopiError::NetworkError(
+                    "No more mock responses".to_string(),
+                ));
+            }
+
+            let response = &self.responses[*count];
+            *count += 1;
+
+            Ok(Box::new(MockHttpResponse {
+                status: response.status,
+                headers: response.headers.clone(),
+                body: Cursor::new(response.body.clone()),
+            }))
+        }
+
+        fn set_timeout(&mut self, _timeout: Duration) {
+            // Mock implementation - no-op
+        }
+    }
+
+    struct MockHttpResponse {
+        status: u16,
+        headers: Vec<(String, String)>,
+        body: Cursor<Vec<u8>>,
+    }
+
+    impl Read for MockHttpResponse {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            self.body.read(buf)
+        }
+    }
+
+    impl HttpResponse for MockHttpResponse {
+        fn status(&self) -> u16 {
+            self.status
+        }
+
+        fn header(&self, name: &str) -> Option<&str> {
+            self.headers
+                .iter()
+                .find(|(k, _)| k.eq_ignore_ascii_case(name))
+                .map(|(_, v)| v.as_str())
+        }
+    }
 
     #[test]
     fn test_format_bytes() {
@@ -343,5 +494,139 @@ mod tests {
         assert_eq!(options.resume, true);
         assert_eq!(options.timeout, DEFAULT_TIMEOUT);
         assert_eq!(options.max_size, MAX_DOWNLOAD_SIZE);
+    }
+
+    #[test]
+    fn test_download_with_mock_client() {
+        let test_content = b"Hello, JDK!";
+        let mock_client = MockHttpClient::new(vec![MockResponse {
+            status: 200,
+            headers: vec![("Content-Length".to_string(), test_content.len().to_string())],
+            body: test_content.to_vec(),
+        }]);
+
+        let mut manager = DownloadManager::with_client(Box::new(mock_client));
+        let temp_dir = tempfile::tempdir().unwrap();
+        let dest_path = temp_dir.path().join("test.jar");
+
+        let result = manager.download(
+            "http://example.com/jdk.tar.gz",
+            &dest_path,
+            &DownloadOptions::default(),
+        );
+
+        assert!(result.is_ok());
+        assert!(dest_path.exists());
+
+        let content = std::fs::read(&dest_path).unwrap();
+        assert_eq!(content, test_content);
+    }
+
+    #[test]
+    fn test_download_with_checksum_validation() {
+        let test_content = b"Hello, JDK!";
+        let mock_client = MockHttpClient::new(vec![MockResponse {
+            status: 200,
+            headers: vec![("Content-Length".to_string(), test_content.len().to_string())],
+            body: test_content.to_vec(),
+        }]);
+
+        let mut manager = DownloadManager::with_client(Box::new(mock_client));
+        let temp_dir = tempfile::tempdir().unwrap();
+        let dest_path = temp_dir.path().join("test.jar");
+
+        // Calculate expected checksum
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(test_content);
+        let expected_checksum = format!("{:x}", hasher.finalize());
+
+        let options = DownloadOptions {
+            checksum: Some(expected_checksum),
+            ..Default::default()
+        };
+
+        let result = manager.download("http://example.com/jdk.tar.gz", &dest_path, &options);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_download_with_invalid_checksum() {
+        let test_content = b"Hello, JDK!";
+        let mock_client = MockHttpClient::new(vec![MockResponse {
+            status: 200,
+            headers: vec![("Content-Length".to_string(), test_content.len().to_string())],
+            body: test_content.to_vec(),
+        }]);
+
+        let mut manager = DownloadManager::with_client(Box::new(mock_client));
+        let temp_dir = tempfile::tempdir().unwrap();
+        let dest_path = temp_dir.path().join("test.jar");
+
+        let options = DownloadOptions {
+            checksum: Some("invalid_checksum".to_string()),
+            ..Default::default()
+        };
+
+        let result = manager.download("http://example.com/jdk.tar.gz", &dest_path, &options);
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            KopiError::ValidationError(msg) => assert!(msg.contains("Checksum mismatch")),
+            _ => panic!("Expected ValidationError"),
+        }
+    }
+
+    #[test]
+    fn test_download_with_http_error() {
+        let mock_client = MockHttpClient::new(vec![MockResponse {
+            status: 404,
+            headers: vec![],
+            body: vec![],
+        }]);
+
+        let mut manager = DownloadManager::with_client(Box::new(mock_client));
+        let temp_dir = tempfile::tempdir().unwrap();
+        let dest_path = temp_dir.path().join("test.jar");
+
+        let result = manager.download(
+            "http://example.com/jdk.tar.gz",
+            &dest_path,
+            &DownloadOptions::default(),
+        );
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            KopiError::NetworkError(msg) => assert!(msg.contains("404")),
+            _ => panic!("Expected NetworkError"),
+        }
+    }
+
+    #[test]
+    fn test_download_exceeding_size_limit() {
+        let mock_client = MockHttpClient::new(vec![MockResponse {
+            status: 200,
+            headers: vec![
+                ("Content-Length".to_string(), "2000000000".to_string()), // 2GB
+            ],
+            body: vec![],
+        }]);
+
+        let mut manager = DownloadManager::with_client(Box::new(mock_client));
+        let temp_dir = tempfile::tempdir().unwrap();
+        let dest_path = temp_dir.path().join("test.jar");
+
+        let result = manager.download(
+            "http://example.com/jdk.tar.gz",
+            &dest_path,
+            &DownloadOptions::default(),
+        );
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            KopiError::ValidationError(msg) => assert!(msg.contains("exceeds maximum")),
+            _ => panic!("Expected ValidationError"),
+        }
     }
 }

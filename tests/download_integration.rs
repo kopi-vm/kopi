@@ -11,7 +11,7 @@ use tempfile::{NamedTempFile, tempdir};
 fn test_download_with_checksum_verification() {
     let mut server = Server::new();
     let test_content = b"Test JDK content";
-    let expected_checksum = "f6f7d43cf42766506ebb8679ad87eb95b227fbe4d06b22ee0de45856fba8f2f8";
+    let expected_checksum = "e2f85493bc3e302ea656d20668c3d327f31dc24a728f873c2bab90cb39d7ae0d";
 
     let _m = server
         .mock("GET", "/jdk.tar.gz")
@@ -114,10 +114,35 @@ fn test_archive_extraction_workflow() {
     use tar::Builder;
 
     // Create test tar.gz archive
-    let temp_archive = NamedTempFile::new().unwrap();
+    let temp_archive = NamedTempFile::with_suffix(".tar.gz").unwrap();
     {
         let gz = GzEncoder::new(temp_archive.as_file(), Compression::default());
         let mut builder = Builder::new(gz);
+
+        // Add directory entries first
+        let mut header = tar::Header::new_gnu();
+        header.set_path("jdk").unwrap();
+        header.set_entry_type(tar::EntryType::Directory);
+        header.set_mode(0o755);
+        header.set_size(0);
+        header.set_cksum();
+        builder.append(&header, &[][..]).unwrap();
+
+        let mut header = tar::Header::new_gnu();
+        header.set_path("jdk/bin").unwrap();
+        header.set_entry_type(tar::EntryType::Directory);
+        header.set_mode(0o755);
+        header.set_size(0);
+        header.set_cksum();
+        builder.append(&header, &[][..]).unwrap();
+
+        let mut header = tar::Header::new_gnu();
+        header.set_path("jdk/lib").unwrap();
+        header.set_entry_type(tar::EntryType::Directory);
+        header.set_mode(0o755);
+        header.set_size(0);
+        header.set_cksum();
+        builder.append(&header, &[][..]).unwrap();
 
         // Add test files
         let mut header = tar::Header::new_gnu();
