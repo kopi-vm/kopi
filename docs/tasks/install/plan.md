@@ -4,10 +4,10 @@
 This document outlines the phased implementation plan for the `kopi install` command, which is responsible for downloading and installing JDK distributions from foojay.io.
 
 ## Command Syntax
-- `kopi install <version>` - Install latest JDK with specified version (defaults to OpenJDK)
+- `kopi install <version>` - Install latest JDK with specified version (defaults to Eclipse Temurin)
 - `kopi install <distribution>@<version>` - Install specific distribution and version
 
-**Note**: When no distribution is specified, OpenJDK will be selected as the default distribution.
+**Note**: When no distribution is specified, Eclipse Temurin will be selected as the default distribution.
 
 ## Phase 1: API Integration and Metadata Handling
 
@@ -127,7 +127,7 @@ This document outlines the phased implementation plan for the `kopi install` com
    - Parse version strings (e.g., "21", "17.0.9", "corretto@21")
    - Version semantics: "21" resolves to latest 21.x.x
    - Validate against available versions
-   - Default to OpenJDK when no distribution specified
+   - Default to Eclipse Temurin when no distribution specified
    - Support version ranges (e.g., ">=17 <21")
    - LTS version recognition
 
@@ -152,11 +152,11 @@ This document outlines the phased implementation plan for the `kopi install` com
    - Error message validation
 
 ### Success Criteria
-- `kopi install 21` downloads and installs latest OpenJDK 21.x.x
+- `kopi install 21` downloads and installs latest Eclipse Temurin 21.x.x
 - `kopi install corretto@17` installs specific distribution (Corretto 17)
 - `kopi install 21 --force` overwrites existing JDK 21 installation
 - Clear error messages for invalid versions
-- Default distribution (OpenJDK) is used when not specified
+- Default distribution (Eclipse Temurin) is used when not specified
 - Version resolution is unambiguous and documented
 
 ## Phase 4: Metadata Caching and Optimization
