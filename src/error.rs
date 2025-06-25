@@ -50,6 +50,24 @@ pub enum KopiError {
     #[error("Directory not found: {0}")]
     DirectoryNotFound(String),
 
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
+
+    #[error("Security error: {0}")]
+    SecurityError(String),
+
+    #[error("Network error: {0}")]
+    NetworkError(String),
+
+    #[error("Validation error: {0}")]
+    ValidationError(String),
+
+    #[error("{0}")]
+    AlreadyExists(String),
+
+    #[error("Insufficient disk space: {0}")]
+    DiskSpaceError(String),
+
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
@@ -58,6 +76,15 @@ pub enum KopiError {
 
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+
+    #[error(transparent)]
+    Nul(#[from] std::ffi::NulError),
+
+    #[error(transparent)]
+    WalkDir(#[from] walkdir::Error),
+
+    #[error(transparent)]
+    Zip(#[from] zip::result::ZipError),
 }
 
 pub type Result<T> = std::result::Result<T, KopiError>;

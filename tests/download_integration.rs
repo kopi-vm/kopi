@@ -1,0 +1,333 @@
+use kopi::archive::ArchiveHandler;
+use kopi::download::{DownloadManager, DownloadOptions};
+use kopi::security::SecurityManager;
+use kopi::storage::StorageManager;
+use mockito::Server;
+use std::fs;
+use std::io::Write;
+use tempfile::{NamedTempFile, tempdir};
+
+#[test]
+fn test_download_with_checksum_verification() {
+    let mut server = Server::new();
+    let test_content = b"Test JDK content";
+    let expected_checksum = "f6f7d43cf42766506ebb8679ad87eb95b227fbe4d06b22ee0de45856fba8f2f8";
+
+    let _m = server
+        .mock("GET", "/jdk.tar.gz")
+        .with_status(200)
+        .with_header("content-type", "application/gzip")
+        .with_header("content-length", &test_content.len().to_string())
+        .with_body(test_content)
+        .create();
+
+    let temp_dir = tempdir().unwrap();
+    let dest_file = temp_dir.path().join("jdk.tar.gz");
+
+    let mut manager = DownloadManager::new();
+    let options = DownloadOptions {
+        checksum: Some(expected_checksum.to_string()),
+        ..Default::default()
+    };
+
+    let result = manager.download(
+        &format!("{}/jdk.tar.gz", server.url()),
+        &dest_file,
+        &options,
+    );
+
+    assert!(result.is_ok());
+    assert!(dest_file.exists());
+    assert_eq!(fs::read(&dest_file).unwrap(), test_content);
+}
+
+#[test]
+fn test_download_with_resume() {
+    let mut server = Server::new();
+    let full_content = b"This is a test file for resume functionality";
+    let partial_content = &full_content[20..];
+
+    // Mock for range request
+    let _m = server
+        .mock("GET", "/resumable.bin")
+        .match_header("range", "bytes=20-")
+        .with_status(206)
+        .with_header(
+            "content-range",
+            &format!("bytes 20-{}/{}", full_content.len() - 1, full_content.len()),
+        )
+        .with_header("content-length", &partial_content.len().to_string())
+        .with_body(partial_content)
+        .create();
+
+    let temp_dir = tempdir().unwrap();
+    let dest_file = temp_dir.path().join("resumable.bin");
+
+    // Create partial file
+    {
+        let mut file = fs::File::create(&dest_file).unwrap();
+        file.write_all(&full_content[..20]).unwrap();
+    }
+
+    let mut manager = DownloadManager::new();
+    let options = DownloadOptions {
+        resume: true,
+        ..Default::default()
+    };
+
+    let result = manager.download(
+        &format!("{}/resumable.bin", server.url()),
+        &dest_file,
+        &options,
+    );
+
+    assert!(result.is_ok());
+    assert_eq!(fs::read(&dest_file).unwrap(), full_content);
+}
+
+#[test]
+fn test_security_validation() {
+    let security = SecurityManager::new();
+
+    // Test HTTPS validation
+    assert!(
+        security
+            .verify_https_security("https://api.foojay.io/download")
+            .is_ok()
+    );
+    assert!(
+        security
+            .verify_https_security("http://api.foojay.io/download")
+            .is_err()
+    );
+
+    // Test trusted domains
+    assert!(security.is_trusted_domain("https://api.foojay.io/v3/"));
+    assert!(security.is_trusted_domain("https://corretto.aws/downloads/"));
+    assert!(!security.is_trusted_domain("https://untrusted.com/"));
+}
+
+#[test]
+fn test_archive_extraction_workflow() {
+    use flate2::Compression;
+    use flate2::write::GzEncoder;
+    use tar::Builder;
+
+    // Create test tar.gz archive
+    let temp_archive = NamedTempFile::new().unwrap();
+    {
+        let gz = GzEncoder::new(temp_archive.as_file(), Compression::default());
+        let mut builder = Builder::new(gz);
+
+        // Add test files
+        let mut header = tar::Header::new_gnu();
+        header.set_path("jdk/bin/java").unwrap();
+        header.set_size(12);
+        header.set_mode(0o755);
+        header.set_cksum();
+        builder.append(&header, &b"#!/bin/java\n"[..]).unwrap();
+
+        let mut header = tar::Header::new_gnu();
+        header.set_path("jdk/lib/modules").unwrap();
+        header.set_size(7);
+        header.set_mode(0o644);
+        header.set_cksum();
+        builder.append(&header, &b"modules"[..]).unwrap();
+
+        builder.finish().unwrap();
+    }
+
+    let dest_dir = tempdir().unwrap();
+    let handler = ArchiveHandler::new();
+
+    let result = handler.extract(temp_archive.path(), dest_dir.path());
+    assert!(result.is_ok());
+
+    // Verify extracted files
+    assert!(dest_dir.path().join("jdk/bin/java").exists());
+    assert!(dest_dir.path().join("jdk/lib/modules").exists());
+
+    let java_content = fs::read_to_string(dest_dir.path().join("jdk/bin/java")).unwrap();
+    assert_eq!(java_content, "#!/bin/java\n");
+}
+
+#[test]
+fn test_storage_installation_workflow() {
+    use kopi::models::jdk::Distribution;
+
+    let temp_home = tempdir().unwrap();
+    let storage = StorageManager::with_home(temp_home.path().to_path_buf());
+    let distribution = Distribution::Temurin;
+
+    // Prepare installation
+    let context = storage
+        .prepare_jdk_installation(&distribution, "21.0.1", "x64")
+        .unwrap();
+
+    assert!(context.temp_path.exists());
+
+    // Simulate JDK extraction to temp directory
+    fs::create_dir_all(context.temp_path.join("bin")).unwrap();
+    fs::write(context.temp_path.join("bin/java"), "java executable").unwrap();
+
+    // Finalize installation
+    let final_path = storage.finalize_installation(context).unwrap();
+    assert!(final_path.exists());
+    assert!(final_path.join("bin/java").exists());
+
+    // List installed JDKs
+    let installed = storage.list_installed_jdks().unwrap();
+    assert_eq!(installed.len(), 1);
+    assert_eq!(installed[0].distribution, "temurin");
+    assert_eq!(installed[0].version, "21.0.1");
+}
+
+#[test]
+fn test_download_progress_reporting() {
+    use std::sync::{Arc, Mutex};
+
+    struct TestProgressReporter {
+        events: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl kopi::download::ProgressReporter for TestProgressReporter {
+        fn on_start(&mut self, total_bytes: u64) {
+            self.events
+                .lock()
+                .unwrap()
+                .push(format!("start:{}", total_bytes));
+        }
+
+        fn on_progress(&mut self, bytes_downloaded: u64) {
+            self.events
+                .lock()
+                .unwrap()
+                .push(format!("progress:{}", bytes_downloaded));
+        }
+
+        fn on_complete(&mut self) {
+            self.events.lock().unwrap().push("complete".to_string());
+        }
+    }
+
+    let mut server = Server::new();
+    let test_content = b"Test content for progress";
+
+    let _m = server
+        .mock("GET", "/progress.bin")
+        .with_status(200)
+        .with_header("content-length", &test_content.len().to_string())
+        .with_body(test_content)
+        .create();
+
+    let temp_dir = tempdir().unwrap();
+    let dest_file = temp_dir.path().join("progress.bin");
+
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let reporter = TestProgressReporter {
+        events: events.clone(),
+    };
+
+    let mut manager = DownloadManager::new().with_progress_reporter(Box::new(reporter));
+    let options = DownloadOptions::default();
+
+    let result = manager.download(
+        &format!("{}/progress.bin", server.url()),
+        &dest_file,
+        &options,
+    );
+
+    assert!(result.is_ok());
+
+    let events = events.lock().unwrap();
+    assert!(events.iter().any(|e| e.starts_with("start:")));
+    assert!(events.iter().any(|e| e == "complete"));
+}
+
+#[test]
+fn test_concurrent_installation_safety() {
+    use kopi::models::jdk::Distribution;
+    use std::sync::Arc;
+    use std::thread;
+
+    let temp_home = tempdir().unwrap();
+    let storage = Arc::new(StorageManager::with_home(temp_home.path().to_path_buf()));
+    let distribution = Distribution::Temurin;
+
+    let mut handles = vec![];
+
+    // Try to install the same JDK from multiple threads
+    for i in 0..3 {
+        let storage = storage.clone();
+        let dist = distribution.clone();
+
+        let handle = thread::spawn(move || {
+            let result = storage.prepare_jdk_installation(&dist, "21.0.1", "x64");
+
+            if let Ok(context) = result {
+                // Simulate some work
+                thread::sleep(std::time::Duration::from_millis(10));
+                fs::create_dir_all(context.temp_path.join("bin")).unwrap();
+                fs::write(
+                    context.temp_path.join("bin/java"),
+                    format!("java from thread {}", i),
+                )
+                .unwrap();
+
+                storage.finalize_installation(context).ok()
+            } else {
+                None
+            }
+        });
+
+        handles.push(handle);
+    }
+
+    let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+
+    // Only one thread should succeed
+    let successes = results.iter().filter(|r| r.is_some()).count();
+    assert_eq!(successes, 1);
+
+    // Verify the JDK was installed
+    let installed = storage.list_installed_jdks().unwrap();
+    assert_eq!(installed.len(), 1);
+}
+
+#[test]
+fn test_disk_space_simulation() {
+    use kopi::models::jdk::Distribution;
+
+    // This test is more of a unit test for the disk space check logic
+    // In a real integration test, we'd need to mock the filesystem
+    let temp_home = tempdir().unwrap();
+    let storage = StorageManager::with_home(temp_home.path().to_path_buf());
+    let distribution = Distribution::Temurin;
+
+    // The disk space check should pass on most systems
+    let result = storage.prepare_jdk_installation(&distribution, "21.0.1", "x64");
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_network_failure_handling() {
+    let server = Server::new();
+
+    // Don't create any mock - connection will fail
+    let temp_dir = tempdir().unwrap();
+    let dest_file = temp_dir.path().join("nonexistent.tar.gz");
+
+    let mut manager = DownloadManager::new();
+    let options = DownloadOptions {
+        timeout: std::time::Duration::from_secs(1),
+        ..Default::default()
+    };
+
+    let result = manager.download(
+        &format!("{}/nonexistent.tar.gz", server.url()),
+        &dest_file,
+        &options,
+    );
+
+    assert!(result.is_err());
+}
