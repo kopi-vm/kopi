@@ -175,3 +175,18 @@ operation()
 // User-friendly error messages
 bail!("JDK version '{}' not found. Run 'kopi list-remote' to see available versions.", version);
 ```
+
+## Developer Principles
+
+### Memory Safety Over Micro-optimization
+- Prioritize memory safety and correctness over micro-optimizations
+- Accept reasonable overhead (e.g., cloning small strings) to avoid memory leaks
+- Follow Rust's ownership model strictly - avoid `unsafe` code and memory leaks from techniques like `Box::leak()`
+- When faced with lifetime complexity, prefer simpler solutions that may use slightly more memory but are correct
+- Example: Clone strings for HTTP headers instead of using `Box::leak()` to create static references
+
+### Code Clarity
+- Write clear, readable code that is easy to understand and maintain
+- Use descriptive variable and function names
+- Add comments for complex logic, but prefer self-documenting code
+- Structure code to minimize cognitive load for future developers
