@@ -31,13 +31,13 @@ This document outlines the phased implementation plan for the `kopi install` com
    - Version parsing and validation
    - API response version compatibility layer
 
-3. **Unit Tests**
-   - `src/api/mod.rs` - API client unit tests (mocked HTTP responses)
+3. **Unit Tests** (use mocks extensively)
+   - `src/api/mod.rs` - API client unit tests (fully mock HTTP responses)
    - `src/models/jdk.rs` - Model serialization/deserialization tests
 
-4. **Integration Tests** (`/tests/api_integration.rs`)
-   - Real API endpoint testing (with test flag)
-   - Mock API responses for CI/CD
+4. **Integration Tests** (`/tests/api_integration.rs`) (no mocks)
+   - Real API endpoint testing (connect to actual foojay.io API)
+   - Conditional execution in CI/CD environments (requires network connectivity)
    - Error scenario testing
    - Network timeout handling
 
@@ -86,17 +86,17 @@ This document outlines the phased implementation plan for the `kopi install` com
    - Cleanup on failure
    - Disk space pre-check
 
-5. **Unit Tests**
-   - `src/download/mod.rs` - Download progress, resume, checksum tests
-   - `src/security/mod.rs` - Certificate and signature validation tests
-   - `src/archive/mod.rs` - Archive extraction tests with test files
-   - `src/storage/mod.rs` - Path management and cleanup tests
+5. **Unit Tests** (use mocks extensively)
+   - `src/download/mod.rs` - Download progress, resume, checksum tests (mock HTTP client)
+   - `src/security/mod.rs` - Certificate and signature validation tests (mock certificate verification)
+   - `src/archive/mod.rs` - Archive extraction tests with test files (mock file system)
+   - `src/storage/mod.rs` - Path management and cleanup tests (mock directory operations)
 
-6. **Integration Tests** (`/tests/download_integration.rs`)
-   - End-to-end download simulation
-   - Archive extraction on different platforms
-   - Storage location verification
-   - Failure recovery scenarios
+6. **Integration Tests** (`/tests/download_integration.rs`) (no mocks)
+   - End-to-end download simulation (download actual test files)
+   - Archive extraction on different platforms (use real archive files)
+   - Storage location verification (write to actual file system)
+   - Failure recovery scenarios (simulate real network/disk errors)
 
 ### Success Criteria
 - Download JDK archives with progress indication
@@ -140,16 +140,16 @@ This document outlines the phased implementation plan for the `kopi install` com
      - `--timeout`: Download timeout configuration
    - Help text and examples
 
-4. **Unit Tests**
-   - `src/commands/install.rs` - Command logic and error handling tests
-   - `src/version/parser.rs` - Version string parsing tests
-   - CLI argument parsing tests
+4. **Unit Tests** (use mocks extensively)
+   - `src/commands/install.rs` - Command logic and error handling tests (mock API/download modules)
+   - `src/version/parser.rs` - Version string parsing tests (pure logic tests)
+   - CLI argument parsing tests (mock command line input)
 
-5. **Integration Tests** (`/tests/install_command_integration.rs`)
-   - Full command execution with mocked backend
-   - Various version format testing
-   - Distribution selection verification
-   - Error message validation
+5. **Integration Tests** (`/tests/install_command_integration.rs`) (no mocks)
+   - Full command execution testing (execute actual commands)
+   - Various version format testing (use real JDK metadata)
+   - Distribution selection verification (verify actual distributions)
+   - Error message validation (validate with real error conditions)
 
 ### Success Criteria
 - `kopi install 21` downloads and installs latest Eclipse Temurin 21.x.x
@@ -188,17 +188,17 @@ This document outlines the phased implementation plan for the `kopi install` com
    - Handle stale cache scenarios
    - Garbage collection for old entries
 
-4. **Unit Tests**
-   - `src/cache/mod.rs` - Cache read/write, expiry, invalidation tests
-   - `src/lock/mod.rs` - Lock acquisition, timeout, cleanup tests
-   - Cache corruption handling tests
-   - Concurrent access tests
+4. **Unit Tests** (use mocks extensively)
+   - `src/cache/mod.rs` - Cache read/write, expiry, invalidation tests (mock file system)
+   - `src/lock/mod.rs` - Lock acquisition, timeout, cleanup tests (mock lock mechanisms)
+   - Cache corruption handling tests (simulate corruption with mocks)
+   - Concurrent access tests (control concurrency with mocks)
 
-5. **Integration Tests** (`/tests/cache_integration.rs`)
-   - Full caching workflow tests
-   - Offline mode simulation
-   - Cache performance benchmarks
-   - Multi-process cache access
+5. **Integration Tests** (`/tests/cache_integration.rs`) (no mocks)
+   - Full caching workflow tests (cache to actual file system)
+   - Offline mode simulation (actually disconnect network)
+   - Cache performance benchmarks (measure real I/O performance)
+   - Multi-process cache access (verify real inter-process contention)
 
 ### Success Criteria
 - Second install attempt uses cached metadata
@@ -228,16 +228,16 @@ This document outlines the phased implementation plan for the `kopi install` com
    - Network failure simulation
    - Disk space exhaustion testing
 
-3. **Unit Tests**
-   - `src/error/mod.rs` - Error formatting and context tests
-   - Error chain propagation tests
-   - Recovery suggestion validation
+3. **Unit Tests** (use mocks extensively)
+   - `src/error/mod.rs` - Error formatting and context tests (mock error conditions)
+   - Error chain propagation tests (build error chains with mocks)
+   - Recovery suggestion validation (mock recovery scenarios)
 
-4. **Additional Integration Tests** (`/tests/install_scenarios.rs`)
-   - Cross-platform compatibility tests
-   - Permission error handling
-   - Interrupted download recovery
-   - Version conflict resolution
+4. **Additional Integration Tests** (`/tests/install_scenarios.rs`) (no mocks)
+   - Cross-platform compatibility tests (run on actual platforms)
+   - Permission error handling (trigger real permission errors)
+   - Interrupted download recovery (actually interrupt downloads)
+   - Version conflict resolution (reproduce real version conflicts)
 
 5. **Documentation Updates**
    - Update `/docs/reference.md` with install command details
@@ -263,8 +263,49 @@ This document outlines the phased implementation plan for the `kopi install` com
 5. Commit completed phase before proceeding
 
 ### Testing Strategy
-- Unit tests for each module
-- Integration tests for command workflow
+
+#### Unit Tests (use mocks extensively)
+- Test individual module functionality in isolation
+- Fully mock external dependencies (HTTP, file system, processes, etc.)
+- Focus on fast execution and deterministic results
+- Comprehensively test edge cases and error conditions
+- Example:
+  ```rust
+  #[cfg(test)]
+  mod tests {
+      use super::*;
+      use mockall::*;
+      
+      #[test]
+      fn test_download_with_mock_http_client() {
+          let mut mock_client = MockHttpClient::new();
+          mock_client.expect_get()
+              .returning(|_| Ok(mock_response()));
+          // Test logic here
+      }
+  }
+  ```
+
+#### Integration Tests (no mocks)
+- Test complete command workflows end-to-end
+- Verify integration with actual external services (foojay.io API)
+- Confirm real file system operations
+- Validate platform-specific behavior
+- Conditional execution in CI environments (e.g., tests requiring network connectivity)
+- Example:
+  ```rust
+  #[test]
+  #[cfg(not(ci))] // Skip in CI environment
+  fn test_real_jdk_download() {
+      // Download JDK from actual foojay.io API
+      let result = download_jdk("temurin", "21");
+      assert!(result.is_ok());
+      // Verify file actually exists
+      assert!(Path::new(&result.unwrap()).exists());
+  }
+  ```
+
+#### Other Testing
 - Manual testing on Linux, macOS, and Windows
 - Performance benchmarks for large downloads
 - Security testing for certificate validation
