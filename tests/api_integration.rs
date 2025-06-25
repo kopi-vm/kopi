@@ -50,6 +50,7 @@ fn test_get_packages_with_query_real_api() {
         archive_type: Some("tar.gz".to_string()),
         latest: Some(true),
         directly_downloadable: Some(true),
+        lib_c_type: None,
     };
 
     let result = client.get_packages(Some(query));
@@ -142,7 +143,8 @@ mod mock_tests {
             },
             "free_use_in_production": true,
             "tck_tested": "yes",
-            "size": 195000000
+            "size": 195000000,
+            "operating_system": "linux"
         }"#;
 
         let package: kopi::api::Package = serde_json::from_str(mock_data).unwrap();

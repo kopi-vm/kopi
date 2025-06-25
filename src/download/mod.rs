@@ -402,12 +402,27 @@ impl HttpResponse for AttohttpcResponse {
     }
 }
 
+/// Result of a JDK download operation
+pub struct DownloadResult {
+    /// Path to the downloaded file
+    pub path: PathBuf,
+    /// Temporary directory containing the file (will be cleaned up when dropped)
+    _temp_dir: tempfile::TempDir,
+}
+
+impl DownloadResult {
+    /// Get the path to the downloaded file
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
 /// Download a JDK package from the given URL
 pub fn download_jdk(
     package: &crate::models::jdk::JdkMetadata,
     no_progress: bool,
     timeout_secs: Option<u64>,
-) -> Result<PathBuf> {
+) -> Result<DownloadResult> {
     // Security validation
     let security_manager = crate::security::SecurityManager::new();
     security_manager.verify_https_security(&package.download_url)?;
@@ -450,11 +465,10 @@ pub fn download_jdk(
     // Download the file
     let result_path = download_manager.download(&package.download_url, &download_path, &options)?;
 
-    // Keep the temp directory alive by leaking it
-    // The caller is responsible for cleaning up the file
-    std::mem::forget(temp_dir);
-
-    Ok(result_path)
+    Ok(DownloadResult {
+        path: result_path,
+        _temp_dir: temp_dir,
+    })
 }
 
 #[cfg(test)]

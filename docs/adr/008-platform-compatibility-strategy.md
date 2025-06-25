@@ -41,7 +41,7 @@ const PLATFORM_LIBC: &str = "unknown";
 fn get_foojay_libc_type() -> &'static str {
     match PLATFORM_LIBC {
         "musl" => "musl",
-        "glibc" => "libc",  // Foojay uses "libc" for glibc
+        "glibc" => "glibc",  // Return "glibc" for glibc systems
         "darwin" => "libc",  // macOS uses "libc" in Foojay API
         "windows" => "c_std_lib",  // Windows uses "c_std_lib" in Foojay API
         _ => "libc"  // Default fallback
@@ -106,7 +106,7 @@ Support JDK distributions that provide platform-specific builds.
 
 #### Foojay API lib_c_type Mapping
 The Foojay API returns different `lib_c_type` values based on the platform:
-- Linux with glibc: `"libc"` (or `"glibc"` for some distributions)
+- Linux with glibc: `"glibc"`
 - Linux with musl/Alpine: `"musl"`
 - macOS: `"libc"`
 - Windows: `"c_std_lib"`
@@ -142,13 +142,13 @@ This informational message ensures transparency about the automatic variant sele
 - Implement compile-time platform detection using `cfg` attributes
 - Create `PLATFORM_LIBC` constant based on target environment
 - Implement `get_foojay_libc_type()` to map platform to API values
-- Ensure correct mapping: musl→"musl", glibc→"libc", macOS→"libc", Windows→"c_std_lib"
+- Ensure correct mapping: musl→"musl", glibc→"glibc", macOS→"libc", Windows→"c_std_lib"
 
 **Phase 2**: JDK Selection Logic
 - Implement `get_foojay_libc_type()` to get API query value for current platform
 - Use this value in Foojay API queries: `?lib_c_type={value}`
 - Implement `matches_foojay_libc_type()` to validate downloaded JDKs
-- Filter JDKs using the mapping: musl→"musl", glibc→"libc", macOS→"libc", Windows→"c_std_lib"
+- Filter JDKs using the mapping: musl→"musl", glibc→"glibc", macOS→"libc", Windows→"c_std_lib"
 - Update install command to automatically select correct variant
 - Add informational messages about automatic platform matching
 

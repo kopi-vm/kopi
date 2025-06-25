@@ -325,7 +325,12 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::tempdir;
 
-    fn create_test_tar_gz() -> Result<PathBuf> {
+    struct TestArchive {
+        path: PathBuf,
+        _temp_dir: tempfile::TempDir,
+    }
+
+    fn create_test_tar_gz() -> Result<TestArchive> {
         let temp_dir = tempdir()?;
         let tar_path = temp_dir.path().join("test.tar.gz");
 
@@ -343,12 +348,13 @@ mod tests {
 
         builder.finish()?;
 
-        // Keep the temp directory alive by leaking it
-        std::mem::forget(temp_dir);
-        Ok(tar_path)
+        Ok(TestArchive {
+            path: tar_path,
+            _temp_dir: temp_dir,
+        })
     }
 
-    fn create_test_zip() -> Result<PathBuf> {
+    fn create_test_zip() -> Result<TestArchive> {
         let temp_dir = tempdir()?;
         let zip_path = temp_dir.path().join("test.zip");
 
@@ -363,9 +369,10 @@ mod tests {
         zip.write_all(b"Hello World")?;
         zip.finish()?;
 
-        // Keep the temp directory alive by leaking it
-        std::mem::forget(temp_dir);
-        Ok(zip_path)
+        Ok(TestArchive {
+            path: zip_path,
+            _temp_dir: temp_dir,
+        })
     }
 
     #[test]
@@ -388,15 +395,15 @@ mod tests {
         ));
 
         // Test actual files with content detection
-        let tar_path = create_test_tar_gz().unwrap();
+        let tar_archive = create_test_tar_gz().unwrap();
         assert!(matches!(
-            handler.detect_archive_type(&tar_path).unwrap(),
+            handler.detect_archive_type(&tar_archive.path).unwrap(),
             ArchiveType::TarGz
         ));
 
-        let zip_path = create_test_zip().unwrap();
+        let zip_archive = create_test_zip().unwrap();
         assert!(matches!(
-            handler.detect_archive_type(&zip_path).unwrap(),
+            handler.detect_archive_type(&zip_archive.path).unwrap(),
             ArchiveType::Zip
         ));
     }
@@ -404,10 +411,10 @@ mod tests {
     #[test]
     fn test_extract_tar_gz() -> Result<()> {
         let handler = ArchiveHandler::new();
-        let archive_path = create_test_tar_gz()?;
+        let archive = create_test_tar_gz()?;
         let dest_dir = tempdir()?;
 
-        handler.extract(&archive_path, dest_dir.path())?;
+        handler.extract(&archive.path, dest_dir.path())?;
 
         let extracted_file = dest_dir.path().join("test.txt");
         assert!(extracted_file.exists());
@@ -421,10 +428,10 @@ mod tests {
     #[test]
     fn test_extract_zip() -> Result<()> {
         let handler = ArchiveHandler::new();
-        let archive_path = create_test_zip()?;
+        let archive = create_test_zip()?;
         let dest_dir = tempdir()?;
 
-        handler.extract(&archive_path, dest_dir.path())?;
+        handler.extract(&archive.path, dest_dir.path())?;
 
         let extracted_file = dest_dir.path().join("test.txt");
         assert!(extracted_file.exists());
@@ -470,15 +477,15 @@ mod tests {
         let handler = ArchiveHandler::new();
 
         // Test tar.gz
-        let tar_path = create_test_tar_gz()?;
-        let tar_info = handler.get_archive_info(&tar_path)?;
+        let tar_archive = create_test_tar_gz()?;
+        let tar_info = handler.get_archive_info(&tar_archive.path)?;
         assert!(matches!(tar_info.archive_type, ArchiveType::TarGz));
         assert_eq!(tar_info.file_count, 1);
         assert_eq!(tar_info.uncompressed_size, 11);
 
         // Test zip
-        let zip_path = create_test_zip()?;
-        let zip_info = handler.get_archive_info(&zip_path)?;
+        let zip_archive = create_test_zip()?;
+        let zip_info = handler.get_archive_info(&zip_archive.path)?;
         assert!(matches!(zip_info.archive_type, ArchiveType::Zip));
         assert_eq!(zip_info.file_count, 1);
         assert_eq!(zip_info.uncompressed_size, 11);

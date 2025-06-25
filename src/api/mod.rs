@@ -87,6 +87,10 @@ impl ApiClient {
                         query_params
                             .push(format!("directly_downloadable={}", directly_downloadable));
                     }
+                    if let Some(ref lib_c_type) = q.lib_c_type {
+                        request = request.param("lib_c_type", lib_c_type);
+                        query_params.push(format!("lib_c_type={}", lib_c_type));
+                    }
 
                     // Log the complete URL with query parameters
                     let full_url = if query_params.is_empty() {
@@ -292,6 +296,7 @@ pub struct PackageQuery {
     pub archive_type: Option<String>,
     pub latest: Option<bool>,
     pub directly_downloadable: Option<bool>,
+    pub lib_c_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -310,6 +315,8 @@ pub struct Package {
     pub tck_tested: String,
     pub size: u64,
     pub operating_system: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lib_c_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -364,6 +371,7 @@ mod tests {
             archive_type: Some("tar.gz".to_string()),
             latest: Some(true),
             directly_downloadable: Some(true),
+            lib_c_type: None,
         };
 
         assert_eq!(query.version, Some("21".to_string()));

@@ -4,6 +4,7 @@ use crate::config::KopiConfig;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{Distribution, JdkMetadata};
+use crate::platform::{get_foojay_libc_type, get_platform_description, matches_foojay_libc_type};
 use crate::security::verify_checksum;
 use crate::storage::StorageManager;
 use crate::version::parser::VersionParser;
@@ -137,12 +138,13 @@ impl InstallCommand {
         };
 
         // Download JDK
-        let download_path = download_jdk(&package, no_progress, timeout_secs)?;
+        let download_result = download_jdk(&package, no_progress, timeout_secs)?;
+        let download_path = download_result.path();
 
         // Verify checksum
         if let Some(checksum) = &package.checksum {
             println!("Verifying checksum...");
-            verify_checksum(&download_path, checksum)?;
+            verify_checksum(download_path, checksum)?;
         }
 
         // Prepare installation context
@@ -164,14 +166,13 @@ impl InstallCommand {
 
         // Extract archive to temp directory
         println!("Extracting archive...");
-        extract_archive(&download_path, &context.temp_path)?;
+        extract_archive(download_path, &context.temp_path)?;
 
         // Finalize installation
         let final_path = self.storage_manager.finalize_installation(context)?;
 
-        // Clean up download
-        std::fs::remove_file(&download_path)
-            .unwrap_or_else(|e| eprintln!("Warning: Failed to remove download file: {}", e));
+        // Clean up is automatic when download_result goes out of scope
+        // The TempDir will be cleaned up automatically
 
         println!(
             "Successfully installed {} {} to {}",
@@ -200,6 +201,7 @@ impl InstallCommand {
         // Build query for the API
         let arch = self.get_current_architecture();
         let os = self.get_current_os();
+        let lib_c_type = get_foojay_libc_type();
 
         let query = crate::api::PackageQuery {
             version: Some(version.to_string()),
@@ -209,6 +211,7 @@ impl InstallCommand {
             package_type: Some("jdk".to_string()),
             latest: Some(true),
             directly_downloadable: Some(true),
+            lib_c_type: Some(lib_c_type.to_string()),
             ..Default::default()
         };
 
@@ -238,6 +241,7 @@ impl InstallCommand {
                 operating_system: Some(os.clone()),
                 package_type: Some("jdk".to_string()),
                 directly_downloadable: Some(true),
+                lib_c_type: Some(lib_c_type.to_string()),
                 ..Default::default()
             };
 
@@ -251,7 +255,11 @@ impl InstallCommand {
                 "{} {} not found. Available versions: {}",
                 distribution.name(),
                 version,
-                version_strings.join(", ")
+                if version_strings.is_empty() {
+                    "none".to_string()
+                } else {
+                    version_strings.join(", ")
+                }
             )));
         }
 
@@ -288,6 +296,17 @@ impl InstallCommand {
         let arch = self.get_current_architecture();
         let os = self.get_current_os();
 
+        // Validate lib_c_type compatibility
+        if let Some(ref lib_c_type) = package.lib_c_type {
+            if !matches_foojay_libc_type(lib_c_type) {
+                return Err(KopiError::VersionNotAvailable(format!(
+                    "JDK lib_c_type '{}' is not compatible with kopi's platform '{}'",
+                    lib_c_type,
+                    get_platform_description()
+                )));
+            }
+        }
+
         Ok(JdkMetadata {
             id: package.id,
             distribution: package.distribution,
@@ -300,6 +319,7 @@ impl InstallCommand {
             checksum: None, // Foojay API doesn't provide checksums directly
             checksum_type: None,
             size: package.size,
+            lib_c_type: package.lib_c_type,
         })
     }
 }
