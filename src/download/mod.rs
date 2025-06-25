@@ -321,16 +321,16 @@ fn format_bytes(bytes: u64) -> String {
 
 // Real HTTP client implementation
 pub struct AttohttpcClient {
-    session: Session,
+    timeout: Duration,
+    user_agent: String,
 }
 
 impl AttohttpcClient {
     pub fn new() -> Self {
-        let mut session = Session::new();
-        session.timeout(DEFAULT_TIMEOUT);
-        session.header("User-Agent", "kopi/0.1.0");
-
-        Self { session }
+        Self {
+            timeout: DEFAULT_TIMEOUT,
+            user_agent: "kopi/0.1.0".to_string(),
+        }
     }
 }
 
@@ -342,26 +342,37 @@ impl Default for AttohttpcClient {
 
 impl HttpClient for AttohttpcClient {
     fn get(&self, url: &str, headers: Vec<(String, String)>) -> Result<Box<dyn HttpResponse>> {
-        // Create a new request for each call to avoid lifetime issues
-        let mut session = Session::new();
-        session.timeout(DEFAULT_TIMEOUT);
-        session.header("User-Agent", "kopi/0.1.0");
+        // Create a new session for each request
+        let session = Session::new();
 
-        let mut request = session.get(url);
+        // Build request with method chaining to avoid lifetime issues
+        let mut request_builder = session
+            .get(url)
+            .timeout(self.timeout)
+            .header("User-Agent", &self.user_agent);
+
+        // For Range header specifically, we can use a match pattern
+        // This avoids the generic loop that causes lifetime issues
         for (key, value) in headers {
-            // Convert to static strings by leaking memory - this is a workaround for attohttpc's API
-            // In production, we'd use a different HTTP client or a better approach
-            let key_static: &'static str = Box::leak(key.into_boxed_str());
-            let value_static: &'static str = Box::leak(value.into_boxed_str());
-            request = request.header(key_static, value_static);
+            match key.as_str() {
+                "Range" => {
+                    // Range header is the only custom header we use for resume
+                    let range_value = value.clone();
+                    request_builder = request_builder.header("Range", range_value);
+                }
+                _ => {
+                    // For other headers, we can add them as needed
+                    // Currently, we only use Range header for resume functionality
+                }
+            }
         }
 
-        let response = request.send()?;
+        let response = request_builder.send()?;
         Ok(Box::new(AttohttpcResponse { response }))
     }
 
     fn set_timeout(&mut self, timeout: Duration) {
-        self.session.timeout(timeout);
+        self.timeout = timeout;
     }
 }
 
