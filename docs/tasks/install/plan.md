@@ -164,7 +164,7 @@ This document outlines the phased implementation plan for the `kopi install` com
 ### Input Resources
 - Phase 1-3 deliverables
 - Hybrid caching strategy from architecture docs
-- `/docs/adr/` - Caching decisions
+- `/docs/adr/002-serialization-format-for-metadata-storage.md` - Caching and serialization decisions
 
 ### Deliverables
 1. **Cache Manager** (`/src/cache/mod.rs`)
