@@ -149,6 +149,16 @@ impl ApiClient {
         })
     }
 
+    pub fn get_package_by_id(&self, package_id: &str) -> Result<PackageInfo> {
+        self.execute_with_version_fallback(|version| {
+            let url = format!("{}/{}/ids/{}", self.base_url, version, package_id);
+            self.execute_with_retry(move || {
+                debug!("Fetching package info for ID: {}", package_id);
+                self.session.get(&url)
+            })
+        })
+    }
+
     fn execute_with_version_fallback<T, F>(&self, mut operation: F) -> Result<T>
     where
         T: for<'de> Deserialize<'de>,
@@ -382,6 +392,23 @@ pub struct DistributionMetadata {
     pub packages: Vec<Package>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PackageInfo {
+    pub id: String,
+    pub archive_type: String,
+    pub distribution: String,
+    pub major_version: u32,
+    pub java_version: String,
+    pub distribution_version: String,
+    pub filename: String,
+    pub direct_download_uri: String,
+    pub download_site_uri: Option<String>,
+    pub checksum: String,
+    pub checksum_type: String,
+    pub checksum_uri: String,
+    pub signature_uri: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -416,5 +443,31 @@ mod tests {
 
         assert_eq!(query.version, Some("21".to_string()));
         assert_eq!(query.distribution, Some("temurin".to_string()));
+    }
+
+    #[test]
+    fn test_package_info_structure() {
+        // Test that PackageInfo can be deserialized from expected JSON structure
+        let json = r#"{
+            "id": "test-package-id",
+            "archive_type": "tar.gz",
+            "distribution": "temurin",
+            "major_version": 21,
+            "java_version": "21.0.1",
+            "distribution_version": "21.0.1+12",
+            "filename": "OpenJDK21U-jdk_x64_linux_hotspot_21.0.1_12.tar.gz",
+            "direct_download_uri": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.1%2B12/OpenJDK21U-jdk_x64_linux_hotspot_21.0.1_12.tar.gz",
+            "download_site_uri": null,
+            "checksum": "5a04c9d9e89e685e56b3780ebec4134c723f6e5e9495513a2f23bf5798a3e70f",
+            "checksum_type": "sha256",
+            "checksum_uri": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.1%2B12/OpenJDK21U-jdk_x64_linux_hotspot_21.0.1_12.tar.gz.sha256.txt",
+            "signature_uri": null
+        }"#;
+
+        let package_info: PackageInfo =
+            serde_json::from_str(json).expect("Failed to parse PackageInfo");
+        assert_eq!(package_info.id, "test-package-id");
+        assert_eq!(package_info.checksum_type, "sha256");
+        assert_eq!(package_info.checksum.len(), 64); // SHA256 is 64 hex chars
     }
 }

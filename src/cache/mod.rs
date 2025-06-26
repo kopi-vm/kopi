@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::api::{ApiClient, ApiMetadata};
 use crate::error::{KopiError, Result};
-use crate::models::jdk::{Distribution as JdkDistribution, JdkMetadata};
+use crate::models::jdk::{ChecksumType, Distribution as JdkDistribution, JdkMetadata};
 use dirs::home_dir;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -141,6 +141,41 @@ pub fn fetch_and_cache_metadata() -> Result<MetadataCache> {
     save_cache(&cache_path, &cache)?;
 
     Ok(cache)
+}
+
+/// Fetch checksum for a specific JDK package
+pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)> {
+    let api_client = ApiClient::new();
+    let package_info = api_client.get_package_by_id(package_id).map_err(|e| {
+        KopiError::MetadataFetch(format!("Failed to fetch package checksum: {}", e))
+    })?;
+
+    // Parse checksum type
+    let checksum_type = match package_info.checksum_type.to_lowercase().as_str() {
+        "sha256" => ChecksumType::Sha256,
+        "sha512" => ChecksumType::Sha512,
+        "md5" => ChecksumType::Md5,
+        _ => ChecksumType::Sha256, // Default to SHA256
+    };
+
+    Ok((package_info.checksum, checksum_type))
+}
+
+/// Find a JDK package in the cache by its criteria
+pub fn find_package_in_cache<'a>(
+    cache: &'a MetadataCache,
+    distribution: &str,
+    version: &str,
+    architecture: &str,
+    operating_system: &str,
+) -> Option<&'a JdkMetadata> {
+    cache.distributions.get(distribution).and_then(|dist| {
+        dist.packages.iter().find(|pkg| {
+            pkg.version.to_string() == version
+                && pkg.architecture.to_string() == architecture
+                && pkg.operating_system.to_string() == operating_system
+        })
+    })
 }
 
 fn parse_architecture_from_filename(filename: &str) -> Option<crate::models::jdk::Architecture> {
@@ -318,5 +353,69 @@ mod tests {
 
         assert!(cache.has_version("21.0.1"));
         assert!(!cache.has_version("17.0.1"));
+    }
+
+    #[test]
+    fn test_parse_architecture_from_filename() {
+        use crate::models::jdk::Architecture;
+        assert_eq!(
+            parse_architecture_from_filename("OpenJDK21U-jdk_x64_linux_hotspot_21.0.1_12.tar.gz"),
+            Some(Architecture::X64)
+        );
+        assert_eq!(
+            parse_architecture_from_filename(
+                "OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.1_12.tar.gz"
+            ),
+            Some(Architecture::Aarch64)
+        );
+        assert_eq!(
+            parse_architecture_from_filename("amazon-corretto-21.0.1.12.1-linux-x86_64.tar.gz"),
+            Some(Architecture::X64)
+        );
+        assert_eq!(
+            parse_architecture_from_filename("some_file_without_arch.tar.gz"),
+            None
+        );
+    }
+
+    #[test]
+    fn test_find_package_in_cache() {
+        use crate::models::jdk::{
+            Architecture, ArchiveType, OperatingSystem, PackageType, Version,
+        };
+
+        let mut cache = MetadataCache::new();
+
+        let jdk_metadata = JdkMetadata {
+            id: "test-id".to_string(),
+            distribution: "temurin".to_string(),
+            version: Version::new(21, 0, 1),
+            distribution_version: "21.0.1+12".to_string(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: "https://example.com/download".to_string(),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 100000000,
+            lib_c_type: None,
+        };
+
+        let dist = DistributionCache {
+            distribution: JdkDistribution::Temurin,
+            display_name: "Eclipse Temurin".to_string(),
+            packages: vec![jdk_metadata],
+        };
+        cache.distributions.insert("temurin".to_string(), dist);
+
+        // Should find the package
+        let found = find_package_in_cache(&cache, "temurin", "21.0.1", "x64", "linux");
+        assert!(found.is_some());
+        assert_eq!(found.unwrap().id, "test-id");
+
+        // Should not find with wrong version
+        let not_found = find_package_in_cache(&cache, "temurin", "17.0.1", "x64", "linux");
+        assert!(not_found.is_none());
     }
 }

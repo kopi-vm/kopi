@@ -2,8 +2,13 @@ use kopi::api::{ApiClient, PackageQuery};
 use std::time::Duration;
 
 #[test]
-#[ignore]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_get_distributions_real_api() {
+    // Skip if explicitly disabled
+    if std::env::var("SKIP_NETWORK_TESTS").is_ok() {
+        println!("Skipping network test due to SKIP_NETWORK_TESTS env var");
+        return;
+    }
     let client = ApiClient::new();
     let result = client.get_distributions();
 
@@ -20,8 +25,13 @@ fn test_get_distributions_real_api() {
 }
 
 #[test]
-#[ignore]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_get_major_versions_real_api() {
+    // Skip if explicitly disabled
+    if std::env::var("SKIP_NETWORK_TESTS").is_ok() {
+        println!("Skipping network test due to SKIP_NETWORK_TESTS env var");
+        return;
+    }
     let client = ApiClient::new();
     let result = client.get_major_versions();
 
@@ -38,8 +48,13 @@ fn test_get_major_versions_real_api() {
 }
 
 #[test]
-#[ignore]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_get_packages_with_query_real_api() {
+    // Skip if explicitly disabled
+    if std::env::var("SKIP_NETWORK_TESTS").is_ok() {
+        println!("Skipping network test due to SKIP_NETWORK_TESTS env var");
+        return;
+    }
     let client = ApiClient::new();
     let query = PackageQuery {
         version: Some("21".to_string()),
@@ -66,8 +81,13 @@ fn test_get_packages_with_query_real_api() {
 }
 
 #[test]
-#[ignore]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_timeout_handling() {
+    // Skip if explicitly disabled
+    if std::env::var("SKIP_NETWORK_TESTS").is_ok() {
+        println!("Skipping network test due to SKIP_NETWORK_TESTS env var");
+        return;
+    }
     let client = ApiClient::new().with_timeout(Duration::from_millis(1));
 
     let result = client.get_distributions();

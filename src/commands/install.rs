@@ -137,26 +137,53 @@ impl InstallCommand {
                 jdk_metadata.distribution
             );
         }
+        // Fetch checksum before download
+        let mut jdk_metadata_with_checksum = jdk_metadata.clone();
+        if jdk_metadata_with_checksum.checksum.is_none() {
+            debug!(
+                "Fetching checksum for package ID: {}",
+                jdk_metadata_with_checksum.id
+            );
+            match crate::cache::fetch_package_checksum(&jdk_metadata_with_checksum.id) {
+                Ok((checksum, checksum_type)) => {
+                    info!("Fetched checksum: {} (type: {:?})", checksum, checksum_type);
+                    jdk_metadata_with_checksum.checksum = Some(checksum);
+                    jdk_metadata_with_checksum.checksum_type = Some(checksum_type);
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to fetch checksum: {}. Proceeding without checksum verification.",
+                        e
+                    );
+                }
+            }
+        }
+
         println!(
             "Downloading {} {} (id: {})...",
-            jdk_metadata.distribution, jdk_metadata.version, jdk_metadata.id
+            jdk_metadata_with_checksum.distribution,
+            jdk_metadata_with_checksum.version,
+            jdk_metadata_with_checksum.id
         );
 
         // Check disk space (convert bytes to MB)
-        let _required_space_mb = if jdk_metadata.size > 0 {
-            jdk_metadata.size / 1024 / 1024
+        let _required_space_mb = if jdk_metadata_with_checksum.size > 0 {
+            jdk_metadata_with_checksum.size / 1024 / 1024
         } else {
             500 // Default to 500MB if size is unknown
         };
 
         // Download JDK
-        info!("Downloading from {}", jdk_metadata.download_url);
-        let download_result = download_jdk(&jdk_metadata, no_progress, timeout_secs)?;
+        info!(
+            "Downloading from {}",
+            jdk_metadata_with_checksum.download_url
+        );
+        let download_result = download_jdk(&jdk_metadata_with_checksum, no_progress, timeout_secs)?;
         let download_path = download_result.path();
         debug!("Downloaded to {:?}", download_path);
 
         // Verify checksum
-        if let Some(checksum) = &jdk_metadata.checksum {
+        if let Some(checksum) = &jdk_metadata_with_checksum.checksum {
             println!("Verifying checksum...");
             verify_checksum(download_path, checksum)?;
         }
@@ -165,11 +192,15 @@ impl InstallCommand {
         let context = if force && installation_dir.exists() {
             // Remove existing installation first
             self.storage_manager.remove_jdk(&installation_dir)?;
-            self.storage_manager
-                .prepare_jdk_installation(&distribution, &jdk_metadata.distribution_version)?
+            self.storage_manager.prepare_jdk_installation(
+                &distribution,
+                &jdk_metadata_with_checksum.distribution_version,
+            )?
         } else {
-            self.storage_manager
-                .prepare_jdk_installation(&distribution, &jdk_metadata.distribution_version)?
+            self.storage_manager.prepare_jdk_installation(
+                &distribution,
+                &jdk_metadata_with_checksum.distribution_version,
+            )?
         };
 
         // Extract archive to temp directory
@@ -186,7 +217,7 @@ impl InstallCommand {
         // Save metadata JSON file
         self.storage_manager.save_jdk_metadata(
             &distribution,
-            &jdk_metadata.distribution_version,
+            &jdk_metadata_with_checksum.distribution_version,
             &package,
         )?;
 
@@ -196,7 +227,7 @@ impl InstallCommand {
         println!(
             "Successfully installed {} {} to {}",
             distribution.name(),
-            jdk_metadata.distribution_version,
+            jdk_metadata_with_checksum.distribution_version,
             final_path.display()
         );
 

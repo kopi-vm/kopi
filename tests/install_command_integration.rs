@@ -53,8 +53,14 @@ fn test_install_dry_run() {
 }
 
 #[test]
-#[ignore] // This test requires network access
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_version_not_found() {
+    // Skip if explicitly disabled
+    if std::env::var("SKIP_NETWORK_TESTS").is_ok() {
+        println!("Skipping network test due to SKIP_NETWORK_TESTS env var");
+        return;
+    }
+    
     // This test requires network access to check against real API
     let (_, stderr, success) = run_kopi(&["install", "99.99.99"]);
     assert!(!success);
