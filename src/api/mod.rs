@@ -42,6 +42,34 @@ impl ApiClient {
         self
     }
 
+    pub fn fetch_all_metadata(&self) -> Result<ApiMetadata> {
+        // Fetch distributions
+        let distributions = self.get_distributions()?;
+
+        // For each distribution, fetch available packages
+        let mut metadata = ApiMetadata {
+            distributions: Vec::new(),
+        };
+
+        for dist in distributions {
+            let query = PackageQuery {
+                distribution: Some(dist.api_parameter.clone()),
+                latest: Some("available".to_string()),
+                directly_downloadable: Some(true),
+                ..Default::default()
+            };
+
+            let packages = self.get_packages(Some(query))?;
+
+            metadata.distributions.push(DistributionMetadata {
+                distribution: dist,
+                packages,
+            });
+        }
+
+        Ok(metadata)
+    }
+
     pub fn get_packages(&self, query: Option<PackageQuery>) -> Result<Vec<Package>> {
         self.execute_with_version_fallback(|version| {
             let url = format!("{}/{}/packages", self.base_url, version);
@@ -341,6 +369,17 @@ pub struct MajorVersion {
     pub major_version: u32,
     pub term_of_support: String,
     pub versions: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiMetadata {
+    pub distributions: Vec<DistributionMetadata>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DistributionMetadata {
+    pub distribution: Distribution,
+    pub packages: Vec<Package>,
 }
 
 #[cfg(test)]

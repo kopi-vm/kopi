@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use kopi::commands::cache::CacheCommand;
 use kopi::commands::install::InstallCommand;
 use kopi::error::Result;
 
@@ -73,6 +74,12 @@ enum Commands {
         /// Version to show path for (defaults to current)
         version: Option<String>,
     },
+
+    /// Manage metadata cache
+    Cache {
+        #[command(subcommand)]
+        command: CacheCommand,
+    },
 }
 
 fn setup_logger(cli: &Cli) {
@@ -131,6 +138,9 @@ async fn main() -> Result<()> {
         Commands::Which { version } => {
             let v = version.unwrap_or_else(|| "current".to_string());
             println!("Path for JDK {} (not yet implemented)", v);
+        }
+        Commands::Cache { command } => {
+            command.execute()?;
         }
     }
 

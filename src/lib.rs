@@ -1,5 +1,6 @@
 pub mod api;
 pub mod archive;
+pub mod cache;
 pub mod commands;
 pub mod config;
 pub mod download;
