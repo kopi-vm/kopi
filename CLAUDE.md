@@ -202,3 +202,28 @@ bail!("JDK version '{}' not found. Run 'kopi list-remote' to see available versi
 - Keep structs lean by removing fields that are no longer used
 - Use `cargo clippy` to identify unused code elements
 - Example: If a function parameter like `arch` is no longer used in the implementation, remove it from the function signature and update all callers
+
+### External API Testing
+- When writing code that calls external Web APIs, implement at least one unit test that includes the actual JSON response obtained from calling the API with curl
+- Store the JSON response as a string within the test code
+- This ensures that the parsing logic is tested against real API responses
+- Example:
+```rust
+#[test]
+fn test_parse_foojay_api_response() {
+    // JSON response obtained from: curl https://api.foojay.io/disco/v3.0/packages?version=21
+    let json_response = r#"{
+        "result": [
+            {
+                "id": "abcd1234",
+                "distribution": "temurin",
+                "major_version": 21,
+                ...
+            }
+        ]
+    }"#;
+    
+    let packages: Vec<Package> = serde_json::from_str(json_response).unwrap();
+    assert_eq!(packages[0].distribution, "temurin");
+}
+```
