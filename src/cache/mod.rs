@@ -85,6 +85,15 @@ pub fn load_cache(path: &Path) -> Result<MetadataCache> {
     serde_json::from_str(&contents).map_err(|_e| KopiError::InvalidMetadata)
 }
 
+pub fn load_cache_if_exists() -> Result<MetadataCache> {
+    let cache_path = get_cache_path()?;
+    if cache_path.exists() {
+        load_cache(&cache_path)
+    } else {
+        Err(KopiError::CacheNotFound)
+    }
+}
+
 pub fn save_cache(path: &Path, cache: &MetadataCache) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| {

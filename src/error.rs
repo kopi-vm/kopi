@@ -88,6 +88,9 @@ pub enum KopiError {
 
     #[error(transparent)]
     Zip(#[from] zip::result::ZipError),
+
+    #[error("Cache not found")]
+    CacheNotFound,
 }
 
 pub type Result<T> = std::result::Result<T, KopiError>;

@@ -253,27 +253,27 @@ impl InstallCommand {
         let os = self.get_current_os();
         let lib_c_type = get_foojay_libc_type();
 
-        // First try to find the package in cache
-        let cache = crate::cache::get_metadata(Some(&version.to_string()))?;
-
-        if let Some(jdk_metadata) = crate::cache::find_package_in_cache(
-            &cache,
-            distribution.id(),
-            &version.to_string(),
-            &arch,
-            &os,
-        ) {
-            // Convert cached JdkMetadata to API Package format
-            debug!(
-                "Found package in cache: {} {}",
-                distribution.name(),
-                version
-            );
-            return Ok(self.convert_metadata_to_package(jdk_metadata));
+        // First try to find the package in cache if it exists
+        if let Ok(cache) = crate::cache::load_cache_if_exists() {
+            if let Some(jdk_metadata) = crate::cache::find_package_in_cache(
+                &cache,
+                distribution.id(),
+                &version.to_string(),
+                &arch,
+                &os,
+            ) {
+                // Convert cached JdkMetadata to API Package format
+                debug!(
+                    "Found package in cache: {} {}",
+                    distribution.name(),
+                    version
+                );
+                return Ok(self.convert_metadata_to_package(jdk_metadata));
+            }
         }
 
-        // If not found in cache, fall back to API
-        debug!("Package not found in cache, fetching from API");
+        // If not found in cache or cache doesn't exist, fetch directly from API
+        debug!("Package not found in cache, fetching directly from API");
 
         let query = crate::api::PackageQuery {
             version: Some(version.to_string()),
