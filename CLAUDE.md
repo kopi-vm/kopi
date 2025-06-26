@@ -71,16 +71,15 @@ Address any errors from each command before proceeding to the next. All four mus
 ```
 kopi/
 ├── src/
-│   ├── main.rs          # Application entry point with CLI command parsing
-│   ├── lib.rs           # Library root (if needed for integration tests)
-│   ├── cli.rs           # CLI argument structures and parsing
-│   ├── commands.rs      # Command implementations (or commands/ module)
-│   ├── config.rs        # Configuration management
-│   ├── jdk.rs           # JDK installation and metadata handling
-│   ├── shell.rs         # Shell integration and shim generation
-│   └── error.rs         # Error types and handling
+│   ├── api/             # API integration with foojay.io
+│   ├── archive/         # Archive extraction functionality (TAR/ZIP)
+│   ├── commands/        # Command implementations
+│   ├── download/        # Download management and progress reporting
+│   ├── models/          # Data models and structures
+│   ├── security/        # Security validation and HTTPS verification
+│   ├── storage/         # Storage and disk space management
+│   └── version/         # Version parsing and handling
 ├── tests/               # Integration tests
-│   └── integration.rs   # End-to-end command tests
 ├── docs/
 │   ├── adr/             # Architecture Decision Records
 │   └── reference.md     # User reference manual
@@ -96,13 +95,13 @@ Key files:
 Key architectural components:
 - **Command Interface**: Subcommand-based CLI using clap derive API
 - **JDK Metadata**: Fetches available JDK versions from foojay.io API
-- **Version Management**: Installs and manages multiple JDK versions in `~/.kopi/jdks/<vendor>-<version>-<arch>/`
+- **Version Management**: Installs and manages multiple JDK versions in `~/.kopi/jdks/<vendor>-<version>/`
 - **Shell Integration**: Creates shims in `~/.kopi/bin/` for Java executables
 - **Project Configuration**: Reads `.kopi-version` or `.java-version` files
 - **Metadata Caching**: Stores JDK metadata in `~/.kopi/cache/metadata.json` with hybrid caching strategy
 
 Storage locations:
-- JDKs: `~/.kopi/jdks/<vendor>-<version>-<arch>/`
+- JDKs: `~/.kopi/jdks/<vendor>-<version>/`
 - Shims: `~/.kopi/bin/`
 - Config: `~/.kopi/config.toml`
 - Cache: `~/.kopi/cache/`
@@ -110,7 +109,6 @@ Storage locations:
 Configuration System:
 - Global config stored at `~/.kopi/config.toml`
 - Loaded automatically by components via `KopiConfig::load()`
-- Supports `default_distribution` and `[storage]` section with `min_disk_space_mb`
 - Uses sensible defaults when config file is missing
 
 ## Key Dependencies
@@ -119,6 +117,7 @@ Core functionality:
 - `clap`: CLI argument parsing with derive API
 - `attohttpc`: HTTP client for foojay.io API calls
 - `serde`/`serde_json`: JSON parsing for API responses and metadata
+- `indicatif`: Progress bars and spinners for download feedback
 
 Archive handling:
 - `tar`: Extract JDK tar archives
