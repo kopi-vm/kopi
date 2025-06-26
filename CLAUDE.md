@@ -196,3 +196,10 @@ bail!("JDK version '{}' not found. Run 'kopi list-remote' to see available versi
 - Use descriptive variable and function names
 - Add comments for complex logic, but prefer self-documenting code
 - Structure code to minimize cognitive load for future developers
+
+### Clean Code Maintenance
+- Remove unused variables, parameters, and struct members promptly
+- When refactoring, trace through all callers to eliminate unnecessary parameters
+- Keep structs lean by removing fields that are no longer used
+- Use `cargo clippy` to identify unused code elements
+- Example: If a function parameter like `arch` is no longer used in the implementation, remove it from the function signature and update all callers
