@@ -265,9 +265,9 @@ impl FromStr for ArchiveType {
     }
 }
 
-impl std::fmt::Display for ArchiveType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let archive = match self {
+impl ArchiveType {
+    pub fn extension(&self) -> &str {
+        match self {
             ArchiveType::TarGz => "tar.gz",
             ArchiveType::Zip => "zip",
             ArchiveType::Dmg => "dmg",
@@ -275,8 +275,13 @@ impl std::fmt::Display for ArchiveType {
             ArchiveType::Exe => "exe",
             ArchiveType::Deb => "deb",
             ArchiveType::Rpm => "rpm",
-        };
-        write!(f, "{}", archive)
+        }
+    }
+}
+
+impl std::fmt::Display for ArchiveType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.extension())
     }
 }
 

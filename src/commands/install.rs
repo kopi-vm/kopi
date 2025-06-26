@@ -248,10 +248,32 @@ impl InstallCommand {
         distribution: &Distribution,
         version: &crate::models::jdk::Version,
     ) -> Result<crate::api::Package> {
-        // Build query for the API
+        // Build query parameters
         let arch = self.get_current_architecture();
         let os = self.get_current_os();
         let lib_c_type = get_foojay_libc_type();
+
+        // First try to find the package in cache
+        let cache = crate::cache::get_metadata(Some(&version.to_string()))?;
+
+        if let Some(jdk_metadata) = crate::cache::find_package_in_cache(
+            &cache,
+            distribution.id(),
+            &version.to_string(),
+            &arch,
+            &os,
+        ) {
+            // Convert cached JdkMetadata to API Package format
+            debug!(
+                "Found package in cache: {} {}",
+                distribution.name(),
+                version
+            );
+            return Ok(self.convert_metadata_to_package(jdk_metadata));
+        }
+
+        // If not found in cache, fall back to API
+        debug!("Package not found in cache, fetching from API");
 
         let query = crate::api::PackageQuery {
             version: Some(version.to_string()),
@@ -373,6 +395,38 @@ impl InstallCommand {
             lib_c_type: package.lib_c_type,
         })
     }
+    fn convert_metadata_to_package(&self, metadata: &JdkMetadata) -> crate::api::Package {
+        // Convert JdkMetadata to API Package format
+        let pkg_info_uri = format!("https://api.foojay.io/disco/v3.0/packages/{}", metadata.id);
+
+        crate::api::Package {
+            id: metadata.id.clone(),
+            archive_type: metadata.archive_type.to_string(),
+            distribution: metadata.distribution.clone(),
+            major_version: metadata.version.major,
+            java_version: metadata.version.to_string(),
+            distribution_version: metadata.distribution_version.clone(),
+            jdk_version: metadata.version.major,
+            directly_downloadable: true,
+            filename: format!(
+                "{}-{}-{}-{}.{}",
+                metadata.distribution,
+                metadata.version,
+                metadata.operating_system,
+                metadata.architecture,
+                metadata.archive_type.extension()
+            ),
+            links: crate::api::Links {
+                pkg_download_redirect: metadata.download_url.clone(),
+                pkg_info_uri: Some(pkg_info_uri),
+            },
+            free_use_in_production: true,
+            tck_tested: "unknown".to_string(),
+            size: metadata.size,
+            operating_system: metadata.operating_system.to_string(),
+            lib_c_type: metadata.lib_c_type.clone(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -421,5 +475,42 @@ mod tests {
         // Should return a valid OS string
         assert!(!os.is_empty());
         assert_ne!(os, "unknown");
+    }
+
+    #[test]
+    fn test_convert_metadata_to_package() {
+        use crate::models::jdk::{
+            Architecture, ArchiveType, ChecksumType, OperatingSystem, PackageType, Version,
+        };
+
+        let cmd = InstallCommand::new().unwrap();
+
+        let metadata = JdkMetadata {
+            id: "test-id".to_string(),
+            distribution: "temurin".to_string(),
+            version: Version::new(21, 0, 1),
+            distribution_version: "21.0.1+12".to_string(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: "https://example.com/download".to_string(),
+            checksum: Some("abc123".to_string()),
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 100000000,
+            lib_c_type: None,
+        };
+
+        let package = cmd.convert_metadata_to_package(&metadata);
+
+        assert_eq!(package.id, "test-id");
+        assert_eq!(package.distribution, "temurin");
+        assert_eq!(package.major_version, 21);
+        assert_eq!(package.java_version, "21.0.1");
+        assert_eq!(package.distribution_version, "21.0.1+12");
+        assert_eq!(package.archive_type, "tar.gz");
+        assert_eq!(package.operating_system, "linux");
+        assert_eq!(package.size, 100000000);
+        assert!(package.directly_downloadable);
     }
 }

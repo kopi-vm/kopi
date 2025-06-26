@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use log::warn;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -108,21 +109,26 @@ pub fn save_cache(path: &Path, cache: &MetadataCache) -> Result<()> {
 pub fn get_metadata(requested_version: Option<&str>) -> Result<MetadataCache> {
     let cache_path = get_cache_path()?;
 
-    // Use cache if it exists
+    // Try to use cache if it exists
     if cache_path.exists() {
-        let cache = load_cache(&cache_path)?;
-
-        // If specific version requested and not in cache, try API
-        if let Some(version) = requested_version {
-            if !cache.has_version(version) {
-                return fetch_and_cache_metadata();
+        match load_cache(&cache_path) {
+            Ok(cache) => {
+                // If specific version requested and not in cache, try API
+                if let Some(version) = requested_version {
+                    if !cache.has_version(version) {
+                        return fetch_and_cache_metadata();
+                    }
+                }
+                return Ok(cache);
+            }
+            Err(e) => {
+                // Cache load failed, log warning and fall back to API
+                warn!("Failed to load cache: {}. Falling back to API.", e);
             }
         }
-
-        return Ok(cache);
     }
 
-    // No cache, fetch from API
+    // No cache or cache load failed, fetch from API
     fetch_and_cache_metadata()
 }
 

@@ -363,7 +363,7 @@ fn test_network_failure_handling() {
 fn test_download_network_timeout() {
     // This test verifies timeout behavior by using a mock server that delays response
     let mut server = Server::new();
-    
+
     let _m = server
         .mock("GET", "/slow-download.tar.gz")
         .with_status(200)
@@ -396,7 +396,9 @@ fn test_download_network_timeout() {
     if result.is_ok() {
         // If it succeeded, it means the timeout didn't work as expected,
         // but at least the test didn't hang
-        println!("Warning: Timeout test succeeded unexpectedly - timeout may not be working properly");
+        println!(
+            "Warning: Timeout test succeeded unexpectedly - timeout may not be working properly"
+        );
     }
 }
 
@@ -582,7 +584,7 @@ fn test_download_connection_reset() {
     // Start a simple TCP server that closes connection abruptly
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let addr = listener.local_addr().unwrap();
-    
+
     thread::spawn(move || {
         if let Ok((mut stream, _)) = listener.accept() {
             // Send partial HTTP response
@@ -590,7 +592,7 @@ fn test_download_connection_reset() {
             let _ = stream.write_all(b"Content-Length: 1000000\r\n\r\n");
             let _ = stream.write_all(b"Partial data before reset");
             let _ = stream.flush();
-            
+
             // Abruptly close the connection
             let _ = stream.shutdown(Shutdown::Both);
         }
@@ -629,11 +631,11 @@ fn test_download_connection_reset() {
             let error_str = e.to_string();
             // Various possible error messages
             assert!(
-                error_str.contains("Connection") || 
-                error_str.contains("reset") || 
-                error_str.contains("EOF") ||
-                error_str.contains("closed") ||
-                error_str.contains("broken pipe"),
+                error_str.contains("Connection")
+                    || error_str.contains("reset")
+                    || error_str.contains("EOF")
+                    || error_str.contains("closed")
+                    || error_str.contains("broken pipe"),
                 "Expected connection error, got: {}",
                 error_str
             );

@@ -60,7 +60,7 @@ fn test_install_version_not_found() {
         println!("Skipping network test due to SKIP_NETWORK_TESTS env var");
         return;
     }
-    
+
     // This test requires network access to check against real API
     let (_, stderr, success) = run_kopi(&["install", "99.99.99"]);
     assert!(!success);
