@@ -3,6 +3,7 @@ use attohttpc::{RequestBuilder, Session};
 use log::{debug, trace};
 use retry::{OperationResult, delay::Exponential, retry_with_index};
 use serde::{Deserialize, Serialize};
+use std::thread;
 use std::time::Duration;
 
 const FOOJAY_API_BASE: &str = "https://api.foojay.io/disco";
@@ -150,12 +151,123 @@ impl ApiClient {
     }
 
     pub fn get_package_by_id(&self, package_id: &str) -> Result<PackageInfo> {
+        // Special handling for package by ID endpoint which returns an array
         self.execute_with_version_fallback(|version| {
             let url = format!("{}/{}/ids/{}", self.base_url, version, package_id);
-            self.execute_with_retry(move || {
-                debug!("Fetching package info for ID: {}", package_id);
-                self.session.get(&url)
-            })
+            debug!("Fetching package info for ID: {}", package_id);
+            
+            // Execute the request and get the raw JSON response
+            let result = retry_with_index(
+                Exponential::from_millis(INITIAL_BACKOFF_MS).take(MAX_RETRIES),
+                |current_try| {
+                    let response = match self.session.get(&url).send() {
+                        Ok(resp) => resp,
+                        Err(e) => {
+                            let user_error = KopiError::MetadataFetch(format!(
+                                "Network error: {}. Please check your internet connection and try again.",
+                                e
+                            ));
+
+                            if current_try < (MAX_RETRIES - 1) as u64 {
+                                return OperationResult::Retry(user_error);
+                            }
+                            return OperationResult::Err(user_error);
+                        }
+                    };
+
+                    if response.status() == attohttpc::StatusCode::TOO_MANY_REQUESTS
+                        && current_try < (MAX_RETRIES - 1) as u64
+                    {
+                        if let Some(retry_after) = response.headers().get("Retry-After") {
+                            if let Ok(retry_str) = retry_after.to_str() {
+                                if let Ok(seconds) = retry_str.parse::<u64>() {
+                                    thread::sleep(Duration::from_secs(seconds));
+                                }
+                            }
+                        }
+                        return OperationResult::Retry(KopiError::MetadataFetch(
+                            "Too many requests. Waiting before retrying...".to_string(),
+                        ));
+                    }
+
+                    if !response.is_success() {
+                        let status = response.status();
+                        let error_msg = match status.as_u16() {
+                            404 => "The requested resource was not found. The API endpoint may have changed.".to_string(),
+                            500..=599 => "Server error occurred. Please try again later.".to_string(),
+                            401 | 403 => "Authentication failed. Please check your credentials.".to_string(),
+                            _ => format!("HTTP error ({}): {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown error")),
+                        };
+                        return OperationResult::Err(KopiError::MetadataFetch(error_msg));
+                    }
+
+                    // Parse the response
+                    match response.text() {
+                        Ok(body) => {
+                            match serde_json::from_str::<serde_json::Value>(&body) {
+                                Ok(json_value) => {
+                                    // Check if response is wrapped with "result" field
+                                    if let Some(result) = json_value.get("result") {
+                                        // The result is an array of PackageInfo
+                                        match serde_json::from_value::<Vec<PackageInfo>>(result.clone()) {
+                                            Ok(packages) => {
+                                                if let Some(package) = packages.into_iter().next() {
+                                                    OperationResult::Ok(package)
+                                                } else {
+                                                    OperationResult::Err(KopiError::MetadataFetch(
+                                                        format!("No package info found for ID: {}", package_id)
+                                                    ))
+                                                }
+                                            }
+                                            Err(e) => {
+                                                debug!("Failed to parse 'result' field as array: {}", e);
+                                                trace!("Result field: {:?}", result);
+                                                OperationResult::Err(KopiError::MetadataFetch(format!(
+                                                    "Failed to parse wrapped response: {}",
+                                                    e
+                                                )))
+                                            }
+                                        }
+                                    } else {
+                                        // No "result" field, try to parse as array directly
+                                        match serde_json::from_value::<Vec<PackageInfo>>(json_value) {
+                                            Ok(packages) => {
+                                                if let Some(package) = packages.into_iter().next() {
+                                                    OperationResult::Ok(package)
+                                                } else {
+                                                    OperationResult::Err(KopiError::MetadataFetch(
+                                                        format!("No package info found for ID: {}", package_id)
+                                                    ))
+                                                }
+                                            }
+                                            Err(e) => {
+                                                debug!("JSON parse error: {}", e);
+                                                OperationResult::Err(KopiError::MetadataFetch(format!(
+                                                    "Failed to parse response: {}",
+                                                    e
+                                                )))
+                                            }
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    debug!("Failed to parse as JSON: {}", e);
+                                    OperationResult::Err(KopiError::MetadataFetch(format!(
+                                        "Invalid JSON response: {}",
+                                        e
+                                    )))
+                                }
+                            }
+                        }
+                        Err(e) => OperationResult::Err(KopiError::MetadataFetch(format!(
+                            "Failed to read response body: {}",
+                            e
+                        ))),
+                    }
+                },
+            );
+
+            result.map_err(|e| e.error)
         })
     }
 

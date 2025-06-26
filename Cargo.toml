@@ -53,6 +53,9 @@ winreg = "0.53.0"
 junction = "1.2.0"
 winapi = { version = "0.3", features = ["fileapi"] }
 
+[features]
+integration_tests = []
+
 [dev-dependencies]
 mockall = "0.12"
 mockito = "1.4"
