@@ -1,3 +1,5 @@
+mod progress;
+
 use crate::error::{KopiError, Result};
 use attohttpc::{Response, Session};
 use std::fs::{self, File};
@@ -5,6 +7,8 @@ use std::io::{self, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tempfile::NamedTempFile;
+
+pub use progress::IndicatifProgressReporter;
 
 const DOWNLOAD_CHUNK_SIZE: usize = 8192;
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(300);
@@ -261,65 +265,6 @@ impl DownloadManager {
     }
 }
 
-pub struct ConsoleProgressReporter {
-    total_bytes: u64,
-    last_printed_percent: u32,
-}
-
-impl ConsoleProgressReporter {
-    pub fn new() -> Self {
-        Self {
-            total_bytes: 0,
-            last_printed_percent: 0,
-        }
-    }
-}
-
-impl Default for ConsoleProgressReporter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ProgressReporter for ConsoleProgressReporter {
-    fn on_start(&mut self, total_bytes: u64) {
-        self.total_bytes = total_bytes;
-        self.last_printed_percent = 0;
-        if total_bytes > 0 {
-            println!("Downloading... ({})", format_bytes(total_bytes));
-        } else {
-            println!("Downloading...");
-        }
-    }
-
-    fn on_progress(&mut self, bytes_downloaded: u64) {
-        if self.total_bytes > 0 {
-            let percent = ((bytes_downloaded as f64 / self.total_bytes as f64) * 100.0) as u32;
-            if percent > self.last_printed_percent && percent % 10 == 0 {
-                self.last_printed_percent = percent;
-                println!("{}% complete", percent);
-            }
-        }
-    }
-
-    fn on_complete(&mut self) {
-        println!("Download complete");
-    }
-}
-
-fn format_bytes(bytes: u64) -> String {
-    const UNITS: &[&str] = &["B", "KB", "MB", "GB"];
-    let mut size = bytes as f64;
-    let mut unit_index = 0;
-
-    while size >= 1024.0 && unit_index < UNITS.len() - 1 {
-        size /= 1024.0;
-        unit_index += 1;
-    }
-
-    format!("{:.2} {}", size, UNITS[unit_index])
-}
-
 // Real HTTP client implementation
 pub struct AttohttpcClient {
     timeout: Duration,
@@ -440,7 +385,7 @@ pub fn download_jdk(
     // Add progress reporter unless disabled
     if !no_progress {
         download_manager =
-            download_manager.with_progress_reporter(Box::new(ConsoleProgressReporter::new()));
+            download_manager.with_progress_reporter(Box::new(IndicatifProgressReporter::new()));
     }
 
     // Prepare download options
@@ -553,6 +498,19 @@ mod tests {
         fn final_url(&self) -> Option<&str> {
             None
         }
+    }
+
+    fn format_bytes(bytes: u64) -> String {
+        const UNITS: &[&str] = &["B", "KB", "MB", "GB"];
+        let mut size = bytes as f64;
+        let mut unit_index = 0;
+
+        while size >= 1024.0 && unit_index < UNITS.len() - 1 {
+            size /= 1024.0;
+            unit_index += 1;
+        }
+
+        format!("{:.2} {}", size, UNITS[unit_index])
     }
 
     #[test]
