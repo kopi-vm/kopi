@@ -186,7 +186,7 @@ fn test_storage_installation_workflow() {
 
     // Prepare installation
     let context = storage
-        .prepare_jdk_installation(&distribution, "21.0.1", "x64")
+        .prepare_jdk_installation(&distribution, "21.0.1+35.1")
         .unwrap();
 
     assert!(context.temp_path.exists());
@@ -206,7 +206,7 @@ fn test_storage_installation_workflow() {
     let installed = storage.list_installed_jdks().unwrap();
     assert_eq!(installed.len(), 1);
     assert_eq!(installed[0].distribution, "temurin");
-    assert_eq!(installed[0].version, "21.0.1");
+    assert_eq!(installed[0].version, "21.0.1+35.1");
 }
 
 #[test]
@@ -289,7 +289,7 @@ fn test_concurrent_installation_safety() {
         let dist = distribution.clone();
 
         let handle = thread::spawn(move || {
-            let result = storage.prepare_jdk_installation(&dist, "21.0.1", "x64");
+            let result = storage.prepare_jdk_installation(&dist, "21.0.1+35.1");
 
             if let Ok(context) = result {
                 // Simulate some work
@@ -332,7 +332,7 @@ fn test_disk_space_simulation() {
     let distribution = Distribution::Temurin;
 
     // The disk space check should pass on most systems
-    let result = storage.prepare_jdk_installation(&distribution, "21.0.1", "x64");
+    let result = storage.prepare_jdk_installation(&distribution, "21.0.1+35.1");
     assert!(result.is_ok());
 }
 

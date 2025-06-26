@@ -2,6 +2,7 @@ use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::Distribution;
 use dirs::home_dir;
+use serde_json;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -57,28 +58,25 @@ impl StorageManager {
     pub fn jdk_install_path(
         &self,
         distribution: &Distribution,
-        version: &str,
-        arch: &str,
+        distribution_version: &str,
     ) -> PathBuf {
-        let dir_name = format!("{}-{}-{}", distribution.id(), version, arch);
+        let dir_name = format!("{}-{}", distribution.id(), distribution_version);
         self.jdks_dir().join(dir_name)
     }
 
     pub fn prepare_jdk_installation(
         &self,
         distribution: &Distribution,
-        version: &str,
-        arch: &str,
+        distribution_version: &str,
     ) -> Result<InstallationContext> {
-        let install_path = self.jdk_install_path(distribution, version, arch);
+        let install_path = self.jdk_install_path(distribution, distribution_version);
 
         // Check if JDK is already installed
         if install_path.exists() {
             return Err(KopiError::AlreadyExists(format!(
-                "JDK {} {} for {} is already installed at {:?}",
+                "JDK {} {} is already installed at {:?}",
                 distribution.name(),
-                version,
-                arch,
+                distribution_version,
                 install_path
             )));
         }
@@ -286,7 +284,7 @@ impl StorageManager {
                 continue;
             }
 
-            // Parse directory name: vendor-version-arch
+            // Parse directory name: vendor-version
             if let Some(jdk_info) = self.parse_jdk_dir_name(&path) {
                 installed.push(jdk_info);
             }
@@ -296,7 +294,6 @@ impl StorageManager {
             a.distribution
                 .cmp(&b.distribution)
                 .then(b.version.cmp(&a.version))
-                .then(a.arch.cmp(&b.arch))
         });
 
         Ok(installed)
@@ -305,26 +302,10 @@ impl StorageManager {
     fn parse_jdk_dir_name(&self, path: &Path) -> Option<InstalledJdk> {
         let file_name = path.file_name()?.to_str()?;
 
-        // Known architectures to help with parsing
-        const KNOWN_ARCHS: &[&str] = &[
-            "x64", "x86", "amd64", "i386", "i686", "aarch64", "arm64", "armv7", "armv7l", "ppc64",
-            "ppc64le", "s390x", "riscv64",
-        ];
-
-        // Find the architecture suffix
-        let (base_name, arch) = KNOWN_ARCHS.iter().find_map(|&arch_str| {
-            if file_name.ends_with(&format!("-{}", arch_str)) {
-                let base = &file_name[..file_name.len() - arch_str.len() - 1];
-                Some((base, arch_str))
-            } else {
-                None
-            }
-        })?;
-
-        // Now split the remaining part into distribution and version
+        // Split the directory name into distribution and version
         // The distribution is the part before the first hyphen followed by a digit or 'v'
         let mut split_pos = None;
-        let chars: Vec<char> = base_name.chars().collect();
+        let chars: Vec<char> = file_name.chars().collect();
 
         for i in 0..chars.len() - 1 {
             if chars[i] == '-' && (chars[i + 1].is_numeric() || chars[i + 1] == 'v') {
@@ -334,19 +315,17 @@ impl StorageManager {
         }
 
         let (distribution, version) = if let Some(pos) = split_pos {
-            let dist = &base_name[..pos];
-            let ver = &base_name[pos + 1..];
+            let dist = &file_name[..pos];
+            let ver = &file_name[pos + 1..];
             (dist, ver)
         } else {
-            // If we can't find a proper split, assume the entire base is the distribution
-            // This handles edge cases but might not be what we want
+            // If we can't find a proper split, return None
             return None;
         };
 
         Some(InstalledJdk {
             distribution: distribution.to_string(),
             version: version.to_string(),
-            arch: arch.to_string(),
             path: path.to_path_buf(),
         })
     }
@@ -375,6 +354,42 @@ impl StorageManager {
         fs::remove_dir_all(path)?;
         Ok(())
     }
+
+    pub fn save_jdk_metadata(
+        &self,
+        distribution: &Distribution,
+        distribution_version: &str,
+        metadata: &crate::api::Package,
+    ) -> Result<()> {
+        // Get the installation directory
+        let install_dir = self.jdk_install_path(distribution, distribution_version);
+
+        // Create the metadata file path by appending .meta.json to the directory path
+        // We need to get the parent and then create a new file with the directory name + .meta.json
+        let parent = install_dir
+            .parent()
+            .ok_or_else(|| KopiError::SystemError("Invalid JDK installation path".to_string()))?;
+        let dir_name = install_dir
+            .file_name()
+            .ok_or_else(|| KopiError::SystemError("Invalid JDK directory name".to_string()))?;
+
+        // Construct the metadata filename by appending .meta.json to the directory name
+        let metadata_filename = format!("{}.meta.json", dir_name.to_string_lossy());
+        let metadata_path = parent.join(metadata_filename);
+
+        // Serialize the metadata to JSON
+        let json_content = serde_json::to_string_pretty(metadata)?;
+
+        // Add a newline at the end of the JSON content
+        let json_content_with_newline = format!("{}\n", json_content);
+
+        // Write the metadata file
+        fs::write(&metadata_path, json_content_with_newline)?;
+
+        log::debug!("Saved JDK metadata to {:?}", metadata_path);
+
+        Ok(())
+    }
 }
 
 impl Default for StorageManager {
@@ -393,7 +408,6 @@ pub struct InstallationContext {
 pub struct InstalledJdk {
     pub distribution: String,
     pub version: String,
-    pub arch: String,
     pub path: PathBuf,
 }
 
@@ -428,8 +442,8 @@ mod tests {
         let (manager, _temp) = create_test_storage_manager();
         let distribution = Distribution::Temurin;
 
-        let path = manager.jdk_install_path(&distribution, "21.0.1", "x64");
-        assert!(path.ends_with("jdks/temurin-21.0.1-x64"));
+        let path = manager.jdk_install_path(&distribution, "21.0.1+35.1");
+        assert!(path.ends_with("jdks/temurin-21.0.1+35.1"));
     }
 
     #[test]
@@ -438,7 +452,7 @@ mod tests {
         let distribution = Distribution::Temurin;
 
         let context = manager
-            .prepare_jdk_installation(&distribution, "21.0.1", "x64")
+            .prepare_jdk_installation(&distribution, "21.0.1+35.1")
             .unwrap();
 
         assert!(context.temp_path.exists());
@@ -455,10 +469,10 @@ mod tests {
         let (manager, _temp) = create_test_storage_manager();
         let distribution = Distribution::Temurin;
 
-        let install_path = manager.jdk_install_path(&distribution, "21.0.1", "x64");
+        let install_path = manager.jdk_install_path(&distribution, "21.0.1+35.1");
         fs::create_dir_all(&install_path).unwrap();
 
-        let result = manager.prepare_jdk_installation(&distribution, "21.0.1", "x64");
+        let result = manager.prepare_jdk_installation(&distribution, "21.0.1+35.1");
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), KopiError::AlreadyExists(_)));
     }
@@ -469,7 +483,7 @@ mod tests {
         let distribution = Distribution::Temurin;
 
         let context = manager
-            .prepare_jdk_installation(&distribution, "21.0.1", "x64")
+            .prepare_jdk_installation(&distribution, "21.0.1+35.1")
             .unwrap();
 
         // Create a test file in temp directory
@@ -493,7 +507,7 @@ mod tests {
         let distribution = Distribution::Temurin;
 
         let context = manager
-            .prepare_jdk_installation(&distribution, "21.0.1", "x64")
+            .prepare_jdk_installation(&distribution, "21.0.1+35.1")
             .unwrap();
 
         assert!(context.temp_path.exists());
@@ -510,8 +524,8 @@ mod tests {
         let jdks_dir = manager.jdks_dir();
         fs::create_dir_all(&jdks_dir).unwrap();
 
-        fs::create_dir_all(jdks_dir.join("temurin-21.0.1-x64")).unwrap();
-        fs::create_dir_all(jdks_dir.join("corretto-17.0.9-x64")).unwrap();
+        fs::create_dir_all(jdks_dir.join("temurin-21.0.1")).unwrap();
+        fs::create_dir_all(jdks_dir.join("corretto-17.0.9")).unwrap();
         fs::create_dir_all(jdks_dir.join(".tmp")).unwrap(); // Should be ignored
 
         let installed = manager.list_installed_jdks().unwrap();
@@ -519,11 +533,9 @@ mod tests {
 
         assert_eq!(installed[0].distribution, "corretto");
         assert_eq!(installed[0].version, "17.0.9");
-        assert_eq!(installed[0].arch, "x64");
 
         assert_eq!(installed[1].distribution, "temurin");
         assert_eq!(installed[1].version, "21.0.1");
-        assert_eq!(installed[1].arch, "x64");
     }
 
     #[test]
@@ -532,75 +544,59 @@ mod tests {
 
         // Test basic format
         let jdk = manager
-            .parse_jdk_dir_name(Path::new("temurin-21.0.1-x64"))
+            .parse_jdk_dir_name(Path::new("temurin-21.0.1"))
             .unwrap();
         assert_eq!(jdk.distribution, "temurin");
         assert_eq!(jdk.version, "21.0.1");
-        assert_eq!(jdk.arch, "x64");
 
         // Test version with early access suffix
         let jdk = manager
-            .parse_jdk_dir_name(Path::new("temurin-22-ea-x64"))
+            .parse_jdk_dir_name(Path::new("temurin-22-ea"))
             .unwrap();
         assert_eq!(jdk.distribution, "temurin");
         assert_eq!(jdk.version, "22-ea");
-        assert_eq!(jdk.arch, "x64");
 
         // Test version with build number
         let jdk = manager
-            .parse_jdk_dir_name(Path::new("corretto-17.0.9+9-aarch64"))
+            .parse_jdk_dir_name(Path::new("corretto-17.0.9+9"))
             .unwrap();
         assert_eq!(jdk.distribution, "corretto");
         assert_eq!(jdk.version, "17.0.9+9");
-        assert_eq!(jdk.arch, "aarch64");
 
         // Test with hyphenated distribution name
         let jdk = manager
-            .parse_jdk_dir_name(Path::new("graalvm-ce-21.0.1-amd64"))
+            .parse_jdk_dir_name(Path::new("graalvm-ce-21.0.1"))
             .unwrap();
         assert_eq!(jdk.distribution, "graalvm-ce");
         assert_eq!(jdk.version, "21.0.1");
-        assert_eq!(jdk.arch, "amd64");
 
         // Test with version starting with 'v'
         let jdk = manager
-            .parse_jdk_dir_name(Path::new("zulu-v11.0.21-arm64"))
+            .parse_jdk_dir_name(Path::new("zulu-v11.0.21"))
             .unwrap();
         assert_eq!(jdk.distribution, "zulu");
         assert_eq!(jdk.version, "v11.0.21");
-        assert_eq!(jdk.arch, "arm64");
 
         // Test complex version with multiple hyphens
         let jdk = manager
-            .parse_jdk_dir_name(Path::new("liberica-21.0.1-13-x64"))
+            .parse_jdk_dir_name(Path::new("liberica-21.0.1-13"))
             .unwrap();
         assert_eq!(jdk.distribution, "liberica");
         assert_eq!(jdk.version, "21.0.1-13");
-        assert_eq!(jdk.arch, "x64");
 
-        // Test different architectures
-        let archs = vec!["x86", "i386", "ppc64le", "s390x", "riscv64"];
-        for arch in archs {
-            let jdk = manager
-                .parse_jdk_dir_name(Path::new(&format!("temurin-17-{}", arch)))
-                .unwrap();
-            assert_eq!(jdk.distribution, "temurin");
-            assert_eq!(jdk.version, "17");
-            assert_eq!(jdk.arch, arch);
-        }
+        // Test simple version without architecture
+        let jdk = manager.parse_jdk_dir_name(Path::new("temurin-17")).unwrap();
+        assert_eq!(jdk.distribution, "temurin");
+        assert_eq!(jdk.version, "17");
 
         // Invalid format tests
         assert!(manager.parse_jdk_dir_name(Path::new("invalid")).is_none());
         assert!(
             manager
-                .parse_jdk_dir_name(Path::new("no-version-unknown-arch"))
+                .parse_jdk_dir_name(Path::new("no-hyphen-here"))
                 .is_none()
         );
-        assert!(
-            manager
-                .parse_jdk_dir_name(Path::new("temurin-x64"))
-                .is_none()
-        ); // No version
+        assert!(manager.parse_jdk_dir_name(Path::new("temurin")).is_none()); // No version
     }
 
     #[test]
@@ -653,9 +649,71 @@ min_disk_space_mb = 1024
         // The check_disk_space function is private, so we test it indirectly
         // through prepare_jdk_installation which calls it
         let distribution = Distribution::Temurin;
-        let result = manager.prepare_jdk_installation(&distribution, "21.0.1", "x64");
+        let result = manager.prepare_jdk_installation(&distribution, "21.0.1+35.1");
 
         // Should succeed on most systems as temp directories usually have space
         assert!(result.is_ok() || matches!(result.unwrap_err(), KopiError::DiskSpaceError(_)));
+    }
+
+    #[test]
+    fn test_save_jdk_metadata() {
+        let (manager, _temp) = create_test_storage_manager();
+        let distribution = Distribution::Temurin;
+
+        // Create a sample Package for testing
+        let package = crate::api::Package {
+            id: "test-package-id".to_string(),
+            archive_type: "tar.gz".to_string(),
+            distribution: "temurin".to_string(),
+            major_version: 21,
+            java_version: "21.0.1".to_string(),
+            distribution_version: "21.0.1+35.1".to_string(),
+            jdk_version: 21,
+            directly_downloadable: true,
+            filename: "OpenJDK21U-jdk_x64_linux_hotspot_21.0.1_35.1.tar.gz".to_string(),
+            links: crate::api::Links {
+                pkg_download_redirect: "https://example.com/download".to_string(),
+                pkg_info_uri: Some("https://example.com/info".to_string()),
+            },
+            free_use_in_production: true,
+            tck_tested: "yes".to_string(),
+            size: 190000000,
+            operating_system: "linux".to_string(),
+            lib_c_type: Some("glibc".to_string()),
+        };
+
+        // Create the jdks directory first (as would happen during setup)
+        let jdks_dir = manager.jdks_dir();
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        // Get the JDK installation path
+        let _jdk_dir = manager.jdk_install_path(&distribution, "21.0.1+35.1");
+
+        // Save the metadata
+        let result = manager.save_jdk_metadata(&distribution, "21.0.1+35.1", &package);
+        assert!(result.is_ok());
+
+        // Verify the metadata file was created
+        let metadata_path = jdks_dir.join("temurin-21.0.1+35.1.meta.json");
+        assert!(metadata_path.exists());
+
+        // Read and verify the content
+        let content = fs::read_to_string(&metadata_path).unwrap();
+
+        // Verify the file ends with a newline
+        assert!(
+            content.ends_with('\n'),
+            "Metadata file should end with a newline"
+        );
+
+        let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
+
+        assert_eq!(parsed["id"], "test-package-id");
+        assert_eq!(parsed["distribution"], "temurin");
+        assert_eq!(parsed["java_version"], "21.0.1");
+        assert_eq!(
+            parsed["links"]["pkg_download_redirect"],
+            "https://example.com/download"
+        );
     }
 }

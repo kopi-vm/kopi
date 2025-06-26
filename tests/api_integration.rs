@@ -48,7 +48,7 @@ fn test_get_packages_with_query_real_api() {
         package_type: Some("jdk".to_string()),
         operating_system: Some("linux".to_string()),
         archive_type: Some("tar.gz".to_string()),
-        latest: Some(true),
+        latest: Some("per_version".to_string()),
         directly_downloadable: Some(true),
         lib_c_type: None,
     };

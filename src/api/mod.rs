@@ -77,8 +77,8 @@ impl ApiClient {
                         request = request.param("archive_type", archive_type);
                         query_params.push(format!("archive_type={}", archive_type));
                     }
-                    if let Some(latest) = q.latest {
-                        request = request.param("latest", latest.to_string());
+                    if let Some(ref latest) = q.latest {
+                        request = request.param("latest", latest);
                         query_params.push(format!("latest={}", latest));
                     }
                     if let Some(directly_downloadable) = q.directly_downloadable {
@@ -294,7 +294,7 @@ pub struct PackageQuery {
     pub package_type: Option<String>,
     pub operating_system: Option<String>,
     pub archive_type: Option<String>,
-    pub latest: Option<bool>,
+    pub latest: Option<String>,
     pub directly_downloadable: Option<bool>,
     pub lib_c_type: Option<String>,
 }
@@ -369,7 +369,7 @@ mod tests {
             package_type: Some("jdk".to_string()),
             operating_system: Some("linux".to_string()),
             archive_type: Some("tar.gz".to_string()),
-            latest: Some(true),
+            latest: Some("per_version".to_string()),
             directly_downloadable: Some(true),
             lib_c_type: None,
         };

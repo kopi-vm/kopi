@@ -7,6 +7,7 @@ pub struct JdkMetadata {
     pub id: String,
     pub distribution: String,
     pub version: Version,
+    pub distribution_version: String,
     pub architecture: Architecture,
     pub operating_system: OperatingSystem,
     pub package_type: PackageType,

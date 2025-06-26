@@ -88,19 +88,20 @@ impl InstallCommand {
             version_request.version
         );
 
-        // Check if already installed
-        let arch = self.get_current_architecture();
-        let installation_dir = self.storage_manager.jdk_install_path(
-            &distribution,
-            &version_request.version.to_string(),
-            &arch,
-        );
+        // Find matching JDK package first to get the actual distribution_version
+        let package = self.find_matching_package(&distribution, &version_request.version)?;
+        let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
+
+        // Check if already installed using the actual distribution_version
+        let installation_dir = self
+            .storage_manager
+            .jdk_install_path(&distribution, &jdk_metadata.distribution_version);
 
         if installation_dir.exists() && !force {
             return Err(KopiError::AlreadyExists(format!(
                 "{} {} is already installed. Use --force to reinstall.",
                 distribution.name(),
-                version_request.version
+                jdk_metadata.distribution_version
             )));
         }
 
@@ -108,41 +109,38 @@ impl InstallCommand {
             println!(
                 "Would install {} {} to {}",
                 distribution.name(),
-                version_request.version,
+                jdk_metadata.distribution_version,
                 installation_dir.display()
             );
             return Ok(());
         }
 
-        // Find matching JDK package
-        let package = self.find_matching_package(&distribution, &version_request.version)?;
-
         // Show the actual package found (for debugging purposes)
-        if package.distribution.to_lowercase() != distribution.id() {
+        if jdk_metadata.distribution.to_lowercase() != distribution.id() {
             eprintln!(
                 "Warning: Requested {} but found {} package",
                 distribution.name(),
-                package.distribution
+                jdk_metadata.distribution
             );
         }
         println!(
             "Downloading {} {} (id: {})...",
-            package.distribution, package.version, package.id
+            jdk_metadata.distribution, jdk_metadata.version, jdk_metadata.id
         );
 
         // Check disk space (convert bytes to MB)
-        let _required_space_mb = if package.size > 0 {
-            package.size / 1024 / 1024
+        let _required_space_mb = if jdk_metadata.size > 0 {
+            jdk_metadata.size / 1024 / 1024
         } else {
             500 // Default to 500MB if size is unknown
         };
 
         // Download JDK
-        let download_result = download_jdk(&package, no_progress, timeout_secs)?;
+        let download_result = download_jdk(&jdk_metadata, no_progress, timeout_secs)?;
         let download_path = download_result.path();
 
         // Verify checksum
-        if let Some(checksum) = &package.checksum {
+        if let Some(checksum) = &jdk_metadata.checksum {
             println!("Verifying checksum...");
             verify_checksum(download_path, checksum)?;
         }
@@ -151,17 +149,11 @@ impl InstallCommand {
         let context = if force && installation_dir.exists() {
             // Remove existing installation first
             self.storage_manager.remove_jdk(&installation_dir)?;
-            self.storage_manager.prepare_jdk_installation(
-                &distribution,
-                &version_request.version.to_string(),
-                &arch,
-            )?
+            self.storage_manager
+                .prepare_jdk_installation(&distribution, &jdk_metadata.distribution_version)?
         } else {
-            self.storage_manager.prepare_jdk_installation(
-                &distribution,
-                &version_request.version.to_string(),
-                &arch,
-            )?
+            self.storage_manager
+                .prepare_jdk_installation(&distribution, &jdk_metadata.distribution_version)?
         };
 
         // Extract archive to temp directory
@@ -171,13 +163,20 @@ impl InstallCommand {
         // Finalize installation
         let final_path = self.storage_manager.finalize_installation(context)?;
 
+        // Save metadata JSON file
+        self.storage_manager.save_jdk_metadata(
+            &distribution,
+            &jdk_metadata.distribution_version,
+            &package,
+        )?;
+
         // Clean up is automatic when download_result goes out of scope
         // The TempDir will be cleaned up automatically
 
         println!(
             "Successfully installed {} {} to {}",
             distribution.name(),
-            version_request.version,
+            jdk_metadata.distribution_version,
             final_path.display()
         );
 
@@ -197,7 +196,7 @@ impl InstallCommand {
         &self,
         distribution: &Distribution,
         version: &crate::models::jdk::Version,
-    ) -> Result<JdkMetadata> {
+    ) -> Result<crate::api::Package> {
         // Build query for the API
         let arch = self.get_current_architecture();
         let os = self.get_current_os();
@@ -209,7 +208,7 @@ impl InstallCommand {
             architecture: Some(arch.clone()),
             operating_system: Some(os.clone()),
             package_type: Some("jdk".to_string()),
-            latest: Some(true),
+            latest: Some("per_version".to_string()),
             directly_downloadable: Some(true),
             lib_c_type: Some(lib_c_type.to_string()),
             ..Default::default()
@@ -275,7 +274,7 @@ impl InstallCommand {
                 ))
             })?;
 
-        self.convert_package_to_metadata(package)
+        Ok(package)
     }
 
     fn get_current_os(&self) -> String {
@@ -309,8 +308,9 @@ impl InstallCommand {
 
         Ok(JdkMetadata {
             id: package.id,
-            distribution: package.distribution,
+            distribution: package.distribution.clone(),
             version: crate::models::jdk::Version::from_str(&package.java_version)?,
+            distribution_version: package.distribution_version,
             architecture: crate::models::jdk::Architecture::from_str(&arch)?,
             operating_system: crate::models::jdk::OperatingSystem::from_str(&os)?,
             package_type: crate::models::jdk::PackageType::Jdk,
