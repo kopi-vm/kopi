@@ -8,6 +8,7 @@ use crate::platform::{get_foojay_libc_type, get_platform_description, matches_fo
 use crate::security::verify_checksum;
 use crate::storage::StorageManager;
 use crate::version::parser::VersionParser;
+use log::{debug, info, trace, warn};
 use std::str::FromStr;
 
 pub struct InstallCommand {
@@ -71,8 +72,15 @@ impl InstallCommand {
         no_progress: bool,
         timeout_secs: Option<u64>,
     ) -> Result<()> {
+        info!("Installing JDK {}", version_spec);
+        debug!(
+            "Install options: force={}, dry_run={}, no_progress={}, timeout={:?}",
+            force, dry_run, no_progress, timeout_secs
+        );
+
         // Parse version specification
         let version_request = VersionParser::parse(version_spec)?;
+        trace!("Parsed version request: {:?}", version_request);
 
         // Validate version semantics
         VersionParser::validate_version_semantics(&version_request.version)?;
@@ -89,7 +97,13 @@ impl InstallCommand {
         );
 
         // Find matching JDK package first to get the actual distribution_version
+        debug!(
+            "Searching for {} version {}",
+            distribution.name(),
+            version_request.version
+        );
         let package = self.find_matching_package(&distribution, &version_request.version)?;
+        trace!("Found package: {:?}", package);
         let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
 
         // Check if already installed using the actual distribution_version
@@ -117,8 +131,8 @@ impl InstallCommand {
 
         // Show the actual package found (for debugging purposes)
         if jdk_metadata.distribution.to_lowercase() != distribution.id() {
-            eprintln!(
-                "Warning: Requested {} but found {} package",
+            warn!(
+                "Requested {} but found {} package",
                 distribution.name(),
                 jdk_metadata.distribution
             );
@@ -136,8 +150,10 @@ impl InstallCommand {
         };
 
         // Download JDK
+        info!("Downloading from {}", jdk_metadata.download_url);
         let download_result = download_jdk(&jdk_metadata, no_progress, timeout_secs)?;
         let download_path = download_result.path();
+        debug!("Downloaded to {:?}", download_path);
 
         // Verify checksum
         if let Some(checksum) = &jdk_metadata.checksum {
@@ -158,10 +174,14 @@ impl InstallCommand {
 
         // Extract archive to temp directory
         println!("Extracting archive...");
+        info!("Extracting archive to {:?}", context.temp_path);
         extract_archive(download_path, &context.temp_path)?;
+        debug!("Extraction completed");
 
         // Finalize installation
+        debug!("Finalizing installation");
         let final_path = self.storage_manager.finalize_installation(context)?;
+        info!("JDK installed to {:?}", final_path);
 
         // Save metadata JSON file
         self.storage_manager.save_jdk_metadata(
@@ -218,9 +238,9 @@ impl InstallCommand {
         let packages = self.api_client.get_packages(Some(query))?;
 
         // Debug: Log the response
-        eprintln!("API returned {} packages", packages.len());
+        debug!("API returned {} packages", packages.len());
         for (i, pkg) in packages.iter().enumerate() {
-            eprintln!(
+            trace!(
                 "Package[{}]: distribution={}, version={}, filename={}, archive_type={}, os={}, id={}",
                 i,
                 pkg.distribution,

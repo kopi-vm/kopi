@@ -6,6 +6,10 @@ use kopi::error::Result;
 #[command(name = "kopi")]
 #[command(author, version, about = "JDK version management tool", long_about = None)]
 struct Cli {
+    /// Increase verbosity (-v info, -vv debug, -vvv trace)
+    #[arg(short, long, action = clap::ArgAction::Count, global = true)]
+    verbose: u8,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -71,9 +75,28 @@ enum Commands {
     },
 }
 
+fn setup_logger(cli: &Cli) {
+    // CLI flags set the default level
+    let default_level = match cli.verbose {
+        0 => "warn",  // Default: only warnings and errors
+        1 => "info",  // -v: show info messages
+        2 => "debug", // -vv: show debug messages
+        _ => "trace", // -vvv or more: show everything
+    };
+
+    // RUST_LOG can override if set
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(default_level))
+        .format_timestamp(None) // No timestamps for CLI output
+        .format_module_path(false) // Cleaner output
+        .init();
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    // Initialize logger based on CLI flags and environment
+    setup_logger(&cli);
 
     match cli.command {
         Commands::Install {

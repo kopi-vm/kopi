@@ -1,5 +1,6 @@
 use crate::error::{KopiError, Result};
 use attohttpc::{RequestBuilder, Session};
+use log::{debug, trace};
 use retry::{OperationResult, delay::Exponential, retry_with_index};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -98,7 +99,7 @@ impl ApiClient {
                     } else {
                         format!("{}?{}", url, query_params.join("&"))
                     };
-                    eprintln!("API Request: {}", full_url);
+                    debug!("API Request: {}", full_url);
                 }
 
                 request
@@ -138,17 +139,17 @@ impl ApiClient {
         // Try each API version in order
         let mut last_error = None;
         for version in API_VERSIONS {
-            eprintln!("Trying API version: {}", version);
+            debug!("Trying API version: {}", version);
             match operation(version) {
                 Ok(result) => {
-                    eprintln!("API version {} succeeded", version);
+                    debug!("API version {} succeeded", version);
                     // Cache the working version for future requests
                     // Note: In a real implementation, we'd want to make this mutable
                     // or use interior mutability
                     return Ok(result);
                 }
                 Err(e) => {
-                    eprintln!("API version {} failed: {:?}", version, e);
+                    debug!("API version {} failed: {:?}", version, e);
                     last_error = Some(e);
                 }
             }
@@ -225,8 +226,8 @@ impl ApiClient {
                                     match serde_json::from_value::<T>(result.clone()) {
                                         Ok(data) => OperationResult::Ok(data),
                                         Err(e) => {
-                                            eprintln!("Failed to parse 'result' field: {}", e);
-                                            eprintln!("Result field: {:?}", result);
+                                            debug!("Failed to parse 'result' field: {}", e);
+                                            trace!("Result field: {:?}", result);
                                             OperationResult::Err(KopiError::MetadataFetch(format!(
                                                 "Failed to parse wrapped response: {}",
                                                 e
@@ -238,8 +239,8 @@ impl ApiClient {
                                     match serde_json::from_value::<T>(json_value) {
                                         Ok(data) => OperationResult::Ok(data),
                                         Err(e) => {
-                                            eprintln!("JSON parse error: {}", e);
-                                            eprintln!(
+                                            debug!("JSON parse error: {}", e);
+                                            trace!(
                                                 "Response body (first 500 chars): {}",
                                                 &body.chars().take(500).collect::<String>()
                                             );
@@ -252,7 +253,7 @@ impl ApiClient {
                                 }
                             }
                             Err(e) => {
-                                eprintln!("Failed to parse as JSON: {}", e);
+                                debug!("Failed to parse as JSON: {}", e);
                                 OperationResult::Err(KopiError::MetadataFetch(format!(
                                     "Invalid JSON response: {}",
                                     e

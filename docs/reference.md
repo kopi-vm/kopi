@@ -275,6 +275,69 @@ Kopi supports flexible version specifications:
 - `latest` - Latest available version
 - `latest --lts` - Latest LTS version
 
+## Debugging and Logging
+
+Kopi provides flexible logging controls for troubleshooting and debugging:
+
+### Verbosity Levels
+
+Use the `-v/--verbose` flag (can be specified multiple times) with any command:
+
+```bash
+kopi install 21              # Default: warnings and errors only
+kopi install 21 -v           # Info level: show major operations
+kopi install 21 -vv          # Debug level: detailed flow information
+kopi install 21 -vvv         # Trace level: very detailed debugging
+```
+
+The verbose flag is global and works with all commands:
+
+```bash
+kopi list -v                 # Show info logs for list command
+kopi use 21 -vv              # Debug version switching
+kopi current -vvv            # Trace current version detection
+```
+
+### Environment Variable Control
+
+For persistent logging or module-specific debugging, use the `RUST_LOG` environment variable:
+
+```bash
+# Set logging level for entire session
+export RUST_LOG=debug
+kopi install 21
+
+# Debug specific modules
+RUST_LOG=kopi::download=debug kopi install 21        # Debug downloads only
+RUST_LOG=kopi::api=trace kopi list --remote          # Trace API calls
+RUST_LOG=kopi::storage=debug kopi prune              # Debug storage operations
+
+# Multiple module filters
+RUST_LOG=kopi::download=debug,kopi::security=trace kopi install 21
+```
+
+### Common Debugging Scenarios
+
+**Installation Issues:**
+```bash
+kopi install 21 -vv          # See download URLs, checksums, extraction paths
+```
+
+**Version Resolution Problems:**
+```bash
+RUST_LOG=kopi::version=debug kopi install temurin@21  # Debug version parsing
+```
+
+**API Communication:**
+```bash
+RUST_LOG=kopi::api=debug kopi list --remote           # Debug foojay.io API calls
+```
+
+**Storage and Disk Space:**
+```bash
+RUST_LOG=kopi::storage=debug kopi install 21          # Debug installation paths
+```
+
 ## Environment Variables
 
 Kopi respects the following environment variables:
@@ -282,5 +345,6 @@ Kopi respects the following environment variables:
 - `KOPI_HOME` - Override default kopi home directory (default: `~/.kopi`)
 - `JAVA_HOME` - Set by kopi when switching JDK versions
 - `PATH` - Modified by kopi to include JDK bin directory
+- `RUST_LOG` - Control logging verbosity (see Debugging and Logging section)
 
 Note: Minimum disk space requirement is configured via `~/.kopi/config.toml` (see Global Config section above)
