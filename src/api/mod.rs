@@ -155,7 +155,7 @@ impl ApiClient {
         self.execute_with_version_fallback(|version| {
             let url = format!("{}/{}/ids/{}", self.base_url, version, package_id);
             debug!("Fetching package info for ID: {}", package_id);
-            
+
             // Execute the request and get the raw JSON response
             let result = retry_with_index(
                 Exponential::from_millis(INITIAL_BACKOFF_MS).take(MAX_RETRIES),
@@ -344,7 +344,7 @@ impl ApiClient {
                     if let Some(retry_after) = response.headers().get("Retry-After") {
                         if let Ok(retry_str) = retry_after.to_str() {
                             if let Ok(seconds) = retry_str.parse::<u64>() {
-                                std::thread::sleep(Duration::from_secs(seconds));
+                                thread::sleep(Duration::from_secs(seconds));
                             }
                         }
                     }
