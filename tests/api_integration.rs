@@ -104,6 +104,11 @@ mod mock_tests {
                 "id": "temurin",
                 "name": "Eclipse Temurin",
                 "api_parameter": "temurin",
+                "maintained": true,
+                "available": true,
+                "build_of_openjdk": true,
+                "build_of_graalvm": false,
+                "official_uri": "https://adoptium.net/temurin/releases",
                 "free_use_in_production": true,
                 "synonyms": ["adoptopenjdk", "adopt"],
                 "versions": ["8", "11", "17", "21"]
@@ -112,6 +117,11 @@ mod mock_tests {
                 "id": "corretto",
                 "name": "Amazon Corretto",
                 "api_parameter": "corretto",
+                "maintained": true,
+                "available": true,
+                "build_of_openjdk": true,
+                "build_of_graalvm": false,
+                "official_uri": "https://aws.amazon.com/corretto/",
                 "free_use_in_production": true,
                 "synonyms": [],
                 "versions": ["8", "11", "17", "21"]
@@ -122,6 +132,10 @@ mod mock_tests {
         assert_eq!(distributions.len(), 2);
         assert_eq!(distributions[0].api_parameter, "temurin");
         assert_eq!(distributions[1].api_parameter, "corretto");
+        assert!(distributions[0].maintained);
+        assert!(distributions[0].available);
+        assert!(distributions[0].build_of_openjdk);
+        assert!(!distributions[0].build_of_graalvm);
     }
 
     #[test]
