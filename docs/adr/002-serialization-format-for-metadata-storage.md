@@ -368,17 +368,20 @@ Split metadata into multiple files with an index.
 **Implementation:**
 ```rust
 use std::path::PathBuf;
-use tokio::fs;
+use std::fs;
 
 struct HybridCache {
     cache_dir: PathBuf,
-    index: RwLock<Index>,
 }
 
 impl HybridCache {
-    async fn load_distribution(&self, name: &str) -> Result<Distribution> {
-        // Check index
-        let index = self.index.read().await;
+    fn load_distribution(&self, name: &str) -> Result<Distribution> {
+        // Load index
+        let index_path = self.cache_dir.join("index.json");
+        let index_data = fs::read_to_string(&index_path)?;
+        let index: Index = serde_json::from_str(&index_data)?;
+        
+        // Check if distribution exists
         let meta = index.distributions.get(name)
             .ok_or(Error::NotFound)?;
         
@@ -387,27 +390,36 @@ impl HybridCache {
             .join("distributions")
             .join(&meta.file);
         
-        let data = fs::read_to_string(&path).await?;
+        let data = fs::read_to_string(&path)?;
         let dist: Distribution = serde_json::from_str(&data)?;
         
         Ok(dist)
     }
     
-    async fn update_distribution(
+    fn update_distribution(
         &self,
         name: &str,
         data: Distribution,
     ) -> Result<()> {
+        // Ensure directories exist
+        fs::create_dir_all(self.cache_dir.join("distributions"))?;
+        
+        // Write distribution file
         let path = self.cache_dir
             .join("distributions")
             .join(format!("{}.json", name));
-        
-        // Write distribution file
         let json = serde_json::to_string_pretty(&data)?;
-        fs::write(&path, json).await?;
+        fs::write(&path, json)?;
         
         // Update index
-        let mut index = self.index.write().await;
+        let index_path = self.cache_dir.join("index.json");
+        let mut index = if index_path.exists() {
+            let data = fs::read_to_string(&index_path)?;
+            serde_json::from_str(&data)?
+        } else {
+            Index::new()
+        };
+        
         index.distributions.insert(name.to_string(), DistributionMeta {
             file: format!("{}.json", name),
             last_updated: Utc::now(),
@@ -416,7 +428,8 @@ impl HybridCache {
         });
         
         // Save index
-        self.save_index(&index).await?;
+        let index_json = serde_json::to_string_pretty(&index)?;
+        fs::write(&index_path, index_json)?;
         
         Ok(())
     }
@@ -491,11 +504,12 @@ pub struct Architecture {
 }
 ```
 
-#### Phase 2: Hybrid Approach
+#### Phase 2: Hybrid Approach (if needed)
 - Keep same data structures
 - Split into index + distribution files
-- Add async/parallel loading
+- Load only required distributions
 - Implement incremental updates
+- Note: Only implement if single JSON file becomes a performance issue
 
 ### Migration Strategy
 
@@ -518,11 +532,20 @@ pub struct Architecture {
     └── jdks/
 ```
 
-### Cache Invalidation Strategy
-- Add `max_age` configuration (default: 24 hours)
-- `kopi refresh` command forces update
-- Check age on each metadata access
-- Background refresh if stale but return cached data
+### Cache Management Strategy
+- **No automatic expiration** - cache persists indefinitely
+- **Explicit refresh only** - users control when to update
+- `kopi cache refresh` command fetches latest metadata
+- `kopi cache info` shows cache location and last updated time
+- `kopi cache clear` removes cached data
+- **Lazy loading** - fetch from API only when requested version not in cache
+
+This approach is ideal for CLI tools because:
+- JDK metadata rarely changes (new versions added ~monthly)
+- Users explicitly choose when they need updates
+- Maximizes offline capability
+- Eliminates unnecessary network calls
+- Simplifies implementation (no TTL logic needed)
 
 ## Consequences
 

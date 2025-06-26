@@ -167,46 +167,82 @@ This document outlines the phased implementation plan for the `kopi install` com
 - `/docs/adr/002-serialization-format-for-metadata-storage.md` - Caching and serialization decisions
 
 ### Deliverables
-1. **Cache Manager** (`/src/cache/mod.rs`)
-   - Metadata caching in `~/.kopi/cache/metadata.json`
-   - Cache invalidation logic (TTL-based)
-   - Offline mode support
-   - Cache size limits (default 100MB)
-   - LRU eviction policy
-   - File-based locking for concurrent access
-   - Atomic cache updates
+1. **Simple Cache Functions** (`/src/cache/mod.rs`)
+   - Synchronous file-based caching in `~/.kopi/cache/metadata.json`
+   - Basic load/save operations using standard file I/O
+   - No automatic expiration - cache persists until explicitly refreshed
+   - Offline mode support (use cache when network unavailable)
+   - Simple JSON serialization with serde_json
+   
+   Example implementation approach:
+   ```rust
+   pub fn load_cache(path: &Path) -> Result<MetadataCache> {
+       if !path.exists() {
+           return Ok(MetadataCache::new());
+       }
+       let contents = fs::read_to_string(path)?;
+       Ok(serde_json::from_str(&contents)?)
+   }
+   
+   pub fn save_cache(path: &Path, cache: &MetadataCache) -> Result<()> {
+       fs::create_dir_all(path.parent().unwrap())?;
+       let json = serde_json::to_string_pretty(cache)?;
+       fs::write(path, json)?;
+       Ok(())
+   }
+   
+   pub fn get_metadata(requested_version: Option<&str>) -> Result<MetadataCache> {
+       let cache_path = get_cache_path();
+       
+       // Use cache if it exists
+       if cache_path.exists() {
+           let cache = load_cache(&cache_path)?;
+           
+           // If specific version requested and not in cache, try API
+           if let Some(version) = requested_version {
+               if !cache.has_version(version) {
+                   return fetch_and_cache_metadata();
+               }
+           }
+           
+           return Ok(cache);
+       }
+       
+       // No cache, fetch from API
+       fetch_and_cache_metadata()
+   }
+   ```
 
-2. **Lock Manager** (`/src/lock/mod.rs`)
-   - Process-safe file locking
-   - Lock timeout handling
-   - Stale lock detection and cleanup
-   - Lock acquisition with retry
+2. **Cache Refresh Command** (`/src/commands/cache.rs`)
+   - `kopi cache refresh` - Explicitly update metadata from API
+   - `kopi cache info` - Show cache location and age
+   - `kopi cache clear` - Remove cached data
 
 3. **Cache Integration** (update existing modules)
-   - Check cache before API calls
-   - Update cache after successful fetches
-   - Handle stale cache scenarios
-   - Garbage collection for old entries
+   - Always use cache when available
+   - Only fetch from API when:
+     - Cache doesn't exist
+     - Requested version not in cache
+     - User explicitly runs `cache refresh`
+   - Keep implementation simple and synchronous
 
-4. **Unit Tests** (use mocks extensively)
-   - `src/cache/mod.rs` - Cache read/write, expiry, invalidation tests (mock file system)
-   - `src/lock/mod.rs` - Lock acquisition, timeout, cleanup tests (mock lock mechanisms)
-   - Cache corruption handling tests (simulate corruption with mocks)
-   - Concurrent access tests (control concurrency with mocks)
+4. **Unit Tests** (use mocks for file system)
+   - `src/cache/mod.rs` - Cache read/write tests
+   - Error handling tests (missing file, invalid JSON)
+   - Version lookup tests
 
 5. **Integration Tests** (`/tests/cache_integration.rs`) (no mocks)
-   - Full caching workflow tests (cache to actual file system)
-   - Offline mode simulation (actually disconnect network)
-   - Cache performance benchmarks (measure real I/O performance)
-   - Multi-process cache access (verify real inter-process contention)
+   - Full caching workflow tests with actual file system
+   - Offline mode simulation
+   - Cache file corruption recovery
 
 ### Success Criteria
-- Second install attempt uses cached metadata
-- Works offline with cached data
-- Cache updates periodically (24-hour TTL)
-- No data corruption with concurrent access
-- Cache size stays within limits
-- Stale locks are automatically cleaned up
+- Second install attempt uses cached metadata (no network calls)
+- Works offline with cached data indefinitely
+- User controls when to refresh cache via explicit command
+- Simple, maintainable implementation without unnecessary complexity
+- No async/tokio dependencies
+- No automatic TTL or expiration logic
 
 ## Phase 5: Integration Testing and Error Handling
 
