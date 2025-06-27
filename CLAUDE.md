@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Documentation Language Policy
+
+All documentation output in this project must be written in English, including:
+- Code comments
+- Commit messages
+- Architecture Decision Records (ADRs)
+- README files
+- API documentation
+- Error messages
+- User-facing documentation
+- Test descriptions
+- TODO comments
+- Any other written documentation
+
 ## Project Overview
 
 Kopi is a JDK version management tool written in Rust that integrates with your shell to seamlessly switch between different Java Development Kit versions. It fetches JDK metadata from foojay.io and provides a simple, fast interface similar to tools like volta, nvm, and pyenv.
