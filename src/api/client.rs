@@ -1,0 +1,323 @@
+use crate::api::models::*;
+use crate::api::query::PackageQuery;
+use crate::error::{KopiError, Result};
+use attohttpc::{RequestBuilder, Session};
+use log::{debug, trace};
+use retry::{OperationResult, delay::Exponential, retry_with_index};
+use std::thread;
+use std::time::Duration;
+
+const FOOJAY_API_BASE: &str = "https://api.foojay.io/disco";
+const API_VERSION: &str = "v3.0";
+const USER_AGENT: &str = concat!("kopi/", env!("CARGO_PKG_VERSION"));
+const DEFAULT_TIMEOUT: u64 = 30;
+const MAX_RETRIES: usize = 3;
+const INITIAL_BACKOFF_MS: u64 = 1000;
+
+#[derive(Debug, Clone)]
+pub struct ApiClient {
+    pub(crate) session: Session,
+    pub(crate) base_url: String,
+}
+
+impl ApiClient {
+    pub fn new() -> Self {
+        let mut session = Session::new();
+        session.header("User-Agent", USER_AGENT);
+        session.timeout(Duration::from_secs(DEFAULT_TIMEOUT));
+
+        Self {
+            session,
+            base_url: FOOJAY_API_BASE.to_string(),
+        }
+    }
+
+    pub fn with_base_url(mut self, base_url: String) -> Self {
+        self.base_url = base_url;
+        self
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.session.timeout(timeout);
+        self
+    }
+
+    pub fn fetch_all_metadata(&self) -> Result<ApiMetadata> {
+        // Fetch distributions
+        let distributions = self.get_distributions()?;
+
+        // For each distribution, fetch available packages
+        let mut metadata = ApiMetadata {
+            distributions: Vec::new(),
+        };
+
+        for dist in distributions {
+            let query = PackageQuery {
+                distribution: Some(dist.api_parameter.clone()),
+                latest: Some("available".to_string()),
+                directly_downloadable: Some(true),
+                ..Default::default()
+            };
+
+            let packages = self.get_packages(Some(query))?;
+
+            metadata.distributions.push(DistributionMetadata {
+                distribution: dist,
+                packages,
+            });
+        }
+
+        Ok(metadata)
+    }
+
+    pub fn get_packages(&self, query: Option<PackageQuery>) -> Result<Vec<Package>> {
+        let url = format!("{}/{}/packages", self.base_url, API_VERSION);
+        let query = query.clone();
+
+        self.execute_with_retry(move || {
+            let mut request = self.session.get(&url);
+
+            // Build query parameters for logging
+            let mut query_params = Vec::new();
+
+            if let Some(ref q) = query {
+                if let Some(ref version) = q.version {
+                    request = request.param("version", version);
+                    query_params.push(format!("version={}", version));
+                }
+                if let Some(ref distribution) = q.distribution {
+                    request = request.param("distribution", distribution);
+                    query_params.push(format!("distribution={}", distribution));
+                }
+                if let Some(ref architecture) = q.architecture {
+                    request = request.param("architecture", architecture);
+                    query_params.push(format!("architecture={}", architecture));
+                }
+                if let Some(ref package_type) = q.package_type {
+                    request = request.param("package_type", package_type);
+                    query_params.push(format!("package_type={}", package_type));
+                }
+                if let Some(ref operating_system) = q.operating_system {
+                    request = request.param("operating_system", operating_system);
+                    query_params.push(format!("operating_system={}", operating_system));
+                }
+                if let Some(ref archive_type) = q.archive_type {
+                    request = request.param("archive_type", archive_type);
+                    query_params.push(format!("archive_type={}", archive_type));
+                }
+                if let Some(ref latest) = q.latest {
+                    request = request.param("latest", latest);
+                    query_params.push(format!("latest={}", latest));
+                }
+                if let Some(directly_downloadable) = q.directly_downloadable {
+                    request =
+                        request.param("directly_downloadable", directly_downloadable.to_string());
+                    query_params.push(format!("directly_downloadable={}", directly_downloadable));
+                }
+                if let Some(ref lib_c_type) = q.lib_c_type {
+                    request = request.param("lib_c_type", lib_c_type);
+                    query_params.push(format!("lib_c_type={}", lib_c_type));
+                }
+
+                // Log the complete URL with query parameters
+                let full_url = if query_params.is_empty() {
+                    url.clone()
+                } else {
+                    format!("{}?{}", url, query_params.join("&"))
+                };
+                debug!("API Request: {}", full_url);
+            }
+
+            request
+        })
+    }
+
+    pub fn get_distributions(&self) -> Result<Vec<Distribution>> {
+        let url = format!("{}/{}/distributions", self.base_url, API_VERSION);
+        self.execute_with_retry(move || self.session.get(&url))
+    }
+
+    pub fn get_major_versions(&self) -> Result<Vec<MajorVersion>> {
+        let url = format!("{}/{}/major_versions", self.base_url, API_VERSION);
+        self.execute_with_retry(move || self.session.get(&url))
+    }
+
+    pub fn get_package_by_id(&self, package_id: &str) -> Result<PackageInfo> {
+        // Special handling for package by ID endpoint which returns an array
+        let url = format!("{}/{}/ids/{}", self.base_url, API_VERSION, package_id);
+        debug!("Fetching package info for ID: {}", package_id);
+        let package_id_copy = package_id.to_string();
+
+        // Use the common retry logic but handle the array response
+        self.execute_with_retry_raw(
+            move || self.session.get(&url),
+            move |body| match serde_json::from_str::<serde_json::Value>(&body) {
+                Ok(json_value) => {
+                    // API v3.0 always wraps responses with "result" field
+                    if let Some(result) = json_value.get("result") {
+                        // The result is an array of PackageInfo
+                        match serde_json::from_value::<Vec<PackageInfo>>(result.clone()) {
+                            Ok(packages) => {
+                                if let Some(package) = packages.into_iter().next() {
+                                    Ok(package)
+                                } else {
+                                    Err(KopiError::MetadataFetch(format!(
+                                        "No package info found for ID: {} (API v{})",
+                                        package_id_copy, API_VERSION
+                                    )))
+                                }
+                            }
+                            Err(e) => {
+                                debug!("Failed to parse 'result' field as array: {}", e);
+                                trace!("Result field: {:?}", result);
+                                Err(KopiError::MetadataFetch(format!(
+                                    "Failed to parse API v{} response: {}",
+                                    API_VERSION, e
+                                )))
+                            }
+                        }
+                    } else {
+                        Err(KopiError::MetadataFetch(format!(
+                            "Invalid API v{} response: missing 'result' field",
+                            API_VERSION
+                        )))
+                    }
+                }
+                Err(e) => {
+                    debug!("Failed to parse as JSON: {}", e);
+                    Err(KopiError::MetadataFetch(format!(
+                        "Invalid JSON response from API v{}: {}",
+                        API_VERSION, e
+                    )))
+                }
+            },
+        )
+    }
+
+    fn execute_with_retry<T, F>(&self, request_builder: F) -> Result<T>
+    where
+        T: for<'de> serde::Deserialize<'de>,
+        F: Fn() -> RequestBuilder,
+    {
+        self.execute_with_retry_raw(request_builder, |body| {
+            // Parse JSON response
+            match serde_json::from_str::<serde_json::Value>(&body) {
+                Ok(json_value) => {
+                    // API v3.0 always wraps responses with "result" field
+                    if let Some(result) = json_value.get("result") {
+                        // Try to deserialize the result field
+                        match serde_json::from_value::<T>(result.clone()) {
+                            Ok(data) => Ok(data),
+                            Err(e) => {
+                                debug!("Failed to parse 'result' field: {}", e);
+                                trace!("Result field: {:?}", result);
+                                Err(KopiError::MetadataFetch(format!(
+                                    "Failed to parse API v{} response: {}",
+                                    API_VERSION, e
+                                )))
+                            }
+                        }
+                    } else {
+                        Err(KopiError::MetadataFetch(format!(
+                            "Invalid API v{} response: missing 'result' field",
+                            API_VERSION
+                        )))
+                    }
+                }
+                Err(e) => {
+                    debug!("Failed to parse as JSON: {}", e);
+                    Err(KopiError::MetadataFetch(format!(
+                        "Invalid JSON response from API v{}: {}",
+                        API_VERSION, e
+                    )))
+                }
+            }
+        })
+    }
+
+    fn execute_with_retry_raw<T, F, P>(&self, request_builder: F, parser: P) -> Result<T>
+    where
+        F: Fn() -> RequestBuilder,
+        P: Fn(String) -> Result<T>,
+    {
+        let result = retry_with_index(
+            Exponential::from_millis(INITIAL_BACKOFF_MS).take(MAX_RETRIES),
+            |current_try| {
+                let response = match request_builder().send() {
+                    Ok(resp) => resp,
+                    Err(e) => {
+                        let user_error = KopiError::MetadataFetch(format!(
+                            "Network error connecting to foojay.io API v{}: {}. Please check your internet connection and try again.",
+                            API_VERSION, e
+                        ));
+
+                        if current_try < (MAX_RETRIES - 1) as u64 {
+                            return OperationResult::Retry(user_error);
+                        }
+                        return OperationResult::Err(user_error);
+                    }
+                };
+
+                if response.status() == attohttpc::StatusCode::TOO_MANY_REQUESTS
+                    && current_try < (MAX_RETRIES - 1) as u64
+                {
+                    if let Some(retry_after) = response.headers().get("Retry-After") {
+                        if let Ok(retry_str) = retry_after.to_str() {
+                            if let Ok(seconds) = retry_str.parse::<u64>() {
+                                thread::sleep(Duration::from_secs(seconds));
+                            }
+                        }
+                    }
+                    return OperationResult::Retry(KopiError::MetadataFetch(
+                        "Too many requests. Waiting before retrying...".to_string(),
+                    ));
+                }
+
+                if !response.is_success() {
+                    let status = response.status();
+                    let error_msg = match status.as_u16() {
+                        404 => format!(
+                            "The requested resource was not found on foojay.io API v{}. The API endpoint may have changed.",
+                            API_VERSION
+                        ),
+                        500..=599 => format!(
+                            "Server error occurred on foojay.io API v{}. Please try again later.",
+                            API_VERSION
+                        ),
+                        401 | 403 => format!(
+                            "Authentication failed for foojay.io API v{}. Please check your credentials.",
+                            API_VERSION
+                        ),
+                        _ => format!(
+                            "HTTP error ({}) from foojay.io API v{}: {}",
+                            status.as_u16(),
+                            API_VERSION,
+                            status.canonical_reason().unwrap_or("Unknown error")
+                        ),
+                    };
+                    return OperationResult::Err(KopiError::MetadataFetch(error_msg));
+                }
+
+                // Try to get response text for debugging
+                match response.text() {
+                    Ok(body) => match parser(body) {
+                        Ok(data) => OperationResult::Ok(data),
+                        Err(e) => OperationResult::Err(e),
+                    },
+                    Err(e) => OperationResult::Err(KopiError::MetadataFetch(format!(
+                        "Failed to read response body: {}",
+                        e
+                    ))),
+                }
+            },
+        );
+
+        result.map_err(|e| e.error)
+    }
+}
+
+impl Default for ApiClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
