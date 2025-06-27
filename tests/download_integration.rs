@@ -1,7 +1,7 @@
 use kopi::archive::ArchiveHandler;
 use kopi::download::{DownloadOptions, HttpFileDownloader};
 use kopi::security::SecurityManager;
-use kopi::storage::StorageManager;
+use kopi::storage::JdkRepository;
 use mockito::Server;
 use std::fs;
 use std::io::Write;
@@ -181,7 +181,7 @@ fn test_storage_installation_workflow() {
     use kopi::models::jdk::Distribution;
 
     let temp_home = tempdir().unwrap();
-    let storage = StorageManager::with_home(temp_home.path().to_path_buf());
+    let storage = JdkRepository::with_home(temp_home.path().to_path_buf());
     let distribution = Distribution::Temurin;
 
     // Prepare installation
@@ -278,7 +278,7 @@ fn test_concurrent_installation_safety() {
     use std::thread;
 
     let temp_home = tempdir().unwrap();
-    let storage = Arc::new(StorageManager::with_home(temp_home.path().to_path_buf()));
+    let storage = Arc::new(JdkRepository::with_home(temp_home.path().to_path_buf()));
     let distribution = Distribution::Temurin;
 
     let mut handles = vec![];
@@ -328,7 +328,7 @@ fn test_disk_space_simulation() {
     // This test is more of a unit test for the disk space check logic
     // In a real integration test, we'd need to mock the filesystem
     let temp_home = tempdir().unwrap();
-    let storage = StorageManager::with_home(temp_home.path().to_path_buf());
+    let storage = JdkRepository::with_home(temp_home.path().to_path_buf());
     let distribution = Distribution::Temurin;
 
     // The disk space check should pass on most systems

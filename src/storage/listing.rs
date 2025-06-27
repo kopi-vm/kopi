@@ -1,0 +1,154 @@
+use crate::error::Result;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone)]
+pub struct InstalledJdk {
+    pub distribution: String,
+    pub version: String,
+    pub path: PathBuf,
+}
+
+pub struct JdkLister;
+
+impl JdkLister {
+    pub fn list_installed_jdks(jdks_dir: &Path) -> Result<Vec<InstalledJdk>> {
+        if !jdks_dir.exists() {
+            return Ok(Vec::new());
+        }
+
+        let mut installed = Vec::new();
+
+        for entry in fs::read_dir(jdks_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if !path.is_dir() {
+                continue;
+            }
+
+            if path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| n.starts_with('.'))
+                .unwrap_or(false)
+            {
+                continue;
+            }
+
+            if let Some(jdk_info) = Self::parse_jdk_dir_name(&path) {
+                installed.push(jdk_info);
+            }
+        }
+
+        installed.sort_by(|a, b| {
+            a.distribution
+                .cmp(&b.distribution)
+                .then(b.version.cmp(&a.version))
+        });
+
+        Ok(installed)
+    }
+
+    pub fn parse_jdk_dir_name(path: &Path) -> Option<InstalledJdk> {
+        let file_name = path.file_name()?.to_str()?;
+
+        let mut split_pos = None;
+        let chars: Vec<char> = file_name.chars().collect();
+
+        for i in 0..chars.len() - 1 {
+            if chars[i] == '-' && (chars[i + 1].is_numeric() || chars[i + 1] == 'v') {
+                split_pos = Some(i);
+                break;
+            }
+        }
+
+        let (distribution, version) = if let Some(pos) = split_pos {
+            let dist = &file_name[..pos];
+            let ver = &file_name[pos + 1..];
+            (dist, ver)
+        } else {
+            return None;
+        };
+
+        Some(InstalledJdk {
+            distribution: distribution.to_string(),
+            version: version.to_string(),
+            path: path.to_path_buf(),
+        })
+    }
+
+    pub fn get_jdk_size(path: &Path) -> Result<u64> {
+        let mut total_size = 0u64;
+
+        for entry in walkdir::WalkDir::new(path) {
+            let entry = entry?;
+            if entry.file_type().is_file() {
+                total_size += entry.metadata()?.len();
+            }
+        }
+
+        Ok(total_size)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_list_installed_jdks() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        fs::create_dir_all(jdks_dir.join("temurin-21.0.1")).unwrap();
+        fs::create_dir_all(jdks_dir.join("corretto-17.0.9")).unwrap();
+        fs::create_dir_all(jdks_dir.join(".tmp")).unwrap();
+
+        let installed = JdkLister::list_installed_jdks(&jdks_dir).unwrap();
+        assert_eq!(installed.len(), 2);
+
+        assert_eq!(installed[0].distribution, "corretto");
+        assert_eq!(installed[0].version, "17.0.9");
+
+        assert_eq!(installed[1].distribution, "temurin");
+        assert_eq!(installed[1].version, "21.0.1");
+    }
+
+    #[test]
+    fn test_parse_jdk_dir_name() {
+        let jdk = JdkLister::parse_jdk_dir_name(Path::new("temurin-21.0.1")).unwrap();
+        assert_eq!(jdk.distribution, "temurin");
+        assert_eq!(jdk.version, "21.0.1");
+
+        let jdk = JdkLister::parse_jdk_dir_name(Path::new("temurin-22-ea")).unwrap();
+        assert_eq!(jdk.distribution, "temurin");
+        assert_eq!(jdk.version, "22-ea");
+
+        let jdk = JdkLister::parse_jdk_dir_name(Path::new("corretto-17.0.9+9")).unwrap();
+        assert_eq!(jdk.distribution, "corretto");
+        assert_eq!(jdk.version, "17.0.9+9");
+
+        let jdk = JdkLister::parse_jdk_dir_name(Path::new("graalvm-ce-21.0.1")).unwrap();
+        assert_eq!(jdk.distribution, "graalvm-ce");
+        assert_eq!(jdk.version, "21.0.1");
+
+        let jdk = JdkLister::parse_jdk_dir_name(Path::new("zulu-v11.0.21")).unwrap();
+        assert_eq!(jdk.distribution, "zulu");
+        assert_eq!(jdk.version, "v11.0.21");
+
+        let jdk = JdkLister::parse_jdk_dir_name(Path::new("liberica-21.0.1-13")).unwrap();
+        assert_eq!(jdk.distribution, "liberica");
+        assert_eq!(jdk.version, "21.0.1-13");
+
+        let jdk = JdkLister::parse_jdk_dir_name(Path::new("temurin-17")).unwrap();
+        assert_eq!(jdk.distribution, "temurin");
+        assert_eq!(jdk.version, "17");
+
+        assert!(JdkLister::parse_jdk_dir_name(Path::new("invalid")).is_none());
+        assert!(JdkLister::parse_jdk_dir_name(Path::new("no-hyphen-here")).is_none());
+        assert!(JdkLister::parse_jdk_dir_name(Path::new("temurin")).is_none());
+    }
+}

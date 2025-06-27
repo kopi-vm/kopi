@@ -6,20 +6,20 @@ use crate::error::{KopiError, Result};
 use crate::models::jdk::{Distribution, JdkMetadata};
 use crate::platform::{get_foojay_libc_type, get_platform_description, matches_foojay_libc_type};
 use crate::security::verify_checksum;
-use crate::storage::StorageManager;
+use crate::storage::JdkRepository;
 use crate::version::parser::VersionParser;
 use log::{debug, info, trace, warn};
 use std::str::FromStr;
 
 pub struct InstallCommand {
     api_client: ApiClient,
-    storage_manager: StorageManager,
+    storage_manager: JdkRepository,
     _config: KopiConfig,
 }
 
 impl InstallCommand {
     pub fn new() -> Result<Self> {
-        let storage_manager = StorageManager::new()?;
+        let storage_manager = JdkRepository::new()?;
         let config = KopiConfig::load(storage_manager.kopi_home())?;
         let api_client = ApiClient::new();
 
