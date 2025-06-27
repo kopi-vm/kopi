@@ -203,6 +203,12 @@ bail!("JDK version '{}' not found. Run 'kopi list-remote' to see available versi
 - Use `cargo clippy` to identify unused code elements
 - Example: If a function parameter like `arch` is no longer used in the implementation, remove it from the function signature and update all callers
 
+### Prefer Functions Over Structs Without State
+- When there's no state to manage, prefer implementing functionality as standalone functions rather than defining structs
+- Only create structs when you need to maintain state, implement traits, or group related data
+- This keeps the code simpler and more straightforward
+- Example: For utility operations like file validation or string parsing, use functions directly instead of creating a struct with methods
+
 ### External API Testing
 - When writing code that calls external Web APIs, implement at least one unit test that includes the actual JSON response obtained from calling the API with curl
 - Store the JSON response as a string within the test code
