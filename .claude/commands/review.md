@@ -21,6 +21,8 @@ Examples:
    - Inconsistent naming conventions
    - Missing error handling
    - Potential performance issues
+   - File size and complexity (consider splitting large files)
+   - Module organization and separation of concerns
 5. Suggest improvements based on the project's coding standards (CLAUDE.md)
 6. Highlight any security concerns or best practice violations
 7. Provide a summary with actionable recommendations
