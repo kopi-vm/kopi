@@ -114,6 +114,7 @@ impl<'a> PackageSearcher<'a> {
         version: &str,
         architecture: &str,
         operating_system: &str,
+        requested_package_type: Option<crate::models::jdk::PackageType>,
     ) -> Option<JdkMetadata> {
         let cache = self.cache?;
         let _lib_c_type = get_foojay_libc_type();
@@ -138,8 +139,37 @@ impl<'a> PackageSearcher<'a> {
         }
 
         // Multiple matches - apply the same logic as install command
-        // First, try to find one with matching lib_c_type
-        if let Some(pkg) = matching_packages.iter().find(|pkg| {
+        let packages_to_search = if let Some(requested_type) = requested_package_type {
+            // If package type was explicitly requested, filter to that type
+            let filtered: Vec<&JdkMetadata> = matching_packages
+                .iter()
+                .filter(|pkg| pkg.package_type == requested_type)
+                .cloned()
+                .collect();
+
+            if !filtered.is_empty() {
+                filtered
+            } else {
+                // No packages of requested type, fall back to all packages
+                matching_packages
+            }
+        } else {
+            // No specific package type requested, prefer JDK over JRE
+            let jdk_packages: Vec<&JdkMetadata> = matching_packages
+                .iter()
+                .filter(|pkg| pkg.package_type == crate::models::jdk::PackageType::Jdk)
+                .cloned()
+                .collect();
+
+            if !jdk_packages.is_empty() {
+                jdk_packages
+            } else {
+                matching_packages
+            }
+        };
+
+        // Then try to find one with matching lib_c_type
+        if let Some(pkg) = packages_to_search.iter().find(|pkg| {
             if let Some(ref pkg_lib_c) = pkg.lib_c_type {
                 matches_foojay_libc_type(pkg_lib_c)
             } else {
@@ -150,7 +180,7 @@ impl<'a> PackageSearcher<'a> {
         }
 
         // If no exact lib_c_type match, return the first one (mimics install behavior)
-        matching_packages.first().cloned().cloned()
+        packages_to_search.first().cloned().cloned()
     }
 
     fn matches_package(&self, package: &JdkMetadata, request: &ParsedVersionRequest) -> bool {

@@ -184,8 +184,35 @@ fn search_cache(version_string: String) -> Result<()> {
                 .set_cell_alignment(CellAlignment::Right); // Size column
 
             // Sort results by version for consistent display
+            // Prioritize based on whether package type was explicitly specified
             let mut sorted_results = results.clone();
-            sorted_results.sort_by(|a, b| b.package.version.cmp(&a.package.version));
+            sorted_results.sort_by(|a, b| {
+                use crate::models::jdk::PackageType;
+
+                // If package type was explicitly specified, prioritize matching packages
+                if let Some(requested_type) = parsed_request.package_type {
+                    match (
+                        a.package.package_type == requested_type,
+                        b.package.package_type == requested_type,
+                    ) {
+                        (true, false) => return std::cmp::Ordering::Less,
+                        (false, true) => return std::cmp::Ordering::Greater,
+                        _ => {} // Both match or both don't match, continue to next criteria
+                    }
+                }
+
+                // If no package type specified, prioritize JDK over JRE
+                if parsed_request.package_type.is_none() {
+                    match (a.package.package_type, b.package.package_type) {
+                        (PackageType::Jdk, PackageType::Jre) => return std::cmp::Ordering::Less,
+                        (PackageType::Jre, PackageType::Jdk) => return std::cmp::Ordering::Greater,
+                        _ => {} // Same package type, continue to next criteria
+                    }
+                }
+
+                // Finally, sort by version (descending)
+                b.package.version.cmp(&a.package.version)
+            });
 
             for result in sorted_results {
                 let package = &result.package;
@@ -198,6 +225,7 @@ fn search_cache(version_string: String) -> Result<()> {
                         &package.version.to_string(),
                         &current_arch,
                         &current_os,
+                        parsed_request.package_type,
                     )
                 } else {
                     None
