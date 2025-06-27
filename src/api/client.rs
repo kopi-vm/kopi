@@ -77,55 +77,35 @@ impl ApiClient {
         self.execute_with_retry(move || {
             let mut request = self.session.get(&url);
 
-            // Build query parameters for logging
-            let mut query_params = Vec::new();
-
             if let Some(ref q) = query {
                 if let Some(ref version) = q.version {
                     request = request.param("version", version);
-                    query_params.push(format!("version={}", version));
                 }
                 if let Some(ref distribution) = q.distribution {
                     request = request.param("distribution", distribution);
-                    query_params.push(format!("distribution={}", distribution));
                 }
                 if let Some(ref architecture) = q.architecture {
                     request = request.param("architecture", architecture);
-                    query_params.push(format!("architecture={}", architecture));
                 }
                 if let Some(ref package_type) = q.package_type {
                     request = request.param("package_type", package_type);
-                    query_params.push(format!("package_type={}", package_type));
                 }
                 if let Some(ref operating_system) = q.operating_system {
                     request = request.param("operating_system", operating_system);
-                    query_params.push(format!("operating_system={}", operating_system));
                 }
                 if let Some(ref archive_type) = q.archive_type {
                     request = request.param("archive_type", archive_type);
-                    query_params.push(format!("archive_type={}", archive_type));
                 }
                 if let Some(ref latest) = q.latest {
                     request = request.param("latest", latest);
-                    query_params.push(format!("latest={}", latest));
                 }
                 if let Some(directly_downloadable) = q.directly_downloadable {
                     request =
                         request.param("directly_downloadable", directly_downloadable.to_string());
-                    query_params.push(format!("directly_downloadable={}", directly_downloadable));
                 }
                 if let Some(ref lib_c_type) = q.lib_c_type {
                     request = request.param("lib_c_type", lib_c_type);
-                    query_params.push(format!("lib_c_type={}", lib_c_type));
                 }
-
-                // Log the complete URL with query parameters
-                let full_url = if query_params.is_empty() {
-                    url.clone()
-                } else {
-                    format!("{}?{}", url, query_params.join("&"))
-                };
-                debug!("API Request: {}", full_url);
             }
 
             request
