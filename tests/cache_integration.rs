@@ -90,6 +90,7 @@ fn test_cache_offline_mode() {
         checksum_type: Some(ChecksumType::Sha256),
         size: 100000000,
         lib_c_type: None,
+        javafx_bundled: false,
     };
 
     let dist = DistributionCache {
@@ -151,6 +152,7 @@ fn test_find_package_in_cache() {
         checksum_type: Some(ChecksumType::Sha256),
         size: 100000000,
         lib_c_type: None,
+        javafx_bundled: false,
     };
 
     let dist = DistributionCache {
@@ -227,6 +229,7 @@ fn test_cache_with_install_command() {
         checksum_type: Some(ChecksumType::Sha256),
         size: 200000000,
         lib_c_type: None,
+        javafx_bundled: false,
     };
 
     let dist = DistributionCache {

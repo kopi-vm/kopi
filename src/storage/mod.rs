@@ -66,6 +66,8 @@ mod metadata_tests {
             size: 190000000,
             operating_system: "linux".to_string(),
             lib_c_type: Some("glibc".to_string()),
+            package_type: "jdk".to_string(),
+            javafx_bundled: false,
         };
 
         let result = save_jdk_metadata(&jdks_dir, &distribution, "21.0.1+35.1", &package);

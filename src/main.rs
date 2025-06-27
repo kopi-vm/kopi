@@ -38,6 +38,10 @@ enum Commands {
         /// Download timeout in seconds
         #[arg(long, value_name = "SECONDS")]
         timeout: Option<u64>,
+
+        /// Include packages regardless of JavaFX bundled status
+        #[arg(long)]
+        javafx_bundled: bool,
     },
 
     /// List installed JDK versions
@@ -112,9 +116,17 @@ async fn main() -> Result<()> {
             dry_run,
             no_progress,
             timeout,
+            javafx_bundled,
         } => {
             let command = InstallCommand::new()?;
-            command.execute(&version, force, dry_run, no_progress, timeout)?;
+            command.execute(
+                &version,
+                force,
+                dry_run,
+                no_progress,
+                timeout,
+                javafx_bundled,
+            )?;
         }
         Commands::List { all } => {
             if all {

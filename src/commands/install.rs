@@ -5,6 +5,7 @@ use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{Distribution, JdkMetadata};
 use crate::platform::{get_foojay_libc_type, get_platform_description, matches_foojay_libc_type};
+use crate::search::PackageSearcher;
 use crate::security::verify_checksum;
 use crate::storage::JdkRepository;
 use crate::version::parser::VersionParser;
@@ -71,11 +72,12 @@ impl InstallCommand {
         dry_run: bool,
         no_progress: bool,
         timeout_secs: Option<u64>,
+        javafx_bundled: bool,
     ) -> Result<()> {
         info!("Installing JDK {}", version_spec);
         debug!(
-            "Install options: force={}, dry_run={}, no_progress={}, timeout={:?}",
-            force, dry_run, no_progress, timeout_secs
+            "Install options: force={}, dry_run={}, no_progress={}, timeout={:?}, javafx_bundled={}",
+            force, dry_run, no_progress, timeout_secs, javafx_bundled
         );
 
         // Parse version specification
@@ -88,6 +90,7 @@ impl InstallCommand {
         // Use default distribution if not specified
         let distribution = version_request
             .distribution
+            .clone()
             .unwrap_or(Distribution::Temurin);
 
         println!(
@@ -102,7 +105,12 @@ impl InstallCommand {
             distribution.name(),
             version_request.version
         );
-        let package = self.find_matching_package(&distribution, &version_request.version)?;
+        let package = self.find_matching_package(
+            &distribution,
+            &version_request.version,
+            &version_request,
+            javafx_bundled,
+        )?;
         trace!("Found package: {:?}", package);
         let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
 
@@ -247,6 +255,8 @@ impl InstallCommand {
         &self,
         distribution: &Distribution,
         version: &crate::models::jdk::Version,
+        version_request: &crate::version::parser::ParsedVersionRequest,
+        javafx_bundled: bool,
     ) -> Result<crate::api::Package> {
         // Build query parameters
         let arch = self.get_current_architecture();
@@ -255,36 +265,48 @@ impl InstallCommand {
 
         // First try to find the package in cache if it exists
         if let Ok(cache) = crate::cache::load_cache_if_exists() {
-            if let Some(jdk_metadata) = crate::cache::find_package_in_cache(
-                &cache,
-                distribution.id(),
-                &version.to_string(),
-                &arch,
-                &os,
-            ) {
+            let searcher = PackageSearcher::new(Some(&cache));
+            if let Some(jdk_metadata) =
+                searcher.find_exact_package(distribution, &version.to_string(), &arch, &os)
+            {
                 // Convert cached JdkMetadata to API Package format
                 debug!(
                     "Found package in cache: {} {}",
                     distribution.name(),
                     version
                 );
-                return Ok(self.convert_metadata_to_package(jdk_metadata));
+                return Ok(self.convert_metadata_to_package(&jdk_metadata));
             }
         }
 
         // If not found in cache or cache doesn't exist, fetch directly from API
         debug!("Package not found in cache, fetching directly from API");
 
+        // Archive types to query for (as expected by foojay.io API)
+        let archive_types = vec![
+            "tar.gz".to_string(),
+            "zip".to_string(),
+            "tgz".to_string(),
+            "tar".to_string(),
+        ];
+
+        let package_type_str = version_request
+            .package_type
+            .as_ref()
+            .map(|pt| pt.to_string())
+            .unwrap_or_else(|| "jdk".to_string());
+
         let query = crate::api::PackageQuery {
             version: Some(version.to_string()),
             distribution: Some(distribution.id().to_string()),
             architecture: Some(arch.clone()),
             operating_system: Some(os.clone()),
-            package_type: Some("jdk".to_string()),
+            package_type: Some(package_type_str),
+            archive_types: Some(archive_types),
             latest: Some("per_version".to_string()),
             directly_downloadable: Some(true),
             lib_c_type: Some(lib_c_type.to_string()),
-            ..Default::default()
+            javafx_bundled: if javafx_bundled { None } else { Some(false) },
         };
 
         // Get packages from API
@@ -307,17 +329,36 @@ impl InstallCommand {
 
         if packages.is_empty() {
             // Try to find any packages for this distribution to suggest versions
+            let archive_types = vec![
+                "tar.gz".to_string(),
+                "zip".to_string(),
+                "tgz".to_string(),
+                "tar".to_string(),
+            ];
+
+            let package_type_str_all = version_request
+                .package_type
+                .as_ref()
+                .map(|pt| pt.to_string())
+                .unwrap_or_else(|| "jdk".to_string());
+
             let query_all = crate::api::PackageQuery {
                 distribution: Some(distribution.id().to_string()),
                 architecture: Some(arch.clone()),
                 operating_system: Some(os.clone()),
-                package_type: Some("jdk".to_string()),
+                package_type: Some(package_type_str_all),
+                archive_types: Some(archive_types),
                 directly_downloadable: Some(true),
                 lib_c_type: Some(lib_c_type.to_string()),
-                ..Default::default()
+                version: None,
+                latest: None,
+                javafx_bundled: if javafx_bundled { None } else { Some(false) },
             };
 
-            let all_packages = self.api_client.get_packages(Some(query_all))?;
+            let all_packages = self
+                .api_client
+                .get_packages(Some(query_all))
+                .unwrap_or_default();
             let version_strings: Vec<String> = all_packages
                 .iter()
                 .map(|p| p.java_version.clone())
@@ -393,6 +434,7 @@ impl InstallCommand {
             checksum_type: None,
             size: package.size,
             lib_c_type: package.lib_c_type,
+            javafx_bundled: package.javafx_bundled,
         })
     }
     fn convert_metadata_to_package(&self, metadata: &JdkMetadata) -> crate::api::Package {
@@ -425,6 +467,8 @@ impl InstallCommand {
             size: metadata.size,
             operating_system: metadata.operating_system.to_string(),
             lib_c_type: metadata.lib_c_type.clone(),
+            package_type: metadata.package_type.to_string(),
+            javafx_bundled: metadata.javafx_bundled,
         }
     }
 }
@@ -499,6 +543,7 @@ mod tests {
             checksum_type: Some(ChecksumType::Sha256),
             size: 100000000,
             lib_c_type: None,
+            javafx_bundled: false,
         };
 
         let package = cmd.convert_metadata_to_package(&metadata);

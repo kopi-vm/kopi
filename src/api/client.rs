@@ -57,19 +57,88 @@ impl ApiClient {
             distributions: Vec::new(),
         };
 
+        // Archive types to query for (as expected by foojay.io API)
+        let archive_types = vec![
+            "tar.gz".to_string(),
+            "zip".to_string(),
+            "tgz".to_string(),
+            "tar".to_string(),
+        ];
+
         for dist in distributions {
             let query = PackageQuery {
                 distribution: Some(dist.api_parameter.clone()),
                 architecture: Some(architecture.clone()),
-                package_type: Some("jdk".to_string()),
+                package_type: None,
                 operating_system: Some(operating_system.clone()),
                 lib_c_type: Some(lib_c_type.to_string()),
+                archive_types: Some(archive_types.clone()),
                 latest: Some("available".to_string()),
                 directly_downloadable: Some(true),
-                ..Default::default()
+                version: None,
+                javafx_bundled: Some(false),
             };
 
-            let packages = self.get_packages(Some(query))?;
+            let packages = match self.get_packages(Some(query)) {
+                Ok(packages) => packages,
+                Err(e) => {
+                    debug!("Failed to fetch packages for {}: {}", dist.api_parameter, e);
+                    Vec::new()
+                }
+            };
+
+            metadata.distributions.push(DistributionMetadata {
+                distribution: dist,
+                packages,
+            });
+        }
+
+        Ok(metadata)
+    }
+
+    pub fn fetch_all_metadata_with_options(&self, javafx_bundled: bool) -> Result<ApiMetadata> {
+        // Fetch distributions
+        let distributions = self.get_distributions()?;
+
+        // Get platform-specific parameters
+        let architecture = Self::get_current_architecture();
+        let operating_system = Self::get_current_os();
+        let lib_c_type = get_foojay_libc_type();
+
+        // For each distribution, fetch available packages
+        let mut metadata = ApiMetadata {
+            distributions: Vec::new(),
+        };
+
+        // Archive types to query for (as expected by foojay.io API)
+        let archive_types = vec![
+            "tar.gz".to_string(),
+            "zip".to_string(),
+            "tgz".to_string(),
+            "tar".to_string(),
+        ];
+
+        for dist in distributions {
+            let query = PackageQuery {
+                distribution: Some(dist.api_parameter.clone()),
+                architecture: Some(architecture.clone()),
+                package_type: None,
+                operating_system: Some(operating_system.clone()),
+                lib_c_type: Some(lib_c_type.to_string()),
+                archive_types: Some(archive_types.clone()),
+                latest: Some("available".to_string()),
+                directly_downloadable: Some(true),
+                version: None,
+                javafx_bundled: if javafx_bundled { None } else { Some(false) },
+            };
+
+            let packages = match self.get_packages(Some(query)) {
+                Ok(packages) => packages,
+                Err(e) => {
+                    debug!("Failed to fetch packages for {}: {}", dist.api_parameter, e);
+                    Vec::new()
+                }
+            };
 
             metadata.distributions.push(DistributionMetadata {
                 distribution: dist,
@@ -103,8 +172,10 @@ impl ApiClient {
                 if let Some(ref operating_system) = q.operating_system {
                     request = request.param("operating_system", operating_system);
                 }
-                if let Some(ref archive_type) = q.archive_type {
-                    request = request.param("archive_type", archive_type);
+                if let Some(ref archive_types) = q.archive_types {
+                    for archive_type in archive_types {
+                        request = request.param("archive_type", archive_type);
+                    }
                 }
                 if let Some(ref latest) = q.latest {
                     request = request.param("latest", latest);
@@ -115,6 +186,9 @@ impl ApiClient {
                 }
                 if let Some(ref lib_c_type) = q.lib_c_type {
                     request = request.param("lib_c_type", lib_c_type);
+                }
+                if let Some(javafx_bundled) = q.javafx_bundled {
+                    request = request.param("javafx_bundled", javafx_bundled.to_string());
                 }
             }
 

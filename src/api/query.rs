@@ -5,10 +5,11 @@ pub struct PackageQuery {
     pub architecture: Option<String>,
     pub package_type: Option<String>,
     pub operating_system: Option<String>,
-    pub archive_type: Option<String>,
+    pub archive_types: Option<Vec<String>>,
     pub latest: Option<String>,
     pub directly_downloadable: Option<bool>,
     pub lib_c_type: Option<String>,
+    pub javafx_bundled: Option<bool>,
 }
 
 impl PackageQuery {
@@ -41,8 +42,8 @@ impl PackageQuery {
         self
     }
 
-    pub fn archive_type(mut self, archive_type: impl Into<String>) -> Self {
-        self.archive_type = Some(archive_type.into());
+    pub fn archive_types(mut self, archive_types: Vec<String>) -> Self {
+        self.archive_types = Some(archive_types);
         self
     }
 
@@ -58,6 +59,11 @@ impl PackageQuery {
 
     pub fn lib_c_type(mut self, lib_c_type: impl Into<String>) -> Self {
         self.lib_c_type = Some(lib_c_type.into());
+        self
+    }
+
+    pub fn javafx_bundled(mut self, javafx_bundled: bool) -> Self {
+        self.javafx_bundled = Some(javafx_bundled);
         self
     }
 }

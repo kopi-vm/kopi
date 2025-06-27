@@ -1,26 +1,39 @@
 use crate::error::{KopiError, Result};
-use crate::models::jdk::{Distribution, Version};
+use crate::models::jdk::{Distribution, PackageType, Version};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParsedVersionRequest {
     pub version: Version,
     pub distribution: Option<Distribution>,
+    pub package_type: Option<PackageType>,
 }
 
 pub struct VersionParser;
 
 impl VersionParser {
     pub fn parse(input: &str) -> Result<ParsedVersionRequest> {
-        if input.is_empty() {
+        let trimmed = input.trim();
+        if trimmed.is_empty() {
             return Err(KopiError::InvalidVersionFormat(
                 "Version string cannot be empty".to_string(),
             ));
         }
 
-        let (distribution, version_str) = if input.contains('@') {
+        // Check for package type prefix (jre@ or jdk@)
+        let (package_type, remaining) = if let Some(spec) = trimmed.strip_prefix("jre@") {
+            (Some(PackageType::Jre), spec)
+        } else if let Some(spec) = trimmed.strip_prefix("jdk@") {
+            (Some(PackageType::Jdk), spec)
+        } else {
+            // Default to JDK for backward compatibility
+            (None, trimmed)
+        };
+
+        // Now parse the remaining part as before
+        let (distribution, version_str) = if remaining.contains('@') {
             // Format: distribution@version
-            let mut parts = input.splitn(2, '@');
+            let mut parts = remaining.splitn(2, '@');
             let dist_part = parts.next().unwrap();
             let version_part = parts.next().unwrap_or("");
 
@@ -46,15 +59,15 @@ impl VersionParser {
             (Some(dist), version_part)
         } else {
             // No @ symbol - check if it's a known distribution name
-            if Self::is_known_distribution(input) {
+            if Self::is_known_distribution(remaining) {
                 // It's a distribution name without version
                 return Err(KopiError::InvalidVersionFormat(format!(
                     "Distribution '{}' specified without version. Please use '{}@VERSION' format.",
-                    input, input
+                    remaining, remaining
                 )));
             } else {
                 // It's a version string
-                (None, input)
+                (None, remaining)
             }
         };
 
@@ -62,8 +75,9 @@ impl VersionParser {
         let version = Self::parse_version_string(version_str)?;
 
         Ok(ParsedVersionRequest {
-            distribution,
             version,
+            distribution,
+            package_type,
         })
     }
 
@@ -242,6 +256,47 @@ mod tests {
         assert!(VersionParser::is_lts_version(21));
         assert!(!VersionParser::is_lts_version(9));
         assert!(!VersionParser::is_lts_version(18));
+    }
+
+    #[test]
+    fn test_parse_with_package_type_prefix() {
+        // Test JRE prefix
+        let parsed = VersionParser::parse("jre@21").unwrap();
+        assert_eq!(parsed.version, Version::new(21, 0, 0));
+        assert_eq!(parsed.distribution, None);
+        assert_eq!(parsed.package_type, Some(PackageType::Jre));
+
+        // Test JDK prefix (explicit)
+        let parsed = VersionParser::parse("jdk@21").unwrap();
+        assert_eq!(parsed.version, Version::new(21, 0, 0));
+        assert_eq!(parsed.distribution, None);
+        assert_eq!(parsed.package_type, Some(PackageType::Jdk));
+
+        // Test JRE with distribution
+        let parsed = VersionParser::parse("jre@temurin@21").unwrap();
+        assert_eq!(parsed.version, Version::new(21, 0, 0));
+        assert_eq!(parsed.distribution, Some(Distribution::Temurin));
+        assert_eq!(parsed.package_type, Some(PackageType::Jre));
+
+        // Test JDK with distribution (explicit)
+        let parsed = VersionParser::parse("jdk@temurin@21").unwrap();
+        assert_eq!(parsed.version, Version::new(21, 0, 0));
+        assert_eq!(parsed.distribution, Some(Distribution::Temurin));
+        assert_eq!(parsed.package_type, Some(PackageType::Jdk));
+
+        // Test no prefix (defaults to JDK)
+        let parsed = VersionParser::parse("21").unwrap();
+        assert_eq!(parsed.version, Version::new(21, 0, 0));
+        assert_eq!(parsed.distribution, None);
+        assert_eq!(parsed.package_type, None); // None means JDK by default
+
+        // Test with full version
+        let parsed = VersionParser::parse("jre@21.0.1+12").unwrap();
+        assert_eq!(
+            parsed.version,
+            Version::new(21, 0, 1).with_build("12".to_string())
+        );
+        assert_eq!(parsed.package_type, Some(PackageType::Jre));
     }
 
     #[test]

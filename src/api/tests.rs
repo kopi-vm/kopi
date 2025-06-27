@@ -25,14 +25,19 @@ mod tests {
             architecture: Some("x64".to_string()),
             package_type: Some("jdk".to_string()),
             operating_system: Some("linux".to_string()),
-            archive_type: Some("tar.gz".to_string()),
+            archive_types: Some(vec!["tar.gz".to_string(), "zip".to_string()]),
             latest: Some("per_version".to_string()),
             directly_downloadable: Some(true),
             lib_c_type: None,
+            javafx_bundled: None,
         };
 
         assert_eq!(query.version, Some("21".to_string()));
         assert_eq!(query.distribution, Some("temurin".to_string()));
+        assert_eq!(
+            query.archive_types,
+            Some(vec!["tar.gz".to_string(), "zip".to_string()])
+        );
     }
 
     #[test]
@@ -43,7 +48,7 @@ mod tests {
             .architecture("x64")
             .package_type("jdk")
             .operating_system("linux")
-            .archive_type("tar.gz")
+            .archive_types(vec!["tar.gz".to_string(), "zip".to_string()])
             .latest("per_version")
             .directly_downloadable(true);
 
@@ -52,7 +57,10 @@ mod tests {
         assert_eq!(query.architecture, Some("x64".to_string()));
         assert_eq!(query.package_type, Some("jdk".to_string()));
         assert_eq!(query.operating_system, Some("linux".to_string()));
-        assert_eq!(query.archive_type, Some("tar.gz".to_string()));
+        assert_eq!(
+            query.archive_types,
+            Some(vec!["tar.gz".to_string(), "zip".to_string()])
+        );
         assert_eq!(query.latest, Some("per_version".to_string()));
         assert_eq!(query.directly_downloadable, Some(true));
         assert_eq!(query.lib_c_type, None);

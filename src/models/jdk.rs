@@ -17,6 +17,7 @@ pub struct JdkMetadata {
     pub checksum_type: Option<ChecksumType>,
     pub size: u64,
     pub lib_c_type: Option<String>,
+    pub javafx_bundled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

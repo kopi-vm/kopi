@@ -158,6 +158,26 @@ pub fn fetch_and_cache_metadata() -> Result<MetadataCache> {
     Ok(cache)
 }
 
+/// Fetch metadata from Foojay API and update cache with options
+pub fn fetch_and_cache_metadata_with_options(javafx_bundled: bool) -> Result<MetadataCache> {
+    // Fetch metadata from API
+    let api_client = ApiClient::new();
+    let metadata = api_client
+        .fetch_all_metadata_with_options(javafx_bundled)
+        .map_err(|e| {
+            KopiError::MetadataFetch(format!("Failed to fetch metadata from API: {}", e))
+        })?;
+
+    // Convert API response to cache format
+    let cache = convert_api_to_cache(metadata)?;
+
+    // Save to cache
+    let cache_path = get_cache_path()?;
+    save_cache(&cache_path, &cache)?;
+
+    Ok(cache)
+}
+
 /// Fetch checksum for a specific JDK package
 pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)> {
     let api_client = ApiClient::new();
@@ -259,6 +279,9 @@ fn convert_api_to_cache(api_metadata: ApiMetadata) -> Result<MetadataCache> {
             let archive_type =
                 ArchiveType::from_str(&api_package.archive_type).unwrap_or(ArchiveType::TarGz);
 
+            let package_type =
+                PackageType::from_str(&api_package.package_type).unwrap_or(PackageType::Jdk);
+
             let jdk_metadata = JdkMetadata {
                 id: api_package.id,
                 distribution: api_package.distribution,
@@ -266,13 +289,14 @@ fn convert_api_to_cache(api_metadata: ApiMetadata) -> Result<MetadataCache> {
                 distribution_version: api_package.distribution_version,
                 architecture,
                 operating_system,
-                package_type: PackageType::Jdk, // Default to JDK
+                package_type,
                 archive_type,
                 download_url: api_package.links.pkg_download_redirect,
                 checksum: None, // TODO: Fetch from API if available
                 checksum_type: Some(ChecksumType::Sha256),
                 size: api_package.size,
                 lib_c_type: api_package.lib_c_type,
+                javafx_bundled: api_package.javafx_bundled,
             };
 
             packages.push(jdk_metadata);
@@ -357,6 +381,7 @@ mod tests {
             checksum_type: Some(ChecksumType::Sha256),
             size: 100000000,
             lib_c_type: None,
+            javafx_bundled: false,
         };
 
         let dist = DistributionCache {
@@ -415,6 +440,7 @@ mod tests {
             checksum_type: Some(ChecksumType::Sha256),
             size: 100000000,
             lib_c_type: None,
+            javafx_bundled: false,
         };
 
         let dist = DistributionCache {

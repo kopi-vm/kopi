@@ -62,10 +62,11 @@ fn test_get_packages_with_query_real_api() {
         architecture: Some("x64".to_string()),
         package_type: Some("jdk".to_string()),
         operating_system: Some("linux".to_string()),
-        archive_type: Some("tar.gz".to_string()),
+        archive_types: Some(vec!["tar.gz".to_string()]),
         latest: Some("per_version".to_string()),
         directly_downloadable: Some(true),
         lib_c_type: None,
+        javafx_bundled: None,
     };
 
     let result = client.get_packages(Some(query));
@@ -178,7 +179,9 @@ mod mock_tests {
             "free_use_in_production": true,
             "tck_tested": "yes",
             "size": 195000000,
-            "operating_system": "linux"
+            "operating_system": "linux",
+            "package_type": "jdk",
+            "javafx_bundled": false
         }"#;
 
         let package: kopi::api::Package = serde_json::from_str(mock_data).unwrap();
