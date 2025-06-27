@@ -5,6 +5,7 @@ use crate::search::{PackageSearcher, get_current_platform};
 use crate::version::parser::VersionParser;
 use chrono::Local;
 use clap::Subcommand;
+use comfy_table::{Cell, CellAlignment, Table};
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -119,13 +120,13 @@ fn search_cache(version_string: String) -> Result<()> {
     let results = searcher.search_parsed(&parsed_request)?;
 
     if results.is_empty() {
-        println!("No matching JDK versions found for '{}'", version_string);
+        println!("No matching Java versions found for '{}'", version_string);
         println!("\nTip: Run 'kopi cache refresh' to update available versions.");
         return Ok(());
     }
 
     // Display results
-    println!("Available JDK versions matching '{}':\n", version_string);
+    println!("Available Java versions matching '{}':\n", version_string);
 
     // Get current platform info for determining auto-selection
     let (current_arch, current_os, _) = get_current_platform();
@@ -143,7 +144,10 @@ fn search_cache(version_string: String) -> Result<()> {
     let mut dist_names: Vec<String> = grouped.keys().cloned().collect();
     dist_names.sort();
 
-    // No need to check for Temurin since we're already filtering by it when no distribution specified
+    // Check if any package has JavaFX bundled to determine if we need that column
+    let has_javafx = grouped
+        .values()
+        .any(|results| results.iter().any(|r| r.package.javafx_bundled));
 
     for dist_name in dist_names {
         if let Some(results) = grouped.get(&dist_name) {
@@ -153,22 +157,45 @@ fn search_cache(version_string: String) -> Result<()> {
                 .map(|r| r.display_name.as_str())
                 .unwrap_or(&dist_name);
 
-            println!("{}:", display_name);
+            // Create a table for this distribution
+            let mut table = Table::new();
+            table.load_preset(comfy_table::presets::UTF8_BORDERS_ONLY);
 
-            // Group by version for better display
-            let mut version_groups: HashMap<String, Vec<_>> = HashMap::new();
-            for result in results {
-                let version_key = result.package.version.to_string();
-                version_groups.entry(version_key).or_default().push(result);
+            // Set the header with distribution name in the top-left
+            let mut headers = vec![
+                Cell::new(display_name),
+                Cell::new("Version"),
+                Cell::new("LibC"),
+                Cell::new("Type"),
+                Cell::new("Size"),
+                Cell::new("Archive"),
+            ];
+
+            if has_javafx {
+                headers.push(Cell::new("JavaFX"));
             }
 
-            for (version_str, version_results) in version_groups {
-                // Determine which package would be auto-selected for this version
+            table.set_header(headers);
+
+            // Configure column alignments
+            table
+                .column_mut(4)
+                .unwrap()
+                .set_cell_alignment(CellAlignment::Right); // Size column
+
+            // Sort results by version for consistent display
+            let mut sorted_results = results.clone();
+            sorted_results.sort_by(|a, b| b.package.version.cmp(&a.package.version));
+
+            for result in sorted_results {
+                let package = &result.package;
+
+                // Determine which package would be auto-selected
                 let distribution = Distribution::from_str(&dist_name).ok();
                 let auto_selected = if let Some(dist) = &distribution {
                     searcher.find_auto_selected_package(
                         dist,
-                        &version_str,
+                        &package.version.to_string(),
                         &current_arch,
                         &current_os,
                     )
@@ -176,8 +203,16 @@ fn search_cache(version_string: String) -> Result<()> {
                     None
                 };
 
-                for result in version_results {
-                    let package = &result.package;
+                let is_auto_selected = auto_selected
+                    .as_ref()
+                    .map(|selected| selected.id == package.id)
+                    .unwrap_or(false);
+
+                // Only show packages for current platform
+                let show_package = package.architecture.to_string() == current_arch
+                    && package.operating_system.to_string() == current_os;
+
+                if show_package {
                     let display_version = if package.version.build.is_some() {
                         format!("{} ({})", package.version.major, package.version)
                     } else if package.version.patch > 0 {
@@ -193,59 +228,31 @@ fn search_cache(version_string: String) -> Result<()> {
 
                     let size_mb = package.size / (1024 * 1024);
 
-                    // Check if this package would be auto-selected
-                    let is_auto_selected = auto_selected
-                        .as_ref()
-                        .map(|selected| selected.id == package.id)
-                        .unwrap_or(false);
+                    let mut row = vec![
+                        Cell::new(if is_auto_selected { "►" } else { "" })
+                            .set_alignment(CellAlignment::Right),
+                        Cell::new(display_version),
+                        Cell::new(package.lib_c_type.as_deref().unwrap_or("-")),
+                        Cell::new(package.package_type.to_string()),
+                        Cell::new(format!("{} MB", size_mb)),
+                        Cell::new(package.archive_type.to_string()),
+                    ];
 
-                    // Only show platform info if it's different from current platform
-                    let show_platform = package.architecture.to_string() != current_arch
-                        || package.operating_system.to_string() != current_os;
-
-                    if show_platform {
-                        let javafx_info = if package.javafx_bundled {
-                            ", JavaFX"
-                        } else {
-                            ""
-                        };
-                        println!(
-                            "  {} - {} {} ({} MB, {}, {}{})",
-                            display_version,
-                            package.architecture,
-                            package.operating_system,
-                            size_mb,
-                            package.package_type,
-                            package.archive_type,
-                            javafx_info
-                        );
-                    } else {
-                        // For current platform, show if it would be auto-selected
-                        let indicator = if is_auto_selected { " [default]" } else { "" };
-                        let lib_c_info = package
-                            .lib_c_type
-                            .as_ref()
-                            .map(|l| format!(" ({})", l))
-                            .unwrap_or_default();
-                        let javafx_info = if package.javafx_bundled {
-                            ", JavaFX"
-                        } else {
-                            ""
-                        };
-                        println!(
-                            "  {} - {} MB, {}, {}{}{}{}",
-                            display_version,
-                            size_mb,
-                            package.package_type,
-                            package.archive_type,
-                            javafx_info,
-                            lib_c_info,
-                            indicator
+                    if has_javafx {
+                        row.push(
+                            Cell::new(if package.javafx_bundled { "✓" } else { "" })
+                                .set_alignment(CellAlignment::Center),
                         );
                     }
+
+                    table.add_row(row);
                 }
             }
-            println!();
+
+            // Only print the table if it has rows
+            if table.row_count() > 0 {
+                println!("{}\n", table);
+            }
         }
     }
 
