@@ -1,5 +1,5 @@
 use kopi::archive::ArchiveHandler;
-use kopi::download::{DownloadManager, DownloadOptions};
+use kopi::download::{DownloadOptions, HttpFileDownloader};
 use kopi::security::SecurityManager;
 use kopi::storage::StorageManager;
 use mockito::Server;
@@ -24,13 +24,13 @@ fn test_download_with_checksum_verification() {
     let temp_dir = tempdir().unwrap();
     let dest_file = temp_dir.path().join("jdk.tar.gz");
 
-    let mut manager = DownloadManager::new();
+    let mut downloader = HttpFileDownloader::new();
     let options = DownloadOptions {
         checksum: Some(expected_checksum.to_string()),
         ..Default::default()
     };
 
-    let result = manager.download(
+    let result = downloader.download(
         &format!("{}/jdk.tar.gz", server.url()),
         &dest_file,
         &options,
@@ -69,13 +69,13 @@ fn test_download_with_resume() {
         file.write_all(&full_content[..20]).unwrap();
     }
 
-    let mut manager = DownloadManager::new();
+    let mut downloader = HttpFileDownloader::new();
     let options = DownloadOptions {
         resume: true,
         ..Default::default()
     };
 
-    let result = manager.download(
+    let result = downloader.download(
         &format!("{}/resumable.bin", server.url()),
         &dest_file,
         &options,
@@ -255,10 +255,10 @@ fn test_download_progress_reporting() {
         events: events.clone(),
     };
 
-    let mut manager = DownloadManager::new().with_progress_reporter(Box::new(reporter));
+    let mut downloader = HttpFileDownloader::new().with_progress_reporter(Box::new(reporter));
     let options = DownloadOptions::default();
 
-    let result = manager.download(
+    let result = downloader.download(
         &format!("{}/progress.bin", server.url()),
         &dest_file,
         &options,
@@ -344,13 +344,13 @@ fn test_network_failure_handling() {
     let temp_dir = tempdir().unwrap();
     let dest_file = temp_dir.path().join("nonexistent.tar.gz");
 
-    let mut manager = DownloadManager::new();
+    let mut downloader = HttpFileDownloader::new();
     let options = DownloadOptions {
         timeout: std::time::Duration::from_secs(1),
         ..Default::default()
     };
 
-    let result = manager.download(
+    let result = downloader.download(
         &format!("{}/nonexistent.tar.gz", server.url()),
         &dest_file,
         &options,
@@ -378,13 +378,13 @@ fn test_download_network_timeout() {
     let temp_dir = tempdir().unwrap();
     let dest_file = temp_dir.path().join("slow-download.tar.gz");
 
-    let mut manager = DownloadManager::new();
+    let mut downloader = HttpFileDownloader::new();
     let options = DownloadOptions {
         timeout: std::time::Duration::from_millis(100), // Very short timeout
         ..Default::default()
     };
 
-    let result = manager.download(
+    let result = downloader.download(
         &format!("{}/slow-download.tar.gz", server.url()),
         &dest_file,
         &options,
@@ -468,13 +468,13 @@ fn test_large_file_download_simulation() {
         chunks_received: chunks_received.clone(),
     };
 
-    let mut manager = DownloadManager::new().with_progress_reporter(Box::new(reporter));
+    let mut downloader = HttpFileDownloader::new().with_progress_reporter(Box::new(reporter));
     let options = DownloadOptions {
         timeout: std::time::Duration::from_secs(30), // Longer timeout for large file
         ..Default::default()
     };
 
-    let result = manager.download(
+    let result = downloader.download(
         &format!("{}/large-jdk.tar.gz", server.url()),
         &dest_file,
         &options,
@@ -524,13 +524,13 @@ fn test_download_retry_on_failure() {
     let temp_dir = tempdir().unwrap();
     let dest_file = temp_dir.path().join("flaky-download.tar.gz");
 
-    let mut manager = DownloadManager::new();
+    let mut downloader = HttpFileDownloader::new();
     let options = DownloadOptions {
         timeout: std::time::Duration::from_secs(10),
         ..Default::default()
     };
 
-    let result = manager.download(
+    let result = downloader.download(
         &format!("{}/flaky-download.tar.gz", server.url()),
         &dest_file,
         &options,
@@ -558,13 +558,13 @@ fn test_download_checksum_mismatch() {
     let temp_dir = tempdir().unwrap();
     let dest_file = temp_dir.path().join("bad-checksum.tar.gz");
 
-    let mut manager = DownloadManager::new();
+    let mut downloader = HttpFileDownloader::new();
     let options = DownloadOptions {
         checksum: Some(wrong_checksum.to_string()),
         ..Default::default()
     };
 
-    let result = manager.download(
+    let result = downloader.download(
         &format!("{}/bad-checksum.tar.gz", server.url()),
         &dest_file,
         &options,
@@ -604,10 +604,10 @@ fn test_download_connection_reset() {
     let temp_dir = tempdir().unwrap();
     let dest_file = temp_dir.path().join("connection-reset.tar.gz");
 
-    let mut manager = DownloadManager::new();
+    let mut downloader = HttpFileDownloader::new();
     let options = DownloadOptions::default();
 
-    let result = manager.download(
+    let result = downloader.download(
         &format!("http://{}/connection-reset.tar.gz", addr),
         &dest_file,
         &options,
@@ -656,10 +656,10 @@ fn test_download_404_not_found() {
     let temp_dir = tempdir().unwrap();
     let dest_file = temp_dir.path().join("not-found.tar.gz");
 
-    let mut manager = DownloadManager::new();
+    let mut downloader = HttpFileDownloader::new();
     let options = DownloadOptions::default();
 
-    let result = manager.download(
+    let result = downloader.download(
         &format!("{}/not-found.tar.gz", server.url()),
         &dest_file,
         &options,
@@ -704,11 +704,11 @@ fn test_download_rate_limiting() {
     let temp_dir = tempdir().unwrap();
     let dest_file = temp_dir.path().join("rate-limited.tar.gz");
 
-    let mut manager = DownloadManager::new();
+    let mut downloader = HttpFileDownloader::new();
     let options = DownloadOptions::default();
 
     let _start = Instant::now();
-    let result = manager.download(
+    let result = downloader.download(
         &format!("{}/rate-limited.tar.gz", server.url()),
         &dest_file,
         &options,
