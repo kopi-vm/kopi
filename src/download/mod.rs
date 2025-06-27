@@ -35,8 +35,7 @@ pub fn download_jdk(
     timeout_secs: Option<u64>,
 ) -> Result<DownloadResult> {
     // Security validation
-    let security_manager = crate::security::SecurityManager::new();
-    security_manager.verify_https_security(&package.download_url)?;
+    crate::security::verify_https_security(&package.download_url)?;
 
     // Create HTTP file downloader
     let mut downloader = HttpFileDownloader::new();

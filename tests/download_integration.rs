@@ -1,6 +1,6 @@
 use kopi::archive::ArchiveHandler;
 use kopi::download::{DownloadOptions, HttpFileDownloader};
-use kopi::security::SecurityManager;
+use kopi::security::{is_trusted_domain, verify_https_security};
 use kopi::storage::JdkRepository;
 use mockito::Server;
 use std::fs;
@@ -87,24 +87,14 @@ fn test_download_with_resume() {
 
 #[test]
 fn test_security_validation() {
-    let security = SecurityManager::new();
-
     // Test HTTPS validation
-    assert!(
-        security
-            .verify_https_security("https://api.foojay.io/download")
-            .is_ok()
-    );
-    assert!(
-        security
-            .verify_https_security("http://api.foojay.io/download")
-            .is_err()
-    );
+    assert!(verify_https_security("https://api.foojay.io/download").is_ok());
+    assert!(verify_https_security("http://api.foojay.io/download").is_err());
 
     // Test trusted domains
-    assert!(security.is_trusted_domain("https://api.foojay.io/v3/"));
-    assert!(security.is_trusted_domain("https://corretto.aws/downloads/"));
-    assert!(!security.is_trusted_domain("https://untrusted.com/"));
+    assert!(is_trusted_domain("https://api.foojay.io/v3/"));
+    assert!(is_trusted_domain("https://corretto.aws/downloads/"));
+    assert!(!is_trusted_domain("https://untrusted.com/"));
 }
 
 #[test]
