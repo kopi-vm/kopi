@@ -3,11 +3,15 @@ use crate::error::Result;
 use crate::models::jdk::{Distribution, JdkMetadata};
 use crate::platform::{get_foojay_libc_type, matches_foojay_libc_type};
 use crate::version::parser::{ParsedVersionRequest, VersionParser};
+use std::sync::OnceLock;
 
 pub struct PackageSearcher<'a> {
     cache: Option<&'a MetadataCache>,
     platform_filter: PlatformFilter,
 }
+
+/// Cached platform information to avoid repeated system calls
+static CACHED_PLATFORM: OnceLock<(String, String, String)> = OnceLock::new();
 
 #[derive(Debug, Clone, Default)]
 pub struct PlatformFilter {
@@ -21,6 +25,14 @@ pub struct SearchResult {
     pub distribution: String,
     pub display_name: String,
     pub package: JdkMetadata,
+}
+
+/// Reference to a package in the cache to avoid cloning
+#[derive(Debug)]
+pub struct SearchResultRef<'a> {
+    pub distribution: &'a str,
+    pub display_name: &'a str,
+    pub package: &'a JdkMetadata,
 }
 
 impl<'a> PackageSearcher<'a> {
@@ -51,6 +63,9 @@ impl<'a> PackageSearcher<'a> {
 
         let mut results = Vec::new();
 
+        // Pre-compute version string if needed to avoid repeated conversions
+        let version_str = request.version.as_ref().map(|v| v.to_string());
+
         for (dist_name, dist_cache) in &cache.distributions {
             // Filter by distribution if specified
             if let Some(ref target_dist) = request.distribution {
@@ -72,7 +87,8 @@ impl<'a> PackageSearcher<'a> {
                     }
 
                     // Apply platform filters
-                    if !self.matches_package(package, request) {
+                    if !self.matches_package_with_version(package, request, version_str.as_deref())
+                    {
                         continue;
                     }
 
@@ -97,7 +113,8 @@ impl<'a> PackageSearcher<'a> {
             } else {
                 // Regular search - include all matching versions
                 for package in &dist_cache.packages {
-                    if !self.matches_package(package, request) {
+                    if !self.matches_package_with_version(package, request, version_str.as_deref())
+                    {
                         continue;
                     }
 
@@ -112,6 +129,94 @@ impl<'a> PackageSearcher<'a> {
 
         // Sort by distribution and version
         results.sort_by(|a, b| match a.distribution.cmp(&b.distribution) {
+            std::cmp::Ordering::Equal => b.package.version.cmp(&a.package.version),
+            other => other,
+        });
+
+        Ok(results)
+    }
+
+    /// Search for packages and return references to avoid cloning
+    pub fn search_parsed_refs<'b>(
+        &'b self,
+        request: &ParsedVersionRequest,
+    ) -> Result<Vec<SearchResultRef<'b>>>
+    where
+        'a: 'b,
+    {
+        let cache = match self.cache {
+            Some(cache) => cache,
+            None => return Ok(Vec::new()),
+        };
+
+        let mut results = Vec::new();
+
+        // Pre-compute version string if needed
+        let version_str = request.version.as_ref().map(|v| v.to_string());
+
+        for (dist_name, dist_cache) in &cache.distributions {
+            // Filter by distribution if specified
+            if let Some(ref target_dist) = request.distribution {
+                if dist_cache.distribution != *target_dist {
+                    continue;
+                }
+            }
+
+            if request.latest {
+                // For "latest" requests, find the highest version per distribution
+                let mut latest_package: Option<&JdkMetadata> = None;
+
+                for package in &dist_cache.packages {
+                    // Apply package type filter if specified
+                    if let Some(ref package_type) = request.package_type {
+                        if package.package_type != *package_type {
+                            continue;
+                        }
+                    }
+
+                    // Apply platform filters
+                    if !self.matches_package_with_version(package, request, version_str.as_deref())
+                    {
+                        continue;
+                    }
+
+                    // Track the latest version
+                    match latest_package {
+                        None => latest_package = Some(package),
+                        Some(current_latest) => {
+                            if package.version > current_latest.version {
+                                latest_package = Some(package);
+                            }
+                        }
+                    }
+                }
+
+                if let Some(package) = latest_package {
+                    results.push(SearchResultRef {
+                        distribution: dist_name,
+                        display_name: &dist_cache.display_name,
+                        package,
+                    });
+                }
+            } else {
+                // Regular search - include all matching versions
+                for package in &dist_cache.packages {
+                    if !self.matches_package_with_version(package, request, version_str.as_deref())
+                    {
+                        continue;
+                    }
+
+                    results.push(SearchResultRef {
+                        distribution: dist_name,
+                        display_name: &dist_cache.display_name,
+                        package,
+                    });
+                }
+            }
+        }
+
+        // Sort by distribution and version
+        results.sort_by(|a, b| match a.distribution.cmp(b.distribution) {
             std::cmp::Ordering::Equal => b.package.version.cmp(&a.package.version),
             other => other,
         });
@@ -220,6 +325,7 @@ impl<'a> PackageSearcher<'a> {
         packages_to_search.first().cloned().cloned()
     }
 
+    #[allow(dead_code)]
     fn matches_package(&self, package: &JdkMetadata, request: &ParsedVersionRequest) -> bool {
         // Check version match if version is specified
         if let Some(ref version) = request.version {
@@ -261,14 +367,66 @@ impl<'a> PackageSearcher<'a> {
 
         true
     }
+
+    /// Optimized version that accepts pre-computed version string
+    fn matches_package_with_version(
+        &self,
+        package: &JdkMetadata,
+        request: &ParsedVersionRequest,
+        version_str: Option<&str>,
+    ) -> bool {
+        // Check version match if version is specified
+        if let Some(version_pattern) = version_str {
+            if !package.version.matches_pattern(version_pattern) {
+                return false;
+            }
+        }
+
+        // Check package type if specified
+        if let Some(ref package_type) = request.package_type {
+            if package.package_type != *package_type {
+                return false;
+            }
+        }
+
+        // Apply platform filters if set
+        if let Some(ref arch) = self.platform_filter.architecture {
+            if package.architecture.to_string() != *arch {
+                return false;
+            }
+        }
+
+        if let Some(ref os) = self.platform_filter.operating_system {
+            if package.operating_system.to_string() != *os {
+                return false;
+            }
+        }
+
+        if let Some(ref lib_c) = self.platform_filter.lib_c_type {
+            if let Some(ref pkg_lib_c) = package.lib_c_type {
+                if pkg_lib_c != lib_c {
+                    return false;
+                }
+            } else {
+                // Package doesn't specify lib_c_type, skip it if we're filtering
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
-/// Get current platform information
+/// Get current platform information with caching
 pub fn get_current_platform() -> (String, String, String) {
-    let arch = get_current_architecture();
-    let os = get_current_os();
-    let lib_c_type = get_foojay_libc_type();
-    (arch, os, lib_c_type.to_string())
+    CACHED_PLATFORM
+        .get_or_init(|| {
+            let arch = get_current_architecture();
+            let os = get_current_os();
+            let lib_c_type = get_foojay_libc_type();
+            (arch, os, lib_c_type.to_string())
+        })
+        .clone()
 }
 
 fn get_current_architecture() -> String {

@@ -84,6 +84,34 @@ enum Commands {
         #[command(subcommand)]
         command: CacheCommand,
     },
+
+    /// Refresh metadata cache from foojay.io (alias for 'cache refresh')
+    Refresh {
+        /// Include packages regardless of JavaFX bundled status
+        #[arg(long)]
+        javafx_bundled: bool,
+    },
+
+    /// Search for available JDK versions (alias for 'cache search')
+    Search {
+        /// Query to search for (e.g., "21", "17.0.9", "corretto@21", "corretto", "latest")
+        version: String,
+        /// Display minimal information (default)
+        #[arg(long, conflicts_with_all = ["detailed", "json"])]
+        compact: bool,
+        /// Display detailed information including OS/Arch and Status
+        #[arg(long, conflicts_with_all = ["compact", "json"])]
+        detailed: bool,
+        /// Output results as JSON for programmatic use
+        #[arg(long, conflicts_with_all = ["compact", "detailed"])]
+        json: bool,
+        /// Filter to show only LTS versions
+        #[arg(long)]
+        lts_only: bool,
+        /// Include packages regardless of JavaFX bundled status
+        #[arg(long)]
+        javafx_bundled: bool,
+    },
 }
 
 fn setup_logger(cli: &Cli) {
@@ -153,6 +181,30 @@ async fn main() -> Result<()> {
         }
         Commands::Cache { command } => {
             command.execute()?;
+        }
+        Commands::Refresh { javafx_bundled } => {
+            // Delegate to cache refresh command
+            let cache_cmd = CacheCommand::Refresh { javafx_bundled };
+            cache_cmd.execute()?;
+        }
+        Commands::Search {
+            version,
+            compact,
+            detailed,
+            json,
+            lts_only,
+            javafx_bundled,
+        } => {
+            // Delegate to cache search command
+            let cache_cmd = CacheCommand::Search {
+                version,
+                compact,
+                detailed,
+                json,
+                lts_only,
+                javafx_bundled,
+            };
+            cache_cmd.execute()?;
         }
     }
 

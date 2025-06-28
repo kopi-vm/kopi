@@ -162,11 +162,34 @@ kopi default corretto                    # Set Amazon Corretto as default
 
 ### `kopi refresh`
 
-Update metadata cache from foojay.io.
+Update metadata cache from foojay.io. This is an alias for `kopi cache refresh`.
 
 **Usage:**
 ```bash
 kopi refresh                             # Update metadata cache from foojay.io
+kopi refresh --javafx-bundled            # Include JavaFX bundled packages
+```
+
+### `kopi search`
+
+Search for available JDK versions. This is an alias for `kopi cache search`.
+
+**Usage:**
+```bash
+kopi search <query>                      # Search for JDK versions
+kopi search <query> --compact            # Minimal display (default)
+kopi search <query> --detailed           # Full information display
+kopi search <query> --json               # JSON output for programmatic use
+kopi search <query> --lts-only           # Filter to show only LTS versions
+```
+
+**Examples:**
+```bash
+kopi search 21                           # Find all Java 21 versions
+kopi search corretto                     # List all Corretto versions
+kopi search latest                       # Show latest version of each distribution
+kopi search 21 --detailed                # Show full details
+kopi search 21 --lts-only                # Only show LTS versions
 ```
 
 ### `kopi prune`
@@ -185,6 +208,105 @@ Diagnose kopi installation issues.
 **Usage:**
 ```bash
 kopi doctor                              # Diagnose kopi installation issues
+```
+
+## Cache Management Commands
+
+### `kopi cache`
+
+Manage the JDK metadata cache used for searching and installing JDK versions.
+
+#### `kopi cache refresh`
+
+Update the metadata cache from foojay.io API.
+
+**Usage:**
+```bash
+kopi cache refresh                       # Refresh metadata for all distributions
+kopi cache refresh --javafx-bundled      # Include JavaFX bundled packages
+```
+
+#### `kopi cache search`
+
+Search for available JDK versions in the cache with enhanced display options.
+
+**Usage:**
+```bash
+kopi cache search <query>                # Search for JDK versions
+kopi cache search <query> --compact      # Minimal display (default)
+kopi cache search <query> --detailed     # Full information display
+kopi cache search <query> --json         # JSON output for programmatic use
+kopi cache search <query> --lts-only     # Filter to show only LTS versions
+```
+
+**Examples:**
+```bash
+# Search by version
+kopi cache search 21                     # Find all Java 21 versions
+kopi cache search 17.0.9                 # Find specific version
+
+# Search by distribution
+kopi cache search corretto               # List all Corretto versions
+kopi cache search temurin@21             # Find Temurin Java 21 versions
+
+# Special queries
+kopi cache search latest                 # Show latest version of each distribution
+kopi cache search jre@17                 # Search for JRE packages only
+
+# Display options
+kopi cache search 21 --detailed          # Show full details (OS/Arch, Status, Size)
+kopi cache search 21 --json              # Output as JSON
+kopi cache search 21 --lts-only          # Only show LTS versions
+```
+
+**Display Modes:**
+- **Compact (default)**: Shows Distribution, Version, and LTS status
+- **Detailed**: Includes Status (GA/EA), Type (JDK/JRE), OS/Arch, LibC, Size, and JavaFX
+- **JSON**: Machine-readable format with all available fields
+
+**Color Coding:**
+- LTS versions are highlighted in green
+- STS versions are shown in yellow
+- GA releases are marked in green
+- EA releases are dimmed yellow
+
+#### `kopi cache list-distributions`
+
+List all available distributions in the cache.
+
+**Usage:**
+```bash
+kopi cache list-distributions            # Show all cached distributions
+```
+
+**Output includes:**
+- Distribution ID (e.g., "temurin", "corretto")
+- Display name (e.g., "Eclipse Temurin", "Amazon Corretto")
+- Number of versions available for current platform
+
+#### `kopi cache info`
+
+Show information about the cache.
+
+**Usage:**
+```bash
+kopi cache info                          # Display cache details
+```
+
+**Shows:**
+- Cache file location
+- File size
+- Last update time
+- Number of distributions
+- Total JDK packages
+
+#### `kopi cache clear`
+
+Remove all cached metadata.
+
+**Usage:**
+```bash
+kopi cache clear                         # Delete the cache file
 ```
 
 ## Supported Distributions

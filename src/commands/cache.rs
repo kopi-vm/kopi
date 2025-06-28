@@ -4,8 +4,11 @@ use crate::search::{PackageSearcher, get_current_platform};
 use crate::version::parser::VersionParser;
 use chrono::Local;
 use clap::Subcommand;
+use colored::*;
 use comfy_table::{Cell, CellAlignment, Table};
+use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 
 #[derive(Subcommand, Debug)]
 pub enum CacheCommand {
@@ -63,15 +66,30 @@ impl CacheCommand {
 }
 
 fn refresh_cache(javafx_bundled: bool) -> Result<()> {
-    println!("Refreshing metadata cache from foojay.io...");
+    let spinner = ProgressBar::new_spinner();
+    spinner.set_style(
+        ProgressStyle::default_spinner()
+            .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ")
+            .template("{spinner:.green} {msg}")
+            .unwrap(),
+    );
+    spinner.set_message("Refreshing metadata cache from foojay.io...");
+    spinner.enable_steady_tick(Duration::from_millis(100));
 
     let cache = cache::fetch_and_cache_metadata_with_options(javafx_bundled)?;
 
-    println!("✓ Cache refreshed successfully");
-    println!("  - {} distributions available", cache.distributions.len());
+    spinner.finish_and_clear();
+    println!("{} Cache refreshed successfully", "✓".green().bold());
+    println!(
+        "  - {} distributions available",
+        cache.distributions.len().to_string().cyan()
+    );
 
     let total_packages: usize = cache.distributions.values().map(|d| d.packages.len()).sum();
-    println!("  - {} total JDK packages", total_packages);
+    println!(
+        "  - {} total JDK packages",
+        total_packages.to_string().cyan()
+    );
 
     Ok(())
 }
@@ -80,7 +98,12 @@ fn show_cache_info() -> Result<()> {
     let cache_path = cache::get_cache_path()?;
 
     if !cache_path.exists() {
-        println!("No cache found. Run 'kopi cache refresh' to populate the cache.");
+        println!("{} No cache found", "✗".red());
+        println!(
+            "\n{}: Run {} to populate the cache with available JDK versions.",
+            "Solution".yellow().bold(),
+            "'kopi cache refresh'".cyan()
+        );
         return Ok(());
     }
 
@@ -111,7 +134,7 @@ fn clear_cache() -> Result<()> {
 
     if cache_path.exists() {
         std::fs::remove_file(&cache_path)?;
-        println!("✓ Cache cleared successfully");
+        println!("{} Cache cleared successfully", "✓".green().bold());
     } else {
         println!("No cache to clear");
     }
@@ -138,7 +161,43 @@ fn search_cache(
     };
 
     // Parse the version string to check if distribution was specified
-    let parsed_request = VersionParser::parse(&version_string)?;
+    let parsed_request = match VersionParser::parse(&version_string) {
+        Ok(req) => req,
+        Err(e) => {
+            if json {
+                println!("[]");
+            } else {
+                println!("{} {}", "✗".red(), e);
+                println!("\n{}", "Examples:".yellow().bold());
+                println!(
+                    "  {} - Search for Java 21 across all distributions",
+                    "kopi cache search 21".cyan()
+                );
+                println!(
+                    "  {} - Search for specific distribution and version",
+                    "kopi cache search corretto@21".cyan()
+                );
+                println!(
+                    "  {} - List all versions of a distribution",
+                    "kopi cache search corretto".cyan()
+                );
+                println!(
+                    "  {} - Show latest version of each distribution",
+                    "kopi cache search latest".cyan()
+                );
+                println!(
+                    "  {} - Search for JRE packages only",
+                    "kopi cache search jre@17".cyan()
+                );
+                println!(
+                    "\n{}: Use {} to see all available distributions",
+                    "Tip".yellow().bold(),
+                    "'kopi cache list-distributions'".cyan()
+                );
+            }
+            return Ok(());
+        }
+    };
 
     // Check if a specific distribution was requested and if it's in cache
     if let Some(ref dist) = parsed_request.distribution {
@@ -156,14 +215,23 @@ fn search_cache(
                 Ok(updated_cache) => {
                     cache = updated_cache;
                     if !json {
-                        println!("✓ Distribution '{}' cached successfully", dist_id);
+                        println!(
+                            "{} Distribution '{}' cached successfully",
+                            "✓".green().bold(),
+                            dist_id.cyan()
+                        );
                     }
                 }
                 Err(e) => {
                     if json {
                         println!("[]");
                     } else {
-                        println!("Failed to fetch distribution '{}': {}", dist_id, e);
+                        println!(
+                            "{} Failed to fetch distribution '{}': {}",
+                            "✗".red(),
+                            dist_id,
+                            e
+                        );
                     }
                     return Ok(());
                 }
@@ -193,13 +261,35 @@ fn search_cache(
         } else {
             if lts_only {
                 println!(
-                    "No matching LTS Java versions found for '{}'",
-                    version_string
+                    "{} No matching LTS Java versions found for '{}'",
+                    "✗".red(),
+                    version_string.bright_blue()
                 );
             } else {
-                println!("No matching Java versions found for '{}'", version_string);
+                println!(
+                    "{} No matching Java versions found for '{}'",
+                    "✗".red(),
+                    version_string.bright_blue()
+                );
             }
-            println!("\nTip: Run 'kopi cache refresh' to update available versions.");
+            println!("\n{}", "Common causes:".yellow().bold());
+            println!("  - The cache might be outdated");
+            println!("  - The version might not exist");
+            println!("  - The distribution name might be incorrect");
+
+            println!("\n{}", "Try these:".yellow().bold());
+            println!(
+                "  1. {} - Update the cache with latest versions",
+                "kopi cache refresh".cyan()
+            );
+            println!(
+                "  2. {} - See all available distributions",
+                "kopi cache list-distributions".cyan()
+            );
+            println!(
+                "  3. {} - List all versions of a specific distribution",
+                "kopi cache search <distribution>".cyan()
+            );
         }
         return Ok(());
     }
@@ -211,14 +301,22 @@ fn search_cache(
         return Ok(());
     }
 
-    // Display results for table modes
+    // Display results for table modes with result count
+    let result_count = results.len();
     if lts_only {
         println!(
-            "Available LTS Java versions matching '{}':\n",
-            version_string
+            "Found {} LTS Java version{} matching '{}':\n",
+            result_count.to_string().cyan(),
+            if result_count == 1 { "" } else { "s" },
+            version_string.bright_blue()
         );
     } else {
-        println!("Available Java versions matching '{}':\n", version_string);
+        println!(
+            "Found {} Java version{} matching '{}':\n",
+            result_count.to_string().cyan(),
+            if result_count == 1 { "" } else { "s" },
+            version_string.bright_blue()
+        );
     }
 
     // Get current platform info for determining auto-selection
@@ -427,7 +525,7 @@ fn search_cache(
 
                     let mut row = if detailed {
                         // Detailed mode
-                        let status_display = package
+                        let status_display_detail = package
                             .release_status
                             .as_ref()
                             .map(|rs| match rs.to_lowercase().as_str() {
@@ -444,7 +542,7 @@ fn search_cache(
                             dist_cell,
                             Cell::new(display_version),
                             Cell::new(lts_display),
-                            Cell::new(status_display),
+                            Cell::new(status_display_detail),
                             Cell::new(package.package_type.to_string()),
                             Cell::new(os_arch),
                             Cell::new(package.lib_c_type.as_deref().unwrap_or("-")),
@@ -513,7 +611,12 @@ fn list_distributions() -> Result<()> {
     let cache_path = cache::get_cache_path()?;
 
     if !cache_path.exists() {
-        println!("No cache found. Run 'kopi cache refresh' to populate the cache.");
+        println!("{} No cache found", "✗".red());
+        println!(
+            "\n{}: Run {} to populate the cache with available distributions.",
+            "Solution".yellow().bold(),
+            "'kopi cache refresh'".cyan()
+        );
         return Ok(());
     }
 
@@ -546,7 +649,18 @@ fn list_distributions() -> Result<()> {
     }
 
     if distribution_info.is_empty() {
-        println!("No distributions found for current platform.");
+        println!("{} No distributions found for current platform", "✗".red());
+        println!(
+            "\n{}: Your platform ({}/{}) might not be supported or the cache is empty.",
+            "Note".yellow().bold(),
+            current_os.cyan(),
+            current_arch.cyan()
+        );
+        println!(
+            "\n{}: Run {} to refresh the cache.",
+            "Solution".yellow().bold(),
+            "'kopi cache refresh'".cyan()
+        );
         return Ok(());
     }
 
