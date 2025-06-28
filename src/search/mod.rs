@@ -16,7 +16,7 @@ pub struct PlatformFilter {
     pub lib_c_type: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct SearchResult {
     pub distribution: String,
     pub display_name: String,
@@ -318,6 +318,9 @@ mod tests {
             size: 100_000_000,
             lib_c_type: Some("glibc".to_string()),
             javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
         });
 
         packages.push(JdkMetadata {
@@ -335,6 +338,9 @@ mod tests {
             size: 90_000_000,
             lib_c_type: Some("glibc".to_string()),
             javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
         });
 
         let dist_cache = DistributionCache {

@@ -6,8 +6,7 @@ use crate::version::parser::VersionParser;
 use chrono::Local;
 use clap::Subcommand;
 use comfy_table::{Cell, CellAlignment, Table};
-use std::collections::HashMap;
-use std::str::FromStr;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Subcommand, Debug)]
 pub enum CacheCommand {
@@ -25,6 +24,15 @@ pub enum CacheCommand {
     Search {
         /// Version to search for (e.g., "21", "17.0.9", "corretto@21")
         version: String,
+        /// Display minimal information (default)
+        #[arg(long, conflicts_with_all = ["detailed", "json"])]
+        compact: bool,
+        /// Display detailed information including OS/Arch and Status
+        #[arg(long, conflicts_with_all = ["compact", "json"])]
+        detailed: bool,
+        /// Output results as JSON for programmatic use
+        #[arg(long, conflicts_with_all = ["compact", "detailed"])]
+        json: bool,
     },
 }
 
@@ -34,7 +42,12 @@ impl CacheCommand {
             CacheCommand::Refresh { javafx_bundled } => refresh_cache(javafx_bundled),
             CacheCommand::Info => show_cache_info(),
             CacheCommand::Clear => clear_cache(),
-            CacheCommand::Search { version } => search_cache(version),
+            CacheCommand::Search {
+                version,
+                compact,
+                detailed,
+                json,
+            } => search_cache(version, compact, detailed, json),
         }
     }
 }
@@ -96,7 +109,7 @@ fn clear_cache() -> Result<()> {
     Ok(())
 }
 
-fn search_cache(version_string: String) -> Result<()> {
+fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bool) -> Result<()> {
     let cache_path = cache::get_cache_path()?;
 
     if !cache_path.exists() {
@@ -120,12 +133,23 @@ fn search_cache(version_string: String) -> Result<()> {
     let results = searcher.search_parsed(&parsed_request)?;
 
     if results.is_empty() {
-        println!("No matching Java versions found for '{}'", version_string);
-        println!("\nTip: Run 'kopi cache refresh' to update available versions.");
+        if json {
+            println!("[]");
+        } else {
+            println!("No matching Java versions found for '{}'", version_string);
+            println!("\nTip: Run 'kopi cache refresh' to update available versions.");
+        }
         return Ok(());
     }
 
-    // Display results
+    // JSON output mode
+    if json {
+        let json_output = serde_json::to_string_pretty(&results)?;
+        println!("{}", json_output);
+        return Ok(());
+    }
+
+    // Display results for table modes
     println!("Available Java versions matching '{}':\n", version_string);
 
     // Get current platform info for determining auto-selection
@@ -162,14 +186,25 @@ fn search_cache(version_string: String) -> Result<()> {
             table.load_preset(comfy_table::presets::UTF8_BORDERS_ONLY);
 
             // Set the header with distribution name in the top-left
-            let mut headers = vec![
-                Cell::new(display_name),
-                Cell::new("Version"),
-                Cell::new("LibC"),
-                Cell::new("Type"),
-                Cell::new("Size"),
-                Cell::new("Archive"),
-            ];
+            let mut headers = if detailed {
+                vec![
+                    Cell::new(display_name),
+                    Cell::new("Version"),
+                    Cell::new("LTS"),
+                    Cell::new("Status"),
+                    Cell::new("Type"),
+                    Cell::new("OS/Arch"),
+                    Cell::new("LibC"),
+                    Cell::new("Size"),
+                ]
+            } else {
+                // Compact mode (default)
+                vec![
+                    Cell::new(display_name),
+                    Cell::new("Version"),
+                    Cell::new("LTS"),
+                ]
+            };
 
             if has_javafx {
                 headers.push(Cell::new("JavaFX"));
@@ -179,15 +214,33 @@ fn search_cache(version_string: String) -> Result<()> {
 
             // Configure column alignments
             table
-                .column_mut(4)
+                .column_mut(2)
                 .unwrap()
-                .set_cell_alignment(CellAlignment::Right); // Size column
+                .set_cell_alignment(CellAlignment::Center); // LTS column
 
-            // Sort results by version for consistent display
-            // Prioritize based on whether package type was explicitly specified
+            if detailed {
+                table
+                    .column_mut(7)
+                    .unwrap()
+                    .set_cell_alignment(CellAlignment::Right); // Size column
+                table
+                    .column_mut(3)
+                    .unwrap()
+                    .set_cell_alignment(CellAlignment::Center); // Status column
+            }
+
+            // Sort results
             let mut sorted_results = results.clone();
             sorted_results.sort_by(|a, b| {
                 use crate::models::jdk::PackageType;
+
+                // In detailed mode, sort by size first (ascending) for deduplication
+                if detailed {
+                    match a.package.size.cmp(&b.package.size) {
+                        std::cmp::Ordering::Equal => {} // Continue to other criteria
+                        other => return other,
+                    }
+                }
 
                 // If package type was explicitly specified, prioritize matching packages
                 if let Some(requested_type) = parsed_request.package_type {
@@ -214,27 +267,12 @@ fn search_cache(version_string: String) -> Result<()> {
                 b.package.version.cmp(&a.package.version)
             });
 
+            // Deduplication tracking
+            let mut seen_compact_entries = HashSet::new();
+            let mut seen_detailed_entries = HashSet::new();
+
             for result in sorted_results {
                 let package = &result.package;
-
-                // Determine which package would be auto-selected
-                let distribution = Distribution::from_str(&dist_name).ok();
-                let auto_selected = if let Some(dist) = &distribution {
-                    searcher.find_auto_selected_package(
-                        dist,
-                        &package.version.to_string(),
-                        &current_arch,
-                        &current_os,
-                        parsed_request.package_type,
-                    )
-                } else {
-                    None
-                };
-
-                let is_auto_selected = auto_selected
-                    .as_ref()
-                    .map(|selected| selected.id == package.id)
-                    .unwrap_or(false);
 
                 // Only show packages for current platform
                 let show_package = package.architecture.to_string() == current_arch
@@ -256,15 +294,91 @@ fn search_cache(version_string: String) -> Result<()> {
 
                     let size_mb = package.size / (1024 * 1024);
 
-                    let mut row = vec![
-                        Cell::new(if is_auto_selected { "►" } else { "" })
-                            .set_alignment(CellAlignment::Right),
-                        Cell::new(display_version),
-                        Cell::new(package.lib_c_type.as_deref().unwrap_or("-")),
-                        Cell::new(package.package_type.to_string()),
-                        Cell::new(format!("{} MB", size_mb)),
-                        Cell::new(package.archive_type.to_string()),
-                    ];
+                    // Determine LTS status
+                    let lts_display = package
+                        .term_of_support
+                        .as_ref()
+                        .map(|tos| match tos.to_lowercase().as_str() {
+                            "lts" => "LTS",
+                            "sts" => "STS",
+                            _ => "-",
+                        })
+                        .unwrap_or("-");
+
+                    // Deduplication based on display mode
+                    if detailed && !json {
+                        // In detailed mode, deduplicate based on all visible fields except size
+                        let status_display = package
+                            .release_status
+                            .as_ref()
+                            .map(|rs| match rs.to_lowercase().as_str() {
+                                "ga" => "GA",
+                                "ea" => "EA",
+                                _ => rs.as_str(),
+                            })
+                            .unwrap_or("-");
+
+                        let os_arch =
+                            format!("{}/{}", package.operating_system, package.architecture);
+                        let lib_c = package.lib_c_type.as_deref().unwrap_or("-");
+
+                        let detailed_key = format!(
+                            "{}-{}-{}-{}-{}-{}-{}",
+                            dist_name,
+                            display_version,
+                            lts_display,
+                            status_display,
+                            package.package_type,
+                            os_arch,
+                            lib_c
+                        );
+
+                        if !seen_detailed_entries.insert(detailed_key) {
+                            // Already seen this combination, skip it (keeping the smaller size)
+                            continue;
+                        }
+                    } else if !detailed && !json {
+                        // In compact mode, deduplicate based on version and LTS
+                        let compact_key = format!("{}-{}", display_version, lts_display);
+                        if !seen_compact_entries.insert(compact_key) {
+                            // Already seen this combination, skip it
+                            continue;
+                        }
+                    }
+
+                    let mut row = if detailed {
+                        // Detailed mode
+                        let status_display = package
+                            .release_status
+                            .as_ref()
+                            .map(|rs| match rs.to_lowercase().as_str() {
+                                "ga" => "GA",
+                                "ea" => "EA",
+                                _ => rs.as_str(),
+                            })
+                            .unwrap_or("-");
+
+                        let os_arch =
+                            format!("{}/{}", package.operating_system, package.architecture);
+
+                        vec![
+                            Cell::new(""), // Empty first cell for distribution name
+                            Cell::new(display_version),
+                            Cell::new(lts_display),
+                            Cell::new(status_display),
+                            Cell::new(package.package_type.to_string()),
+                            Cell::new(os_arch),
+                            Cell::new(package.lib_c_type.as_deref().unwrap_or("-")),
+                            Cell::new(format!("{} MB", size_mb)),
+                        ]
+                    } else {
+                        // Compact mode (default)
+                        vec![
+                            Cell::new(""), // Empty first cell for distribution name
+                            Cell::new(display_version),
+                            Cell::new(lts_display),
+                        ]
+                    };
 
                     if has_javafx {
                         row.push(

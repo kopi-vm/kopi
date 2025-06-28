@@ -297,6 +297,9 @@ fn convert_api_to_cache(api_metadata: ApiMetadata) -> Result<MetadataCache> {
                 size: api_package.size,
                 lib_c_type: api_package.lib_c_type,
                 javafx_bundled: api_package.javafx_bundled,
+                term_of_support: api_package.term_of_support,
+                release_status: api_package.release_status,
+                latest_build_available: api_package.latest_build_available,
             };
 
             packages.push(jdk_metadata);
@@ -382,6 +385,9 @@ mod tests {
             size: 100000000,
             lib_c_type: None,
             javafx_bundled: false,
+            term_of_support: None,
+            release_status: None,
+            latest_build_available: None,
         };
 
         let dist = DistributionCache {
@@ -441,6 +447,9 @@ mod tests {
             size: 100000000,
             lib_c_type: None,
             javafx_bundled: false,
+            term_of_support: None,
+            release_status: None,
+            latest_build_available: None,
         };
 
         let dist = DistributionCache {

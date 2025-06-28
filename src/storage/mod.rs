@@ -68,6 +68,9 @@ mod metadata_tests {
             lib_c_type: Some("glibc".to_string()),
             package_type: "jdk".to_string(),
             javafx_bundled: false,
+            term_of_support: None,
+            release_status: None,
+            latest_build_available: None,
         };
 
         let result = save_jdk_metadata(&jdks_dir, &distribution, "21.0.1+35.1", &package);

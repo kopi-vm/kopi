@@ -91,6 +91,9 @@ fn test_cache_offline_mode() {
         size: 100000000,
         lib_c_type: None,
         javafx_bundled: false,
+        term_of_support: None,
+        release_status: None,
+        latest_build_available: None,
     };
 
     let dist = DistributionCache {
@@ -153,6 +156,9 @@ fn test_find_package_in_cache() {
         size: 100000000,
         lib_c_type: None,
         javafx_bundled: false,
+        term_of_support: None,
+        release_status: None,
+        latest_build_available: None,
     };
 
     let dist = DistributionCache {
@@ -230,6 +236,9 @@ fn test_cache_with_install_command() {
         size: 200000000,
         lib_c_type: None,
         javafx_bundled: false,
+        term_of_support: None,
+        release_status: None,
+        latest_build_available: None,
     };
 
     let dist = DistributionCache {

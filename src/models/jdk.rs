@@ -18,6 +18,9 @@ pub struct JdkMetadata {
     pub size: u64,
     pub lib_c_type: Option<String>,
     pub javafx_bundled: bool,
+    pub term_of_support: Option<String>,
+    pub release_status: Option<String>,
+    pub latest_build_available: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

@@ -435,6 +435,9 @@ impl InstallCommand {
             size: package.size,
             lib_c_type: package.lib_c_type,
             javafx_bundled: package.javafx_bundled,
+            term_of_support: package.term_of_support,
+            release_status: package.release_status,
+            latest_build_available: package.latest_build_available,
         })
     }
     fn convert_metadata_to_package(&self, metadata: &JdkMetadata) -> crate::api::Package {
@@ -469,6 +472,9 @@ impl InstallCommand {
             lib_c_type: metadata.lib_c_type.clone(),
             package_type: metadata.package_type.to_string(),
             javafx_bundled: metadata.javafx_bundled,
+            term_of_support: None,
+            release_status: None,
+            latest_build_available: None,
         }
     }
 }
@@ -544,6 +550,9 @@ mod tests {
             size: 100000000,
             lib_c_type: None,
             javafx_bundled: false,
+            term_of_support: None,
+            release_status: None,
+            latest_build_available: None,
         };
 
         let package = cmd.convert_metadata_to_package(&metadata);

@@ -379,4 +379,78 @@ mod tests {
                 .contains(&"17.0.15+21".to_string())
         );
     }
+
+    #[test]
+    fn test_package_model_with_new_fields() {
+        // Test that Package model correctly serializes/deserializes with new fields
+        let package = Package {
+            id: "test-id".to_string(),
+            archive_type: "tar.gz".to_string(),
+            distribution: "temurin".to_string(),
+            major_version: 21,
+            java_version: "21.0.1".to_string(),
+            distribution_version: "21.0.1+12".to_string(),
+            jdk_version: 21,
+            directly_downloadable: true,
+            filename: "test.tar.gz".to_string(),
+            links: Links {
+                pkg_download_redirect: "https://example.com/download".to_string(),
+                pkg_info_uri: Some("https://example.com/info".to_string()),
+            },
+            free_use_in_production: true,
+            tck_tested: "yes".to_string(),
+            size: 100000000,
+            operating_system: "linux".to_string(),
+            lib_c_type: Some("glibc".to_string()),
+            package_type: "jdk".to_string(),
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+        };
+
+        // Serialize to JSON
+        let json = serde_json::to_string(&package).unwrap();
+
+        // Deserialize back
+        let deserialized: Package = serde_json::from_str(&json).unwrap();
+
+        // Verify new fields
+        assert_eq!(deserialized.term_of_support, Some("lts".to_string()));
+        assert_eq!(deserialized.release_status, Some("ga".to_string()));
+        assert_eq!(deserialized.latest_build_available, Some(true));
+    }
+
+    #[test]
+    fn test_package_model_optional_fields() {
+        // Test that Package model works when new fields are None
+        let json = r#"{
+            "id": "test-id",
+            "archive_type": "tar.gz",
+            "distribution": "temurin",
+            "major_version": 21,
+            "java_version": "21.0.1",
+            "distribution_version": "21.0.1+12",
+            "jdk_version": 21,
+            "directly_downloadable": true,
+            "filename": "test.tar.gz",
+            "links": {
+                "pkg_download_redirect": "https://example.com/download"
+            },
+            "free_use_in_production": true,
+            "tck_tested": "yes",
+            "size": 100000000,
+            "operating_system": "linux",
+            "package_type": "jdk",
+            "javafx_bundled": false
+        }"#;
+
+        let package: Package = serde_json::from_str(json).unwrap();
+
+        // Verify optional fields are None when not present
+        assert_eq!(package.term_of_support, None);
+        assert_eq!(package.release_status, None);
+        assert_eq!(package.latest_build_available, None);
+        assert_eq!(package.lib_c_type, None);
+    }
 }

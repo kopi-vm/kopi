@@ -20,6 +20,12 @@ pub struct Package {
     pub lib_c_type: Option<String>,
     pub package_type: String,
     pub javafx_bundled: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub term_of_support: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub release_status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latest_build_available: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
