@@ -1,6 +1,5 @@
 use crate::cache;
 use crate::error::Result;
-use crate::models::jdk::Distribution;
 use crate::search::{PackageSearcher, get_current_platform};
 use crate::version::parser::VersionParser;
 use chrono::Local;
@@ -139,16 +138,7 @@ fn search_cache(
     };
 
     // Parse the version string to check if distribution was specified
-    let mut parsed_request = VersionParser::parse(&version_string)?;
-
-    // If no distribution specified and we have a specific version, use Temurin as default (same as install command)
-    // But for distribution-only or latest queries, don't default to Temurin
-    if parsed_request.distribution.is_none()
-        && parsed_request.version.is_some()
-        && !parsed_request.latest
-    {
-        parsed_request.distribution = Some(Distribution::Temurin);
-    }
+    let parsed_request = VersionParser::parse(&version_string)?;
 
     // Check if a specific distribution was requested and if it's in cache
     if let Some(ref dist) = parsed_request.distribution {
@@ -323,10 +313,10 @@ fn search_cache(
                 }
 
                 // If package type was explicitly specified, prioritize matching packages
-                if let Some(requested_type) = parsed_request.package_type {
+                if let Some(ref requested_type) = parsed_request.package_type {
                     match (
-                        a.package.package_type == requested_type,
-                        b.package.package_type == requested_type,
+                        a.package.package_type == *requested_type,
+                        b.package.package_type == *requested_type,
                     ) {
                         (true, false) => return std::cmp::Ordering::Less,
                         (false, true) => return std::cmp::Ordering::Greater,
@@ -646,5 +636,15 @@ mod tests {
 
         let result = search_cache("21".to_string(), false, false, false, true, false);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_search_cache_version_only_no_default_distribution() {
+        use crate::version::parser::VersionParser;
+
+        // Test that version-only searches don't default to Temurin
+        let parsed = VersionParser::parse("21").unwrap();
+        assert!(parsed.version.is_some());
+        assert_eq!(parsed.distribution, None); // Should not default to any distribution
     }
 }
