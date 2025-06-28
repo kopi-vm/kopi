@@ -59,17 +59,54 @@ impl<'a> PackageSearcher<'a> {
                 }
             }
 
-            // Search for matching versions
-            for package in &dist_cache.packages {
-                if !self.matches_package(package, request) {
-                    continue;
+            if request.latest {
+                // For "latest" requests, find the highest version per distribution
+                let mut latest_package: Option<&JdkMetadata> = None;
+
+                for package in &dist_cache.packages {
+                    // Apply package type filter if specified
+                    if let Some(ref package_type) = request.package_type {
+                        if package.package_type != *package_type {
+                            continue;
+                        }
+                    }
+
+                    // Apply platform filters
+                    if !self.matches_package(package, request) {
+                        continue;
+                    }
+
+                    // Track the latest version
+                    match latest_package {
+                        None => latest_package = Some(package),
+                        Some(current_latest) => {
+                            if package.version > current_latest.version {
+                                latest_package = Some(package);
+                            }
+                        }
+                    }
                 }
 
-                results.push(SearchResult {
-                    distribution: dist_name.clone(),
-                    display_name: dist_cache.display_name.clone(),
-                    package: package.clone(),
-                });
+                if let Some(package) = latest_package {
+                    results.push(SearchResult {
+                        distribution: dist_name.clone(),
+                        display_name: dist_cache.display_name.clone(),
+                        package: package.clone(),
+                    });
+                }
+            } else {
+                // Regular search - include all matching versions
+                for package in &dist_cache.packages {
+                    if !self.matches_package(package, request) {
+                        continue;
+                    }
+
+                    results.push(SearchResult {
+                        distribution: dist_name.clone(),
+                        display_name: dist_cache.display_name.clone(),
+                        package: package.clone(),
+                    });
+                }
             }
         }
 
@@ -184,12 +221,18 @@ impl<'a> PackageSearcher<'a> {
     }
 
     fn matches_package(&self, package: &JdkMetadata, request: &ParsedVersionRequest) -> bool {
-        // Check version match
-        if !package
-            .version
-            .matches_pattern(&request.version.to_string())
-        {
-            return false;
+        // Check version match if version is specified
+        if let Some(ref version) = request.version {
+            if !package.version.matches_pattern(&version.to_string()) {
+                return false;
+            }
+        }
+
+        // Check package type if specified
+        if let Some(ref package_type) = request.package_type {
+            if package.package_type != *package_type {
+                return false;
+            }
         }
 
         // Apply platform filters if set
@@ -399,5 +442,77 @@ mod tests {
 
         assert!(package.is_some());
         assert_eq!(package.unwrap().version.to_string(), "21.0.1");
+    }
+
+    #[test]
+    fn test_search_distribution_only() {
+        let cache = create_test_cache();
+        let searcher = PackageSearcher::new(Some(&cache));
+
+        let parsed_request = ParsedVersionRequest {
+            version: None,
+            distribution: Some(Distribution::Temurin),
+            package_type: None,
+            latest: false,
+        };
+
+        let results = searcher.search_parsed(&parsed_request).unwrap();
+        assert_eq!(results.len(), 2);
+        assert!(results.iter().all(|r| r.distribution == "temurin"));
+    }
+
+    #[test]
+    fn test_search_latest() {
+        let cache = create_test_cache();
+        let searcher = PackageSearcher::new(Some(&cache));
+
+        let parsed_request = ParsedVersionRequest {
+            version: None,
+            distribution: None,
+            package_type: None,
+            latest: true,
+        };
+
+        let results = searcher.search_parsed(&parsed_request).unwrap();
+        assert_eq!(results.len(), 1); // Only one distribution in test cache
+        assert_eq!(results[0].package.version.major, 21); // 21 is newer than 17
+    }
+
+    #[test]
+    fn test_search_latest_with_distribution() {
+        let cache = create_test_cache();
+        let searcher = PackageSearcher::new(Some(&cache));
+
+        let parsed_request = ParsedVersionRequest {
+            version: None,
+            distribution: Some(Distribution::Temurin),
+            package_type: None,
+            latest: true,
+        };
+
+        let results = searcher.search_parsed(&parsed_request).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].package.version.major, 21);
+        assert_eq!(results[0].distribution, "temurin");
+    }
+
+    #[test]
+    fn test_search_with_package_type_filter() {
+        let cache = create_test_cache();
+        let searcher = PackageSearcher::new(Some(&cache));
+
+        let parsed_request = ParsedVersionRequest {
+            version: None,
+            distribution: Some(Distribution::Temurin),
+            package_type: Some(PackageType::Jdk),
+            latest: false,
+        };
+
+        let results = searcher.search_parsed(&parsed_request).unwrap();
+        assert!(
+            results
+                .iter()
+                .all(|r| r.package.package_type == PackageType::Jdk)
+        );
     }
 }

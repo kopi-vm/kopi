@@ -22,7 +22,7 @@ pub enum CacheCommand {
     Clear,
     /// Search for available JDK versions
     Search {
-        /// Version to search for (e.g., "21", "17.0.9", "corretto@21")
+        /// Query to search for (e.g., "21", "17.0.9", "corretto@21", "corretto", "latest")
         version: String,
         /// Display minimal information (default)
         #[arg(long, conflicts_with_all = ["detailed", "json"])]
@@ -123,8 +123,12 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
     // Parse the version string to check if distribution was specified
     let mut parsed_request = VersionParser::parse(&version_string)?;
 
-    // If no distribution specified, use Temurin as default (same as install command)
-    if parsed_request.distribution.is_none() {
+    // If no distribution specified and we have a specific version, use Temurin as default (same as install command)
+    // But for distribution-only or latest queries, don't default to Temurin
+    if parsed_request.distribution.is_none()
+        && parsed_request.version.is_some()
+        && !parsed_request.latest
+    {
         parsed_request.distribution = Some(Distribution::Temurin);
     }
 
@@ -173,6 +177,39 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
         .values()
         .any(|results| results.iter().any(|r| r.package.javafx_bundled));
 
+    // Create a single table for all distributions
+    let mut table = Table::new();
+    table.load_preset(comfy_table::presets::UTF8_BORDERS_ONLY);
+
+    // Set the header
+    let mut headers = if detailed {
+        vec![
+            Cell::new("Distribution"),
+            Cell::new("Version"),
+            Cell::new("LTS"),
+            Cell::new("Status"),
+            Cell::new("Type"),
+            Cell::new("OS/Arch"),
+            Cell::new("LibC"),
+            Cell::new("Size"),
+        ]
+    } else {
+        // Compact mode (default)
+        vec![
+            Cell::new("Distribution"),
+            Cell::new("Version"),
+            Cell::new("LTS"),
+        ]
+    };
+
+    if has_javafx {
+        headers.push(Cell::new("JavaFX"));
+    }
+
+    table.set_header(headers);
+
+    let mut is_first_distribution = true;
+
     for dist_name in dist_names {
         if let Some(results) = grouped.get(&dist_name) {
             // Use the display name from the first result
@@ -181,53 +218,21 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
                 .map(|r| r.display_name.as_str())
                 .unwrap_or(&dist_name);
 
-            // Create a table for this distribution
-            let mut table = Table::new();
-            table.load_preset(comfy_table::presets::UTF8_BORDERS_ONLY);
+            // Add separator row between distributions (except for the first one)
+            if !is_first_distribution {
+                // Create a separator row that will be replaced with proper line later
+                let num_cols = if detailed {
+                    8 + if has_javafx { 1 } else { 0 }
+                } else {
+                    3 + if has_javafx { 1 } else { 0 }
+                };
 
-            // Set the header with distribution name in the top-left
-            let mut headers = if detailed {
-                vec![
-                    Cell::new(display_name),
-                    Cell::new("Version"),
-                    Cell::new("LTS"),
-                    Cell::new("Status"),
-                    Cell::new("Type"),
-                    Cell::new("OS/Arch"),
-                    Cell::new("LibC"),
-                    Cell::new("Size"),
-                ]
-            } else {
-                // Compact mode (default)
-                vec![
-                    Cell::new(display_name),
-                    Cell::new("Version"),
-                    Cell::new("LTS"),
-                ]
-            };
+                let separator_row: Vec<Cell> =
+                    (0..num_cols).map(|_| Cell::new("SEPARATOR")).collect();
 
-            if has_javafx {
-                headers.push(Cell::new("JavaFX"));
+                table.add_row(separator_row);
             }
-
-            table.set_header(headers);
-
-            // Configure column alignments
-            table
-                .column_mut(2)
-                .unwrap()
-                .set_cell_alignment(CellAlignment::Center); // LTS column
-
-            if detailed {
-                table
-                    .column_mut(7)
-                    .unwrap()
-                    .set_cell_alignment(CellAlignment::Right); // Size column
-                table
-                    .column_mut(3)
-                    .unwrap()
-                    .set_cell_alignment(CellAlignment::Center); // Status column
-            }
+            is_first_distribution = false;
 
             // Sort results
             let mut sorted_results = results.clone();
@@ -270,6 +275,7 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
             // Deduplication tracking
             let mut seen_compact_entries = HashSet::new();
             let mut seen_detailed_entries = HashSet::new();
+            let mut is_first_row_in_distribution = true;
 
             for result in sorted_results {
                 let package = &result.package;
@@ -346,6 +352,14 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
                         }
                     }
 
+                    // Show distribution name only in the first row of each group
+                    let dist_cell = if is_first_row_in_distribution {
+                        Cell::new(display_name)
+                    } else {
+                        Cell::new("")
+                    };
+                    is_first_row_in_distribution = false;
+
                     let mut row = if detailed {
                         // Detailed mode
                         let status_display = package
@@ -362,7 +376,7 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
                             format!("{}/{}", package.operating_system, package.architecture);
 
                         vec![
-                            Cell::new(""), // Empty first cell for distribution name
+                            dist_cell,
                             Cell::new(display_version),
                             Cell::new(lts_display),
                             Cell::new(status_display),
@@ -374,7 +388,7 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
                     } else {
                         // Compact mode (default)
                         vec![
-                            Cell::new(""), // Empty first cell for distribution name
+                            dist_cell,
                             Cell::new(display_version),
                             Cell::new(lts_display),
                         ]
@@ -390,10 +404,41 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
                     table.add_row(row);
                 }
             }
+        }
+    }
 
-            // Only print the table if it has rows
-            if table.row_count() > 0 {
-                println!("{}\n", table);
+    // Configure column alignments
+    if let Some(col) = table.column_mut(2) {
+        col.set_cell_alignment(CellAlignment::Center); // LTS column
+    }
+
+    if detailed {
+        if let Some(col) = table.column_mut(7) {
+            col.set_cell_alignment(CellAlignment::Right); // Size column
+        }
+        if let Some(col) = table.column_mut(3) {
+            col.set_cell_alignment(CellAlignment::Center); // Status column
+        }
+    }
+
+    // Only print the table if it has rows
+    if table.row_count() > 0 {
+        // Convert table to string and replace separator markers with proper lines
+        let table_str = format!("{}", table);
+        let lines: Vec<&str> = table_str.lines().collect();
+
+        for line in lines.iter() {
+            if line.contains("SEPARATOR") {
+                // Replace the content row with a proper separator line
+                // Use the structure from the top border to create the separator
+                if let Some(top_border) = lines.first() {
+                    let separator = top_border
+                        .replace('┌', "├")
+                        .replace('┐', "┤");
+                    println!("{}", separator);
+                }
+            } else {
+                println!("{}", line);
             }
         }
     }

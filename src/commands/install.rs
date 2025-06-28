@@ -84,8 +84,15 @@ impl InstallCommand {
         let version_request = VersionParser::parse(version_spec)?;
         trace!("Parsed version request: {:?}", version_request);
 
+        // Install command requires a specific version
+        let version = version_request.version.as_ref().ok_or_else(|| {
+            KopiError::InvalidVersionFormat(
+                "Install command requires a specific version. Use 'kopi cache search' to browse available versions.".to_string()
+            )
+        })?;
+
         // Validate version semantics
-        VersionParser::validate_version_semantics(&version_request.version)?;
+        VersionParser::validate_version_semantics(version)?;
 
         // Use default distribution if not specified
         let distribution = version_request
@@ -93,24 +100,12 @@ impl InstallCommand {
             .clone()
             .unwrap_or(Distribution::Temurin);
 
-        println!(
-            "Installing {} {}...",
-            distribution.name(),
-            version_request.version
-        );
+        println!("Installing {} {}...", distribution.name(), version);
 
         // Find matching JDK package first to get the actual distribution_version
-        debug!(
-            "Searching for {} version {}",
-            distribution.name(),
-            version_request.version
-        );
-        let package = self.find_matching_package(
-            &distribution,
-            &version_request.version,
-            &version_request,
-            javafx_bundled,
-        )?;
+        debug!("Searching for {} version {}", distribution.name(), version);
+        let package =
+            self.find_matching_package(&distribution, version, &version_request, javafx_bundled)?;
         trace!("Found package: {:?}", package);
         let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
 
@@ -240,10 +235,10 @@ impl InstallCommand {
         );
 
         // Show hint about using the JDK
-        if VersionParser::is_lts_version(version_request.version.major) {
+        if VersionParser::is_lts_version(version.major) {
             println!(
                 "Note: {} is an LTS (Long Term Support) version.",
-                version_request.version.major
+                version.major
             );
         }
         println!("\nTo use this JDK, run: kopi use {}", version_spec);
@@ -490,7 +485,8 @@ mod tests {
 
         // Test version parsing is called correctly
         let version_request = VersionParser::parse("21").unwrap();
-        assert_eq!(version_request.version.major, 21);
+        assert!(version_request.version.is_some());
+        assert_eq!(version_request.version.unwrap().major, 21);
         assert_eq!(version_request.distribution, None);
     }
 
@@ -505,7 +501,8 @@ mod tests {
     #[test]
     fn test_parse_version_with_distribution() {
         let version_request = VersionParser::parse("corretto@17").unwrap();
-        assert_eq!(version_request.version.major, 17);
+        assert!(version_request.version.is_some());
+        assert_eq!(version_request.version.unwrap().major, 17);
         assert_eq!(version_request.distribution, Some(Distribution::Corretto));
     }
 
