@@ -36,6 +36,9 @@ pub enum CacheCommand {
         /// Filter to show only LTS versions
         #[arg(long)]
         lts_only: bool,
+        /// Include packages regardless of JavaFX bundled status
+        #[arg(long)]
+        javafx_bundled: bool,
     },
     /// List all available distributions in cache
     ListDistributions,
@@ -53,7 +56,8 @@ impl CacheCommand {
                 detailed,
                 json,
                 lts_only,
-            } => search_cache(version, compact, detailed, json, lts_only),
+                javafx_bundled,
+            } => search_cache(version, compact, detailed, json, lts_only, javafx_bundled),
             CacheCommand::ListDistributions => list_distributions(),
         }
     }
@@ -122,16 +126,17 @@ fn search_cache(
     detailed: bool,
     json: bool,
     lts_only: bool,
+    javafx_bundled: bool,
 ) -> Result<()> {
     let cache_path = cache::get_cache_path()?;
 
-    if !cache_path.exists() {
-        println!("No cache found. Run 'kopi cache refresh' to populate the cache.");
-        return Ok(());
-    }
-
-    // Load cache
-    let cache = cache::load_cache(&cache_path)?;
+    // Load cache or create new one if it doesn't exist
+    let mut cache = if cache_path.exists() {
+        cache::load_cache(&cache_path)?
+    } else {
+        // If no cache exists, create an empty one
+        cache::MetadataCache::new()
+    };
 
     // Parse the version string to check if distribution was specified
     let mut parsed_request = VersionParser::parse(&version_string)?;
@@ -143,6 +148,37 @@ fn search_cache(
         && !parsed_request.latest
     {
         parsed_request.distribution = Some(Distribution::Temurin);
+    }
+
+    // Check if a specific distribution was requested and if it's in cache
+    if let Some(ref dist) = parsed_request.distribution {
+        let dist_id = dist.id();
+        if !cache.distributions.contains_key(dist_id) {
+            // Distribution not in cache, fetch it
+            if !json {
+                println!(
+                    "Distribution '{}' not found in cache. Fetching from foojay.io...",
+                    dist_id
+                );
+            }
+
+            match cache::fetch_and_cache_distribution(dist_id, javafx_bundled) {
+                Ok(updated_cache) => {
+                    cache = updated_cache;
+                    if !json {
+                        println!("✓ Distribution '{}' cached successfully", dist_id);
+                    }
+                }
+                Err(e) => {
+                    if json {
+                        println!("[]");
+                    } else {
+                        println!("Failed to fetch distribution '{}': {}", dist_id, e);
+                    }
+                    return Ok(());
+                }
+            }
+        }
     }
 
     // Use the shared searcher
@@ -608,7 +644,7 @@ mod tests {
             env::set_var("KOPI_HOME", temp_dir.path());
         }
 
-        let result = search_cache("21".to_string(), false, false, false, true);
+        let result = search_cache("21".to_string(), false, false, false, true, false);
         assert!(result.is_ok());
     }
 }

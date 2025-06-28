@@ -178,6 +178,12 @@ impl VersionParser {
     }
 
     fn is_known_distribution(name: &str) -> bool {
+        // First check if it looks like a version (starts with a digit)
+        if name.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+            return false;
+        }
+
+        // Check against all known distributions from foojay.io
         matches!(
             name.to_lowercase().as_str(),
             "temurin"
@@ -192,6 +198,26 @@ impl VersionParser {
                 | "kona"
                 | "semeru"
                 | "trava"
+                | "aoj"
+                | "aoj_openj9"
+                | "bisheng"
+                | "gluon_graalvm"
+                | "graalvm_ce8"
+                | "graalvm_ce11"
+                | "graalvm_ce16"
+                | "graalvm_ce17"
+                | "graalvm_ce19"
+                | "graalvm_community"
+                | "jetbrains"
+                | "liberica_native"
+                | "microsoft"
+                | "ojdk_build"
+                | "openlogic"
+                | "oracle"
+                | "oracle_open_jdk"
+                | "sap_machine"
+                | "semeru_certified"
+                | "zulu_prime"
         )
     }
 }

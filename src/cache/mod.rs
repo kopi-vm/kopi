@@ -178,6 +178,91 @@ pub fn fetch_and_cache_metadata_with_options(javafx_bundled: bool) -> Result<Met
     Ok(cache)
 }
 
+/// Fetch metadata for a specific distribution and update the cache
+pub fn fetch_and_cache_distribution(
+    distribution_name: &str,
+    javafx_bundled: bool,
+) -> Result<MetadataCache> {
+    use crate::search::get_current_platform;
+    use std::str::FromStr;
+
+    // Get current platform info
+    let (current_arch, current_os, current_libc) = get_current_platform();
+
+    // Load existing cache or create new one
+    let cache_path = get_cache_path()?;
+    let mut cache = if cache_path.exists() {
+        load_cache(&cache_path).unwrap_or_else(|_| MetadataCache::new())
+    } else {
+        MetadataCache::new()
+    };
+
+    // Fetch metadata from API for the specific distribution
+    let api_client = ApiClient::new();
+
+    // Check if distribution exists first
+    let distributions = api_client
+        .get_distributions()
+        .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch distributions: {}", e)))?;
+
+    let dist_info = distributions
+        .iter()
+        .find(|d| d.api_parameter == distribution_name)
+        .ok_or_else(|| {
+            KopiError::InvalidConfig(format!("Unknown distribution: {}", distribution_name))
+        })?;
+
+    // Create package query for this distribution
+    let query = crate::api::PackageQuery {
+        distribution: Some(distribution_name.to_string()),
+        version: None,
+        architecture: Some(current_arch.clone()),
+        package_type: None,
+        operating_system: Some(current_os.clone()),
+        lib_c_type: Some(current_libc),
+        javafx_bundled: if javafx_bundled { None } else { Some(false) },
+        archive_types: None,
+        latest: Some("true".to_string()),
+        directly_downloadable: Some(true),
+    };
+
+    // Fetch packages for this distribution
+    let packages = api_client.get_packages(Some(query)).map_err(|e| {
+        KopiError::MetadataFetch(format!(
+            "Failed to fetch packages for {}: {}",
+            distribution_name, e
+        ))
+    })?;
+
+    // Convert to JDK metadata
+    let jdk_packages: Vec<JdkMetadata> = packages
+        .into_iter()
+        .filter_map(|pkg| convert_package_to_jdk_metadata(pkg).ok())
+        .collect();
+
+    // Parse distribution enum
+    let distribution = JdkDistribution::from_str(&dist_info.api_parameter)
+        .unwrap_or(JdkDistribution::Other(dist_info.api_parameter.clone()));
+
+    // Create distribution cache
+    let dist_cache = DistributionCache {
+        distribution,
+        display_name: dist_info.name.clone(),
+        packages: jdk_packages,
+    };
+
+    // Update cache with this distribution
+    cache
+        .distributions
+        .insert(distribution_name.to_string(), dist_cache);
+    cache.last_updated = Utc::now();
+
+    // Save updated cache
+    save_cache(&cache_path, &cache)?;
+
+    Ok(cache)
+}
+
 /// Fetch checksum for a specific JDK package
 pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)> {
     let api_client = ApiClient::new();
@@ -243,10 +328,54 @@ fn parse_architecture_from_filename(filename: &str) -> Option<crate::models::jdk
     None
 }
 
-fn convert_api_to_cache(api_metadata: ApiMetadata) -> Result<MetadataCache> {
+fn convert_package_to_jdk_metadata(api_package: crate::api::Package) -> Result<JdkMetadata> {
     use crate::models::jdk::{
         Architecture, ArchiveType, ChecksumType, OperatingSystem, PackageType, Version,
     };
+    use std::str::FromStr;
+
+    // Parse version
+    let version = Version::from_str(&api_package.java_version)
+        .unwrap_or_else(|_| Version::new(api_package.major_version, 0, 0));
+
+    // Parse architecture from filename
+    let architecture =
+        parse_architecture_from_filename(&api_package.filename).unwrap_or(Architecture::X64);
+
+    // Parse operating system
+    let operating_system =
+        OperatingSystem::from_str(&api_package.operating_system).unwrap_or(OperatingSystem::Linux);
+
+    // Parse archive type
+    let archive_type =
+        ArchiveType::from_str(&api_package.archive_type).unwrap_or(ArchiveType::TarGz);
+
+    let package_type = PackageType::from_str(&api_package.package_type).unwrap_or(PackageType::Jdk);
+
+    let jdk_metadata = JdkMetadata {
+        id: api_package.id,
+        distribution: api_package.distribution,
+        version,
+        distribution_version: api_package.distribution_version,
+        architecture,
+        operating_system,
+        package_type,
+        archive_type,
+        download_url: api_package.links.pkg_download_redirect,
+        checksum: None, // TODO: Fetch from API if available
+        checksum_type: Some(ChecksumType::Sha256),
+        size: api_package.size,
+        lib_c_type: api_package.lib_c_type,
+        javafx_bundled: api_package.javafx_bundled,
+        term_of_support: api_package.term_of_support,
+        release_status: api_package.release_status,
+        latest_build_available: api_package.latest_build_available,
+    };
+
+    Ok(jdk_metadata)
+}
+
+fn convert_api_to_cache(api_metadata: ApiMetadata) -> Result<MetadataCache> {
     use std::str::FromStr;
 
     let mut cache = MetadataCache::new();
@@ -259,51 +388,12 @@ fn convert_api_to_cache(api_metadata: ApiMetadata) -> Result<MetadataCache> {
         let distribution = JdkDistribution::from_str(&dist_info.api_parameter)
             .unwrap_or(JdkDistribution::Other(dist_info.api_parameter.clone()));
 
-        let mut packages = Vec::new();
-
         // Convert API packages to JdkMetadata
-        for api_package in dist_metadata.packages {
-            // Parse version
-            let version = Version::from_str(&api_package.java_version)
-                .unwrap_or_else(|_| Version::new(api_package.major_version, 0, 0));
-
-            // Parse architecture from filename
-            let architecture = parse_architecture_from_filename(&api_package.filename)
-                .unwrap_or(Architecture::X64);
-
-            // Parse operating system
-            let operating_system = OperatingSystem::from_str(&api_package.operating_system)
-                .unwrap_or(OperatingSystem::Linux);
-
-            // Parse archive type
-            let archive_type =
-                ArchiveType::from_str(&api_package.archive_type).unwrap_or(ArchiveType::TarGz);
-
-            let package_type =
-                PackageType::from_str(&api_package.package_type).unwrap_or(PackageType::Jdk);
-
-            let jdk_metadata = JdkMetadata {
-                id: api_package.id,
-                distribution: api_package.distribution,
-                version,
-                distribution_version: api_package.distribution_version,
-                architecture,
-                operating_system,
-                package_type,
-                archive_type,
-                download_url: api_package.links.pkg_download_redirect,
-                checksum: None, // TODO: Fetch from API if available
-                checksum_type: Some(ChecksumType::Sha256),
-                size: api_package.size,
-                lib_c_type: api_package.lib_c_type,
-                javafx_bundled: api_package.javafx_bundled,
-                term_of_support: api_package.term_of_support,
-                release_status: api_package.release_status,
-                latest_build_available: api_package.latest_build_available,
-            };
-
-            packages.push(jdk_metadata);
-        }
+        let packages: Vec<JdkMetadata> = dist_metadata
+            .packages
+            .into_iter()
+            .filter_map(|pkg| convert_package_to_jdk_metadata(pkg).ok())
+            .collect();
 
         let dist_cache = DistributionCache {
             distribution,
@@ -467,5 +557,46 @@ mod tests {
         // Should not find with wrong version
         let not_found = find_package_in_cache(&cache, "temurin", "17.0.1", "x64", "linux");
         assert!(not_found.is_none());
+    }
+
+    #[test]
+    fn test_convert_package_to_jdk_metadata() {
+        use crate::api::{Links, Package};
+
+        let api_package = Package {
+            id: "test123".to_string(),
+            distribution: "temurin".to_string(),
+            major_version: 21,
+            java_version: "21.0.1".to_string(),
+            distribution_version: "21.0.1+12".to_string(),
+            jdk_version: 21,
+            operating_system: "linux".to_string(),
+            package_type: "jdk".to_string(),
+            archive_type: "tar.gz".to_string(),
+            filename: "OpenJDK21U-jdk_x64_linux_hotspot_21.0.1_12.tar.gz".to_string(),
+            directly_downloadable: true,
+            links: Links {
+                pkg_download_redirect: "https://example.com/download".to_string(),
+                pkg_info_uri: None,
+            },
+            free_use_in_production: true,
+            tck_tested: "yes".to_string(),
+            size: 195000000,
+            lib_c_type: Some("glibc".to_string()),
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+        };
+
+        let result = convert_package_to_jdk_metadata(api_package);
+        assert!(result.is_ok());
+
+        let jdk_metadata = result.unwrap();
+        assert_eq!(jdk_metadata.id, "test123");
+        assert_eq!(jdk_metadata.distribution, "temurin");
+        assert_eq!(jdk_metadata.version.major, 21);
+        // Architecture is parsed from filename
+        assert_eq!(jdk_metadata.architecture.to_string(), "x64");
     }
 }
