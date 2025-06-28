@@ -33,7 +33,12 @@ pub enum CacheCommand {
         /// Output results as JSON for programmatic use
         #[arg(long, conflicts_with_all = ["compact", "detailed"])]
         json: bool,
+        /// Filter to show only LTS versions
+        #[arg(long)]
+        lts_only: bool,
     },
+    /// List all available distributions in cache
+    ListDistributions,
 }
 
 impl CacheCommand {
@@ -47,7 +52,9 @@ impl CacheCommand {
                 compact,
                 detailed,
                 json,
-            } => search_cache(version, compact, detailed, json),
+                lts_only,
+            } => search_cache(version, compact, detailed, json, lts_only),
+            CacheCommand::ListDistributions => list_distributions(),
         }
     }
 }
@@ -109,7 +116,13 @@ fn clear_cache() -> Result<()> {
     Ok(())
 }
 
-fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bool) -> Result<()> {
+fn search_cache(
+    version_string: String,
+    _compact: bool,
+    detailed: bool,
+    json: bool,
+    lts_only: bool,
+) -> Result<()> {
     let cache_path = cache::get_cache_path()?;
 
     if !cache_path.exists() {
@@ -134,13 +147,32 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
 
     // Use the shared searcher
     let searcher = PackageSearcher::new(Some(&cache));
-    let results = searcher.search_parsed(&parsed_request)?;
+    let mut results = searcher.search_parsed(&parsed_request)?;
+
+    // Apply LTS filtering if requested
+    if lts_only {
+        results.retain(|result| {
+            result
+                .package
+                .term_of_support
+                .as_ref()
+                .map(|tos| tos.to_lowercase() == "lts")
+                .unwrap_or(false)
+        });
+    }
 
     if results.is_empty() {
         if json {
             println!("[]");
         } else {
-            println!("No matching Java versions found for '{}'", version_string);
+            if lts_only {
+                println!(
+                    "No matching LTS Java versions found for '{}'",
+                    version_string
+                );
+            } else {
+                println!("No matching Java versions found for '{}'", version_string);
+            }
             println!("\nTip: Run 'kopi cache refresh' to update available versions.");
         }
         return Ok(());
@@ -154,7 +186,14 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
     }
 
     // Display results for table modes
-    println!("Available Java versions matching '{}':\n", version_string);
+    if lts_only {
+        println!(
+            "Available LTS Java versions matching '{}':\n",
+            version_string
+        );
+    } else {
+        println!("Available Java versions matching '{}':\n", version_string);
+    }
 
     // Get current platform info for determining auto-selection
     let (current_arch, current_os, _) = get_current_platform();
@@ -432,9 +471,7 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
                 // Replace the content row with a proper separator line
                 // Use the structure from the top border to create the separator
                 if let Some(top_border) = lines.first() {
-                    let separator = top_border
-                        .replace('┌', "├")
-                        .replace('┐', "┤");
+                    let separator = top_border.replace('┌', "├").replace('┐', "┤");
                     println!("{}", separator);
                 }
             } else {
@@ -442,6 +479,85 @@ fn search_cache(version_string: String, _compact: bool, detailed: bool, json: bo
             }
         }
     }
+
+    Ok(())
+}
+
+fn list_distributions() -> Result<()> {
+    let cache_path = cache::get_cache_path()?;
+
+    if !cache_path.exists() {
+        println!("No cache found. Run 'kopi cache refresh' to populate the cache.");
+        return Ok(());
+    }
+
+    // Load cache
+    let cache = cache::load_cache(&cache_path)?;
+
+    // Get current platform info
+    let (current_arch, current_os, _) = get_current_platform();
+
+    // Create a map to store distribution info
+    let mut distribution_info: HashMap<String, (String, usize)> = HashMap::new();
+
+    // Count packages per distribution for current platform
+    for (dist_key, distribution) in &cache.distributions {
+        let platform_packages: Vec<_> = distribution
+            .packages
+            .iter()
+            .filter(|package| {
+                package.architecture.to_string() == current_arch
+                    && package.operating_system.to_string() == current_os
+            })
+            .collect();
+
+        if !platform_packages.is_empty() {
+            // Get display name from distribution or use the key
+            let display_name = distribution.display_name.clone();
+
+            distribution_info.insert(dist_key.clone(), (display_name, platform_packages.len()));
+        }
+    }
+
+    if distribution_info.is_empty() {
+        println!("No distributions found for current platform.");
+        return Ok(());
+    }
+
+    println!("Available distributions in cache:\n");
+
+    // Create a table
+    let mut table = Table::new();
+    table.load_preset(comfy_table::presets::UTF8_BORDERS_ONLY);
+    table.set_header(vec![
+        Cell::new("Distribution"),
+        Cell::new("Display Name"),
+        Cell::new("Versions"),
+    ]);
+
+    // Sort by distribution key for consistent output
+    let mut sorted_distributions: Vec<(String, (String, usize))> =
+        distribution_info.into_iter().collect();
+    sorted_distributions.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let mut total_versions = 0;
+    for (dist_key, (display_name, count)) in sorted_distributions {
+        table.add_row(vec![
+            Cell::new(&dist_key),
+            Cell::new(&display_name),
+            Cell::new(count.to_string()).set_alignment(CellAlignment::Right),
+        ]);
+        total_versions += count;
+    }
+
+    println!("{}", table);
+    println!(
+        "\nTotal: {} distributions with {} versions for {}/{}",
+        table.row_count(),
+        total_versions,
+        current_os,
+        current_arch
+    );
 
     Ok(())
 }
@@ -471,6 +587,28 @@ mod tests {
         }
 
         let result = clear_cache();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_list_distributions_no_cache() {
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("KOPI_HOME", temp_dir.path());
+        }
+
+        let result = list_distributions();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_search_cache_with_lts_filter_no_cache() {
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("KOPI_HOME", temp_dir.path());
+        }
+
+        let result = search_cache("21".to_string(), false, false, false, true);
         assert!(result.is_ok());
     }
 }

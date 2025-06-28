@@ -166,6 +166,7 @@ fn test_search_distribution_only() {
         compact: false,
         detailed: false,
         json: true,
+        lts_only: false,
     };
 
     // This should succeed and return all Corretto versions
@@ -182,6 +183,7 @@ fn test_search_latest_all_distributions() {
         compact: false,
         detailed: false,
         json: true,
+        lts_only: false,
     };
 
     // This should succeed and return the latest version from each distribution
@@ -198,6 +200,7 @@ fn test_search_latest_specific_distribution() {
         compact: false,
         detailed: false,
         json: true,
+        lts_only: false,
     };
 
     // This should succeed and return only the latest Temurin version
@@ -214,6 +217,7 @@ fn test_search_backward_compatibility() {
         compact: false,
         detailed: false,
         json: true,
+        lts_only: false,
     };
 
     // This should succeed and return version 21 (defaulting to Temurin)
@@ -230,6 +234,7 @@ fn test_search_distribution_with_version() {
         compact: false,
         detailed: false,
         json: true,
+        lts_only: false,
     };
 
     // This should succeed and return Corretto 17
@@ -246,6 +251,7 @@ fn test_search_invalid_distribution() {
         compact: false,
         detailed: false,
         json: false,
+        lts_only: false,
     };
 
     // This should fail with an error about unknown distribution
@@ -262,6 +268,7 @@ fn test_search_jre_latest() {
         compact: false,
         detailed: false,
         json: true,
+        lts_only: false,
     };
 
     // This should succeed (even if no JRE packages exist, it should return empty results)
@@ -278,6 +285,7 @@ fn test_search_display_modes() {
         compact: true,
         detailed: false,
         json: false,
+        lts_only: false,
     };
     assert!(cmd_compact.execute().is_ok());
 
@@ -287,6 +295,7 @@ fn test_search_display_modes() {
         compact: false,
         detailed: true,
         json: false,
+        lts_only: false,
     };
     assert!(cmd_detailed.execute().is_ok());
 
@@ -296,6 +305,7 @@ fn test_search_display_modes() {
         compact: false,
         detailed: false,
         json: true,
+        lts_only: false,
     };
     assert!(cmd_json.execute().is_ok());
 }
