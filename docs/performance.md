@@ -230,3 +230,27 @@ For faster feedback in your IDE:
    cargo install cargo-watch
    cargo watch -x check -x test
    ```
+
+## Saving Benchmark Results
+
+To track performance over time, save benchmark results:
+
+```bash
+# Run and save benchmarks
+./scripts/save-benchmark.sh
+
+# Check for performance regressions
+./scripts/check-performance.sh
+
+# Compare with specific baseline
+./scripts/check-performance.sh v0.1.0
+```
+
+Benchmark results are stored in:
+- `benchmarks/baselines/` - Baseline results (tracked in Git)
+- `benchmarks/results/YYYY-MM-DD/` - Daily runs (local only, not in Git)
+
+The CI automatically:
+- Runs benchmarks on PRs and alerts on regressions > 10%
+- Saves results as GitHub Actions artifacts (90 day retention)
+- Updates baselines when merging to main

@@ -1,1 +1,8 @@
 /target
+
+# Criterion benchmark temporary files
+/target/criterion/
+
+# Benchmark results - only track baselines
+benchmarks/results/
+!benchmarks/baselines/
