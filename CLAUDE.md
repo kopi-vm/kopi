@@ -30,9 +30,10 @@ Key features:
 ## Development Commands
 
 ### Build and Run
-- `cargo build` - Build the project in debug mode
+- `cargo build` - Build the project in debug mode (fastest compilation)
 - `cargo run` - Build and run the application
-- `cargo build --release` - Build optimized release version
+- `cargo build --profile release-fast` - Fast release build for development
+- `cargo build --release` - Build optimized release version for production
 - `cargo run --release` - Run the release build
 
 ### Code Quality
@@ -41,9 +42,11 @@ Key features:
 - `cargo check` - Fast error checking without building
 
 ### Testing
-- `cargo test` - Run all tests
+- `cargo test` - Run all tests with optimized test profile
+- `cargo test --lib` - Run only unit tests (fastest)
 - `cargo test -- --nocapture` - Run tests with stdout/stderr output
 - `cargo test [test_name]` - Run specific test
+- `cargo test --features perf-tests` - Run performance tests (usually ignored)
 
 **Test Organization**:
 - Unit tests should be placed in the same file as the code being tested using `#[cfg(test)]`
@@ -74,9 +77,27 @@ When finishing any coding task, always run the following commands in order and f
 1. `cargo fmt` - Auto-format code
 2. `cargo clippy` - Check for type and linting errors
 3. `cargo check` - Fast error checking without building
-4. `cargo test` - Run all unit tests
+4. `cargo test --lib` - Run unit tests (faster than full test suite)
 
 Address any errors from each command before proceeding to the next. All four must pass successfully before considering the work complete.
+
+### Performance Considerations
+- **Test execution** is limited to 4 threads by default (configured in `.cargo/config.toml`)
+- **Incremental compilation** is enabled for faster rebuilds
+- **Build profiles** are optimized:
+  - `dev` profile: Dependencies are optimized at level 2
+  - `test` profile: Tests run with optimization level 1 and limited debug info
+  - `release-fast` profile: Fast release builds without LTO for development
+
+### Benchmarking
+To measure performance impact of changes:
+```bash
+# Run all benchmarks
+cargo bench
+
+# Compare with baseline
+cargo bench -- --baseline main
+```
 
 ## Architecture
 

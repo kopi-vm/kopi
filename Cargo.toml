@@ -76,3 +76,8 @@ perf-tests = []
 [dev-dependencies]
 mockall = "0.12"
 mockito = "1.4"
+criterion = "0.5"
+
+[[bench]]
+name = "kopi_bench"
+harness = false

@@ -1,7 +1,7 @@
 # ADR-012: Build and Test Performance Optimization
 
 ## Status
-Proposed
+Accepted and Implemented
 
 ## Context
 The Kopi project's build and test execution times have become significantly long, impacting development efficiency. Analysis reveals several bottlenecks:
@@ -117,13 +117,11 @@ attohttpc = { version = "0.29", default-features = false, features = ["tls-nativ
 
 ### 5. Build Caching Strategies
 
-#### 5.1 Use sccache for Distributed Caching
-```bash
-# Install sccache
-cargo install sccache
-
-# Configure as compiler wrapper
-export RUSTC_WRAPPER=sccache
+#### 5.1 Incremental Compilation
+Incremental compilation is enabled by default:
+```toml
+[build]
+incremental = true
 ```
 
 #### 5.2 CI/CD Optimization
@@ -132,17 +130,18 @@ export RUSTC_WRAPPER=sccache
 - Cache `target/` directory between builds
 - Use cargo-chef for Docker layer caching
 
-### 6. Incremental Compilation Optimization
+### 6. Development Workflow Optimization
 
-Ensure incremental compilation is enabled:
-```toml
-[build]
-incremental = true
-```
-
-For CI environments, consider:
+Use appropriate build profiles:
 ```bash
-export CARGO_INCREMENTAL=1
+# Fast debug builds
+cargo build
+
+# Fast release builds
+cargo build --profile release-fast
+
+# Optimized release builds
+cargo build --release
 ```
 
 ### 7. Benchmark Suite Implementation
