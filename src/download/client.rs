@@ -52,7 +52,8 @@ impl Default for AttohttpcClient {
 impl HttpClient for AttohttpcClient {
     fn get(&self, url: &str, headers: Vec<(String, String)>) -> Result<Box<dyn HttpResponse>> {
         // Create a new session for each request
-        let session = Session::new();
+        let mut session = Session::new();
+        session.proxy_settings(attohttpc::ProxySettings::from_env());
 
         // Build request with method chaining to avoid lifetime issues
         let mut request_builder = session

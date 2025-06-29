@@ -26,6 +26,7 @@ impl ApiClient {
         let mut session = Session::new();
         session.header("User-Agent", USER_AGENT);
         session.timeout(Duration::from_secs(DEFAULT_TIMEOUT));
+        session.proxy_settings(attohttpc::ProxySettings::from_env());
 
         Self {
             session,

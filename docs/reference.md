@@ -522,10 +522,41 @@ RUST_LOG=kopi::storage=debug kopi install 21          # Debug installation paths
 
 Kopi respects the following environment variables:
 
+### Kopi-specific Variables
 - `KOPI_HOME` - Override default kopi home directory (default: `~/.kopi`)
 - `JAVA_HOME` - Set by kopi when switching JDK versions
 - `PATH` - Modified by kopi to include JDK bin directory
 - `RUST_LOG` - Control logging verbosity (see Debugging and Logging section)
+
+### HTTP Proxy Configuration
+Kopi supports standard HTTP proxy environment variables for downloading JDKs and fetching metadata:
+
+- `HTTP_PROXY` or `http_proxy` - Proxy server for HTTP requests
+- `HTTPS_PROXY` or `https_proxy` - Proxy server for HTTPS requests
+- `NO_PROXY` or `no_proxy` - Comma-separated list of hosts to bypass proxy
+
+**Examples:**
+```bash
+# Set proxy for all requests
+export HTTP_PROXY=http://proxy.company.com:8080
+export HTTPS_PROXY=http://proxy.company.com:8080
+
+# Set proxy with authentication
+export HTTP_PROXY=http://username:password@proxy.company.com:8080
+export HTTPS_PROXY=http://username:password@proxy.company.com:8080
+
+# Bypass proxy for specific hosts
+export NO_PROXY=localhost,127.0.0.1,internal.company.com
+
+# Use proxy for a single command
+HTTPS_PROXY=http://proxy:8080 kopi install 21
+```
+
+**Notes:**
+- Proxy settings are automatically detected from environment variables
+- Both uppercase and lowercase variable names are supported
+- Authentication credentials can be included in the proxy URL
+- The `NO_PROXY` variable supports wildcards (e.g., `*.internal.com`)
 
 Note: Minimum disk space requirement is configured via `~/.kopi/config.toml` (see Global Config section above)
 
@@ -571,7 +602,7 @@ Error: Failed to download JDK
 ```
 **Solution:**
 - Check your internet connection
-- Check proxy settings if behind a firewall
+- If behind a corporate proxy, set proxy environment variables (see HTTP Proxy Configuration)
 - Use `--timeout` to increase timeout for slow connections
 - Try again later if rate limited
 
