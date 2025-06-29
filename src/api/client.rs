@@ -48,8 +48,8 @@ impl ApiClient {
         let distributions = self.get_distributions()?;
 
         // Get platform-specific parameters
-        let architecture = Self::get_current_architecture();
-        let operating_system = Self::get_current_os();
+        let architecture = crate::platform::get_current_architecture();
+        let operating_system = crate::platform::get_current_os();
         let lib_c_type = get_foojay_libc_type();
 
         // For each distribution, fetch available packages
@@ -101,8 +101,8 @@ impl ApiClient {
         let distributions = self.get_distributions()?;
 
         // Get platform-specific parameters
-        let architecture = Self::get_current_architecture();
-        let operating_system = Self::get_current_os();
+        let architecture = crate::platform::get_current_architecture();
+        let operating_system = crate::platform::get_current_os();
         let lib_c_type = get_foojay_libc_type();
 
         // For each distribution, fetch available packages
@@ -377,55 +377,6 @@ impl ApiClient {
         );
 
         result.map_err(|e| e.error)
-    }
-
-    fn get_current_architecture() -> String {
-        #[cfg(target_arch = "x86_64")]
-        return "x64".to_string();
-
-        #[cfg(target_arch = "x86")]
-        return "x86".to_string();
-
-        #[cfg(target_arch = "aarch64")]
-        return "aarch64".to_string();
-
-        #[cfg(target_arch = "arm")]
-        return "arm32".to_string();
-
-        #[cfg(target_arch = "powerpc64")]
-        {
-            #[cfg(target_endian = "little")]
-            return "ppc64le".to_string();
-            #[cfg(target_endian = "big")]
-            return "ppc64".to_string();
-        }
-
-        #[cfg(target_arch = "s390x")]
-        return "s390x".to_string();
-
-        #[cfg(not(any(
-            target_arch = "x86_64",
-            target_arch = "x86",
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "powerpc64",
-            target_arch = "s390x"
-        )))]
-        return "unknown".to_string();
-    }
-
-    fn get_current_os() -> String {
-        #[cfg(target_os = "linux")]
-        return "linux".to_string();
-
-        #[cfg(target_os = "windows")]
-        return "windows".to_string();
-
-        #[cfg(target_os = "macos")]
-        return "macos".to_string();
-
-        #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
-        return "unknown".to_string();
     }
 }
 

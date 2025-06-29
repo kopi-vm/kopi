@@ -28,10 +28,10 @@ use crate::models::jdk::JdkMetadata;
 pub struct PlatformFilter {
     /// Target architecture (e.g., "x64", "aarch64", "arm32")
     pub architecture: Option<String>,
-    
+
     /// Target operating system (e.g., "linux", "windows", "macos")
     pub operating_system: Option<String>,
-    
+
     /// C library type for Linux (e.g., "glibc", "musl")
     /// This is particularly important for Alpine Linux compatibility
     pub lib_c_type: Option<String>,
@@ -45,10 +45,10 @@ pub struct PlatformFilter {
 pub struct SearchResult {
     /// Distribution identifier (e.g., "temurin", "zulu")
     pub distribution: String,
-    
+
     /// Human-readable distribution name (e.g., "Eclipse Temurin", "Azul Zulu")
     pub display_name: String,
-    
+
     /// Complete package metadata including version, download info, etc.
     pub package: JdkMetadata,
 }
@@ -67,10 +67,10 @@ pub struct SearchResult {
 pub struct SearchResultRef<'a> {
     /// Reference to distribution identifier
     pub distribution: &'a str,
-    
+
     /// Reference to human-readable distribution name
     pub display_name: &'a str,
-    
+
     /// Reference to package metadata
     pub package: &'a JdkMetadata,
 }

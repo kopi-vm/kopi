@@ -33,7 +33,7 @@ use super::models::{PlatformFilter, SearchResult, SearchResultRef};
 ///     operating_system: Some("linux".to_string()),
 ///     lib_c_type: None,
 /// };
-/// 
+///
 /// let searcher = PackageSearcher::new(Some(&cache))
 ///     .with_platform_filter(filter);
 ///

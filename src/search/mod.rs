@@ -70,7 +70,6 @@ use crate::cache::{MetadataCache, get_cache_path, load_cache};
 use crate::error::Result;
 
 mod models;
-mod platform;
 mod searcher;
 
 #[cfg(test)]
@@ -78,8 +77,10 @@ mod tests;
 
 // Re-export commonly used types
 pub use models::{PlatformFilter, SearchResult, SearchResultRef};
-pub use platform::{get_current_architecture, get_current_os, get_current_platform};
 pub use searcher::PackageSearcher;
+
+// Re-export platform functions from the main platform module for convenience
+pub use crate::platform::{get_current_architecture, get_current_os, get_current_platform};
 
 /// Load cache and create a searcher
 pub fn create_searcher_with_cache() -> Result<(MetadataCache, PackageSearcher<'static>)> {
