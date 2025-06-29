@@ -118,35 +118,19 @@ kopi default corretto            # Set Amazon Corretto as default
    - Stores default distribution preference
    - Global settings and preferences
 
-2. **Project Config**: `.kopi-version` or `.java-version` (for compatibility)
-   - Can specify version as `21` or `temurin@21`
-   - Simple text file with single line
+2. **Project Version Files**:
+   
+   **`.java-version`** (Compatibility Mode)
+   - Simple version numbers only: `21`, `11.0.2`, `21-ea`
+   - No distribution specification
+   - Maintains compatibility with GitHub Actions and other tools
+   
+   **`.kopi-version`** (Native Format)
+   - Uses `@` separator: `temurin@21`, `corretto@11.0.2+9`
+   - Clear separation between distribution and version
+   - No version ranges or wildcards supported
 
-3. **Project Metadata**: `kopi.toml` (optional, for advanced settings)
-   ```toml
-   [java]
-   version = "21.0.1"                    # JDK version
-   distribution = "temurin"              # JDK distribution
-   
-   [java.env]
-   # Additional environment variables
-   JAVA_TOOL_OPTIONS = "-Xmx2g"
-   MAVEN_OPTS = "-Xmx1g"
-   
-   [project]
-   # Project-specific JVM options
-   jvm_args = ["-XX:+UseG1GC", "-XX:MaxGCPauseMillis=200"]
-   
-   [tools]
-   # Pin specific tool versions that come with JDK
-   javac = { min_version = "21.0.0" }
-   
-   [fallback]
-   # Fallback options if primary version unavailable
-   allow_higher_patch = true             # Allow 21.0.2 if 21.0.1 not found
-   allow_lts_fallback = true             # Fall back to nearest LTS version
-   distributions = ["temurin", "corretto", "zulu"]  # Try distributions in order
-   ```
+Note: Kopi supports only exact version specifications. No Maven-style ranges (`[1.7,1.8)`), npm-style ranges (`^1.2.3`), or wildcards (`21.*`) are supported.
 
 ### Shell Integration
 
@@ -187,7 +171,7 @@ The `kopi shell` command provides an alternative approach:
 
 1. Phase 1: Core commands (`install`, `list`, `use`, `current`)
 2. Phase 2: Project support (`local`, `pin`, config files) and `shell` command
-3. Phase 3: Advanced features (`default`, `doctor`, `prune`)
+3. Phase 3: Advanced features (`default`, `doctor`, `prune`, `migrate`)
 4. Phase 4: Shell completions and enhanced integration
 
 ## References

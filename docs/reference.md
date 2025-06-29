@@ -206,6 +206,38 @@ Diagnose kopi installation issues.
 kopi doctor                              # Diagnose kopi installation issues
 ```
 
+### `kopi migrate`
+
+Migrate version files from other Java version managers.
+
+**Usage:**
+```bash
+kopi migrate                             # Auto-detect and migrate
+kopi migrate jenv                        # Migrate from jenv
+kopi migrate asdf                        # Migrate from asdf
+```
+
+**Options:**
+- `--keep-original`: Preserve original version files
+- `--dry-run`: Preview changes without applying them
+- `--recursive`: Handle monorepos (migrate all subdirectories)
+
+**Examples:**
+```bash
+# Migrate from jenv, keeping original files
+kopi migrate jenv --keep-original
+
+# Preview migration from asdf
+kopi migrate asdf --dry-run
+
+# Migrate entire monorepo
+kopi migrate --recursive
+```
+
+**Migration mappings:**
+- jenv: `openjdk64-11.0.15` → `temurin@11.0.15`
+- asdf: `temurin-21.0.1+12` → `temurin@21.0.1+12`
+
 ## Cache Management Commands
 
 ### `kopi cache`
@@ -334,40 +366,63 @@ default_distribution = "temurin"
 min_disk_space_mb = 1024
 ```
 
-### Project Config: `.kopi-version` or `.java-version`
+### Project Version Files
 
-Simple text file with single line specifying version:
-- Can specify version as `21` or `temurin@21`
-- Kopi supports `.java-version` for compatibility with other tools
+Kopi supports two formats for project-specific Java version configuration:
 
-### Project Metadata: `kopi.toml` (optional)
+#### `.java-version` (Compatibility Mode)
 
-Advanced project settings:
-
-```toml
-[java]
-version = "21.0.1"                    # JDK version
-distribution = "temurin"              # JDK distribution
-
-[java.env]
-# Additional environment variables
-JAVA_TOOL_OPTIONS = "-Xmx2g"
-MAVEN_OPTS = "-Xmx1g"
-
-[project]
-# Project-specific JVM options
-jvm_args = ["-XX:+UseG1GC", "-XX:MaxGCPauseMillis=200"]
-
-[tools]
-# Pin specific tool versions that come with JDK
-javac = { min_version = "21.0.0" }
-
-[fallback]
-# Fallback options if primary version unavailable
-allow_higher_patch = true             # Allow 21.0.2 if 21.0.1 not found
-allow_lts_fallback = true             # Fall back to nearest LTS version
-distributions = ["temurin", "corretto", "zulu"]  # Try distributions in order
+Simple text file containing only a version number for compatibility with existing tools:
 ```
+21
+```
+or
+```
+11.0.2
+```
+or
+```
+21-ea
+```
+
+- **No distribution specification** - uses the default distribution from global config
+- Maintains compatibility with GitHub Actions setup-java and other tools
+- Supports only exact version numbers (no ranges or wildcards)
+
+#### `.kopi-version` (Native Format)
+
+Kopi's native format using `@` separator for distribution and version:
+```
+temurin@21
+```
+or
+```
+corretto@11.0.2+9
+```
+or
+```
+zulu@21-ea+35
+```
+
+- Clear separation between distribution and version using `@`
+- When only version is specified (e.g., `21`), uses default distribution
+- **No version ranges**: Does not support Maven-style (`[1.7,1.8)`) or npm-style (`^1.2.3`, `~1.2.3`) specifications
+- **Exact versions only**: Must specify precise version numbers
+
+### Version Resolution
+
+When a major version only is specified (e.g., `21`), kopi will:
+- Automatically select the latest available minor and patch version
+- For example, `21` might resolve to `21.0.2+13` if that's the latest available
+- This provides convenience while maintaining reproducibility once installed
+
+### Configuration Hierarchy
+
+Version resolution order (highest to lowest priority):
+1. Environment variable: `KOPI_JAVA_VERSION`
+2. `.kopi-version` file (walks up directory tree)
+3. `.java-version` file (walks up directory tree, for compatibility)
+4. Global configuration (`~/.kopi/config.toml`)
 
 ## Shell Integration
 
@@ -384,7 +439,7 @@ The `kopi shell` command provides an alternative approach:
 
 ## Version Specification Format
 
-Kopi supports flexible version specifications:
+Kopi supports exact version specifications only:
 
 - `21` - Latest Java 21 (uses default distribution)
 - `21.0.1` - Specific version (uses default distribution)
@@ -392,6 +447,13 @@ Kopi supports flexible version specifications:
 - `corretto@21` - Latest Java 21 from Amazon Corretto
 - `latest` - Latest available version
 - `latest --lts` - Latest LTS version
+
+**Note**: Kopi does not support version ranges or wildcards:
+- No Maven-style ranges: `[1.7,1.8)`, `(,1.8]`, `[1.5,)`
+- No npm-style ranges: `^1.2.3`, `~1.2.3`, `>=1.2.3 <2.0.0`
+- No wildcards: `21.*`, `11.0.*`
+
+This design keeps version management simple and reproducible.
 
 ## Debugging and Logging
 

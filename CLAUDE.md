@@ -132,7 +132,7 @@ Key architectural components:
 - **JDK Metadata**: Fetches available JDK versions from foojay.io API
 - **Version Management**: Installs and manages multiple JDK versions in `~/.kopi/jdks/<vendor>-<version>/`
 - **Shell Integration**: Creates shims in `~/.kopi/bin/` for Java executables
-- **Project Configuration**: Reads `.kopi-version` or `.java-version` files
+- **Project Configuration**: Reads `.kopi-version` (native format with `@` separator) or `.java-version` (compatibility)
 - **Metadata Caching**: Stores JDK metadata in `~/.kopi/cache/metadata.json` with hybrid caching strategy
 
 Storage locations:
