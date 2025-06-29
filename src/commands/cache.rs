@@ -5,7 +5,7 @@ use crate::version::parser::VersionParser;
 use chrono::Local;
 use clap::Subcommand;
 use colored::*;
-use comfy_table::{Cell, CellAlignment, Table};
+use comfy_table::{Cell, CellAlignment, Color, Table};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
@@ -477,7 +477,12 @@ fn search_cache(
                     // Deduplication based on display mode
                     if detailed && !json {
                         // In detailed mode, deduplicate based on all visible fields except size
-                        let status_display = package
+
+                        let os_arch =
+                            format!("{}/{}", package.operating_system, package.architecture);
+                        let lib_c = package.lib_c_type.as_deref().unwrap_or("-");
+
+                        let status_plain = package
                             .release_status
                             .as_ref()
                             .map(|rs| match rs.to_lowercase().as_str() {
@@ -487,16 +492,12 @@ fn search_cache(
                             })
                             .unwrap_or("-");
 
-                        let os_arch =
-                            format!("{}/{}", package.operating_system, package.architecture);
-                        let lib_c = package.lib_c_type.as_deref().unwrap_or("-");
-
                         let detailed_key = format!(
                             "{}-{}-{}-{}-{}-{}-{}",
                             dist_name,
                             display_version,
                             lts_display,
-                            status_display,
+                            status_plain,
                             package.package_type,
                             os_arch,
                             lib_c
@@ -541,8 +542,18 @@ fn search_cache(
                         vec![
                             dist_cell,
                             Cell::new(display_version),
-                            Cell::new(lts_display),
-                            Cell::new(status_display_detail),
+                            // Apply color to LTS cell
+                            match lts_display {
+                                "LTS" => Cell::new(lts_display).fg(Color::Green),
+                                "STS" => Cell::new(lts_display).fg(Color::Yellow),
+                                _ => Cell::new(lts_display).fg(Color::DarkGrey),
+                            },
+                            // Apply color to Status cell
+                            match status_display_detail {
+                                "GA" => Cell::new(status_display_detail).fg(Color::Green),
+                                "EA" => Cell::new(status_display_detail).fg(Color::Yellow),
+                                _ => Cell::new(status_display_detail).fg(Color::DarkGrey),
+                            },
                             Cell::new(package.package_type.to_string()),
                             Cell::new(os_arch),
                             Cell::new(package.lib_c_type.as_deref().unwrap_or("-")),
@@ -553,7 +564,12 @@ fn search_cache(
                         vec![
                             dist_cell,
                             Cell::new(display_version),
-                            Cell::new(lts_display),
+                            // Apply color to LTS cell
+                            match lts_display {
+                                "LTS" => Cell::new(lts_display).fg(Color::Green),
+                                "STS" => Cell::new(lts_display).fg(Color::Yellow),
+                                _ => Cell::new(lts_display).fg(Color::DarkGrey),
+                            },
                         ]
                     };
 
