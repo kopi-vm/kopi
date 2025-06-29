@@ -477,6 +477,7 @@ impl InstallCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::KopiError;
 
     #[test]
     fn test_parse_version_spec() {
@@ -563,5 +564,59 @@ mod tests {
         assert_eq!(package.operating_system, "linux");
         assert_eq!(package.size, 100000000);
         assert!(package.directly_downloadable);
+    }
+
+    #[test]
+    fn test_invalid_version_format_error() {
+        // Test that invalid version format produces appropriate error
+        let result = VersionParser::parse("@@@invalid");
+        assert!(result.is_err());
+        match result {
+            Err(KopiError::InvalidVersionFormat(_)) => {}
+            _ => panic!("Expected InvalidVersionFormat error"),
+        }
+    }
+
+    #[test]
+    fn test_version_not_available_error() {
+        // Mock scenario where version is not found
+        let error = KopiError::VersionNotAvailable("temurin 999".to_string());
+        let error_str = error.to_string();
+        assert!(error_str.contains("not available"));
+    }
+
+    #[test]
+    fn test_already_exists_error() {
+        let error = KopiError::AlreadyExists("temurin 21 is already installed".to_string());
+        let error_str = error.to_string();
+        assert!(error_str.contains("already installed"));
+    }
+
+    #[test]
+    fn test_network_error_handling() {
+        let error = KopiError::NetworkError("Connection timeout".to_string());
+        let error_str = error.to_string();
+        assert!(error_str.contains("Network error"));
+    }
+
+    #[test]
+    fn test_permission_denied_error() {
+        let error = KopiError::PermissionDenied("/opt/kopi".to_string());
+        let error_str = error.to_string();
+        assert!(error_str.contains("Permission denied"));
+    }
+
+    #[test]
+    fn test_disk_space_error() {
+        let error = KopiError::DiskSpaceError("Only 100MB available, need 500MB".to_string());
+        let error_str = error.to_string();
+        assert!(error_str.contains("disk space"));
+    }
+
+    #[test]
+    fn test_checksum_mismatch_error() {
+        let error = KopiError::ChecksumMismatch;
+        let error_str = error.to_string();
+        assert!(error_str.contains("Checksum verification failed"));
     }
 }

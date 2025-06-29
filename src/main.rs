@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use kopi::commands::cache::CacheCommand;
 use kopi::commands::install::InstallCommand;
-use kopi::error::Result;
+use kopi::error::{Result, format_error_chain, get_exit_code};
 
 #[derive(Parser)]
 #[command(name = "kopi")]
@@ -52,62 +52,74 @@ enum Commands {
         all: bool,
     },
 
-    /// Switch to a specific JDK version
+    /// Switch to a specific JDK version temporarily
+    #[command(visible_alias = "u")]
     Use {
         /// Version to use
         version: String,
     },
 
-    /// Show current JDK version
+    /// Show currently active JDK version
     Current,
 
-    /// Set global default JDK version
+    /// Set the global default JDK version
+    #[command(visible_alias = "g")]
     Global {
         /// Version to set as global default
         version: String,
     },
 
-    /// Set project-specific JDK version
+    /// Set the local project JDK version
+    #[command(visible_alias = "l")]
     Local {
         /// Version to set for current project
         version: String,
     },
 
-    /// Show JDK installation path
+    /// Show installation path for a JDK version
+    #[command(visible_alias = "w")]
     Which {
-        /// Version to show path for (defaults to current)
+        /// Version to locate (defaults to current)
         version: Option<String>,
     },
 
-    /// Manage metadata cache
+    /// Manage JDK metadata cache
     Cache {
         #[command(subcommand)]
         command: CacheCommand,
     },
 
-    /// Refresh metadata cache from foojay.io (alias for 'cache refresh')
+    /// Refresh JDK metadata cache (alias for cache refresh)
+    #[command(visible_alias = "r", hide = true)]
     Refresh {
         /// Include packages regardless of JavaFX bundled status
         #[arg(long)]
         javafx_bundled: bool,
     },
 
-    /// Search for available JDK versions (alias for 'cache search')
+    /// Search available JDK versions (alias for cache search)
+    #[command(visible_alias = "s", hide = true)]
     Search {
-        /// Query to search for (e.g., "21", "17.0.9", "corretto@21", "corretto", "latest")
-        version: String,
-        /// Display minimal information (default)
-        #[arg(long, conflicts_with_all = ["detailed", "json"])]
+        /// Version pattern to search (e.g., "21", "corretto", "corretto@17")
+        #[arg(value_name = "VERSION")]
+        version: Option<String>,
+
+        /// Show compact output (version numbers only)
+        #[arg(short, long, conflicts_with = "detailed")]
         compact: bool,
-        /// Display detailed information including OS/Arch and Status
-        #[arg(long, conflicts_with_all = ["compact", "json"])]
+
+        /// Show detailed information including download URLs
+        #[arg(short, long, conflicts_with = "compact")]
         detailed: bool,
-        /// Output results as JSON for programmatic use
+
+        /// Output results as JSON
         #[arg(long, conflicts_with_all = ["compact", "detailed"])]
         json: bool,
-        /// Filter to show only LTS versions
+
+        /// Show only LTS versions
         #[arg(long)]
         lts_only: bool,
+
         /// Include packages regardless of JavaFX bundled status
         #[arg(long)]
         javafx_bundled: bool,
@@ -115,97 +127,105 @@ enum Commands {
 }
 
 fn setup_logger(cli: &Cli) {
-    // CLI flags set the default level
-    let default_level = match cli.verbose {
-        0 => "warn",  // Default: only warnings and errors
-        1 => "info",  // -v: show info messages
-        2 => "debug", // -vv: show debug messages
-        _ => "trace", // -vvv or more: show everything
+    let env_filter = match cli.verbose {
+        0 => "kopi=warn",
+        1 => "kopi=info",
+        2 => "kopi=debug",
+        _ => "kopi=trace",
     };
 
-    // RUST_LOG can override if set
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(default_level))
-        .format_timestamp(None) // No timestamps for CLI output
-        .format_module_path(false) // Cleaner output
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(env_filter))
+        .format_timestamp(None)
+        .format_module_path(false)
+        .format_target(false)
         .init();
 }
 
-fn main() -> Result<()> {
+fn main() {
     let cli = Cli::parse();
 
     // Initialize logger based on CLI flags and environment
     setup_logger(&cli);
 
-    match cli.command {
-        Commands::Install {
-            version,
-            force,
-            dry_run,
-            no_progress,
-            timeout,
-            javafx_bundled,
-        } => {
-            let command = InstallCommand::new()?;
-            command.execute(
-                &version,
+    let result: Result<()> = (|| {
+        match cli.command {
+            Commands::Install {
+                version,
                 force,
                 dry_run,
                 no_progress,
                 timeout,
                 javafx_bundled,
-            )?;
-        }
-        Commands::List { all } => {
-            if all {
-                println!("Listing all available JDK versions (not yet implemented)");
-            } else {
-                println!("Listing installed JDK versions (not yet implemented)");
+            } => {
+                let command = InstallCommand::new()?;
+                command.execute(
+                    &version,
+                    force,
+                    dry_run,
+                    no_progress,
+                    timeout,
+                    javafx_bundled,
+                )
             }
-        }
-        Commands::Use { version } => {
-            println!("Switching to JDK {} (not yet implemented)", version);
-        }
-        Commands::Current => {
-            println!("Current JDK version (not yet implemented)");
-        }
-        Commands::Global { version } => {
-            println!("Setting global JDK to {} (not yet implemented)", version);
-        }
-        Commands::Local { version } => {
-            println!("Setting local JDK to {} (not yet implemented)", version);
-        }
-        Commands::Which { version } => {
-            let v = version.unwrap_or_else(|| "current".to_string());
-            println!("Path for JDK {} (not yet implemented)", v);
-        }
-        Commands::Cache { command } => {
-            command.execute()?;
-        }
-        Commands::Refresh { javafx_bundled } => {
-            // Delegate to cache refresh command
-            let cache_cmd = CacheCommand::Refresh { javafx_bundled };
-            cache_cmd.execute()?;
-        }
-        Commands::Search {
-            version,
-            compact,
-            detailed,
-            json,
-            lts_only,
-            javafx_bundled,
-        } => {
-            // Delegate to cache search command
-            let cache_cmd = CacheCommand::Search {
+            Commands::List { all } => {
+                if all {
+                    println!("Listing all available JDK versions (not yet implemented)");
+                } else {
+                    println!("Listing installed JDK versions (not yet implemented)");
+                }
+                Ok(())
+            }
+            Commands::Use { version } => {
+                println!("Switching to JDK {} (not yet implemented)", version);
+                Ok(())
+            }
+            Commands::Current => {
+                println!("Current JDK version (not yet implemented)");
+                Ok(())
+            }
+            Commands::Global { version } => {
+                println!("Setting global JDK to {} (not yet implemented)", version);
+                Ok(())
+            }
+            Commands::Local { version } => {
+                println!("Setting local JDK to {} (not yet implemented)", version);
+                Ok(())
+            }
+            Commands::Which { version } => {
+                let v = version.unwrap_or_else(|| "current".to_string());
+                println!("Path for JDK {} (not yet implemented)", v);
+                Ok(())
+            }
+            Commands::Cache { command } => command.execute(),
+            Commands::Refresh { javafx_bundled } => {
+                // Delegate to cache refresh command
+                let cache_cmd = CacheCommand::Refresh { javafx_bundled };
+                cache_cmd.execute()
+            }
+            Commands::Search {
                 version,
                 compact,
                 detailed,
                 json,
                 lts_only,
                 javafx_bundled,
-            };
-            cache_cmd.execute()?;
+            } => {
+                // Delegate to cache search command
+                let cache_cmd = CacheCommand::Search {
+                    version: version.unwrap_or_else(|| "latest".to_string()),
+                    compact,
+                    detailed,
+                    json,
+                    lts_only,
+                    javafx_bundled,
+                };
+                cache_cmd.execute()
+            }
         }
-    }
+    })();
 
-    Ok(())
+    if let Err(e) = result {
+        eprintln!("{}", format_error_chain(&e));
+        std::process::exit(get_exit_code(&e));
+    }
 }

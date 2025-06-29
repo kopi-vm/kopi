@@ -14,27 +14,23 @@ Install a specific JDK version.
 ```bash
 kopi install <version>                    # Install a specific JDK version
 kopi install <distribution>@<version>     # Install specific distribution
-kopi install --list                       # List available JDK versions from foojay.io
 ```
 
 **Examples:**
 ```bash
-kopi install 21                          # Latest Java 21 (uses default distribution)
-kopi install 21.0.1                      # Specific version (uses default distribution)
+kopi install 21                          # Latest Java 21 (Eclipse Temurin by default)
+kopi install 21.0.1                      # Specific version (Eclipse Temurin by default)
 kopi install temurin@17.0.2              # Specific distribution and version
 kopi install corretto@21                 # Latest Java 21 from Amazon Corretto
 kopi install zulu@11.0.15                # Zulu JDK version 11.0.15
-kopi install 21 --lts                    # Latest LTS of Java 21
-kopi install latest --lts                # Latest LTS version
 ```
 
 **Options:**
-- `--arch <arch>`: Specify architecture (auto-detected by default)
-- `--type <type>`: JDK type (jdk, jre)
-- `--lts`: Filter/install only LTS versions
-- `--latest`: Install latest version matching criteria
-- `--quiet/-q`: Suppress output
-- `--verbose/-v`: Detailed output
+- `--force`: Reinstall even if already installed
+- `--dry-run`: Show what would be installed without actually installing
+- `--no-progress`: Disable progress indicators
+- `--timeout <seconds>`: Download timeout in seconds (default: 120)
+- `--javafx-bundled`: Include packages regardless of JavaFX bundled status
 
 ### `kopi uninstall`
 
@@ -470,3 +466,107 @@ Kopi respects the following environment variables:
 - `RUST_LOG` - Control logging verbosity (see Debugging and Logging section)
 
 Note: Minimum disk space requirement is configured via `~/.kopi/config.toml` (see Global Config section above)
+
+## Troubleshooting
+
+### Enhanced Error Messages
+
+Kopi provides comprehensive error messages with helpful suggestions when something goes wrong:
+
+```bash
+# Example: Version not found
+$ kopi install 999
+Error: JDK version 'temurin 999' is not available
+
+Details: Version lookup failed: temurin 999 not found
+
+Suggestion: Run 'kopi cache search' to see available versions or 'kopi cache refresh' to update the list.
+```
+
+### Common Issues and Solutions
+
+**1. Version Not Available**
+```bash
+Error: JDK version 'X' is not available
+```
+**Solution:** 
+- Run `kopi cache refresh` to update the metadata
+- Use `kopi cache search <version>` to find available versions
+- Check if you're using the correct distribution name
+
+**2. Already Installed**
+```bash
+Error: temurin 21 is already installed
+```
+**Solution:** Use `--force` flag to reinstall:
+```bash
+kopi install 21 --force
+```
+
+**3. Network Issues**
+```bash
+Error: Failed to download JDK
+```
+**Solution:**
+- Check your internet connection
+- Check proxy settings if behind a firewall
+- Use `--timeout` to increase timeout for slow connections
+- Try again later if rate limited
+
+**4. Permission Denied**
+```bash
+Error: Permission denied: /path/to/directory
+```
+**Solution:**
+- On Unix/macOS: Use `sudo` or check file permissions
+- On Windows: Run as Administrator
+- Ensure you have write access to `~/.kopi` directory
+
+**5. Disk Space**
+```bash
+Error: Insufficient disk space
+```
+**Solution:**
+- Free up disk space (JDK installations require 300-500MB)
+- Configure minimum space in `~/.kopi/config.toml`
+- Use `kopi prune` to remove unused JDK versions
+
+**6. Checksum Mismatch**
+```bash
+Error: Checksum verification failed
+```
+**Solution:**
+- Try downloading again (file may be corrupted)
+- If problem persists, report issue as it may be a source problem
+
+**7. Cache Not Found**
+```bash
+Error: Cache not found
+```
+**Solution:** Run `kopi cache refresh` to fetch the latest JDK metadata
+
+### Exit Codes
+
+Kopi uses specific exit codes to help with scripting and automation:
+
+- `0`: Success
+- `1`: General error
+- `2`: Invalid input or configuration error
+- `13`: Permission denied
+- `17`: Resource already exists
+- `20`: Network error
+- `28`: Disk space error
+
+### Getting Help
+
+If you encounter issues not covered here:
+
+1. Run the command with verbose logging:
+   ```bash
+   kopi install 21 -vv
+   ```
+
+2. Check the GitHub issues: https://github.com/anthropics/claude-code/issues
+
+3. For feedback or bug reports, please report the issue at:
+   https://github.com/anthropics/claude-code/issues
