@@ -130,8 +130,7 @@ fn setup_logger(cli: &Cli) {
         .init();
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Initialize logger based on CLI flags and environment
