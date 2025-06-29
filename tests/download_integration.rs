@@ -392,6 +392,7 @@ fn test_download_network_timeout() {
     }
 }
 
+#[cfg_attr(not(feature = "perf-tests"), ignore)]
 #[test]
 fn test_large_file_download_simulation() {
     use kopi::download::ProgressReporter;
@@ -420,8 +421,8 @@ fn test_large_file_download_simulation() {
 
     let mut server = Server::new();
 
-    // Simulate a 500MB file with chunked response
-    let file_size = 500 * 1024 * 1024; // 500MB
+    // Simulate a smaller file for faster tests (5MB instead of 500MB)
+    let file_size = 5 * 1024 * 1024; // 5MB
     let chunk_size = 1024 * 1024; // 1MB chunks
 
     let _m = server

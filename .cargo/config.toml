@@ -1,0 +1,7 @@
+[env]
+# Limit concurrent test threads for better performance
+RUST_TEST_THREADS = "4"
+
+[build]
+# Enable incremental compilation
+incremental = true
