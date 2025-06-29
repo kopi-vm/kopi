@@ -1,482 +1,85 @@
+//! Package search functionality for finding JDK distributions.
+//!
+//! This module provides a comprehensive search system for finding JDK packages
+//! from cached metadata. It supports various search strategies including:
+//!
+//! ## Search Strategies
+//!
+//! ### 1. Version-based Search
+//! - Search by major version: `"21"` finds all JDK 21.x.x versions
+//! - Search by specific version: `"21.0.1"` finds exact matches
+//! - Pattern matching: Major version searches match all minor/patch versions
+//!
+//! ### 2. Distribution-based Search
+//! - Search by distribution: `"temurin"` finds all Temurin packages
+//! - Combined search: `"temurin@21"` finds Temurin JDK 21.x.x
+//! - Distribution-only search returns all versions for that distribution
+//!
+//! ### 3. Latest Version Search
+//! - Global latest: `"latest"` finds newest version across all distributions
+//! - Distribution latest: `"temurin@latest"` finds newest Temurin version
+//! - Version-filtered latest: When `latest` flag is set with version constraint
+//!
+//! ### 4. Platform Filtering
+//! - Architecture filtering: x64, aarch64, arm32, etc.
+//! - Operating system filtering: linux, windows, macos, etc.
+//! - libc type filtering: glibc, musl (important for Linux compatibility)
+//!
+//! ### 5. Package Type Filtering
+//! - JDK vs JRE selection
+//! - Default preference: JDK over JRE when both available
+//! - Explicit selection: `jre@21` or `jdk@21` prefix
+//!
+//! ## Auto-selection Strategy
+//!
+//! When multiple packages match the criteria (common for same version/platform),
+//! the auto-selection follows this priority:
+//!
+//! 1. **Package type preference**:
+//!    - If type requested explicitly, filter to that type
+//!    - Otherwise, prefer JDK over JRE
+//!
+//! 2. **libc compatibility** (Linux only):
+//!    - Match system libc type when possible
+//!    - Falls back to first available if no exact match
+//!
+//! 3. **First match fallback**:
+//!    - Returns the first package if no other criteria differentiate
+//!
+//! ## Usage Examples
+//!
+//! ```no_run
+//! use kopi::search::{PackageSearcher, PlatformFilter};
+//!
+//! // Simple version search
+//! let searcher = PackageSearcher::new(Some(&cache));
+//! let results = searcher.search("21")?;
+//!
+//! // Platform-filtered search
+//! let filter = PlatformFilter {
+//!     architecture: Some("x64".to_string()),
+//!     operating_system: Some("linux".to_string()),
+//!     lib_c_type: Some("glibc".to_string()),
+//! };
+//! let searcher = PackageSearcher::new(Some(&cache))
+//!     .with_platform_filter(filter);
+//! let results = searcher.search("17")?;
+//! ```
+
 use crate::cache::{MetadataCache, get_cache_path, load_cache};
 use crate::error::Result;
-use crate::models::jdk::{Distribution, JdkMetadata};
-use crate::platform::{get_foojay_libc_type, matches_foojay_libc_type};
-use crate::version::parser::{ParsedVersionRequest, VersionParser};
-use std::sync::OnceLock;
 
-pub struct PackageSearcher<'a> {
-    cache: Option<&'a MetadataCache>,
-    platform_filter: PlatformFilter,
-}
+mod models;
+mod platform;
+mod searcher;
 
-/// Cached platform information to avoid repeated system calls
-static CACHED_PLATFORM: OnceLock<(String, String, String)> = OnceLock::new();
+#[cfg(test)]
+mod tests;
 
-#[derive(Debug, Clone, Default)]
-pub struct PlatformFilter {
-    pub architecture: Option<String>,
-    pub operating_system: Option<String>,
-    pub lib_c_type: Option<String>,
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct SearchResult {
-    pub distribution: String,
-    pub display_name: String,
-    pub package: JdkMetadata,
-}
-
-/// Reference to a package in the cache to avoid cloning
-#[derive(Debug)]
-pub struct SearchResultRef<'a> {
-    pub distribution: &'a str,
-    pub display_name: &'a str,
-    pub package: &'a JdkMetadata,
-}
-
-impl<'a> PackageSearcher<'a> {
-    pub fn new(cache: Option<&'a MetadataCache>) -> Self {
-        Self {
-            cache,
-            platform_filter: PlatformFilter::default(),
-        }
-    }
-
-    pub fn with_platform_filter(mut self, filter: PlatformFilter) -> Self {
-        self.platform_filter = filter;
-        self
-    }
-
-    /// Search for packages matching the version string
-    pub fn search(&self, version_string: &str) -> Result<Vec<SearchResult>> {
-        let parsed_request = VersionParser::parse(version_string)?;
-        self.search_parsed(&parsed_request)
-    }
-
-    /// Search for packages matching the parsed version request
-    pub fn search_parsed(&self, request: &ParsedVersionRequest) -> Result<Vec<SearchResult>> {
-        let cache = match self.cache {
-            Some(cache) => cache,
-            None => return Ok(Vec::new()),
-        };
-
-        let mut results = Vec::new();
-
-        // Pre-compute version string if needed to avoid repeated conversions
-        let version_str = request.version.as_ref().map(|v| v.to_string());
-
-        for (dist_name, dist_cache) in &cache.distributions {
-            // Filter by distribution if specified
-            if let Some(ref target_dist) = request.distribution {
-                if dist_cache.distribution != *target_dist {
-                    continue;
-                }
-            }
-
-            if request.latest {
-                // For "latest" requests, find the highest version per distribution
-                let mut latest_package: Option<&JdkMetadata> = None;
-
-                for package in &dist_cache.packages {
-                    // Apply package type filter if specified
-                    if let Some(ref package_type) = request.package_type {
-                        if package.package_type != *package_type {
-                            continue;
-                        }
-                    }
-
-                    // Apply platform filters
-                    if !self.matches_package_with_version(package, request, version_str.as_deref())
-                    {
-                        continue;
-                    }
-
-                    // Track the latest version
-                    match latest_package {
-                        None => latest_package = Some(package),
-                        Some(current_latest) => {
-                            if package.version > current_latest.version {
-                                latest_package = Some(package);
-                            }
-                        }
-                    }
-                }
-
-                if let Some(package) = latest_package {
-                    results.push(SearchResult {
-                        distribution: dist_name.clone(),
-                        display_name: dist_cache.display_name.clone(),
-                        package: package.clone(),
-                    });
-                }
-            } else {
-                // Regular search - include all matching versions
-                for package in &dist_cache.packages {
-                    if !self.matches_package_with_version(package, request, version_str.as_deref())
-                    {
-                        continue;
-                    }
-
-                    results.push(SearchResult {
-                        distribution: dist_name.clone(),
-                        display_name: dist_cache.display_name.clone(),
-                        package: package.clone(),
-                    });
-                }
-            }
-        }
-
-        // Sort by distribution and version
-        results.sort_by(|a, b| match a.distribution.cmp(&b.distribution) {
-            std::cmp::Ordering::Equal => b.package.version.cmp(&a.package.version),
-            other => other,
-        });
-
-        Ok(results)
-    }
-
-    /// Search for packages and return references to avoid cloning
-    pub fn search_parsed_refs<'b>(
-        &'b self,
-        request: &ParsedVersionRequest,
-    ) -> Result<Vec<SearchResultRef<'b>>>
-    where
-        'a: 'b,
-    {
-        let cache = match self.cache {
-            Some(cache) => cache,
-            None => return Ok(Vec::new()),
-        };
-
-        let mut results = Vec::new();
-
-        // Pre-compute version string if needed
-        let version_str = request.version.as_ref().map(|v| v.to_string());
-
-        for (dist_name, dist_cache) in &cache.distributions {
-            // Filter by distribution if specified
-            if let Some(ref target_dist) = request.distribution {
-                if dist_cache.distribution != *target_dist {
-                    continue;
-                }
-            }
-
-            if request.latest {
-                // For "latest" requests, find the highest version per distribution
-                let mut latest_package: Option<&JdkMetadata> = None;
-
-                for package in &dist_cache.packages {
-                    // Apply package type filter if specified
-                    if let Some(ref package_type) = request.package_type {
-                        if package.package_type != *package_type {
-                            continue;
-                        }
-                    }
-
-                    // Apply platform filters
-                    if !self.matches_package_with_version(package, request, version_str.as_deref())
-                    {
-                        continue;
-                    }
-
-                    // Track the latest version
-                    match latest_package {
-                        None => latest_package = Some(package),
-                        Some(current_latest) => {
-                            if package.version > current_latest.version {
-                                latest_package = Some(package);
-                            }
-                        }
-                    }
-                }
-
-                if let Some(package) = latest_package {
-                    results.push(SearchResultRef {
-                        distribution: dist_name,
-                        display_name: &dist_cache.display_name,
-                        package,
-                    });
-                }
-            } else {
-                // Regular search - include all matching versions
-                for package in &dist_cache.packages {
-                    if !self.matches_package_with_version(package, request, version_str.as_deref())
-                    {
-                        continue;
-                    }
-
-                    results.push(SearchResultRef {
-                        distribution: dist_name,
-                        display_name: &dist_cache.display_name,
-                        package,
-                    });
-                }
-            }
-        }
-
-        // Sort by distribution and version
-        results.sort_by(|a, b| match a.distribution.cmp(b.distribution) {
-            std::cmp::Ordering::Equal => b.package.version.cmp(&a.package.version),
-            other => other,
-        });
-
-        Ok(results)
-    }
-
-    /// Find exact package match for installation
-    pub fn find_exact_package(
-        &self,
-        distribution: &Distribution,
-        version: &str,
-        architecture: &str,
-        operating_system: &str,
-    ) -> Option<JdkMetadata> {
-        let cache = self.cache?;
-
-        // Look up distribution by its API name
-        let dist_cache = cache.distributions.get(distribution.id())?;
-
-        // Find exact match
-        dist_cache
-            .packages
-            .iter()
-            .find(|pkg| {
-                pkg.version.to_string() == version
-                    && pkg.architecture.to_string() == architecture
-                    && pkg.operating_system.to_string() == operating_system
-            })
-            .cloned()
-    }
-
-    /// Determine which package would be auto-selected by install command
-    pub fn find_auto_selected_package(
-        &self,
-        distribution: &Distribution,
-        version: &str,
-        architecture: &str,
-        operating_system: &str,
-        requested_package_type: Option<crate::models::jdk::PackageType>,
-    ) -> Option<JdkMetadata> {
-        let cache = self.cache?;
-        let _lib_c_type = get_foojay_libc_type();
-
-        // Look up distribution by its API name
-        let dist_cache = cache.distributions.get(distribution.id())?;
-
-        // Find packages matching version, arch, and OS
-        let matching_packages: Vec<&JdkMetadata> = dist_cache
-            .packages
-            .iter()
-            .filter(|pkg| {
-                pkg.version.to_string() == version
-                    && pkg.architecture.to_string() == architecture
-                    && pkg.operating_system.to_string() == operating_system
-            })
-            .collect();
-
-        // If only one match, return it
-        if matching_packages.len() == 1 {
-            return matching_packages.first().cloned().cloned();
-        }
-
-        // Multiple matches - apply the same logic as install command
-        let packages_to_search = if let Some(requested_type) = requested_package_type {
-            // If package type was explicitly requested, filter to that type
-            let filtered: Vec<&JdkMetadata> = matching_packages
-                .iter()
-                .filter(|pkg| pkg.package_type == requested_type)
-                .cloned()
-                .collect();
-
-            if !filtered.is_empty() {
-                filtered
-            } else {
-                // No packages of requested type, fall back to all packages
-                matching_packages
-            }
-        } else {
-            // No specific package type requested, prefer JDK over JRE
-            let jdk_packages: Vec<&JdkMetadata> = matching_packages
-                .iter()
-                .filter(|pkg| pkg.package_type == crate::models::jdk::PackageType::Jdk)
-                .cloned()
-                .collect();
-
-            if !jdk_packages.is_empty() {
-                jdk_packages
-            } else {
-                matching_packages
-            }
-        };
-
-        // Then try to find one with matching lib_c_type
-        if let Some(pkg) = packages_to_search.iter().find(|pkg| {
-            if let Some(ref pkg_lib_c) = pkg.lib_c_type {
-                matches_foojay_libc_type(pkg_lib_c)
-            } else {
-                false
-            }
-        }) {
-            return Some((*pkg).clone());
-        }
-
-        // If no exact lib_c_type match, return the first one (mimics install behavior)
-        packages_to_search.first().cloned().cloned()
-    }
-
-    #[allow(dead_code)]
-    fn matches_package(&self, package: &JdkMetadata, request: &ParsedVersionRequest) -> bool {
-        // Check version match if version is specified
-        if let Some(ref version) = request.version {
-            if !package.version.matches_pattern(&version.to_string()) {
-                return false;
-            }
-        }
-
-        // Check package type if specified
-        if let Some(ref package_type) = request.package_type {
-            if package.package_type != *package_type {
-                return false;
-            }
-        }
-
-        // Apply platform filters if set
-        if let Some(ref arch) = self.platform_filter.architecture {
-            if package.architecture.to_string() != *arch {
-                return false;
-            }
-        }
-
-        if let Some(ref os) = self.platform_filter.operating_system {
-            if package.operating_system.to_string() != *os {
-                return false;
-            }
-        }
-
-        if let Some(ref lib_c) = self.platform_filter.lib_c_type {
-            if let Some(ref pkg_lib_c) = package.lib_c_type {
-                if pkg_lib_c != lib_c {
-                    return false;
-                }
-            } else {
-                // Package doesn't specify lib_c_type, skip it if we're filtering
-                return false;
-            }
-        }
-
-        true
-    }
-
-    /// Optimized version that accepts pre-computed version string
-    fn matches_package_with_version(
-        &self,
-        package: &JdkMetadata,
-        request: &ParsedVersionRequest,
-        version_str: Option<&str>,
-    ) -> bool {
-        // Check version match if version is specified
-        if let Some(version_pattern) = version_str {
-            if !package.version.matches_pattern(version_pattern) {
-                return false;
-            }
-        }
-
-        // Check package type if specified
-        if let Some(ref package_type) = request.package_type {
-            if package.package_type != *package_type {
-                return false;
-            }
-        }
-
-        // Apply platform filters if set
-        if let Some(ref arch) = self.platform_filter.architecture {
-            if package.architecture.to_string() != *arch {
-                return false;
-            }
-        }
-
-        if let Some(ref os) = self.platform_filter.operating_system {
-            if package.operating_system.to_string() != *os {
-                return false;
-            }
-        }
-
-        if let Some(ref lib_c) = self.platform_filter.lib_c_type {
-            if let Some(ref pkg_lib_c) = package.lib_c_type {
-                if pkg_lib_c != lib_c {
-                    return false;
-                }
-            } else {
-                // Package doesn't specify lib_c_type, skip it if we're filtering
-                return false;
-            }
-        }
-
-        true
-    }
-}
-
-/// Get current platform information with caching
-pub fn get_current_platform() -> (String, String, String) {
-    CACHED_PLATFORM
-        .get_or_init(|| {
-            let arch = get_current_architecture();
-            let os = get_current_os();
-            let lib_c_type = get_foojay_libc_type();
-            (arch, os, lib_c_type.to_string())
-        })
-        .clone()
-}
-
-fn get_current_architecture() -> String {
-    #[cfg(target_arch = "x86_64")]
-    return "x64".to_string();
-
-    #[cfg(target_arch = "x86")]
-    return "x86".to_string();
-
-    #[cfg(target_arch = "aarch64")]
-    return "aarch64".to_string();
-
-    #[cfg(target_arch = "arm")]
-    return "arm32".to_string();
-
-    #[cfg(target_arch = "powerpc64")]
-    {
-        #[cfg(target_endian = "little")]
-        return "ppc64le".to_string();
-        #[cfg(target_endian = "big")]
-        return "ppc64".to_string();
-    }
-
-    #[cfg(target_arch = "s390x")]
-    return "s390x".to_string();
-
-    #[cfg(not(any(
-        target_arch = "x86_64",
-        target_arch = "x86",
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "powerpc64",
-        target_arch = "s390x"
-    )))]
-    return "unknown".to_string();
-}
-
-fn get_current_os() -> String {
-    #[cfg(target_os = "linux")]
-    return "linux".to_string();
-
-    #[cfg(target_os = "windows")]
-    return "windows".to_string();
-
-    #[cfg(target_os = "macos")]
-    return "macos".to_string();
-
-    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
-    return "unknown".to_string();
-}
+// Re-export commonly used types
+pub use models::{PlatformFilter, SearchResult, SearchResultRef};
+pub use platform::{get_current_architecture, get_current_os, get_current_platform};
+pub use searcher::PackageSearcher;
 
 /// Load cache and create a searcher
 pub fn create_searcher_with_cache() -> Result<(MetadataCache, PackageSearcher<'static>)> {
@@ -490,187 +93,4 @@ pub fn create_searcher_with_cache() -> Result<(MetadataCache, PackageSearcher<'s
     // This is a bit tricky - we need to ensure the cache outlives the searcher
     // In practice, the caller will need to manage this lifetime
     Ok((cache, PackageSearcher::new(None)))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::cache::{DistributionCache, MetadataCache};
-    use crate::models::jdk::{
-        Architecture, ArchiveType, ChecksumType, OperatingSystem, PackageType, Version,
-    };
-
-    fn create_test_cache() -> MetadataCache {
-        let mut cache = MetadataCache::new();
-
-        let mut packages = Vec::new();
-        packages.push(JdkMetadata {
-            id: "test-21".to_string(),
-            distribution: "temurin".to_string(),
-            version: Version::new(21, 0, 1),
-            distribution_version: "21.0.1".to_string(),
-            architecture: Architecture::X64,
-            operating_system: OperatingSystem::Linux,
-            package_type: PackageType::Jdk,
-            archive_type: ArchiveType::TarGz,
-            download_url: "https://example.com/jdk21.tar.gz".to_string(),
-            checksum: None,
-            checksum_type: Some(ChecksumType::Sha256),
-            size: 100_000_000,
-            lib_c_type: Some("glibc".to_string()),
-            javafx_bundled: false,
-            term_of_support: Some("lts".to_string()),
-            release_status: Some("ga".to_string()),
-            latest_build_available: Some(true),
-        });
-
-        packages.push(JdkMetadata {
-            id: "test-17".to_string(),
-            distribution: "temurin".to_string(),
-            version: Version::new(17, 0, 9),
-            distribution_version: "17.0.9".to_string(),
-            architecture: Architecture::X64,
-            operating_system: OperatingSystem::Linux,
-            package_type: PackageType::Jdk,
-            archive_type: ArchiveType::TarGz,
-            download_url: "https://example.com/jdk17.tar.gz".to_string(),
-            checksum: None,
-            checksum_type: Some(ChecksumType::Sha256),
-            size: 90_000_000,
-            lib_c_type: Some("glibc".to_string()),
-            javafx_bundled: false,
-            term_of_support: Some("lts".to_string()),
-            release_status: Some("ga".to_string()),
-            latest_build_available: Some(true),
-        });
-
-        let dist_cache = DistributionCache {
-            distribution: Distribution::Temurin,
-            display_name: "Eclipse Temurin".to_string(),
-            packages,
-        };
-
-        cache
-            .distributions
-            .insert("temurin".to_string(), dist_cache);
-        cache
-    }
-
-    #[test]
-    fn test_search_by_major_version() {
-        let cache = create_test_cache();
-        let searcher = PackageSearcher::new(Some(&cache));
-
-        let results = searcher.search("21").unwrap();
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].package.version.major, 21);
-    }
-
-    #[test]
-    fn test_search_with_distribution() {
-        let cache = create_test_cache();
-        let searcher = PackageSearcher::new(Some(&cache));
-
-        let results = searcher.search("temurin@17").unwrap();
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].package.version.major, 17);
-        assert_eq!(results[0].distribution, "temurin");
-    }
-
-    #[test]
-    fn test_search_with_platform_filter() {
-        let cache = create_test_cache();
-        let filter = PlatformFilter {
-            architecture: Some("x64".to_string()),
-            operating_system: Some("linux".to_string()),
-            lib_c_type: Some("glibc".to_string()),
-        };
-        let searcher = PackageSearcher::new(Some(&cache)).with_platform_filter(filter);
-
-        let results = searcher.search("17").unwrap();
-        assert_eq!(results.len(), 1);
-    }
-
-    #[test]
-    fn test_find_exact_package() {
-        let cache = create_test_cache();
-        let searcher = PackageSearcher::new(Some(&cache));
-
-        let package = searcher.find_exact_package(&Distribution::Temurin, "21.0.1", "x64", "linux");
-
-        assert!(package.is_some());
-        assert_eq!(package.unwrap().version.to_string(), "21.0.1");
-    }
-
-    #[test]
-    fn test_search_distribution_only() {
-        let cache = create_test_cache();
-        let searcher = PackageSearcher::new(Some(&cache));
-
-        let parsed_request = ParsedVersionRequest {
-            version: None,
-            distribution: Some(Distribution::Temurin),
-            package_type: None,
-            latest: false,
-        };
-
-        let results = searcher.search_parsed(&parsed_request).unwrap();
-        assert_eq!(results.len(), 2);
-        assert!(results.iter().all(|r| r.distribution == "temurin"));
-    }
-
-    #[test]
-    fn test_search_latest() {
-        let cache = create_test_cache();
-        let searcher = PackageSearcher::new(Some(&cache));
-
-        let parsed_request = ParsedVersionRequest {
-            version: None,
-            distribution: None,
-            package_type: None,
-            latest: true,
-        };
-
-        let results = searcher.search_parsed(&parsed_request).unwrap();
-        assert_eq!(results.len(), 1); // Only one distribution in test cache
-        assert_eq!(results[0].package.version.major, 21); // 21 is newer than 17
-    }
-
-    #[test]
-    fn test_search_latest_with_distribution() {
-        let cache = create_test_cache();
-        let searcher = PackageSearcher::new(Some(&cache));
-
-        let parsed_request = ParsedVersionRequest {
-            version: None,
-            distribution: Some(Distribution::Temurin),
-            package_type: None,
-            latest: true,
-        };
-
-        let results = searcher.search_parsed(&parsed_request).unwrap();
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].package.version.major, 21);
-        assert_eq!(results[0].distribution, "temurin");
-    }
-
-    #[test]
-    fn test_search_with_package_type_filter() {
-        let cache = create_test_cache();
-        let searcher = PackageSearcher::new(Some(&cache));
-
-        let parsed_request = ParsedVersionRequest {
-            version: None,
-            distribution: Some(Distribution::Temurin),
-            package_type: Some(PackageType::Jdk),
-            latest: false,
-        };
-
-        let results = searcher.search_parsed(&parsed_request).unwrap();
-        assert!(
-            results
-                .iter()
-                .all(|r| r.package.package_type == PackageType::Jdk)
-        );
-    }
 }
