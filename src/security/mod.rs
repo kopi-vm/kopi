@@ -336,8 +336,6 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn test_verify_file_permissions_windows() {
-        use std::fs;
-
         let temp_file = NamedTempFile::new().unwrap();
 
         // By default, temp files are writable
