@@ -618,41 +618,51 @@ fn test_download_connection_reset() {
             }
         }
         Err(e) => {
-            // Check if it's a connection-related error by examining the error chain
-            let mut is_connection_error = false;
-
-            // Check the error chain for IO errors
-            let mut error_chain: &dyn std::error::Error = &e;
-            loop {
-                if let Some(io_error) = error_chain.downcast_ref::<std::io::Error>() {
-                    // Check for connection-related error kinds
-                    use std::io::ErrorKind;
-                    match io_error.kind() {
-                        ErrorKind::ConnectionReset
-                        | ErrorKind::ConnectionAborted
-                        | ErrorKind::BrokenPipe
-                        | ErrorKind::UnexpectedEof => {
-                            is_connection_error = true;
-                            break;
-                        }
-                        _ => {
-                            // Check OS error codes for connection errors
-                            if let Some(os_error) = io_error.raw_os_error() {
-                                // Windows: 10054 = WSAECONNRESET
-                                // Unix: 104 = ECONNRESET, 32 = EPIPE
-                                if os_error == 10054 || os_error == 104 || os_error == 32 {
-                                    is_connection_error = true;
-                                    break;
-                                }
-                            }
+            // Helper function to check if an IO error is connection-related
+            fn is_connection_io_error(io_error: &std::io::Error) -> bool {
+                use std::io::ErrorKind;
+                match io_error.kind() {
+                    ErrorKind::ConnectionReset
+                    | ErrorKind::ConnectionAborted
+                    | ErrorKind::BrokenPipe
+                    | ErrorKind::UnexpectedEof => true,
+                    _ => {
+                        // Check OS error codes for connection errors
+                        if let Some(os_error) = io_error.raw_os_error() {
+                            // Windows: 10054 = WSAECONNRESET
+                            // Unix: 104 = ECONNRESET, 32 = EPIPE
+                            os_error == 10054 || os_error == 104 || os_error == 32
+                        } else {
+                            false
                         }
                     }
                 }
+            }
 
-                // Move to the next error in the chain
-                match error_chain.source() {
-                    Some(source) => error_chain = source,
-                    None => break,
+            // Check if it's a connection-related error by examining the error chain
+            let mut is_connection_error = false;
+
+            // First check if it's a KopiError::Io variant
+            if let kopi::error::KopiError::Io(io_error) = &e {
+                is_connection_error = is_connection_io_error(io_error);
+            }
+
+            // If not found in KopiError::Io, check the error chain for IO errors
+            if !is_connection_error {
+                let mut error_chain: &dyn std::error::Error = &e;
+                loop {
+                    if let Some(io_error) = error_chain.downcast_ref::<std::io::Error>() {
+                        if is_connection_io_error(io_error) {
+                            is_connection_error = true;
+                            break;
+                        }
+                    }
+
+                    // Move to the next error in the chain
+                    match error_chain.source() {
+                        Some(source) => error_chain = source,
+                        None => break,
+                    }
                 }
             }
 
