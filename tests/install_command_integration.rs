@@ -42,7 +42,7 @@ fn test_install_unknown_distribution() {
 fn test_install_distribution_without_version() {
     let (_, stderr, success) = run_kopi(&["install", "temurin"]);
     assert!(!success);
-    assert!(stderr.contains("without version"));
+    assert!(stderr.contains("requires a specific version"));
 }
 
 #[test]

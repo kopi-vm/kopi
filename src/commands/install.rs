@@ -114,14 +114,6 @@ impl InstallCommand {
             .storage_manager
             .jdk_install_path(&distribution, &jdk_metadata.distribution_version);
 
-        if installation_dir.exists() && !force {
-            return Err(KopiError::AlreadyExists(format!(
-                "{} {} is already installed. Use --force to reinstall.",
-                distribution.name(),
-                jdk_metadata.distribution_version
-            )));
-        }
-
         if dry_run {
             println!(
                 "Would install {} {} to {}",
@@ -130,6 +122,14 @@ impl InstallCommand {
                 installation_dir.display()
             );
             return Ok(());
+        }
+
+        if installation_dir.exists() && !force {
+            return Err(KopiError::AlreadyExists(format!(
+                "{} {} is already installed. Use --force to reinstall.",
+                distribution.name(),
+                jdk_metadata.distribution_version
+            )));
         }
 
         // Show the actual package found (for debugging purposes)

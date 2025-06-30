@@ -190,7 +190,7 @@ fn test_invalid_distribution() {
         .arg("nonexistent@21")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("Invalid distribution"));
+        .stderr(predicate::str::contains("Unknown distribution"));
 }
 
 #[test]

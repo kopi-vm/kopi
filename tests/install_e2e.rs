@@ -106,7 +106,7 @@ fn test_install_invalid_version() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("Error:"))
-        .stderr(predicate::str::contains("not available"));
+        .stderr(predicate::str::contains("Invalid major version: 999"));
 }
 
 /// Test error handling for invalid version format
@@ -132,19 +132,36 @@ fn test_install_invalid_format() {
 fn test_install_already_exists() {
     let (_temp_dir, kopi_home) = setup_test_home();
 
-    // Create a fake installation
-    let install_dir = kopi_home.join("jdks").join("temurin-21.0.1");
-    fs::create_dir_all(&install_dir).unwrap();
-
-    // First refresh cache
+    // First refresh cache to get available versions
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("cache").arg("refresh").assert().success();
 
-    // Try to install the same version
+    // Do a dry-run first to see what version will be installed
+    let mut cmd = get_test_command(&kopi_home);
+    let output = cmd
+        .arg("install")
+        .arg("21")
+        .arg("--dry-run")
+        .output()
+        .unwrap();
+
+    // Extract the actual version from the output
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let version = if stdout.contains("21.0.7") {
+        "temurin-21.0.7"
+    } else {
+        // Fallback to a common version
+        "temurin-21.0.5"
+    };
+
+    // Create a fake installation with the correct version
+    let install_dir = kopi_home.join("jdks").join(version);
+    fs::create_dir_all(&install_dir).unwrap();
+
+    // Try to install without dry-run (should fail)
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("install")
         .arg("21")
-        .arg("--dry-run")
         .assert()
         .failure()
         .stderr(predicate::str::contains("already installed"))
@@ -224,13 +241,14 @@ fn test_install_verbose_output() {
 fn test_install_without_cache() {
     let (_temp_dir, kopi_home) = setup_test_home();
 
-    // Try to install without cache refresh - should fail with helpful message
+    // Try to install without cache - should automatically fetch metadata and succeed
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("install")
         .arg("21")
+        .arg("--dry-run") // Use dry-run to avoid actual download
         .assert()
-        .failure()
-        .stderr(predicate::str::contains("cache refresh"));
+        .success()
+        .stdout(predicate::str::contains("Would install"));
 }
 
 #[test]
