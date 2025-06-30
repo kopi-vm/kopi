@@ -33,7 +33,6 @@
 
 use assert_cmd::Command;
 use predicates::prelude::*;
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -370,13 +369,8 @@ fn test_exit_codes() {
 }
 
 #[test]
-#[cfg(not(ci))]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_actual_download() {
-    // Skip in CI to avoid downloading large files
-    if env::var("CI").is_ok() {
-        return;
-    }
-
     let (_temp_dir, kopi_home) = setup_test_home();
 
     // First refresh cache
