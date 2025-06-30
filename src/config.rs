@@ -1,7 +1,9 @@
 use crate::error::{KopiError, Result};
+use dirs::home_dir;
+use log::warn;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const CONFIG_FILE_NAME: &str = "config.toml";
 const DEFAULT_MIN_DISK_SPACE_MB: u64 = 500;
@@ -67,9 +69,40 @@ impl KopiConfig {
     }
 }
 
+/// Get the KOPI home directory from environment variable or default location
+///
+/// This function checks the KOPI_HOME environment variable first.
+/// If it's set but not an absolute path, a warning is logged and the default path is used.
+/// If not set or invalid, falls back to ~/.kopi
+pub fn get_kopi_home() -> Result<PathBuf> {
+    // Check KOPI_HOME environment variable first
+    if let Ok(kopi_home) = std::env::var("KOPI_HOME") {
+        let path = PathBuf::from(&kopi_home);
+        if path.is_absolute() {
+            return Ok(path);
+        } else {
+            let default_path = home_dir().map(|home| home.join(".kopi")).ok_or_else(|| {
+                KopiError::ConfigError("Unable to determine home directory".to_string())
+            })?;
+            warn!(
+                "KOPI_HOME environment variable '{}' is not an absolute path. Ignoring and using default path: {}",
+                kopi_home,
+                default_path.display()
+            );
+            return Ok(default_path);
+        }
+    }
+
+    // Fall back to ~/.kopi
+    home_dir()
+        .map(|home| home.join(".kopi"))
+        .ok_or_else(|| KopiError::ConfigError("Unable to determine home directory".to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
     use tempfile::TempDir;
 
     #[test]
@@ -133,5 +166,49 @@ min_disk_space_mb = 2048
         let loaded = KopiConfig::load(temp_dir.path()).unwrap();
         assert_eq!(loaded.storage.min_disk_space_mb, 2048);
         assert_eq!(loaded.default_distribution, Some("zulu".to_string()));
+    }
+
+    #[test]
+    fn test_get_kopi_home_from_env() {
+        let temp_dir = TempDir::new().unwrap();
+        let abs_path = temp_dir.path().to_path_buf();
+
+        unsafe {
+            env::set_var("KOPI_HOME", &abs_path);
+        }
+        let result = get_kopi_home().unwrap();
+        assert_eq!(result, abs_path);
+
+        unsafe {
+            env::remove_var("KOPI_HOME");
+        }
+    }
+
+    #[test]
+    fn test_get_kopi_home_relative_path() {
+        // Set a relative path
+        unsafe {
+            env::set_var("KOPI_HOME", "relative/path");
+        }
+
+        let result = get_kopi_home().unwrap();
+        // Should fall back to default home
+        assert!(result.ends_with(".kopi"));
+        assert!(result.is_absolute());
+
+        unsafe {
+            env::remove_var("KOPI_HOME");
+        }
+    }
+
+    #[test]
+    fn test_get_kopi_home_default() {
+        unsafe {
+            env::remove_var("KOPI_HOME");
+        }
+
+        let result = get_kopi_home().unwrap();
+        assert!(result.ends_with(".kopi"));
+        assert!(result.is_absolute());
     }
 }

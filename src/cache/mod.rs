@@ -6,9 +6,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::api::{ApiClient, ApiMetadata};
+use crate::config;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{ChecksumType, Distribution as JdkDistribution, JdkMetadata};
-use dirs::home_dir;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MetadataCache {
@@ -52,26 +52,11 @@ impl MetadataCache {
 }
 
 pub fn get_cache_path() -> Result<PathBuf> {
-    let kopi_home = get_kopi_home()?;
+    let kopi_home = config::get_kopi_home()?;
     let cache_dir = kopi_home.join("cache");
     fs::create_dir_all(&cache_dir)
         .map_err(|e| KopiError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
     Ok(cache_dir.join("metadata.json"))
-}
-
-fn get_kopi_home() -> Result<PathBuf> {
-    // Check KOPI_HOME environment variable first
-    if let Ok(kopi_home) = std::env::var("KOPI_HOME") {
-        let path = PathBuf::from(kopi_home);
-        if path.is_absolute() {
-            return Ok(path);
-        }
-    }
-
-    // Fall back to ~/.kopi
-    home_dir()
-        .map(|home| home.join(".kopi"))
-        .ok_or_else(|| KopiError::ConfigError("Unable to determine home directory".to_string()))
 }
 
 pub fn load_cache(path: &Path) -> Result<MetadataCache> {

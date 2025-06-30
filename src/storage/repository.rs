@@ -1,15 +1,13 @@
 use crate::api::Package;
-use crate::config::KopiConfig;
+use crate::config::{self, KopiConfig};
 use crate::error::{KopiError, Result};
 use crate::models::jdk::Distribution;
 use crate::storage::disk_space::DiskSpaceChecker;
 use crate::storage::installation::{InstallationContext, JdkInstaller};
 use crate::storage::listing::{InstalledJdk, JdkLister};
-use dirs::home_dir;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const KOPI_DIR_NAME: &str = ".kopi";
 const JDKS_DIR_NAME: &str = "jdks";
 
 pub struct JdkRepository {
@@ -19,7 +17,7 @@ pub struct JdkRepository {
 
 impl JdkRepository {
     pub fn new() -> Result<Self> {
-        let kopi_home = Self::get_kopi_home()?;
+        let kopi_home = config::get_kopi_home()?;
         let config = KopiConfig::load(&kopi_home)?;
         Ok(Self {
             kopi_home,
@@ -33,19 +31,6 @@ impl JdkRepository {
             kopi_home,
             min_disk_space_mb: config.storage.min_disk_space_mb,
         }
-    }
-
-    fn get_kopi_home() -> Result<PathBuf> {
-        if let Ok(kopi_home) = std::env::var("KOPI_HOME") {
-            let path = PathBuf::from(kopi_home);
-            if path.is_absolute() {
-                return Ok(path);
-            }
-        }
-
-        home_dir()
-            .map(|home| home.join(KOPI_DIR_NAME))
-            .ok_or_else(|| KopiError::ConfigError("Unable to determine home directory".to_string()))
     }
 
     pub fn kopi_home(&self) -> &Path {
@@ -136,21 +121,6 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let manager = JdkRepository::with_home(temp_dir.path().to_path_buf());
         (manager, temp_dir)
-    }
-
-    #[test]
-    fn test_kopi_home_from_env() {
-        let temp_dir = TempDir::new().unwrap();
-        unsafe {
-            std::env::set_var("KOPI_HOME", temp_dir.path());
-        }
-
-        let home = JdkRepository::get_kopi_home().unwrap();
-        assert_eq!(home, temp_dir.path());
-
-        unsafe {
-            std::env::remove_var("KOPI_HOME");
-        }
     }
 
     #[test]
