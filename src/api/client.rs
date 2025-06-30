@@ -340,25 +340,62 @@ impl ApiClient {
 
                 if !response.is_success() {
                     let status = response.status();
-                    let error_msg = match status.as_u16() {
-                        404 => format!(
-                            "The requested resource was not found on foojay.io API v{}. The API endpoint may have changed.",
-                            API_VERSION
-                        ),
-                        500..=599 => format!(
-                            "Server error occurred on foojay.io API v{}. Please try again later.",
-                            API_VERSION
-                        ),
-                        401 | 403 => format!(
-                            "Authentication failed for foojay.io API v{}. Please check your credentials.",
-                            API_VERSION
-                        ),
-                        _ => format!(
-                            "HTTP error ({}) from foojay.io API v{}: {}",
-                            status.as_u16(),
-                            API_VERSION,
-                            status.canonical_reason().unwrap_or("Unknown error")
-                        ),
+
+                    // Try to parse error response body for more specific error message
+                    let error_msg = if status.as_u16() == 400 {
+                        match response.text() {
+                            Ok(body) => {
+                                // Try to parse as API error response
+                                match serde_json::from_str::<crate::api::models::ApiErrorResponse>(
+                                    &body,
+                                ) {
+                                    Ok(error_response) => {
+                                        // Check if the message indicates version not found
+                                        if error_response.message.contains("not released yet") {
+                                            format!(
+                                                "Version not available: {}",
+                                                error_response.message
+                                            )
+                                        } else {
+                                            format!("Bad request: {}", error_response.message)
+                                        }
+                                    }
+                                    Err(_) => format!(
+                                        "HTTP error ({}) from foojay.io API v{}: {}",
+                                        status.as_u16(),
+                                        API_VERSION,
+                                        status.canonical_reason().unwrap_or("Unknown error")
+                                    ),
+                                }
+                            }
+                            Err(_) => format!(
+                                "HTTP error ({}) from foojay.io API v{}: {}",
+                                status.as_u16(),
+                                API_VERSION,
+                                status.canonical_reason().unwrap_or("Unknown error")
+                            ),
+                        }
+                    } else {
+                        match status.as_u16() {
+                            404 => format!(
+                                "The requested resource was not found on foojay.io API v{}. The API endpoint may have changed.",
+                                API_VERSION
+                            ),
+                            500..=599 => format!(
+                                "Server error occurred on foojay.io API v{}. Please try again later.",
+                                API_VERSION
+                            ),
+                            401 | 403 => format!(
+                                "Authentication failed for foojay.io API v{}. Please check your credentials.",
+                                API_VERSION
+                            ),
+                            _ => format!(
+                                "HTTP error ({}) from foojay.io API v{}: {}",
+                                status.as_u16(),
+                                API_VERSION,
+                                status.canonical_reason().unwrap_or("Unknown error")
+                            ),
+                        }
                     };
                     return OperationResult::Err(KopiError::MetadataFetch(error_msg));
                 }
