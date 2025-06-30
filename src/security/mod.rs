@@ -298,9 +298,18 @@ mod tests {
         assert!(sanitize_path(Path::new("~/sensitive")).is_err());
         assert!(sanitize_path(Path::new("vendors/../../../etc")).is_err());
 
-        // Absolute paths
-        assert!(sanitize_path(Path::new("/home/user/.kopi/jdks")).is_ok());
-        assert!(sanitize_path(Path::new("/etc/passwd")).is_err());
+        // Platform-specific absolute paths
+        #[cfg(unix)]
+        {
+            assert!(sanitize_path(Path::new("/home/user/.kopi/jdks")).is_ok());
+            assert!(sanitize_path(Path::new("/etc/passwd")).is_err());
+        }
+
+        #[cfg(windows)]
+        {
+            assert!(sanitize_path(Path::new("C:\\Users\\user\\.kopi\\jdks")).is_ok());
+            assert!(sanitize_path(Path::new("C:\\Windows\\System32")).is_err());
+        }
     }
 
     #[test]
