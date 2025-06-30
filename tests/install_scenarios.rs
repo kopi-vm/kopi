@@ -1,15 +1,9 @@
+mod common;
 use assert_cmd::Command;
+use common::TestHomeGuard;
 use predicates::prelude::*;
 use std::fs;
-use std::path::{Path, PathBuf};
-use tempfile::TempDir;
-
-fn setup_test_home() -> (TempDir, PathBuf) {
-    let temp_dir = TempDir::new().unwrap();
-    let kopi_home = temp_dir.path().join(".kopi");
-    fs::create_dir_all(&kopi_home).unwrap();
-    (temp_dir, kopi_home)
-}
+use std::path::Path;
 
 fn get_test_command(kopi_home: &Path) -> Command {
     let mut cmd = Command::cargo_bin("kopi").unwrap();
@@ -22,7 +16,9 @@ fn get_test_command(kopi_home: &Path) -> Command {
 /// Verifies: Architecture detection, OS detection, and platform-specific package selection
 #[test]
 fn test_platform_compatibility() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -42,7 +38,9 @@ fn test_platform_compatibility() {
 /// This tests the semantic versioning resolution internally
 #[test]
 fn test_version_resolution() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -63,7 +61,9 @@ fn test_version_resolution() {
 /// Note: Some distributions may not be available for all platforms
 #[test]
 fn test_distribution_variations() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -86,7 +86,9 @@ fn test_distribution_variations() {
 fn test_interrupted_download_recovery() {
     // This test simulates an interrupted download scenario
     // In real implementation, this would test resume capability
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Create a partial download file
     let downloads_dir = kopi_home.join("downloads");
@@ -100,7 +102,9 @@ fn test_interrupted_download_recovery() {
 
 #[test]
 fn test_disk_space_check() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // This would test disk space checking logic
     // In real scenario, we'd need to mock available disk space
@@ -113,7 +117,9 @@ fn test_disk_space_check() {
 /// This ensures integrity of downloaded JDK archives
 #[test]
 fn test_checksum_verification() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -133,7 +139,9 @@ fn test_checksum_verification() {
 /// Verifies: Appropriate error messages and recovery suggestions
 #[test]
 fn test_network_failure_handling() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Test with invalid proxy to simulate network failure
     let mut cmd = get_test_command(&kopi_home);
@@ -149,7 +157,9 @@ fn test_network_failure_handling() {
 
 #[test]
 fn test_invalid_distribution() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("install")
@@ -162,7 +172,9 @@ fn test_invalid_distribution() {
 #[test]
 fn test_archive_extraction_failure() {
     // This would test handling of corrupted archives
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Create a fake corrupted archive
     let downloads_dir = kopi_home.join("downloads");
@@ -177,7 +189,9 @@ fn test_archive_extraction_failure() {
 #[test]
 #[cfg(unix)]
 fn test_symlink_creation() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Test that symlinks/shims would be created properly
     let bin_dir = kopi_home.join("bin");
@@ -189,7 +203,9 @@ fn test_symlink_creation() {
 
 #[test]
 fn test_multiple_architecture_support() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -207,7 +223,9 @@ fn test_multiple_architecture_support() {
 
 #[test]
 fn test_version_upgrade_scenario() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Simulate having an older version installed
     let old_version_dir = kopi_home.join("jdks").join("temurin-17.0.8");
@@ -228,7 +246,9 @@ fn test_version_upgrade_scenario() {
 
 #[test]
 fn test_package_type_selection() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -246,7 +266,9 @@ fn test_package_type_selection() {
 
 #[test]
 fn test_security_validation() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -266,7 +288,9 @@ fn test_security_validation() {
 /// This prevents partial installations from corrupting the JDK directory
 #[test]
 fn test_atomic_installation() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Test that installations are atomic (temp dir + rename)
     let temp_install_dir = kopi_home.join("jdks").join(".tmp-install");
@@ -277,7 +301,9 @@ fn test_atomic_installation() {
 
 #[test]
 fn test_cleanup_on_failure() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Test that temporary files are cleaned up on failure
     let downloads_dir = kopi_home.join("downloads");
@@ -293,7 +319,9 @@ fn test_cleanup_on_failure() {
 /// This reduces API calls and enables offline operation
 #[test]
 fn test_metadata_persistence() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -319,7 +347,9 @@ fn test_metadata_persistence() {
 fn test_rate_limit_handling() {
     // This would test handling of 429 responses
     // In real scenario, we'd need to mock API responses
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Multiple rapid requests might trigger rate limiting
     for i in 0..3 {

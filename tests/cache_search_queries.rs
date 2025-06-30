@@ -1,3 +1,5 @@
+mod common;
+use common::TestHomeGuard;
 use kopi::cache::{DistributionCache, MetadataCache, save_cache};
 use kopi::commands::cache::CacheCommand;
 use kopi::models::jdk::{
@@ -6,16 +8,16 @@ use kopi::models::jdk::{
 };
 use std::env;
 use std::sync::Mutex;
-use tempfile::TempDir;
 
 // Global mutex to ensure tests don't run concurrently when modifying KOPI_HOME
 static TEST_MUTEX: Mutex<()> = Mutex::new(());
 
-fn setup_test_cache() -> (TempDir, std::sync::MutexGuard<'static, ()>) {
+fn setup_test_cache() -> (TestHomeGuard, std::sync::MutexGuard<'static, ()>) {
     let guard = TEST_MUTEX.lock().unwrap();
-    let temp_dir = TempDir::new().unwrap();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
     unsafe {
-        env::set_var("KOPI_HOME", temp_dir.path());
+        env::set_var("KOPI_HOME", test_home.kopi_home());
     }
 
     // Create test metadata
@@ -158,12 +160,12 @@ fn setup_test_cache() -> (TempDir, std::sync::MutexGuard<'static, ()>) {
     }
     save_cache(&cache_path, &cache).unwrap();
 
-    (temp_dir, guard)
+    (test_home, guard)
 }
 
 #[test]
 fn test_search_distribution_only() {
-    let (_temp_dir, _guard) = setup_test_cache();
+    let (_test_home, _guard) = setup_test_cache();
 
     // Search for all Corretto versions
     let cmd = CacheCommand::Search {
@@ -181,7 +183,7 @@ fn test_search_distribution_only() {
 
 #[test]
 fn test_search_latest_all_distributions() {
-    let (_temp_dir, _guard) = setup_test_cache();
+    let (_test_home, _guard) = setup_test_cache();
 
     // Search for latest version across all distributions
     let cmd = CacheCommand::Search {
@@ -199,7 +201,7 @@ fn test_search_latest_all_distributions() {
 
 #[test]
 fn test_search_latest_specific_distribution() {
-    let (_temp_dir, _guard) = setup_test_cache();
+    let (_test_home, _guard) = setup_test_cache();
 
     // Search for latest Temurin version
     let cmd = CacheCommand::Search {
@@ -217,7 +219,7 @@ fn test_search_latest_specific_distribution() {
 
 #[test]
 fn test_search_backward_compatibility() {
-    let (_temp_dir, _guard) = setup_test_cache();
+    let (_test_home, _guard) = setup_test_cache();
 
     // Test that existing version queries still work
     let cmd = CacheCommand::Search {
@@ -235,7 +237,7 @@ fn test_search_backward_compatibility() {
 
 #[test]
 fn test_search_distribution_with_version() {
-    let (_temp_dir, _guard) = setup_test_cache();
+    let (_test_home, _guard) = setup_test_cache();
 
     // Test searching for specific distribution and version
     let cmd = CacheCommand::Search {
@@ -253,7 +255,7 @@ fn test_search_distribution_with_version() {
 
 #[test]
 fn test_search_invalid_distribution() {
-    let (_temp_dir, _guard) = setup_test_cache();
+    let (_test_home, _guard) = setup_test_cache();
 
     // Test searching for invalid distribution
     let cmd = CacheCommand::Search {
@@ -272,7 +274,7 @@ fn test_search_invalid_distribution() {
 
 #[test]
 fn test_search_jre_latest() {
-    let (_temp_dir, _guard) = setup_test_cache();
+    let (_test_home, _guard) = setup_test_cache();
 
     // Test searching for latest JRE
     let cmd = CacheCommand::Search {
@@ -290,7 +292,7 @@ fn test_search_jre_latest() {
 
 #[test]
 fn test_search_display_modes() {
-    let (_temp_dir, _guard) = setup_test_cache();
+    let (_test_home, _guard) = setup_test_cache();
 
     // Test compact mode
     let cmd_compact = CacheCommand::Search {

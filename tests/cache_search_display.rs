@@ -1,13 +1,15 @@
+mod common;
+use common::TestHomeGuard;
 use kopi::cache::DistributionCache;
 use kopi::cache::{MetadataCache, save_cache};
 use kopi::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
     PackageType, Version,
 };
-use tempfile::TempDir;
 
-fn create_test_cache_with_lts_data() -> (TempDir, MetadataCache) {
-    let temp_dir = TempDir::new().unwrap();
+fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
     let mut cache = MetadataCache::new();
 
     // Add LTS version (21)
@@ -135,18 +137,18 @@ fn create_test_cache_with_lts_data() -> (TempDir, MetadataCache) {
         .distributions
         .insert("liberica".to_string(), liberica_dist);
 
-    (temp_dir, cache)
+    (test_home, cache)
 }
 
 #[test]
 fn test_compact_display_shows_minimal_columns() {
-    let (temp_dir, cache) = create_test_cache_with_lts_data();
-    let cache_path = temp_dir.path().join("metadata.json");
+    let (test_home, cache) = create_test_cache_with_lts_data();
+    let cache_path = test_home.kopi_home().join("cache").join("metadata.json");
     save_cache(&cache_path, &cache).unwrap();
 
     // Set cache path for the test
     unsafe {
-        std::env::set_var("KOPI_HOME", temp_dir.path());
+        std::env::set_var("KOPI_HOME", test_home.kopi_home());
     }
 
     // Note: This is an integration test outline. In practice, you would need to:
@@ -247,7 +249,8 @@ fn test_status_column_shows_ga_ea() {
 
 #[test]
 fn test_compact_mode_deduplication() {
-    let _temp_dir = TempDir::new().unwrap();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
     let mut cache = MetadataCache::new();
 
     // Add multiple packages with same version but different architectures
@@ -299,7 +302,8 @@ fn test_compact_mode_deduplication() {
 
 #[test]
 fn test_detailed_mode_deduplication_keeps_smallest() {
-    let _temp_dir = TempDir::new().unwrap();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
     let mut cache = MetadataCache::new();
 
     // Add multiple packages with same details but different sizes

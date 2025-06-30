@@ -51,9 +51,9 @@ fn create_large_test_cache() -> MetadataCache {
                                     distribution: dist_id.to_string(),
                                     version: Version::new(*major, minor, patch),
                                     distribution_version: format!("{}.{}.{}", major, minor, patch),
-                                    architecture: arch.clone(),
-                                    operating_system: os.clone(),
-                                    package_type: pkg_type.clone(),
+                                    architecture: *arch,
+                                    operating_system: *os,
+                                    package_type: *pkg_type,
                                     archive_type: if *os == OperatingSystem::Windows {
                                         ArchiveType::Zip
                                     } else {

@@ -1,15 +1,9 @@
+mod common;
 use assert_cmd::Command;
+use common::TestHomeGuard;
 use predicates::prelude::*;
 use std::fs;
-use std::path::{Path, PathBuf};
-use tempfile::TempDir;
-
-fn setup_test_home() -> (TempDir, PathBuf) {
-    let temp_dir = TempDir::new().unwrap();
-    let kopi_home = temp_dir.path().join(".kopi");
-    fs::create_dir_all(&kopi_home).unwrap();
-    (temp_dir, kopi_home)
-}
+use std::path::Path;
 
 fn get_test_command(kopi_home: &Path) -> Command {
     let mut cmd = Command::cargo_bin("kopi").unwrap();
@@ -23,7 +17,9 @@ fn get_test_command(kopi_home: &Path) -> Command {
 /// Expected: Successfully installs latest Eclipse Temurin 21.x.x
 #[test]
 fn test_install_basic_version() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -44,7 +40,9 @@ fn test_install_basic_version() {
 /// Expected: Successfully installs Amazon Corretto 17
 #[test]
 fn test_install_with_distribution() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -65,7 +63,9 @@ fn test_install_with_distribution() {
 /// Expected: Clear error message with suggestion to check available versions
 #[test]
 fn test_install_invalid_version() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("install")
@@ -81,7 +81,9 @@ fn test_install_invalid_version() {
 /// Expected: Error message explaining proper version format with examples
 #[test]
 fn test_install_invalid_format() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("install")
@@ -97,7 +99,9 @@ fn test_install_invalid_format() {
 /// Expected: Error message suggesting --force flag to reinstall
 #[test]
 fn test_install_already_exists() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache to get available versions
     let mut cmd = get_test_command(&kopi_home);
@@ -140,7 +144,9 @@ fn test_install_already_exists() {
 /// Expected: Successfully reinstalls even if version exists
 #[test]
 fn test_install_force_reinstall() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Create a fake installation
     let install_dir = kopi_home.join("jdks").join("temurin-21.0.1");
@@ -163,7 +169,9 @@ fn test_install_force_reinstall() {
 
 #[test]
 fn test_install_with_timeout() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("install")
@@ -177,7 +185,9 @@ fn test_install_with_timeout() {
 
 #[test]
 fn test_install_no_progress() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -194,7 +204,9 @@ fn test_install_no_progress() {
 
 #[test]
 fn test_install_verbose_output() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("-vv") // Debug verbosity
@@ -206,7 +218,9 @@ fn test_install_verbose_output() {
 
 #[test]
 fn test_install_without_cache() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Try to install without cache - should automatically fetch metadata and succeed
     let mut cmd = get_test_command(&kopi_home);
@@ -221,7 +235,9 @@ fn test_install_without_cache() {
 #[test]
 #[cfg(unix)]
 fn test_install_permission_denied() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Make directory read-only
     let jdks_dir = kopi_home.join("jdks");
@@ -253,7 +269,9 @@ fn test_install_permission_denied() {
 
 #[test]
 fn test_install_with_javafx() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache with javafx
     let mut cmd = get_test_command(&kopi_home);
@@ -275,7 +293,9 @@ fn test_install_with_javafx() {
 fn test_concurrent_installs() {
     use std::thread;
 
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -308,7 +328,9 @@ fn test_concurrent_installs() {
 
 #[test]
 fn test_install_specific_version() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -321,7 +343,9 @@ fn test_install_specific_version() {
 
 #[test]
 fn test_install_lts_version() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
@@ -338,7 +362,9 @@ fn test_install_lts_version() {
 
 #[test]
 fn test_exit_codes() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // Test invalid version format - should exit with code 2
     let output = get_test_command(&kopi_home)
@@ -356,7 +382,9 @@ fn test_exit_codes() {
 #[test]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_actual_download() {
-    let (_temp_dir, kopi_home) = setup_test_home();
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);

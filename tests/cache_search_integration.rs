@@ -1,3 +1,5 @@
+mod common;
+use common::TestHomeGuard;
 use kopi::cache::{DistributionCache, MetadataCache, save_cache};
 use kopi::commands::cache::CacheCommand;
 use kopi::models::jdk::{
@@ -5,13 +7,13 @@ use kopi::models::jdk::{
     PackageType, Version,
 };
 use std::env;
-use tempfile::TempDir;
 
 /// Helper function to create a comprehensive test cache with various JDK versions and distributions
-fn create_comprehensive_test_cache() -> (TempDir, MetadataCache) {
-    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+fn create_comprehensive_test_cache() -> (TestHomeGuard, MetadataCache) {
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
     unsafe {
-        env::set_var("KOPI_HOME", temp_dir.path());
+        env::set_var("KOPI_HOME", test_home.kopi_home());
     }
 
     let mut cache = MetadataCache::new();
@@ -188,18 +190,16 @@ fn create_comprehensive_test_cache() -> (TempDir, MetadataCache) {
         },
     );
 
-    // Create cache directory structure
-    let cache_dir = temp_dir.path().join("cache");
-    std::fs::create_dir_all(&cache_dir).expect("Failed to create cache directory");
-    let cache_path = cache_dir.join("metadata.json");
+    // Save cache (cache directory already exists from setup_kopi_structure)
+    let cache_path = test_home.kopi_home().join("cache").join("metadata.json");
     save_cache(&cache_path, &cache).expect("Failed to save cache");
 
-    (temp_dir, cache)
+    (test_home, cache)
 }
 
 #[test]
 fn test_integration_compact_display_with_lts_filter() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Test compact display with LTS-only filter
     let cmd = CacheCommand::Search {
@@ -217,7 +217,7 @@ fn test_integration_compact_display_with_lts_filter() {
 
 #[test]
 fn test_integration_detailed_display_with_distribution_search() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Test detailed display for specific distribution
     let cmd = CacheCommand::Search {
@@ -235,7 +235,7 @@ fn test_integration_detailed_display_with_distribution_search() {
 
 #[test]
 fn test_integration_json_output_with_javafx_filter() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Test JSON output with JavaFX filter
     let cmd = CacheCommand::Search {
@@ -253,7 +253,7 @@ fn test_integration_json_output_with_javafx_filter() {
 
 #[test]
 fn test_integration_latest_search_with_lts_filter() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Test latest search combined with LTS filter
     let cmd = CacheCommand::Search {
@@ -271,7 +271,7 @@ fn test_integration_latest_search_with_lts_filter() {
 
 #[test]
 fn test_integration_version_specific_search_across_distributions() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Search for version 21 across all distributions
     let cmd = CacheCommand::Search {
@@ -289,7 +289,7 @@ fn test_integration_version_specific_search_across_distributions() {
 
 #[test]
 fn test_integration_multiple_filters_combined() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Test multiple filters: LTS + specific distribution
     let cmd = CacheCommand::Search {
@@ -307,7 +307,7 @@ fn test_integration_multiple_filters_combined() {
 
 #[test]
 fn test_integration_edge_case_no_matching_results() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Search for non-existent version
     let cmd = CacheCommand::Search {
@@ -325,7 +325,7 @@ fn test_integration_edge_case_no_matching_results() {
 
 #[test]
 fn test_integration_edge_case_conflicting_display_modes() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Test with both compact and detailed flags (detailed should take precedence)
     let cmd = CacheCommand::Search {
@@ -343,7 +343,7 @@ fn test_integration_edge_case_conflicting_display_modes() {
 
 #[test]
 fn test_integration_list_distributions_with_package_counts() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     let cmd = CacheCommand::ListDistributions;
     assert!(cmd.execute().is_ok());
@@ -352,7 +352,7 @@ fn test_integration_list_distributions_with_package_counts() {
 
 #[test]
 fn test_integration_search_with_distribution_version_format() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Test distribution@version format
     let cmd = CacheCommand::Search {
@@ -370,7 +370,7 @@ fn test_integration_search_with_distribution_version_format() {
 
 #[test]
 fn test_integration_backward_compatibility_default_behavior() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Test default search without any flags (should use compact mode)
     let cmd = CacheCommand::Search {
@@ -388,9 +388,10 @@ fn test_integration_backward_compatibility_default_behavior() {
 
 #[test]
 fn test_integration_platform_specific_filtering() {
-    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
     unsafe {
-        env::set_var("KOPI_HOME", temp_dir.path());
+        env::set_var("KOPI_HOME", test_home.kopi_home());
     }
 
     // Create cache with multiple platforms
@@ -466,7 +467,7 @@ fn test_integration_platform_specific_filtering() {
     );
 
     // Create cache directory structure
-    let cache_dir = temp_dir.path().join("cache");
+    let cache_dir = test_home.kopi_home().join("cache");
     std::fs::create_dir_all(&cache_dir).expect("Failed to create cache directory");
     let cache_path = cache_dir.join("metadata.json");
     save_cache(&cache_path, &cache).expect("Failed to save cache");
@@ -487,7 +488,7 @@ fn test_integration_platform_specific_filtering() {
 
 #[test]
 fn test_integration_regression_old_search_patterns() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Test old-style version search still works
     let cmd = CacheCommand::Search {
@@ -505,15 +506,16 @@ fn test_integration_regression_old_search_patterns() {
 
 #[test]
 fn test_integration_empty_cache_handling() {
-    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
     unsafe {
-        env::set_var("KOPI_HOME", temp_dir.path());
+        env::set_var("KOPI_HOME", test_home.kopi_home());
     }
 
     // Create empty cache
     let cache = MetadataCache::new();
     // Create cache directory structure
-    let cache_dir = temp_dir.path().join("cache");
+    let cache_dir = test_home.kopi_home().join("cache");
     std::fs::create_dir_all(&cache_dir).expect("Failed to create cache directory");
     let cache_path = cache_dir.join("metadata.json");
     save_cache(&cache_path, &cache).expect("Failed to save cache");
@@ -533,7 +535,7 @@ fn test_integration_empty_cache_handling() {
 
 #[test]
 fn test_integration_json_output_structure_validation() {
-    let (_temp_dir, _cache) = create_comprehensive_test_cache();
+    let (_test_home, _cache) = create_comprehensive_test_cache();
 
     // Capture JSON output for validation
     let cmd = CacheCommand::Search {
@@ -551,9 +553,10 @@ fn test_integration_json_output_structure_validation() {
 
 #[test]
 fn test_integration_performance_large_cache() {
-    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
     unsafe {
-        env::set_var("KOPI_HOME", temp_dir.path());
+        env::set_var("KOPI_HOME", test_home.kopi_home());
     }
 
     // Create a large cache with many packages
@@ -599,7 +602,7 @@ fn test_integration_performance_large_cache() {
     );
 
     // Create cache directory structure
-    let cache_dir = temp_dir.path().join("cache");
+    let cache_dir = test_home.kopi_home().join("cache");
     std::fs::create_dir_all(&cache_dir).expect("Failed to create cache directory");
     let cache_path = cache_dir.join("metadata.json");
     save_cache(&cache_path, &cache).expect("Failed to save cache");
