@@ -1,6 +1,8 @@
 [env]
 # Limit concurrent test threads for better performance
 RUST_TEST_THREADS = "4"
+# Use sccache as the Rust compiler wrapper for faster builds
+RUSTC_WRAPPER = "sccache"
 
 [build]
 # Enable incremental compilation

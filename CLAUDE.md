@@ -27,6 +27,35 @@ Key features:
 - Project-specific JDK pinning via `.kopi-version` or `.java-version` files
 - Fast performance using Rust
 
+## Development Setup
+
+### Prerequisites
+Before starting development, ensure you have the following installed:
+- Rust toolchain (via rustup)
+- sccache for faster compilation: `cargo install sccache`
+
+### sccache Configuration
+This project uses sccache to cache compilation artifacts and speed up build times. The configuration is already set in `.cargo/config.toml`.
+
+To verify sccache is working:
+```bash
+# Check if sccache is installed
+which sccache
+
+# View sccache statistics
+sccache --show-stats
+```
+
+For advanced sccache configuration (e.g., using cloud storage backends):
+```bash
+# Example: Configure S3 backend for CI/CD
+export SCCACHE_BUCKET=my-sccache-bucket
+export SCCACHE_REGION=us-east-1
+
+# Example: Set cache size limit (default: 10GB)
+export SCCACHE_CACHE_SIZE="20G"
+```
+
 ## Development Commands
 
 ### Build and Run
@@ -74,12 +103,18 @@ mod tests {
 ### Completing Work
 When finishing any coding task, always run the following commands in order and fix any issues:
 
-1. `cargo fmt` - Auto-format code
-2. `cargo clippy` - Check for type and linting errors
-3. `cargo check` - Fast error checking without building
-4. `cargo test --lib` - Run unit tests (faster than full test suite)
+1. Verify sccache is working: `sccache --show-stats` (should show cache hits after first build)
+2. `cargo fmt` - Auto-format code
+3. `cargo clippy` - Check for type and linting errors
+4. `cargo check` - Fast error checking without building
+5. `cargo test --lib` - Run unit tests (faster than full test suite)
 
-Address any errors from each command before proceeding to the next. All four must pass successfully before considering the work complete.
+Address any errors from each command before proceeding to the next. All must pass successfully before considering the work complete.
+
+If sccache is not installed, you'll see an error when running cargo commands. Install it with:
+```bash
+cargo install sccache
+```
 
 ### Performance Considerations
 - **Test execution** is limited to 4 threads by default (configured in `.cargo/config.toml`)
