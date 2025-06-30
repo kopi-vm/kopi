@@ -138,11 +138,15 @@ mod tests {
 
     #[test]
     fn test_resolve_from_kopi_version_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let version_file = temp_dir.path().join(KOPI_VERSION_FILE);
+        // Create temp dir under ./target/test-tmp/
+        fs::create_dir_all("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+
+        let version_file = temp_path.join(KOPI_VERSION_FILE);
         fs::write(&version_file, "corretto@17.0.8").unwrap();
 
-        let resolver = VersionResolver::with_dir(temp_dir.path().to_path_buf());
+        let resolver = VersionResolver::with_dir(temp_path.clone());
         let result = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "17.0.8");
         assert_eq!(result.distribution, Some("corretto".to_string()));
@@ -150,11 +154,15 @@ mod tests {
 
     #[test]
     fn test_resolve_from_java_version_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let version_file = temp_dir.path().join(JAVA_VERSION_FILE);
+        // Create temp dir under ./target/test-tmp/
+        fs::create_dir_all("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+
+        let version_file = temp_path.join(JAVA_VERSION_FILE);
         fs::write(&version_file, "11.0.2").unwrap();
 
-        let resolver = VersionResolver::with_dir(temp_dir.path().to_path_buf());
+        let resolver = VersionResolver::with_dir(temp_path.clone());
         let result = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "11.0.2");
         assert_eq!(result.distribution, None);
@@ -162,8 +170,11 @@ mod tests {
 
     #[test]
     fn test_resolve_searches_parent_directories() {
-        let temp_dir = TempDir::new().unwrap();
-        let parent_dir = temp_dir.path();
+        // Create temp dir under ./target/test-tmp/
+        fs::create_dir_all("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let parent_dir = temp_dir.path().to_path_buf();
+
         let child_dir = parent_dir.join("child");
         fs::create_dir_all(&child_dir).unwrap();
 
@@ -180,16 +191,19 @@ mod tests {
 
     #[test]
     fn test_kopi_version_takes_precedence() {
-        let temp_dir = TempDir::new().unwrap();
+        // Create temp dir under ./target/test-tmp/
+        fs::create_dir_all("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
 
         // Create both version files
-        let kopi_version = temp_dir.path().join(KOPI_VERSION_FILE);
+        let kopi_version = temp_path.join(KOPI_VERSION_FILE);
         fs::write(&kopi_version, "temurin@21").unwrap();
 
-        let java_version = temp_dir.path().join(JAVA_VERSION_FILE);
+        let java_version = temp_path.join(JAVA_VERSION_FILE);
         fs::write(&java_version, "17").unwrap();
 
-        let resolver = VersionResolver::with_dir(temp_dir.path().to_path_buf());
+        let resolver = VersionResolver::with_dir(temp_path.clone());
         let result = resolver.resolve_version().unwrap();
 
         // Should use .kopi-version
@@ -199,30 +213,42 @@ mod tests {
 
     #[test]
     fn test_empty_version_file_error() {
-        let temp_dir = TempDir::new().unwrap();
-        let version_file = temp_dir.path().join(KOPI_VERSION_FILE);
+        // Create temp dir under ./target/test-tmp/
+        fs::create_dir_all("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+
+        let version_file = temp_path.join(KOPI_VERSION_FILE);
         fs::write(&version_file, "").unwrap();
 
-        let resolver = VersionResolver::with_dir(temp_dir.path().to_path_buf());
+        let resolver = VersionResolver::with_dir(temp_path.clone());
         let result = resolver.resolve_version();
         assert!(result.is_err());
     }
 
     #[test]
     fn test_whitespace_trimmed() {
-        let temp_dir = TempDir::new().unwrap();
-        let version_file = temp_dir.path().join(JAVA_VERSION_FILE);
+        // Create temp dir under ./target/test-tmp/
+        fs::create_dir_all("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+
+        let version_file = temp_path.join(JAVA_VERSION_FILE);
         fs::write(&version_file, "  17.0.9  \n").unwrap();
 
-        let resolver = VersionResolver::with_dir(temp_dir.path().to_path_buf());
+        let resolver = VersionResolver::with_dir(temp_path.clone());
         let result = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "17.0.9");
     }
 
     #[test]
     fn test_no_version_found() {
-        let temp_dir = TempDir::new().unwrap();
-        let resolver = VersionResolver::with_dir(temp_dir.path().to_path_buf());
+        // Create temp dir under ./target/test-tmp/
+        fs::create_dir_all("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+
+        let resolver = VersionResolver::with_dir(temp_path.clone());
         let result = resolver.resolve_version();
         assert!(matches!(result, Err(KopiError::NoLocalVersion)));
     }
