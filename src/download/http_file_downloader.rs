@@ -7,22 +7,16 @@ use std::io::{BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 
-/// Size of chunks to read when downloading
 const DOWNLOAD_CHUNK_SIZE: usize = 8192;
 
-/// Trait for reporting download progress
 pub trait ProgressReporter: Send + Sync {
-    /// Called when download starts
     fn on_start(&mut self, total_bytes: u64);
 
-    /// Called periodically with download progress
     fn on_progress(&mut self, bytes_downloaded: u64);
 
-    /// Called when download completes
     fn on_complete(&mut self);
 }
 
-/// HTTP file downloader with progress reporting and resume support
 pub struct HttpFileDownloader {
     pub(crate) http_client: Box<dyn HttpClient>,
     progress_reporter: Option<Box<dyn ProgressReporter>>,
@@ -35,12 +29,10 @@ impl Default for HttpFileDownloader {
 }
 
 impl HttpFileDownloader {
-    /// Create a new download manager with default HTTP client
     pub fn new() -> Self {
         Self::with_client(Box::new(AttohttpcClient::new()))
     }
 
-    /// Create a download manager with a custom HTTP client
     pub fn with_client(http_client: Box<dyn HttpClient>) -> Self {
         Self {
             http_client,
@@ -48,13 +40,11 @@ impl HttpFileDownloader {
         }
     }
 
-    /// Set a progress reporter for download progress
     pub fn with_progress_reporter(mut self, reporter: Box<dyn ProgressReporter>) -> Self {
         self.progress_reporter = Some(reporter);
         self
     }
 
-    /// Download a file from the given URL to the destination path
     pub fn download(
         &mut self,
         url: &str,
@@ -205,8 +195,6 @@ impl HttpFileDownloader {
     }
 }
 
-/// Parse Content-Range header to extract total file size
-/// Format: "bytes start-end/total"
 pub(crate) fn parse_content_range(range_str: &str) -> Option<u64> {
     if let Some(slash_pos) = range_str.rfind('/') {
         if let Ok(total) = range_str[slash_pos + 1..].parse::<u64>() {

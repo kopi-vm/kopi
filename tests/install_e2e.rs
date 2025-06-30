@@ -1,36 +1,3 @@
-//! End-to-End Integration Tests for Install Command
-//!
-//! This file contains tests that verify the complete user experience of the install command,
-//! focusing on how users interact with the CLI and what they see in various scenarios.
-//!
-//! ## Test Categories:
-//!
-//! 1. **Basic Command Operations** - Testing fundamental install workflows
-//!    - Basic version installation (e.g., `kopi install 21`)
-//!    - Distribution-specific installation (e.g., `kopi install corretto@17`)
-//!    - Specific version installation (e.g., `kopi install 17.0.9`)
-//!
-//! 2. **Command-Line Options** - Testing various CLI flags and their effects
-//!    - Force reinstallation with `--force`
-//!    - Progress display control with `--no-progress`
-//!    - Timeout configuration with `--timeout`
-//!    - Verbose output with `-v/-vv/-vvv`
-//!
-//! 3. **User-Facing Error Handling** - Testing error messages and suggestions
-//!    - Invalid version format errors
-//!    - Version not available errors
-//!    - Already installed errors
-//!    - Permission denied errors
-//!
-//! 4. **Special Use Cases** - Testing edge cases users might encounter
-//!    - Concurrent installations
-//!    - JavaFX bundled packages
-//!    - Actual download testing (non-CI only)
-//!    - Exit code verification for scripting
-//!
-//! These tests ensure that users have a smooth experience and receive helpful
-//! feedback when things go wrong.
-
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;

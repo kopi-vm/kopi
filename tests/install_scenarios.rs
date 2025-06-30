@@ -1,37 +1,3 @@
-//! Technical Scenario Tests for Install Command
-//!
-//! This file contains tests that verify internal behaviors and technical scenarios
-//! of the install command, focusing on implementation correctness and edge cases.
-//!
-//! ## Test Categories:
-//!
-//! 1. **Platform-Related Tests** - Testing platform-specific behaviors
-//!    - Platform compatibility detection
-//!    - Multiple architecture support
-//!    - Platform-specific file handling (symlinks, permissions)
-//!
-//! 2. **Version Management Internals** - Testing version resolution logic
-//!    - Version resolution (e.g., "21" -> "21.x.x")
-//!    - Distribution variations and availability
-//!    - Version upgrade scenarios
-//!    - Package type selection (JDK vs JRE)
-//!
-//! 3. **Technical Features** - Testing core technical functionality
-//!    - Checksum verification
-//!    - Security validation (HTTPS certificates)
-//!    - Atomic installation (temp dir + rename)
-//!    - Metadata persistence and caching
-//!
-//! 4. **Failure Recovery** - Testing resilience and error recovery
-//!    - Interrupted download recovery
-//!    - Archive extraction failures
-//!    - Cleanup on failure
-//!    - Network failure handling
-//!    - Rate limit handling
-//!
-//! These tests ensure the robustness of the implementation and verify that
-//! technical requirements are met correctly.
-
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;

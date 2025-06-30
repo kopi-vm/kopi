@@ -4,10 +4,8 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-/// Size of chunks to read when computing checksums
 const CHECKSUM_CHUNK_SIZE: usize = 8192;
 
-/// Verify the SHA256 checksum of a file
 pub fn verify_checksum(file_path: &Path, expected: &str) -> Result<()> {
     let calculated = calculate_sha256(file_path)?;
 
@@ -21,7 +19,6 @@ pub fn verify_checksum(file_path: &Path, expected: &str) -> Result<()> {
     Ok(())
 }
 
-/// Calculate the SHA256 checksum of a file
 pub fn calculate_sha256(file_path: &Path) -> Result<String> {
     let mut file = File::open(file_path)?;
     let mut hasher = Sha256::new();

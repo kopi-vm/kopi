@@ -1,13 +1,3 @@
-//! Test suite for package search functionality.
-//!
-//! This module contains comprehensive tests covering:
-//! - Basic search functionality (version, distribution, latest)
-//! - Platform filtering (architecture, OS, libc type)
-//! - Package type filtering (JDK vs JRE)
-//! - Auto-selection logic for ambiguous matches
-//! - Edge cases (empty cache, no matches, invalid input)
-//! - Reference vs owned result consistency
-
 use super::*;
 use crate::cache::{DistributionCache, MetadataCache};
 use crate::models::jdk::{

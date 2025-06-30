@@ -1,9 +1,3 @@
-//! Version resolution for shims.
-//!
-//! This module implements the version resolution logic that determines which
-//! JDK version to use based on environment variables, project configuration
-//! files, and global defaults.
-
 use crate::error::{KopiError, Result};
 use crate::models::jdk::VersionRequest;
 use std::env;
@@ -15,7 +9,6 @@ const KOPI_VERSION_FILE: &str = ".kopi-version";
 const JAVA_VERSION_FILE: &str = ".java-version";
 const VERSION_ENV_VAR: &str = "KOPI_JAVA_VERSION";
 
-/// Resolver for JDK versions based on project configuration.
 pub struct VersionResolver {
     current_dir: PathBuf,
 }
@@ -29,22 +22,15 @@ impl Default for VersionResolver {
 }
 
 impl VersionResolver {
-    /// Create a new version resolver starting from the current directory.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Create a version resolver with a specific starting directory (for testing).
     #[cfg(test)]
     pub fn with_dir(dir: PathBuf) -> Self {
         Self { current_dir: dir }
     }
 
-    /// Resolve the JDK version to use based on the resolution order:
-    /// 1. KOPI_JAVA_VERSION environment variable
-    /// 2. .kopi-version file (native format with @ separator)
-    /// 3. .java-version file (compatibility format)
-    /// 4. Global default (if configured)
     pub fn resolve_version(&self) -> Result<VersionRequest> {
         // Check environment variable first (fastest)
         if let Ok(env_version) = env::var(VERSION_ENV_VAR) {
@@ -67,7 +53,6 @@ impl VersionResolver {
         Err(KopiError::NoLocalVersion)
     }
 
-    /// Search for version files starting from current directory and traversing up.
     fn search_version_files(&self) -> Result<Option<VersionRequest>> {
         let mut current = self.current_dir.clone();
 
@@ -99,7 +84,6 @@ impl VersionResolver {
         Ok(None)
     }
 
-    /// Read and parse a version file.
     fn read_version_file(&self, path: &Path) -> Result<String> {
         // Use a small buffer for efficiency
         let content = fs::read_to_string(path)?;
@@ -116,7 +100,6 @@ impl VersionResolver {
         Ok(version)
     }
 
-    /// Get the global default version if configured.
     fn get_global_default(&self) -> Result<Option<VersionRequest>> {
         // For now, we'll check for a global config file
         // This will be enhanced when config system is fully implemented

@@ -1,8 +1,3 @@
-//! Integration tests for the shim system.
-//!
-//! These tests verify the complete shim workflow end-to-end with real
-//! filesystem operations and process execution.
-
 use kopi::error::KopiError;
 use kopi::shim::version_resolver::VersionResolver;
 use kopi::storage::JdkRepository;

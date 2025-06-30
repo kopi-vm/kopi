@@ -1,8 +1,3 @@
-//! Core search implementation for finding JDK packages.
-//!
-//! This module contains the main `PackageSearcher` struct that implements
-//! all search strategies described in the parent module documentation.
-
 use crate::cache::{DistributionCache, MetadataCache};
 use crate::error::Result;
 use crate::models::jdk::{Distribution, JdkMetadata};
@@ -11,44 +6,12 @@ use crate::version::parser::{ParsedVersionRequest, VersionParser};
 
 use super::models::{PlatformFilter, SearchResult, SearchResultRef};
 
-/// Main search engine for finding JDK packages in cached metadata.
-///
-/// The searcher operates on a reference to a `MetadataCache` and provides
-/// various search methods with different strategies and filters.
-///
-/// # Lifetime
-///
-/// The lifetime parameter `'a` is tied to the cache lifetime, ensuring
-/// the searcher cannot outlive the cache it references.
-///
-/// # Example
-///
-/// ```no_run
-/// # use kopi::search::{PackageSearcher, PlatformFilter};
-/// # use kopi::cache::MetadataCache;
-/// # let cache = MetadataCache::new();
-/// // Create a searcher with platform filters
-/// let filter = PlatformFilter {
-///     architecture: Some("x64".to_string()),
-///     operating_system: Some("linux".to_string()),
-///     lib_c_type: None,
-/// };
-///
-/// let searcher = PackageSearcher::new(Some(&cache))
-///     .with_platform_filter(filter);
-///
-/// // Search for Java 21
-/// let results = searcher.search("21").unwrap();
-/// ```
 pub struct PackageSearcher<'a> {
     cache: Option<&'a MetadataCache>,
     platform_filter: PlatformFilter,
 }
 
 impl<'a> PackageSearcher<'a> {
-    /// Creates a new searcher with an optional cache reference.
-    ///
-    /// If `cache` is `None`, all searches will return empty results.
     pub fn new(cache: Option<&'a MetadataCache>) -> Self {
         Self {
             cache,
@@ -56,39 +19,11 @@ impl<'a> PackageSearcher<'a> {
         }
     }
 
-    /// Configures platform-specific filters for the searcher.
-    ///
-    /// This method consumes and returns `self` for method chaining.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use kopi::search::{PackageSearcher, PlatformFilter};
-    /// # use kopi::cache::MetadataCache;
-    /// # let cache = MetadataCache::new();
-    /// let searcher = PackageSearcher::new(Some(&cache))
-    ///     .with_platform_filter(PlatformFilter {
-    ///         architecture: Some("aarch64".to_string()),
-    ///         operating_system: Some("macos".to_string()),
-    ///         lib_c_type: None,
-    ///     });
-    /// ```
     pub fn with_platform_filter(mut self, filter: PlatformFilter) -> Self {
         self.platform_filter = filter;
         self
     }
 
-    /// Common search logic that can be used with different result transformations.
-    ///
-    /// This is the core search algorithm that:
-    /// 1. Iterates through all distributions in the cache
-    /// 2. Applies distribution and package type filters
-    /// 3. Handles "latest" version selection per distribution
-    /// 4. Applies platform filters via `matches_package_with_version`
-    /// 5. Transforms results using the provided `result_builder`
-    ///
-    /// The generic design allows the same logic to produce both owned
-    /// results (`SearchResult`) and borrowed results (`SearchResultRef`).
     fn search_common<'b, F, R>(
         &'b self,
         request: &ParsedVersionRequest,
@@ -165,32 +100,11 @@ impl<'a> PackageSearcher<'a> {
         Ok(results)
     }
 
-    /// Search for packages matching a version string.
-    ///
-    /// This is the primary search method that parses the version string
-    /// and returns owned results suitable for external use.
-    ///
-    /// # Version String Format
-    ///
-    /// - `"21"` - Major version only
-    /// - `"21.0.1"` - Specific version
-    /// - `"temurin@21"` - Distribution and version
-    /// - `"latest"` - Latest version across all distributions
-    /// - `"temurin@latest"` - Latest version of specific distribution
-    /// - `"jdk@21"` or `"jre@21"` - Package type prefix
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the version string format is invalid.
     pub fn search(&self, version_string: &str) -> Result<Vec<SearchResult>> {
         let parsed_request = VersionParser::parse(version_string)?;
         self.search_parsed(&parsed_request)
     }
 
-    /// Search for packages matching a parsed version request.
-    ///
-    /// This method accepts a pre-parsed request and returns owned results.
-    /// Results are sorted by distribution name, then by version (descending).
     pub fn search_parsed(&self, request: &ParsedVersionRequest) -> Result<Vec<SearchResult>> {
         let mut results =
             self.search_common(request, |dist_name, dist_cache, package| SearchResult {
@@ -208,7 +122,6 @@ impl<'a> PackageSearcher<'a> {
         Ok(results)
     }
 
-    /// Search for packages and return references to avoid cloning
     pub fn search_parsed_refs<'b>(
         &'b self,
         request: &ParsedVersionRequest,
@@ -232,22 +145,6 @@ impl<'a> PackageSearcher<'a> {
         Ok(results)
     }
 
-    /// Find an exact package match for installation.
-    ///
-    /// This method looks for a package that exactly matches all specified
-    /// criteria. It's typically used when the user has specified exact
-    /// requirements for installation.
-    ///
-    /// # Parameters
-    ///
-    /// - `distribution` - The JDK distribution (e.g., Temurin, Zulu)
-    /// - `version` - Exact version string (e.g., "21.0.1")
-    /// - `architecture` - Target architecture (e.g., "x64", "aarch64")
-    /// - `operating_system` - Target OS (e.g., "linux", "windows", "macos")
-    ///
-    /// # Returns
-    ///
-    /// Returns `Some(JdkMetadata)` if an exact match is found, `None` otherwise.
     pub fn find_exact_package(
         &self,
         distribution: &Distribution,
@@ -272,33 +169,6 @@ impl<'a> PackageSearcher<'a> {
             .cloned()
     }
 
-    /// Determine which package would be auto-selected by the install command.
-    ///
-    /// This method implements the auto-selection strategy used when multiple
-    /// packages match the basic criteria (version, architecture, OS). It's
-    /// particularly important for handling cases where both JDK and JRE
-    /// packages are available, or when multiple libc variants exist.
-    ///
-    /// # Selection Priority
-    ///
-    /// 1. If only one package matches, return it
-    /// 2. Apply package type preference:
-    ///    - If type explicitly requested, filter to that type
-    ///    - Otherwise, prefer JDK over JRE
-    /// 3. Try to match system libc type (Linux only)
-    /// 4. Return the first remaining match
-    ///
-    /// # Parameters
-    ///
-    /// - `distribution` - The JDK distribution
-    /// - `version` - Exact version string
-    /// - `architecture` - Target architecture
-    /// - `operating_system` - Target OS
-    /// - `requested_package_type` - Optional explicit package type preference
-    ///
-    /// # Returns
-    ///
-    /// Returns the auto-selected package, or `None` if no matches found.
     pub fn find_auto_selected_package(
         &self,
         distribution: &Distribution,
@@ -373,7 +243,6 @@ impl<'a> PackageSearcher<'a> {
         packages_to_search.first().cloned().cloned()
     }
 
-    /// Optimized version that accepts pre-computed version string
     fn matches_package_with_version(
         &self,
         package: &JdkMetadata,

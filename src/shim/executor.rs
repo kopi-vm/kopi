@@ -1,25 +1,10 @@
-//! Process execution for shims.
-//!
-//! This module handles the platform-specific execution of Java tools,
-//! using exec() on Unix systems and CreateProcess on Windows.
-
 use crate::error::{KopiError, Result};
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-/// Platform-specific executor for launching Java tools.
 pub struct ShimExecutor;
 
 impl ShimExecutor {
-    /// Execute the Java tool, replacing the current process.
-    ///
-    /// On Unix systems, this uses exec() to replace the current process.
-    /// On Windows, this uses CreateProcess and waits for completion.
-    ///
-    /// The executed process inherits:
-    /// - All environment variables
-    /// - Standard input/output/error streams
-    /// - Working directory
     #[cfg(unix)]
     pub fn exec(tool_path: PathBuf, args: Vec<OsString>) -> Result<()> {
         use std::os::unix::process::CommandExt;
@@ -35,7 +20,6 @@ impl ShimExecutor {
         )))
     }
 
-    /// Execute the Java tool on Windows.
     #[cfg(windows)]
     pub fn exec(tool_path: PathBuf, args: Vec<OsString>) -> Result<()> {
         use std::process::{Command, Stdio};

@@ -3,38 +3,28 @@ use attohttpc::{Response, Session};
 use std::io::{self, Read};
 use std::time::Duration;
 
-/// HTTP client trait for abstracting HTTP operations
 pub trait HttpClient: Send + Sync {
-    /// Perform a GET request with custom headers
     fn get(&self, url: &str, headers: Vec<(String, String)>) -> Result<Box<dyn HttpResponse>>;
 
-    /// Set the timeout for requests
     fn set_timeout(&mut self, timeout: Duration);
 }
 
-/// HTTP response trait for abstracting response handling
 pub trait HttpResponse: Read + Send {
-    /// Get the HTTP status code
     fn status(&self) -> u16;
 
-    /// Get a header value by name
     fn header(&self, name: &str) -> Option<&str>;
 
-    /// Get the final URL after redirects
     fn final_url(&self) -> Option<&str>;
 }
 
-/// Default timeout for HTTP requests
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(300);
 
-/// Implementation of HttpClient using attohttpc
 pub struct AttohttpcClient {
     timeout: Duration,
     user_agent: String,
 }
 
 impl AttohttpcClient {
-    /// Create a new HTTP client with default settings
     pub fn new() -> Self {
         Self {
             timeout: DEFAULT_TIMEOUT,

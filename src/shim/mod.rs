@@ -1,8 +1,3 @@
-//! Shim system for transparent JDK version switching.
-//!
-//! This module implements the core shim binary that intercepts Java tool invocations
-//! and routes them to the appropriate JDK version based on project configuration.
-
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{Distribution, VersionRequest};
 use crate::storage::JdkRepository;
@@ -17,13 +12,6 @@ pub mod version_resolver;
 use executor::ShimExecutor;
 use version_resolver::VersionResolver;
 
-/// Main entry point for the shim binary.
-///
-/// This function:
-/// 1. Detects the tool name from argv[0]
-/// 2. Resolves the appropriate JDK version
-/// 3. Finds the JDK installation path
-/// 4. Executes the actual Java tool with all arguments
 pub fn run_shim() -> Result<()> {
     let start = std::time::Instant::now();
 
@@ -59,10 +47,6 @@ pub fn run_shim() -> Result<()> {
     Ok(())
 }
 
-/// Extract tool name from argv[0].
-///
-/// Handles both direct invocation (e.g., "java") and path invocation
-/// (e.g., "/home/user/.kopi/shims/java").
 fn get_tool_name() -> Result<String> {
     let arg0 = env::args_os()
         .next()
@@ -77,7 +61,6 @@ fn get_tool_name() -> Result<String> {
     Ok(tool_name.to_string())
 }
 
-/// Find the JDK installation path for the given version request.
 fn find_jdk_installation(
     repository: &JdkRepository,
     version_request: &VersionRequest,
@@ -110,7 +93,6 @@ fn find_jdk_installation(
     )))
 }
 
-/// Check if an installed JDK version matches the requested pattern.
 fn version_matches(installed_version: &str, pattern: &str) -> bool {
     // Parse both versions
     if let (Ok(installed), Ok(_requested)) = (
@@ -124,7 +106,6 @@ fn version_matches(installed_version: &str, pattern: &str) -> bool {
     }
 }
 
-/// Build the full path to the Java tool executable.
 fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
     let bin_dir = jdk_path.join("bin");
 

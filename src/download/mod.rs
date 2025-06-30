@@ -1,10 +1,3 @@
-/// Download management module for Kopi JDK version manager
-///
-/// This module provides functionality for downloading JDK distributions with:
-/// - Progress reporting
-/// - Resume support for interrupted downloads
-/// - Checksum verification
-/// - Configurable timeouts and size limits
 mod checksum;
 mod client;
 mod http_file_downloader;
@@ -20,15 +13,6 @@ pub use progress::IndicatifProgressReporter;
 use crate::error::Result;
 use std::time::Duration;
 
-/// Download a JDK package from the given URL
-///
-/// # Arguments
-/// * `package` - JDK metadata containing download URL and checksum
-/// * `no_progress` - Disable progress reporting
-/// * `timeout_secs` - Optional timeout in seconds
-///
-/// # Returns
-/// A `DownloadResult` containing the path to the downloaded file
 pub fn download_jdk(
     package: &crate::models::jdk::JdkMetadata,
     no_progress: bool,
