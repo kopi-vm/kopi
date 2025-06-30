@@ -618,17 +618,45 @@ fn test_download_connection_reset() {
             }
         }
         Err(e) => {
-            let error_str = e.to_string();
-            // Various possible error messages
-            assert!(
-                error_str.contains("Connection")
-                    || error_str.contains("reset")
-                    || error_str.contains("EOF")
-                    || error_str.contains("closed")
-                    || error_str.contains("broken pipe"),
-                "Expected connection error, got: {}",
-                error_str
-            );
+            // Check if it's a connection-related error by examining the error chain
+            let mut is_connection_error = false;
+
+            // Check the error chain for IO errors
+            let mut error_chain: &dyn std::error::Error = &e;
+            loop {
+                if let Some(io_error) = error_chain.downcast_ref::<std::io::Error>() {
+                    // Check for connection-related error kinds
+                    use std::io::ErrorKind;
+                    match io_error.kind() {
+                        ErrorKind::ConnectionReset
+                        | ErrorKind::ConnectionAborted
+                        | ErrorKind::BrokenPipe
+                        | ErrorKind::UnexpectedEof => {
+                            is_connection_error = true;
+                            break;
+                        }
+                        _ => {
+                            // Check OS error codes for connection errors
+                            if let Some(os_error) = io_error.raw_os_error() {
+                                // Windows: 10054 = WSAECONNRESET
+                                // Unix: 104 = ECONNRESET, 32 = EPIPE
+                                if os_error == 10054 || os_error == 104 || os_error == 32 {
+                                    is_connection_error = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Move to the next error in the chain
+                match error_chain.source() {
+                    Some(source) => error_chain = source,
+                    None => break,
+                }
+            }
+
+            assert!(is_connection_error, "Expected connection error, got: {}", e);
         }
     }
 }
