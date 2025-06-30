@@ -1,4 +1,4 @@
-use kopi::archive::ArchiveHandler;
+use kopi::archive::extract_archive;
 use kopi::download::{DownloadOptions, HttpFileDownloader};
 use kopi::security::{is_trusted_domain, verify_https_security};
 use kopi::storage::JdkRepository;
@@ -153,9 +153,8 @@ fn test_archive_extraction_workflow() {
     }
 
     let dest_dir = tempdir().unwrap();
-    let handler = ArchiveHandler::new();
 
-    let result = handler.extract(temp_archive.path(), dest_dir.path());
+    let result = extract_archive(temp_archive.path(), dest_dir.path());
     assert!(result.is_ok());
 
     // Verify extracted files

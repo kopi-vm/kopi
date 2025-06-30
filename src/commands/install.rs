@@ -1,6 +1,5 @@
 use crate::api::ApiClient;
 use crate::archive::extract_archive;
-use crate::config::KopiConfig;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{Distribution, JdkMetadata};
@@ -15,19 +14,16 @@ use std::str::FromStr;
 pub struct InstallCommand {
     api_client: ApiClient,
     storage_manager: JdkRepository,
-    _config: KopiConfig,
 }
 
 impl InstallCommand {
     pub fn new() -> Result<Self> {
         let storage_manager = JdkRepository::new()?;
-        let config = KopiConfig::load(storage_manager.kopi_home())?;
         let api_client = ApiClient::new();
 
         Ok(Self {
             api_client,
             storage_manager,
-            _config: config,
         })
     }
 
@@ -168,13 +164,6 @@ impl InstallCommand {
             jdk_metadata_with_checksum.version,
             jdk_metadata_with_checksum.id
         );
-
-        // Check disk space (convert bytes to MB)
-        let _required_space_mb = if jdk_metadata_with_checksum.size > 0 {
-            jdk_metadata_with_checksum.size / 1024 / 1024
-        } else {
-            500 // Default to 500MB if size is unknown
-        };
 
         // Download JDK
         info!(
