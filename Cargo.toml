@@ -84,3 +84,6 @@ rand = "0.8"
 [[bench]]
 name = "kopi_bench"
 harness = false
+
+[lints.rust]
+unused_variables = "deny"
