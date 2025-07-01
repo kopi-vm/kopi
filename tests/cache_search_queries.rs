@@ -2,6 +2,7 @@ mod common;
 use common::TestHomeGuard;
 use kopi::cache::{DistributionCache, MetadataCache, save_cache};
 use kopi::commands::cache::CacheCommand;
+use kopi::config::{KopiConfig, new_kopi_config};
 use kopi::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
     PackageType, Version,
@@ -21,7 +22,8 @@ fn setup_test_cache() -> (TestHomeGuard, std::sync::MutexGuard<'static, ()>) {
     }
 
     // Create test metadata
-    let mut cache = MetadataCache::new();
+    let config = new_kopi_config().unwrap();
+    let mut cache = MetadataCache::new(config.clone());
 
     // Add Temurin packages
     let mut temurin_packages = Vec::new();
@@ -153,7 +155,7 @@ fn setup_test_cache() -> (TestHomeGuard, std::sync::MutexGuard<'static, ()>) {
     );
 
     // Save cache
-    let cache_path = kopi::cache::get_cache_path().unwrap();
+    let cache_path = config.metadata_cache_path().unwrap();
     // Ensure parent directory exists
     if let Some(parent) = cache_path.parent() {
         std::fs::create_dir_all(parent).unwrap();

@@ -1,3 +1,4 @@
+use kopi::config::KopiConfig;
 use kopi::error::KopiError;
 use kopi::shim::version_resolver::VersionResolver;
 use kopi::storage::JdkRepository;
@@ -154,7 +155,8 @@ fn test_jdk_path_resolution() {
     fs::write(&metadata_file, metadata).unwrap();
 
     // Test repository listing
-    let repository = JdkRepository::with_home(kopi_home.to_path_buf());
+    let config = KopiConfig::new(kopi_home.to_path_buf()).unwrap();
+    let repository = JdkRepository::new(config);
     let installed_jdks = repository.list_installed_jdks().unwrap();
 
     assert_eq!(installed_jdks.len(), 1);

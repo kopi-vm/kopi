@@ -1,5 +1,6 @@
 use crate::api::ApiClient;
 use crate::archive::extract_archive;
+use crate::config::new_kopi_config;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{Distribution, JdkMetadata};
@@ -18,7 +19,8 @@ pub struct InstallCommand {
 
 impl InstallCommand {
     pub fn new() -> Result<Self> {
-        let storage_manager = JdkRepository::new()?;
+        let config = new_kopi_config()?;
+        let storage_manager = JdkRepository::new(config);
         let api_client = ApiClient::new();
 
         Ok(Self {
@@ -90,11 +92,15 @@ impl InstallCommand {
         // Validate version semantics
         VersionParser::validate_version_semantics(version)?;
 
-        // Use default distribution if not specified
-        let distribution = version_request
-            .distribution
-            .clone()
-            .unwrap_or(Distribution::Temurin);
+        // Load config to get default distribution
+        let config = new_kopi_config()?;
+
+        // Use default distribution from config if not specified
+        let distribution = if let Some(dist) = version_request.distribution.clone() {
+            dist
+        } else {
+            Distribution::from_str(&config.default_distribution).unwrap_or(Distribution::Temurin)
+        };
 
         println!("Installing {} {}...", distribution.name(), version);
 
@@ -108,7 +114,7 @@ impl InstallCommand {
         // Check if already installed using the actual distribution_version
         let installation_dir = self
             .storage_manager
-            .jdk_install_path(&distribution, &jdk_metadata.distribution_version);
+            .jdk_install_path(&distribution, &jdk_metadata.distribution_version)?;
 
         if dry_run {
             println!(
@@ -248,7 +254,8 @@ impl InstallCommand {
         let lib_c_type = get_foojay_libc_type();
 
         // First try to find the package in cache if it exists
-        if let Ok(cache) = crate::cache::load_cache_if_exists() {
+        let config = new_kopi_config()?;
+        if let Ok(cache) = crate::cache::load_cache_if_exists(&config) {
             let searcher = PackageSearcher::new(Some(&cache));
             if let Some(jdk_metadata) =
                 searcher.find_exact_package(distribution, &version.to_string(), &arch, &os)

@@ -1,4 +1,5 @@
 use kopi::cache::{DistributionCache, MetadataCache};
+use kopi::config::{KopiConfig, new_kopi_config};
 use kopi::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
     PackageType, Version,
@@ -9,7 +10,8 @@ use std::time::Instant;
 /// Create a test cache for performance testing
 /// Optimized to use less data while still being representative
 fn create_large_test_cache() -> MetadataCache {
-    let mut cache = MetadataCache::new();
+    let config = new_kopi_config().unwrap();
+    let mut cache = MetadataCache::new(config);
 
     // Create multiple distributions
     let distributions = vec![
@@ -281,10 +283,11 @@ fn test_display_rendering_performance() {
 #[cfg_attr(not(feature = "perf-tests"), ignore)]
 #[test]
 fn test_real_cache_performance() {
-    use kopi::cache::{get_cache_path, load_cache};
+    use kopi::cache::load_cache;
 
     // This test only runs with real cache data
-    let cache_path = get_cache_path().unwrap();
+    let config = new_kopi_config().unwrap();
+    let cache_path = config.metadata_cache_path().unwrap();
     if !cache_path.exists() {
         println!("Skipping real cache test - no cache found");
         return;

@@ -1,5 +1,6 @@
 use super::*;
 use crate::cache::{DistributionCache, MetadataCache};
+use crate::config::new_kopi_config;
 use crate::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
     PackageType, Version,
@@ -8,6 +9,7 @@ use crate::version::parser::ParsedVersionRequest;
 use std::str::FromStr;
 
 fn create_test_cache() -> MetadataCache {
+    let _config = new_kopi_config().unwrap();
     let mut cache = MetadataCache::new();
 
     let mut packages = Vec::new();
@@ -355,6 +357,7 @@ fn test_search_refs_produces_same_results() {
 
 #[test]
 fn test_empty_cache() {
+    let _config = new_kopi_config().unwrap();
     let cache = MetadataCache::new();
     let searcher = PackageSearcher::new(Some(&cache));
 

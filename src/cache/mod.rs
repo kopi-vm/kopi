@@ -3,10 +3,10 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::api::{ApiClient, ApiMetadata};
-use crate::config;
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{ChecksumType, Distribution as JdkDistribution, JdkMetadata};
 
@@ -24,19 +24,13 @@ pub struct DistributionCache {
     pub packages: Vec<JdkMetadata>,
 }
 
-impl Default for MetadataCache {
-    fn default() -> Self {
+impl MetadataCache {
+    pub fn new() -> Self {
         Self {
             version: 1,
             last_updated: Utc::now(),
             distributions: HashMap::new(),
         }
-    }
-}
-
-impl MetadataCache {
-    pub fn new() -> Self {
-        Self::default()
     }
 
     pub fn has_version(&self, version: &str) -> bool {
@@ -49,15 +43,47 @@ impl MetadataCache {
         }
         false
     }
+
+    pub fn save(&self, path: &Path) -> Result<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| {
+                KopiError::ConfigError(format!("Failed to create cache directory: {}", e))
+            })?;
+        }
+
+        let json = serde_json::to_string_pretty(self).map_err(|_e| KopiError::InvalidMetadata)?;
+
+        // Write to temporary file first for atomic operation
+        let temp_path = path.with_extension("tmp");
+        fs::write(&temp_path, json)
+            .map_err(|e| KopiError::ConfigError(format!("Failed to write cache file: {}", e)))?;
+
+        // Atomic rename
+        fs::rename(temp_path, path)
+            .map_err(|e| KopiError::ConfigError(format!("Failed to rename cache file: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Find a JDK package in the cache by its criteria
+    pub fn find_package(
+        &self,
+        distribution: &str,
+        version: &str,
+        architecture: &str,
+        operating_system: &str,
+    ) -> Option<&JdkMetadata> {
+        self.distributions.get(distribution).and_then(|dist| {
+            dist.packages.iter().find(|pkg| {
+                pkg.version.to_string() == version
+                    && pkg.architecture.to_string() == architecture
+                    && pkg.operating_system.to_string() == operating_system
+            })
+        })
+    }
 }
 
-pub fn get_cache_path() -> Result<PathBuf> {
-    let kopi_home = config::get_kopi_home()?;
-    let cache_dir = kopi_home.join("cache");
-    fs::create_dir_all(&cache_dir)
-        .map_err(|e| KopiError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
-    Ok(cache_dir.join("metadata.json"))
-}
+// Standalone helper functions for backward compatibility
 
 pub fn load_cache(path: &Path) -> Result<MetadataCache> {
     if !path.exists() {
@@ -67,11 +93,13 @@ pub fn load_cache(path: &Path) -> Result<MetadataCache> {
     let contents = fs::read_to_string(path)
         .map_err(|e| KopiError::ConfigError(format!("Failed to read cache file: {}", e)))?;
 
-    serde_json::from_str(&contents).map_err(|_e| KopiError::InvalidMetadata)
+    let cache: MetadataCache =
+        serde_json::from_str(&contents).map_err(|_e| KopiError::InvalidMetadata)?;
+    Ok(cache)
 }
 
-pub fn load_cache_if_exists() -> Result<MetadataCache> {
-    let cache_path = get_cache_path()?;
+pub fn load_cache_if_exists(config: &KopiConfig) -> Result<MetadataCache> {
+    let cache_path = config.metadata_cache_path()?;
     if cache_path.exists() {
         load_cache(&cache_path)
     } else {
@@ -80,40 +108,45 @@ pub fn load_cache_if_exists() -> Result<MetadataCache> {
 }
 
 pub fn save_cache(path: &Path, cache: &MetadataCache) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
-            KopiError::ConfigError(format!("Failed to create cache directory: {}", e))
-        })?;
-    }
-
-    let json = serde_json::to_string_pretty(cache).map_err(|_e| KopiError::InvalidMetadata)?;
-
-    // Write to temporary file first for atomic operation
-    let temp_path = path.with_extension("tmp");
-    fs::write(&temp_path, json)
-        .map_err(|e| KopiError::ConfigError(format!("Failed to write cache file: {}", e)))?;
-
-    // Atomic rename
-    fs::rename(temp_path, path)
-        .map_err(|e| KopiError::ConfigError(format!("Failed to rename cache file: {}", e)))?;
-
-    Ok(())
+    cache.save(path)
 }
 
-pub fn get_metadata(requested_version: Option<&str>) -> Result<MetadataCache> {
-    let cache_path = get_cache_path()?;
+/// Load metadata cache from file
+pub fn load_metadata(path: &Path) -> Result<MetadataCache> {
+    let contents = fs::read_to_string(path)
+        .map_err(|e| KopiError::ConfigError(format!("Failed to read cache file: {}", e)))?;
+
+    let loaded: MetadataCache =
+        serde_json::from_str(&contents).map_err(|_e| KopiError::InvalidMetadata)?;
+
+    Ok(loaded)
+}
+
+/// Load metadata cache if exists
+pub fn load_metadata_if_exists(config: &KopiConfig) -> Result<MetadataCache> {
+    let cache_path = config.metadata_cache_path()?;
+    if cache_path.exists() {
+        load_metadata(&cache_path)
+    } else {
+        Err(KopiError::CacheNotFound)
+    }
+}
+
+/// Get metadata with optional version check
+pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Result<MetadataCache> {
+    let cache_path = config.metadata_cache_path()?;
 
     // Try to use cache if it exists
     if cache_path.exists() {
-        match load_cache(&cache_path) {
-            Ok(cache) => {
+        match load_metadata(&cache_path) {
+            Ok(loaded_cache) => {
                 // If specific version requested and not in cache, try API
                 if let Some(version) = requested_version {
-                    if !cache.has_version(version) {
-                        return fetch_and_cache_metadata();
+                    if !loaded_cache.has_version(version) {
+                        return fetch_and_cache_metadata(config);
                     }
                 }
-                return Ok(cache);
+                return Ok(loaded_cache);
             }
             Err(e) => {
                 // Cache load failed, log warning and fall back to API
@@ -123,10 +156,11 @@ pub fn get_metadata(requested_version: Option<&str>) -> Result<MetadataCache> {
     }
 
     // No cache or cache load failed, fetch from API
-    fetch_and_cache_metadata()
+    fetch_and_cache_metadata(config)
 }
 
-pub fn fetch_and_cache_metadata() -> Result<MetadataCache> {
+/// Fetch metadata from API and cache it
+pub fn fetch_and_cache_metadata(config: &KopiConfig) -> Result<MetadataCache> {
     // Fetch metadata from API
     let api_client = ApiClient::new();
     let metadata = api_client.fetch_all_metadata().map_err(|e| {
@@ -134,17 +168,20 @@ pub fn fetch_and_cache_metadata() -> Result<MetadataCache> {
     })?;
 
     // Convert API response to cache format
-    let cache = convert_api_to_cache(metadata)?;
+    let new_cache = convert_api_to_cache(metadata)?;
 
     // Save to cache
-    let cache_path = get_cache_path()?;
-    save_cache(&cache_path, &cache)?;
+    let cache_path = config.metadata_cache_path()?;
+    new_cache.save(&cache_path)?;
 
-    Ok(cache)
+    Ok(new_cache)
 }
 
-/// Fetch metadata from Foojay API and update cache with options
-pub fn fetch_and_cache_metadata_with_options(javafx_bundled: bool) -> Result<MetadataCache> {
+/// Fetch metadata from API with options and cache it
+pub fn fetch_and_cache_metadata_with_options(
+    javafx_bundled: bool,
+    config: &KopiConfig,
+) -> Result<MetadataCache> {
     // Fetch metadata from API
     let api_client = ApiClient::new();
     let metadata = api_client
@@ -154,19 +191,20 @@ pub fn fetch_and_cache_metadata_with_options(javafx_bundled: bool) -> Result<Met
         })?;
 
     // Convert API response to cache format
-    let cache = convert_api_to_cache(metadata)?;
+    let new_cache = convert_api_to_cache(metadata)?;
 
     // Save to cache
-    let cache_path = get_cache_path()?;
-    save_cache(&cache_path, &cache)?;
+    let cache_path = config.metadata_cache_path()?;
+    new_cache.save(&cache_path)?;
 
-    Ok(cache)
+    Ok(new_cache)
 }
 
 /// Fetch metadata for a specific distribution and update the cache
 pub fn fetch_and_cache_distribution(
     distribution_name: &str,
     javafx_bundled: bool,
+    config: &KopiConfig,
 ) -> Result<MetadataCache> {
     use crate::search::get_current_platform;
     use std::str::FromStr;
@@ -174,10 +212,10 @@ pub fn fetch_and_cache_distribution(
     // Get current platform info
     let (current_arch, current_os, current_libc) = get_current_platform();
 
-    // Load existing cache or create new one
-    let cache_path = get_cache_path()?;
-    let mut cache = if cache_path.exists() {
-        load_cache(&cache_path).unwrap_or_else(|_| MetadataCache::new())
+    // Load existing cache if available or create new one
+    let cache_path = config.metadata_cache_path()?;
+    let mut result_cache = if cache_path.exists() {
+        load_metadata(&cache_path).unwrap_or_else(|_| MetadataCache::new())
     } else {
         MetadataCache::new()
     };
@@ -205,13 +243,12 @@ pub fn fetch_and_cache_distribution(
         package_type: None,
         operating_system: Some(current_os.clone()),
         lib_c_type: Some(current_libc),
-        javafx_bundled: if javafx_bundled { None } else { Some(false) },
         archive_types: None,
-        latest: Some("true".to_string()),
+        javafx_bundled: Some(javafx_bundled),
         directly_downloadable: Some(true),
+        latest: None,
     };
 
-    // Fetch packages for this distribution
     let packages = api_client.get_packages(Some(query)).map_err(|e| {
         KopiError::MetadataFetch(format!(
             "Failed to fetch packages for {}: {}",
@@ -219,33 +256,30 @@ pub fn fetch_and_cache_distribution(
         ))
     })?;
 
-    // Convert to JDK metadata
+    // Convert packages to JdkMetadata
     let jdk_packages: Vec<JdkMetadata> = packages
         .into_iter()
         .filter_map(|pkg| convert_package_to_jdk_metadata(pkg).ok())
         .collect();
 
-    // Parse distribution enum
-    let distribution = JdkDistribution::from_str(&dist_info.api_parameter)
-        .unwrap_or(JdkDistribution::Other(dist_info.api_parameter.clone()));
-
-    // Create distribution cache
+    // Create DistributionCache
     let dist_cache = DistributionCache {
-        distribution,
+        distribution: JdkDistribution::from_str(distribution_name)
+            .unwrap_or(JdkDistribution::Other(distribution_name.to_string())),
         display_name: dist_info.name.clone(),
         packages: jdk_packages,
     };
 
     // Update cache with this distribution
-    cache
+    result_cache
         .distributions
         .insert(distribution_name.to_string(), dist_cache);
-    cache.last_updated = Utc::now();
+    result_cache.last_updated = Utc::now();
 
     // Save updated cache
-    save_cache(&cache_path, &cache)?;
+    result_cache.save(&cache_path)?;
 
-    Ok(cache)
+    Ok(result_cache)
 }
 
 /// Fetch checksum for a specific JDK package
@@ -274,13 +308,7 @@ pub fn find_package_in_cache<'a>(
     architecture: &str,
     operating_system: &str,
 ) -> Option<&'a JdkMetadata> {
-    cache.distributions.get(distribution).and_then(|dist| {
-        dist.packages.iter().find(|pkg| {
-            pkg.version.to_string() == version
-                && pkg.architecture.to_string() == architecture
-                && pkg.operating_system.to_string() == operating_system
-        })
-    })
+    cache.find_package(distribution, version, architecture, operating_system)
 }
 
 fn parse_architecture_from_filename(filename: &str) -> Option<crate::models::jdk::Architecture> {
@@ -429,7 +457,7 @@ mod tests {
         };
         cache.distributions.insert("temurin".to_string(), dist);
 
-        save_cache(&cache_path, &cache).unwrap();
+        cache.save(&cache_path).unwrap();
 
         let loaded_cache = load_cache(&cache_path).unwrap();
         assert_eq!(loaded_cache.version, cache.version);
@@ -502,7 +530,7 @@ mod tests {
     #[test]
     fn test_find_package_in_cache() {
         use crate::models::jdk::{
-            Architecture, ArchiveType, OperatingSystem, PackageType, Version,
+            Architecture, ArchiveType, ChecksumType, OperatingSystem, PackageType, Version,
         };
 
         let mut cache = MetadataCache::new();

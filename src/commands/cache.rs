@@ -1,4 +1,5 @@
 use crate::cache;
+use crate::config::new_kopi_config;
 use crate::error::Result;
 use crate::search::{PackageSearcher, get_current_platform};
 use crate::version::parser::VersionParser;
@@ -76,7 +77,8 @@ fn refresh_cache(javafx_bundled: bool) -> Result<()> {
     spinner.set_message("Refreshing metadata cache from foojay.io...");
     spinner.enable_steady_tick(Duration::from_millis(100));
 
-    let cache = cache::fetch_and_cache_metadata_with_options(javafx_bundled)?;
+    let config = new_kopi_config()?;
+    let cache = cache::fetch_and_cache_metadata_with_options(javafx_bundled, &config)?;
 
     spinner.finish_and_clear();
     println!("{} Cache refreshed successfully", "✓".green().bold());
@@ -95,7 +97,8 @@ fn refresh_cache(javafx_bundled: bool) -> Result<()> {
 }
 
 fn show_cache_info() -> Result<()> {
-    let cache_path = cache::get_cache_path()?;
+    let config = new_kopi_config()?;
+    let cache_path = config.metadata_cache_path()?;
 
     if !cache_path.exists() {
         println!("{} No cache found", "✗".red());
@@ -130,7 +133,8 @@ fn show_cache_info() -> Result<()> {
 }
 
 fn clear_cache() -> Result<()> {
-    let cache_path = cache::get_cache_path()?;
+    let config = new_kopi_config()?;
+    let cache_path = config.metadata_cache_path()?;
 
     if cache_path.exists() {
         std::fs::remove_file(&cache_path)?;
@@ -150,7 +154,8 @@ fn search_cache(
     lts_only: bool,
     javafx_bundled: bool,
 ) -> Result<()> {
-    let cache_path = cache::get_cache_path()?;
+    let config = new_kopi_config()?;
+    let cache_path = config.metadata_cache_path()?;
 
     // Load cache or create new one if it doesn't exist
     let mut cache = if cache_path.exists() {
@@ -211,7 +216,7 @@ fn search_cache(
                 );
             }
 
-            match cache::fetch_and_cache_distribution(dist_id, javafx_bundled) {
+            match cache::fetch_and_cache_distribution(dist_id, javafx_bundled, &config) {
                 Ok(updated_cache) => {
                     cache = updated_cache;
                     if !json {
@@ -624,7 +629,8 @@ fn search_cache(
 }
 
 fn list_distributions() -> Result<()> {
-    let cache_path = cache::get_cache_path()?;
+    let config = new_kopi_config()?;
+    let cache_path = config.metadata_cache_path()?;
 
     if !cache_path.exists() {
         println!("{} No cache found", "✗".red());

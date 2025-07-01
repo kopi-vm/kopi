@@ -8,13 +8,21 @@ use std::path::{Path, PathBuf};
 const CONFIG_FILE_NAME: &str = "config.toml";
 const DEFAULT_MIN_DISK_SPACE_MB: u64 = 500;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// Directory names
+const JDKS_DIR_NAME: &str = "jdks";
+const CACHE_DIR_NAME: &str = "cache";
+const BIN_DIR_NAME: &str = "bin";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KopiConfig {
+    #[serde(skip)]
+    kopi_home: PathBuf,
+
     #[serde(default)]
     pub storage: StorageConfig,
 
-    #[serde(default)]
-    pub default_distribution: Option<String>,
+    #[serde(default = "default_distribution")]
+    pub default_distribution: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,46 +43,18 @@ fn default_min_disk_space_mb() -> u64 {
     DEFAULT_MIN_DISK_SPACE_MB
 }
 
-impl KopiConfig {
-    pub fn load(kopi_home: &Path) -> Result<Self> {
-        let config_path = kopi_home.join(CONFIG_FILE_NAME);
-
-        if !config_path.exists() {
-            log::debug!("Config file not found at {:?}, using defaults", config_path);
-            return Ok(Self::default());
-        }
-
-        let contents = fs::read_to_string(&config_path)?;
-        let config: KopiConfig = toml::from_str(&contents)
-            .map_err(|e| KopiError::ConfigError(format!("Failed to parse config.toml: {}", e)))?;
-
-        log::debug!("Loaded config from {:?}", config_path);
-        Ok(config)
-    }
-
-    pub fn save(&self, kopi_home: &Path) -> Result<()> {
-        let config_path = kopi_home.join(CONFIG_FILE_NAME);
-
-        // Ensure parent directory exists
-        if let Some(parent) = config_path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-
-        let contents = toml::to_string_pretty(self)
-            .map_err(|e| KopiError::ConfigError(format!("Failed to serialize config: {}", e)))?;
-
-        fs::write(&config_path, contents)?;
-        log::debug!("Saved config to {:?}", config_path);
-        Ok(())
-    }
+fn default_distribution() -> String {
+    "temurin".to_string()
 }
 
-/// Get the KOPI home directory from environment variable or default location
-///
-/// This function checks the KOPI_HOME environment variable first.
-/// If it's set but not an absolute path, a warning is logged and the default path is used.
-/// If not set or invalid, falls back to ~/.kopi
-pub fn get_kopi_home() -> Result<PathBuf> {
+/// Create a new KopiConfig with automatic home directory resolution
+pub fn new_kopi_config() -> Result<KopiConfig> {
+    let kopi_home = resolve_kopi_home()?;
+    KopiConfig::new(kopi_home)
+}
+
+/// Resolve the KOPI home directory from environment variable or default location
+fn resolve_kopi_home() -> Result<PathBuf> {
     // Check KOPI_HOME environment variable first
     if let Ok(kopi_home) = std::env::var("KOPI_HOME") {
         let path = PathBuf::from(&kopi_home);
@@ -99,6 +79,93 @@ pub fn get_kopi_home() -> Result<PathBuf> {
         .ok_or_else(|| KopiError::ConfigError("Unable to determine home directory".to_string()))
 }
 
+impl KopiConfig {
+    /// Create a new KopiConfig from the specified home directory
+    pub fn new(kopi_home: PathBuf) -> Result<Self> {
+        let config_path = kopi_home.join(CONFIG_FILE_NAME);
+
+        let config = if config_path.exists() {
+            log::debug!("Loading config from {:?}", config_path);
+            let contents = fs::read_to_string(&config_path)?;
+            let mut loaded: KopiConfig = toml::from_str(&contents).map_err(|e| {
+                KopiError::ConfigError(format!("Failed to parse config.toml: {}", e))
+            })?;
+            loaded.kopi_home = kopi_home;
+            loaded
+        } else {
+            log::debug!("Config file not found at {:?}, using defaults", config_path);
+            Self {
+                kopi_home,
+                storage: StorageConfig {
+                    min_disk_space_mb: DEFAULT_MIN_DISK_SPACE_MB,
+                },
+                default_distribution: "temurin".to_string(),
+            }
+        };
+
+        Ok(config)
+    }
+
+    pub fn save(&self) -> Result<()> {
+        let config_path = self.kopi_home.join(CONFIG_FILE_NAME);
+
+        // Ensure parent directory exists
+        if let Some(parent) = config_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        let contents = toml::to_string_pretty(self)
+            .map_err(|e| KopiError::ConfigError(format!("Failed to serialize config: {}", e)))?;
+
+        fs::write(&config_path, contents)?;
+        log::debug!("Saved config to {:?}", config_path);
+        Ok(())
+    }
+
+    /// Get the KOPI home directory
+    pub fn kopi_home(&self) -> &Path {
+        &self.kopi_home
+    }
+
+    /// Get the JDKs directory path and create it if it doesn't exist
+    pub fn jdks_dir(&self) -> Result<PathBuf> {
+        let dir = self.kopi_home.join(JDKS_DIR_NAME);
+        fs::create_dir_all(&dir).map_err(|e| {
+            KopiError::ConfigError(format!("Failed to create jdks directory: {}", e))
+        })?;
+        Ok(dir)
+    }
+
+    /// Get the cache directory path and create it if it doesn't exist
+    pub fn cache_dir(&self) -> Result<PathBuf> {
+        let dir = self.kopi_home.join(CACHE_DIR_NAME);
+        fs::create_dir_all(&dir).map_err(|e| {
+            KopiError::ConfigError(format!("Failed to create cache directory: {}", e))
+        })?;
+        Ok(dir)
+    }
+
+    /// Get the bin directory path for shims and create it if it doesn't exist
+    pub fn bin_dir(&self) -> Result<PathBuf> {
+        let dir = self.kopi_home.join(BIN_DIR_NAME);
+        fs::create_dir_all(&dir).map_err(|e| {
+            KopiError::ConfigError(format!("Failed to create bin directory: {}", e))
+        })?;
+        Ok(dir)
+    }
+
+    /// Get the path to the metadata cache file (ensures cache directory exists)
+    pub fn metadata_cache_path(&self) -> Result<PathBuf> {
+        let cache_dir = self.cache_dir()?;
+        Ok(cache_dir.join("metadata.json"))
+    }
+
+    /// Get the path to the config file
+    pub fn config_path(&self) -> PathBuf {
+        self.kopi_home.join(CONFIG_FILE_NAME)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -107,31 +174,46 @@ mod tests {
 
     #[test]
     fn test_default_config() {
-        let config = KopiConfig::default();
+        // Clear KOPI_HOME to ensure we get the default behavior
+        unsafe {
+            env::remove_var("KOPI_HOME");
+        }
+
+        let kopi_home = resolve_kopi_home().unwrap();
+        let config = KopiConfig::new(kopi_home).unwrap();
         assert_eq!(config.storage.min_disk_space_mb, DEFAULT_MIN_DISK_SPACE_MB);
-        assert_eq!(config.default_distribution, None);
+        assert_eq!(config.default_distribution, "temurin");
+        // The path should contain .kopi - it could be absolute or relative
+        let path_str = config.kopi_home.to_string_lossy();
+        assert!(
+            path_str.contains(".kopi"),
+            "Expected path to contain '.kopi', but got: {}",
+            path_str
+        );
     }
 
     #[test]
     fn test_load_missing_config() {
         let temp_dir = TempDir::new().unwrap();
-        let config = KopiConfig::load(temp_dir.path()).unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         assert_eq!(config.storage.min_disk_space_mb, DEFAULT_MIN_DISK_SPACE_MB);
+        assert_eq!(config.default_distribution, "temurin");
+        assert_eq!(config.kopi_home, temp_dir.path());
     }
 
     #[test]
     fn test_save_and_load_config() {
         let temp_dir = TempDir::new().unwrap();
 
-        let mut config = KopiConfig::default();
+        let mut config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         config.storage.min_disk_space_mb = 1024;
-        config.default_distribution = Some("temurin".to_string());
+        config.default_distribution = "temurin".to_string();
 
-        config.save(temp_dir.path()).unwrap();
+        config.save().unwrap();
 
-        let loaded = KopiConfig::load(temp_dir.path()).unwrap();
+        let loaded = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         assert_eq!(loaded.storage.min_disk_space_mb, 1024);
-        assert_eq!(loaded.default_distribution, Some("temurin".to_string()));
+        assert_eq!(loaded.default_distribution, "temurin");
     }
 
     #[test]
@@ -142,9 +224,9 @@ mod tests {
         // Write partial config with only default_distribution
         fs::write(&config_path, r#"default_distribution = "corretto""#).unwrap();
 
-        let loaded = KopiConfig::load(temp_dir.path()).unwrap();
+        let loaded = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         assert_eq!(loaded.storage.min_disk_space_mb, DEFAULT_MIN_DISK_SPACE_MB);
-        assert_eq!(loaded.default_distribution, Some("corretto".to_string()));
+        assert_eq!(loaded.default_distribution, "corretto");
     }
 
     #[test]
@@ -163,20 +245,20 @@ min_disk_space_mb = 2048
         )
         .unwrap();
 
-        let loaded = KopiConfig::load(temp_dir.path()).unwrap();
+        let loaded = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         assert_eq!(loaded.storage.min_disk_space_mb, 2048);
-        assert_eq!(loaded.default_distribution, Some("zulu".to_string()));
+        assert_eq!(loaded.default_distribution, "zulu");
     }
 
     #[test]
-    fn test_get_kopi_home_from_env() {
+    fn test_resolve_kopi_home_from_env() {
         let temp_dir = TempDir::new().unwrap();
         let abs_path = temp_dir.path().to_path_buf();
 
         unsafe {
             env::set_var("KOPI_HOME", &abs_path);
         }
-        let result = get_kopi_home().unwrap();
+        let result = resolve_kopi_home().unwrap();
         assert_eq!(result, abs_path);
 
         unsafe {
@@ -185,13 +267,13 @@ min_disk_space_mb = 2048
     }
 
     #[test]
-    fn test_get_kopi_home_relative_path() {
+    fn test_resolve_kopi_home_relative_path() {
         // Set a relative path
         unsafe {
             env::set_var("KOPI_HOME", "relative/path");
         }
 
-        let result = get_kopi_home().unwrap();
+        let result = resolve_kopi_home().unwrap();
         // Should fall back to default home
         assert!(result.ends_with(".kopi"));
         assert!(result.is_absolute());
@@ -202,13 +284,65 @@ min_disk_space_mb = 2048
     }
 
     #[test]
-    fn test_get_kopi_home_default() {
+    fn test_resolve_kopi_home_default() {
         unsafe {
             env::remove_var("KOPI_HOME");
         }
 
-        let result = get_kopi_home().unwrap();
+        let result = resolve_kopi_home().unwrap();
         assert!(result.ends_with(".kopi"));
         assert!(result.is_absolute());
+    }
+
+    #[test]
+    fn test_directory_paths() {
+        let temp_dir = TempDir::new().unwrap();
+        let kopi_home = temp_dir.path();
+        let config = KopiConfig::new(kopi_home.to_path_buf()).unwrap();
+
+        // Test JDKs directory
+        let jdks_dir = config.jdks_dir().unwrap();
+        assert_eq!(jdks_dir, kopi_home.join("jdks"));
+        assert!(jdks_dir.exists());
+
+        // Test cache directory
+        let cache_dir = config.cache_dir().unwrap();
+        assert_eq!(cache_dir, kopi_home.join("cache"));
+        assert!(cache_dir.exists());
+
+        // Test bin directory
+        let bin_dir = config.bin_dir().unwrap();
+        assert_eq!(bin_dir, kopi_home.join("bin"));
+        assert!(bin_dir.exists());
+
+        // Test metadata cache path
+        let cache_path = config.metadata_cache_path().unwrap();
+        assert_eq!(cache_path, kopi_home.join("cache").join("metadata.json"));
+
+        // Test config path
+        let config_path = config.config_path();
+        assert_eq!(config_path, kopi_home.join(CONFIG_FILE_NAME));
+    }
+
+    #[test]
+    fn test_directory_creation_on_access() {
+        let temp_dir = TempDir::new().unwrap();
+        let kopi_home = temp_dir.path();
+        let config = KopiConfig::new(kopi_home.to_path_buf()).unwrap();
+
+        // Verify directories don't exist initially
+        assert!(!kopi_home.join("jdks").exists());
+        assert!(!kopi_home.join("cache").exists());
+        assert!(!kopi_home.join("bin").exists());
+
+        // Access directories - they should be created
+        config.jdks_dir().unwrap();
+        assert!(kopi_home.join("jdks").exists());
+
+        config.cache_dir().unwrap();
+        assert!(kopi_home.join("cache").exists());
+
+        config.bin_dir().unwrap();
+        assert!(kopi_home.join("bin").exists());
     }
 }

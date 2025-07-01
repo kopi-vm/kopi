@@ -1,4 +1,5 @@
 use kopi::api::{Links, Package};
+use kopi::config::KopiConfig;
 use kopi::models::jdk::Distribution;
 use kopi::storage::JdkRepository;
 use std::fs;
@@ -6,7 +7,8 @@ use tempfile::TempDir;
 
 fn create_test_storage_manager() -> (JdkRepository, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let manager = JdkRepository::with_home(temp_dir.path().to_path_buf());
+    let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+    let manager = JdkRepository::new(config);
     (manager, temp_dir)
 }
 

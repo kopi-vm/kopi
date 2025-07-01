@@ -1,3 +1,4 @@
+use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{Distribution, VersionRequest};
 use crate::storage::JdkRepository;
@@ -25,7 +26,8 @@ pub fn run_shim() -> Result<()> {
     log::debug!("Resolved version: {:?}", version_request);
 
     // Find JDK installation
-    let repository = JdkRepository::new()?;
+    let config = new_kopi_config()?;
+    let repository = JdkRepository::new(config);
     let jdk_path = find_jdk_installation(&repository, &version_request)?;
     log::debug!("JDK path: {:?}", jdk_path);
 
@@ -129,6 +131,7 @@ fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::KopiConfig;
     use std::fs;
     use tempfile::TempDir;
 
@@ -186,7 +189,7 @@ mod tests {
     #[test]
     fn test_find_jdk_installation_found() {
         let temp_dir = TempDir::new().unwrap();
-        let _repository = JdkRepository::with_home(temp_dir.path().to_path_buf());
+        // Repository setup removed - not needed for this test
 
         // Create a mock installed JDK structure
         let jdk_path = temp_dir.path().join("jdks").join("temurin-21.0.1");
@@ -203,7 +206,8 @@ mod tests {
     #[test]
     fn test_find_jdk_installation_not_found() {
         let temp_dir = TempDir::new().unwrap();
-        let repository = JdkRepository::with_home(temp_dir.path().to_path_buf());
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let repository = JdkRepository::new(config);
 
         let version_request =
             VersionRequest::new("99".to_string()).with_distribution("nonexistent".to_string());

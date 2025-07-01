@@ -2,6 +2,7 @@ mod common;
 use common::TestHomeGuard;
 use kopi::cache::DistributionCache;
 use kopi::cache::{MetadataCache, save_cache};
+use kopi::config::{KopiConfig, new_kopi_config};
 use kopi::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
     PackageType, Version,
@@ -10,7 +11,8 @@ use kopi::models::jdk::{
 fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
-    let mut cache = MetadataCache::new();
+    let config = new_kopi_config().unwrap();
+    let mut cache = MetadataCache::new(config);
 
     // Add LTS version (21)
     let lts_package = JdkMetadata {
@@ -251,7 +253,8 @@ fn test_status_column_shows_ga_ea() {
 fn test_compact_mode_deduplication() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
-    let mut cache = MetadataCache::new();
+    let config = new_kopi_config().unwrap();
+    let mut cache = MetadataCache::new(config);
 
     // Add multiple packages with same version but different architectures
     let mut packages = vec![];
@@ -304,7 +307,8 @@ fn test_compact_mode_deduplication() {
 fn test_detailed_mode_deduplication_keeps_smallest() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
-    let mut cache = MetadataCache::new();
+    let config = new_kopi_config().unwrap();
+    let mut cache = MetadataCache::new(config);
 
     // Add multiple packages with same details but different sizes
     let mut packages = vec![];

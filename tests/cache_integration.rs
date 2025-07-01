@@ -1,6 +1,7 @@
 mod common;
 use common::TestHomeGuard;
 use kopi::cache::{MetadataCache, fetch_and_cache_metadata, find_package_in_cache, get_metadata};
+use kopi::config::new_kopi_config;
 use std::fs;
 use std::path::PathBuf;
 
@@ -21,7 +22,8 @@ fn test_fetch_and_cache_metadata() {
     }
 
     // Fetch metadata from API and cache it
-    let result = fetch_and_cache_metadata();
+    let config = new_kopi_config().unwrap();
+    let result = fetch_and_cache_metadata(&config);
     assert!(
         result.is_ok(),
         "Failed to fetch metadata: {:?}",
@@ -50,7 +52,7 @@ fn test_fetch_and_cache_metadata() {
     assert!(cache_path.exists(), "Cache file should be created");
 
     // Verify we can load the cache
-    let loaded_cache = get_metadata(None);
+    let loaded_cache = get_metadata(None, &config);
     assert!(loaded_cache.is_ok(), "Should be able to load cached data");
 
     let loaded = loaded_cache.unwrap();
@@ -191,7 +193,8 @@ fn test_cache_corruption_recovery() {
     }
 
     // Should handle corrupted cache gracefully
-    let result = get_metadata(None);
+    let config = new_kopi_config().unwrap();
+    let result = get_metadata(None, &config);
 
     // The function should either return an empty cache or fetch new data
     // It should not panic

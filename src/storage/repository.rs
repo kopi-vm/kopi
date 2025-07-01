@@ -1,5 +1,5 @@
 use crate::api::Package;
-use crate::config::{self, KopiConfig};
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::Distribution;
 use crate::storage::disk_space::DiskSpaceChecker;
@@ -8,46 +8,22 @@ use crate::storage::listing::{InstalledJdk, JdkLister};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const JDKS_DIR_NAME: &str = "jdks";
-
 pub struct JdkRepository {
-    kopi_home: PathBuf,
-    min_disk_space_mb: u64,
+    config: KopiConfig,
 }
 
 impl JdkRepository {
-    pub fn new() -> Result<Self> {
-        let kopi_home = config::get_kopi_home()?;
-        let config = KopiConfig::load(&kopi_home)?;
-        Ok(Self {
-            kopi_home,
-            min_disk_space_mb: config.storage.min_disk_space_mb,
-        })
-    }
-
-    pub fn with_home(kopi_home: PathBuf) -> Self {
-        let config = KopiConfig::load(&kopi_home).unwrap_or_default();
-        Self {
-            kopi_home,
-            min_disk_space_mb: config.storage.min_disk_space_mb,
-        }
-    }
-
-    pub fn kopi_home(&self) -> &Path {
-        &self.kopi_home
-    }
-
-    pub fn jdks_dir(&self) -> PathBuf {
-        self.kopi_home.join(JDKS_DIR_NAME)
+    pub fn new(config: KopiConfig) -> Self {
+        Self { config }
     }
 
     pub fn jdk_install_path(
         &self,
         distribution: &Distribution,
         distribution_version: &str,
-    ) -> PathBuf {
+    ) -> Result<PathBuf> {
         let dir_name = format!("{}-{}", distribution.id(), distribution_version);
-        self.jdks_dir().join(dir_name)
+        Ok(self.config.jdks_dir()?.join(dir_name))
     }
 
     pub fn prepare_jdk_installation(
@@ -55,12 +31,13 @@ impl JdkRepository {
         distribution: &Distribution,
         distribution_version: &str,
     ) -> Result<InstallationContext> {
-        let install_path = self.jdk_install_path(distribution, distribution_version);
+        let install_path = self.jdk_install_path(distribution, distribution_version)?;
 
-        let disk_checker = DiskSpaceChecker::new(self.min_disk_space_mb);
-        disk_checker.check_disk_space(&install_path, &self.kopi_home)?;
+        let disk_checker = DiskSpaceChecker::new(self.config.storage.min_disk_space_mb);
+        disk_checker.check_disk_space(&install_path, self.config.kopi_home())?;
 
-        JdkInstaller::prepare_installation(&self.jdks_dir(), &install_path)
+        let jdks_dir = self.config.jdks_dir()?;
+        JdkInstaller::prepare_installation(&jdks_dir, &install_path)
     }
 
     pub fn finalize_installation(&self, context: InstallationContext) -> Result<PathBuf> {
@@ -72,7 +49,8 @@ impl JdkRepository {
     }
 
     pub fn list_installed_jdks(&self) -> Result<Vec<InstalledJdk>> {
-        JdkLister::list_installed_jdks(&self.jdks_dir())
+        let jdks_dir = self.config.jdks_dir()?;
+        JdkLister::list_installed_jdks(&jdks_dir)
     }
 
     pub fn get_jdk_size(&self, path: &Path) -> Result<u64> {
@@ -80,7 +58,8 @@ impl JdkRepository {
     }
 
     pub fn remove_jdk(&self, path: &Path) -> Result<()> {
-        if !path.starts_with(self.jdks_dir()) {
+        let jdks_dir = self.config.jdks_dir()?;
+        if !path.starts_with(&jdks_dir) {
             return Err(KopiError::SecurityError(format!(
                 "Refusing to remove directory outside of JDKs directory: {:?}",
                 path
@@ -97,18 +76,8 @@ impl JdkRepository {
         distribution_version: &str,
         metadata: &Package,
     ) -> Result<()> {
-        super::save_jdk_metadata(
-            &self.jdks_dir(),
-            distribution,
-            distribution_version,
-            metadata,
-        )
-    }
-}
-
-impl Default for JdkRepository {
-    fn default() -> Self {
-        Self::new().expect("Failed to initialize JdkRepository")
+        let jdks_dir = self.config.jdks_dir()?;
+        super::save_jdk_metadata(&jdks_dir, distribution, distribution_version, metadata)
     }
 }
 
@@ -119,7 +88,8 @@ mod tests {
 
     fn create_test_storage_manager() -> (JdkRepository, TempDir) {
         let temp_dir = TempDir::new().unwrap();
-        let manager = JdkRepository::with_home(temp_dir.path().to_path_buf());
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let manager = JdkRepository::new(config);
         (manager, temp_dir)
     }
 
@@ -128,7 +98,9 @@ mod tests {
         let (manager, _temp) = create_test_storage_manager();
         let distribution = Distribution::Temurin;
 
-        let path = manager.jdk_install_path(&distribution, "21.0.1+35.1");
+        let path = manager
+            .jdk_install_path(&distribution, "21.0.1+35.1")
+            .unwrap();
         assert!(path.ends_with("jdks/temurin-21.0.1+35.1"));
     }
 
@@ -155,15 +127,17 @@ min_disk_space_mb = 1024
         )
         .unwrap();
 
-        let manager = JdkRepository::with_home(temp_dir.path().to_path_buf());
-        assert_eq!(manager.min_disk_space_mb, 1024);
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let manager = JdkRepository::new(config);
+        assert_eq!(manager.config.storage.min_disk_space_mb, 1024);
     }
 
     #[test]
     fn test_min_disk_space_default() {
         let temp_dir = TempDir::new().unwrap();
 
-        let manager = JdkRepository::with_home(temp_dir.path().to_path_buf());
-        assert_eq!(manager.min_disk_space_mb, 500);
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let manager = JdkRepository::new(config);
+        assert_eq!(manager.config.storage.min_disk_space_mb, 500);
     }
 }

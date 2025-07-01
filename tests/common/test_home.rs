@@ -1,3 +1,4 @@
+use kopi::config::KopiConfig;
 use rand::Rng;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -36,9 +37,14 @@ impl TestHomeGuard {
     pub fn setup_kopi_structure(&self) -> &Self {
         let kopi_home = self.kopi_home();
         fs::create_dir_all(&kopi_home).expect("Failed to create .kopi directory");
-        fs::create_dir_all(kopi_home.join("jdks")).expect("Failed to create jdks directory");
-        fs::create_dir_all(kopi_home.join("cache")).expect("Failed to create cache directory");
-        fs::create_dir_all(kopi_home.join("bin")).expect("Failed to create bin directory");
+
+        // Use KopiConfig to get directory paths (directories are created automatically)
+        let config = KopiConfig::new(kopi_home.clone()).expect("Failed to create KopiConfig");
+        config.jdks_dir().expect("Failed to create jdks directory");
+        config
+            .cache_dir()
+            .expect("Failed to create cache directory");
+        config.bin_dir().expect("Failed to create bin directory");
         self
     }
 }
