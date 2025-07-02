@@ -394,10 +394,10 @@ mod tests {
 
     #[test]
     fn test_format_error_chain() {
-        let error = KopiError::CacheNotFound;
+        let error = KopiError::InvalidVersionFormat("test".to_string());
         let formatted = format_error_chain(&error);
 
         assert!(formatted.contains("Error:"));
-        assert!(formatted.contains("kopi cache refresh"));
+        assert!(formatted.contains("Invalid version format"));
     }
 }

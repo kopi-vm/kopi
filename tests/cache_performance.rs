@@ -1,5 +1,4 @@
 use kopi::cache::{DistributionCache, MetadataCache};
-use kopi::config::{KopiConfig, new_kopi_config};
 use kopi::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
     PackageType, Version,
@@ -10,8 +9,7 @@ use std::time::Instant;
 /// Create a test cache for performance testing
 /// Optimized to use less data while still being representative
 fn create_large_test_cache() -> MetadataCache {
-    let config = new_kopi_config().unwrap();
-    let mut cache = MetadataCache::new(config);
+    let mut cache = MetadataCache::new();
 
     // Create multiple distributions
     let distributions = vec![

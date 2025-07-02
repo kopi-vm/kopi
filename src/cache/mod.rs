@@ -98,19 +98,6 @@ pub fn load_cache(path: &Path) -> Result<MetadataCache> {
     Ok(cache)
 }
 
-pub fn load_cache_if_exists(config: &KopiConfig) -> Result<MetadataCache> {
-    let cache_path = config.metadata_cache_path()?;
-    if cache_path.exists() {
-        load_cache(&cache_path)
-    } else {
-        Err(KopiError::CacheNotFound)
-    }
-}
-
-pub fn save_cache(path: &Path, cache: &MetadataCache) -> Result<()> {
-    cache.save(path)
-}
-
 /// Load metadata cache from file
 pub fn load_metadata(path: &Path) -> Result<MetadataCache> {
     let contents = fs::read_to_string(path)
@@ -122,15 +109,6 @@ pub fn load_metadata(path: &Path) -> Result<MetadataCache> {
     Ok(loaded)
 }
 
-/// Load metadata cache if exists
-pub fn load_metadata_if_exists(config: &KopiConfig) -> Result<MetadataCache> {
-    let cache_path = config.metadata_cache_path()?;
-    if cache_path.exists() {
-        load_metadata(&cache_path)
-    } else {
-        Err(KopiError::CacheNotFound)
-    }
-}
 
 /// Get metadata with optional version check
 pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Result<MetadataCache> {
@@ -214,11 +192,7 @@ pub fn fetch_and_cache_distribution(
 
     // Load existing cache if available or create new one
     let cache_path = config.metadata_cache_path()?;
-    let mut result_cache = if cache_path.exists() {
-        load_metadata(&cache_path).unwrap_or_else(|_| MetadataCache::new())
-    } else {
-        MetadataCache::new()
-    };
+    let mut result_cache = load_cache(&cache_path)?;
 
     // Fetch metadata from API for the specific distribution
     let api_client = ApiClient::new();
@@ -298,17 +272,6 @@ pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)
     };
 
     Ok((package_info.checksum, checksum_type))
-}
-
-/// Find a JDK package in the cache by its criteria
-pub fn find_package_in_cache<'a>(
-    cache: &'a MetadataCache,
-    distribution: &str,
-    version: &str,
-    architecture: &str,
-    operating_system: &str,
-) -> Option<&'a JdkMetadata> {
-    cache.find_package(distribution, version, architecture, operating_system)
 }
 
 fn parse_architecture_from_filename(filename: &str) -> Option<crate::models::jdk::Architecture> {
@@ -528,7 +491,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find_package_in_cache() {
+    fn test_find_package() {
         use crate::models::jdk::{
             Architecture, ArchiveType, ChecksumType, OperatingSystem, PackageType, Version,
         };
@@ -563,12 +526,12 @@ mod tests {
         cache.distributions.insert("temurin".to_string(), dist);
 
         // Should find the package
-        let found = find_package_in_cache(&cache, "temurin", "21.0.1", "x64", "linux");
+        let found = cache.find_package("temurin", "21.0.1", "x64", "linux");
         assert!(found.is_some());
         assert_eq!(found.unwrap().id, "test-id");
 
         // Should not find with wrong version
-        let not_found = find_package_in_cache(&cache, "temurin", "17.0.1", "x64", "linux");
+        let not_found = cache.find_package("temurin", "17.0.1", "x64", "linux");
         assert!(not_found.is_none());
     }
 

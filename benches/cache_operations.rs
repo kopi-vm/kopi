@@ -80,8 +80,7 @@ pub fn bench_cache_operations(c: &mut Criterion) {
 
     group.bench_function("find_exact_match", |b| {
         b.iter(|| {
-            kopi::cache::find_package_in_cache(
-                black_box(&cache),
+            cache.find_package(
                 black_box("temurin"),
                 black_box("11.0.5"),
                 black_box("x64"),

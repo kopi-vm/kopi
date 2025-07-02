@@ -1,6 +1,6 @@
 mod common;
 use common::TestHomeGuard;
-use kopi::cache::{MetadataCache, fetch_and_cache_metadata, find_package_in_cache, get_metadata};
+use kopi::cache::{MetadataCache, fetch_and_cache_metadata, get_metadata};
 use kopi::config::new_kopi_config;
 use std::fs;
 use std::path::PathBuf;
@@ -166,7 +166,7 @@ fn test_find_package_in_cache() {
     cache.distributions.insert("temurin".to_string(), dist);
 
     // Test finding package
-    let found = find_package_in_cache(&cache, "temurin", "21.0.1", "x64", "linux");
+    let found = cache.find_package("temurin", "21.0.1", "x64", "linux");
     assert!(found.is_some(), "Should find package in cache");
 
     let package = found.unwrap();
@@ -174,7 +174,7 @@ fn test_find_package_in_cache() {
     assert_eq!(package.version.to_string(), "21.0.1");
 
     // Test not finding package
-    let not_found = find_package_in_cache(&cache, "temurin", "17.0.1", "x64", "linux");
+    let not_found = cache.find_package("temurin", "17.0.1", "x64", "linux");
     assert!(not_found.is_none(), "Should not find non-existent version");
 }
 

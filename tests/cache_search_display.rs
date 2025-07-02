@@ -1,8 +1,7 @@
 mod common;
 use common::TestHomeGuard;
 use kopi::cache::DistributionCache;
-use kopi::cache::{MetadataCache, save_cache};
-use kopi::config::{KopiConfig, new_kopi_config};
+use kopi::cache::MetadataCache;
 use kopi::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
     PackageType, Version,
@@ -11,8 +10,7 @@ use kopi::models::jdk::{
 fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
-    let config = new_kopi_config().unwrap();
-    let mut cache = MetadataCache::new(config);
+    let mut cache = MetadataCache::new();
 
     // Add LTS version (21)
     let lts_package = JdkMetadata {
@@ -146,7 +144,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
 fn test_compact_display_shows_minimal_columns() {
     let (test_home, cache) = create_test_cache_with_lts_data();
     let cache_path = test_home.kopi_home().join("cache").join("metadata.json");
-    save_cache(&cache_path, &cache).unwrap();
+    cache.save(&cache_path).unwrap();
 
     // Set cache path for the test
     unsafe {
@@ -168,7 +166,7 @@ fn test_compact_display_shows_minimal_columns() {
 fn test_detailed_display_includes_all_information() {
     let (temp_dir, cache) = create_test_cache_with_lts_data();
     let cache_path = temp_dir.path().join("metadata.json");
-    save_cache(&cache_path, &cache).unwrap();
+    cache.save(&cache_path).unwrap();
 
     unsafe {
         std::env::set_var("KOPI_HOME", temp_dir.path());
@@ -187,7 +185,7 @@ fn test_detailed_display_includes_all_information() {
 fn test_json_output_contains_all_fields() {
     let (temp_dir, cache) = create_test_cache_with_lts_data();
     let cache_path = temp_dir.path().join("metadata.json");
-    save_cache(&cache_path, &cache).unwrap();
+    cache.save(&cache_path).unwrap();
 
     unsafe {
         std::env::set_var("KOPI_HOME", temp_dir.path());
@@ -253,8 +251,7 @@ fn test_status_column_shows_ga_ea() {
 fn test_compact_mode_deduplication() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
-    let config = new_kopi_config().unwrap();
-    let mut cache = MetadataCache::new(config);
+    let mut cache = MetadataCache::new();
 
     // Add multiple packages with same version but different architectures
     let mut packages = vec![];
@@ -307,8 +304,7 @@ fn test_compact_mode_deduplication() {
 fn test_detailed_mode_deduplication_keeps_smallest() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
-    let config = new_kopi_config().unwrap();
-    let mut cache = MetadataCache::new(config);
+    let mut cache = MetadataCache::new();
 
     // Add multiple packages with same details but different sizes
     let mut packages = vec![];

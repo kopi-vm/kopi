@@ -255,18 +255,21 @@ impl InstallCommand {
 
         // First try to find the package in cache if it exists
         let config = new_kopi_config()?;
-        if let Ok(cache) = crate::cache::load_cache_if_exists(&config) {
-            let searcher = PackageSearcher::new(Some(&cache));
-            if let Some(jdk_metadata) =
-                searcher.find_exact_package(distribution, &version.to_string(), &arch, &os)
-            {
-                // Convert cached JdkMetadata to API Package format
-                debug!(
-                    "Found package in cache: {} {}",
-                    distribution.name(),
-                    version
-                );
-                return Ok(self.convert_metadata_to_package(&jdk_metadata));
+        let cache_path = config.metadata_cache_path()?;
+        if cache_path.exists() {
+            if let Ok(cache) = crate::cache::load_cache(&cache_path) {
+                let searcher = PackageSearcher::new(Some(&cache));
+                if let Some(jdk_metadata) =
+                    searcher.find_exact_package(distribution, &version.to_string(), &arch, &os)
+                {
+                    // Convert cached JdkMetadata to API Package format
+                    debug!(
+                        "Found package in cache: {} {}",
+                        distribution.name(),
+                        version
+                    );
+                    return Ok(self.convert_metadata_to_package(&jdk_metadata));
+                }
             }
         }
 

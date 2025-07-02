@@ -1,6 +1,6 @@
 mod common;
 use common::TestHomeGuard;
-use kopi::cache::{DistributionCache, MetadataCache, save_cache};
+use kopi::cache::{DistributionCache, MetadataCache};
 use kopi::commands::cache::CacheCommand;
 use kopi::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
@@ -192,7 +192,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, MetadataCache) {
 
     // Save cache (cache directory already exists from setup_kopi_structure)
     let cache_path = test_home.kopi_home().join("cache").join("metadata.json");
-    save_cache(&cache_path, &cache).expect("Failed to save cache");
+    cache.save(&cache_path).expect("Failed to save cache");
 
     (test_home, cache)
 }
@@ -470,7 +470,7 @@ fn test_integration_platform_specific_filtering() {
     let cache_dir = test_home.kopi_home().join("cache");
     std::fs::create_dir_all(&cache_dir).expect("Failed to create cache directory");
     let cache_path = cache_dir.join("metadata.json");
-    save_cache(&cache_path, &cache).expect("Failed to save cache");
+    cache.save(&cache_path).expect("Failed to save cache");
 
     // Search should filter by current platform
     let cmd = CacheCommand::Search {
@@ -518,7 +518,7 @@ fn test_integration_empty_cache_handling() {
     let cache_dir = test_home.kopi_home().join("cache");
     std::fs::create_dir_all(&cache_dir).expect("Failed to create cache directory");
     let cache_path = cache_dir.join("metadata.json");
-    save_cache(&cache_path, &cache).expect("Failed to save cache");
+    cache.save(&cache_path).expect("Failed to save cache");
 
     let cmd = CacheCommand::Search {
         version: "".to_string(),
@@ -605,7 +605,7 @@ fn test_integration_performance_large_cache() {
     let cache_dir = test_home.kopi_home().join("cache");
     std::fs::create_dir_all(&cache_dir).expect("Failed to create cache directory");
     let cache_path = cache_dir.join("metadata.json");
-    save_cache(&cache_path, &cache).expect("Failed to save cache");
+    cache.save(&cache_path).expect("Failed to save cache");
 
     // Test search performance with large cache
     let start = std::time::Instant::now();
