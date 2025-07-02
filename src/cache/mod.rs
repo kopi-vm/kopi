@@ -86,27 +86,12 @@ impl MetadataCache {
 // Standalone helper functions for backward compatibility
 
 pub fn load_cache(path: &Path) -> Result<MetadataCache> {
-    if !path.exists() {
-        return Ok(MetadataCache::new());
-    }
-
     let contents = fs::read_to_string(path)
         .map_err(|e| KopiError::ConfigError(format!("Failed to read cache file: {}", e)))?;
 
     let cache: MetadataCache =
         serde_json::from_str(&contents).map_err(|_e| KopiError::InvalidMetadata)?;
     Ok(cache)
-}
-
-/// Load metadata cache from file
-pub fn load_metadata(path: &Path) -> Result<MetadataCache> {
-    let contents = fs::read_to_string(path)
-        .map_err(|e| KopiError::ConfigError(format!("Failed to read cache file: {}", e)))?;
-
-    let loaded: MetadataCache =
-        serde_json::from_str(&contents).map_err(|_e| KopiError::InvalidMetadata)?;
-
-    Ok(loaded)
 }
 
 
@@ -116,7 +101,7 @@ pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Res
 
     // Try to use cache if it exists
     if cache_path.exists() {
-        match load_metadata(&cache_path) {
+        match load_cache(&cache_path) {
             Ok(loaded_cache) => {
                 // If specific version requested and not in cache, try API
                 if let Some(version) = requested_version {
@@ -139,20 +124,7 @@ pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Res
 
 /// Fetch metadata from API and cache it
 pub fn fetch_and_cache_metadata(config: &KopiConfig) -> Result<MetadataCache> {
-    // Fetch metadata from API
-    let api_client = ApiClient::new();
-    let metadata = api_client.fetch_all_metadata().map_err(|e| {
-        KopiError::MetadataFetch(format!("Failed to fetch metadata from API: {}", e))
-    })?;
-
-    // Convert API response to cache format
-    let new_cache = convert_api_to_cache(metadata)?;
-
-    // Save to cache
-    let cache_path = config.metadata_cache_path()?;
-    new_cache.save(&cache_path)?;
-
-    Ok(new_cache)
+    fetch_and_cache_metadata_with_options(false, config)
 }
 
 /// Fetch metadata from API with options and cache it
@@ -192,7 +164,11 @@ pub fn fetch_and_cache_distribution(
 
     // Load existing cache if available or create new one
     let cache_path = config.metadata_cache_path()?;
-    let mut result_cache = load_cache(&cache_path)?;
+    let mut result_cache = if cache_path.exists() {
+        load_cache(&cache_path)?
+    } else {
+        MetadataCache::new()
+    };
 
     // Fetch metadata from API for the specific distribution
     let api_client = ApiClient::new();
@@ -402,9 +378,8 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let cache_path = temp_dir.path().join("cache.json");
 
-        let cache = load_cache(&cache_path).unwrap();
-        assert_eq!(cache.version, 1);
-        assert!(cache.distributions.is_empty());
+        // load_cache should fail for non-existent files
+        assert!(load_cache(&cache_path).is_err());
     }
 
     #[test]
