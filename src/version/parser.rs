@@ -11,28 +11,16 @@ pub struct ParsedVersionRequest {
     pub latest: bool,
 }
 
-pub struct VersionParser {
-    config: Option<KopiConfig>,
+pub struct VersionParser<'a> {
+    config: &'a KopiConfig,
 }
 
-impl VersionParser {
-    pub fn new() -> Self {
-        Self { config: None }
+impl<'a> VersionParser<'a> {
+    pub fn new(config: &'a KopiConfig) -> Self {
+        Self { config }
     }
 
-    pub fn with_config(config: KopiConfig) -> Self {
-        Self {
-            config: Some(config),
-        }
-    }
-
-    // Static parse method for backward compatibility
-    pub fn parse(input: &str) -> Result<ParsedVersionRequest> {
-        let parser = Self::new();
-        parser.parse_with_config(input)
-    }
-
-    pub fn parse_with_config(&self, input: &str) -> Result<ParsedVersionRequest> {
+    pub fn parse(&self, input: &str) -> Result<ParsedVersionRequest> {
         let trimmed = input.trim();
         if trimmed.is_empty() {
             return Err(KopiError::InvalidVersionFormat(
@@ -263,24 +251,29 @@ impl VersionParser {
         }
 
         // Check against additional distributions from config
-        if let Some(config) = &self.config {
-            return config
-                .additional_distributions
-                .iter()
-                .any(|dist| dist.eq_ignore_ascii_case(name));
-        }
-
-        false
+        self.config
+            .additional_distributions
+            .iter()
+            .any(|dist| dist.eq_ignore_ascii_case(name))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::KopiConfig;
+
+    fn create_test_config() -> KopiConfig {
+        // Create a test config with a temporary directory
+        let temp_dir = std::env::temp_dir();
+        KopiConfig::new(temp_dir).unwrap()
+    }
 
     #[test]
     fn test_parse_version_only() {
-        let result = VersionParser::parse("21").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("21").unwrap();
         assert_eq!(result.distribution, None);
         assert!(result.version.is_some());
         let version = result.version.unwrap();
@@ -292,7 +285,9 @@ mod tests {
 
     #[test]
     fn test_parse_version_with_minor() {
-        let result = VersionParser::parse("17.0.9").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("17.0.9").unwrap();
         assert_eq!(result.distribution, None);
         assert!(result.version.is_some());
         let version = result.version.unwrap();
@@ -304,7 +299,9 @@ mod tests {
 
     #[test]
     fn test_parse_distribution_with_version() {
-        let result = VersionParser::parse("corretto@21").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("corretto@21").unwrap();
         assert_eq!(result.distribution, Some(Distribution::Corretto));
         assert!(result.version.is_some());
         assert_eq!(result.version.unwrap().major, 21);
@@ -313,7 +310,9 @@ mod tests {
 
     #[test]
     fn test_parse_distribution_with_full_version() {
-        let result = VersionParser::parse("temurin@17.0.9").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("temurin@17.0.9").unwrap();
         assert_eq!(result.distribution, Some(Distribution::Temurin));
         assert!(result.version.is_some());
         let version = result.version.unwrap();
@@ -325,7 +324,9 @@ mod tests {
 
     #[test]
     fn test_parse_invalid_distribution() {
-        let result = VersionParser::parse("invalid@21");
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("invalid@21");
         assert!(result.is_err());
         assert!(
             result
@@ -337,7 +338,9 @@ mod tests {
 
     #[test]
     fn test_parse_distribution_without_version() {
-        let result = VersionParser::parse("temurin").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("temurin").unwrap();
         assert_eq!(result.distribution, Some(Distribution::Temurin));
         assert_eq!(result.version, None);
         assert!(!result.latest);
@@ -345,13 +348,17 @@ mod tests {
 
     #[test]
     fn test_parse_empty_version() {
-        let result = VersionParser::parse("");
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_parse_invalid_version_format() {
-        let result = VersionParser::parse("abc");
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("abc");
         assert!(result.is_err());
         assert!(
             result
@@ -370,7 +377,9 @@ mod tests {
 
     #[test]
     fn test_parse_latest_keyword() {
-        let result = VersionParser::parse("latest").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("latest").unwrap();
         assert_eq!(result.distribution, None);
         assert_eq!(result.version, None);
         assert!(result.latest);
@@ -378,7 +387,9 @@ mod tests {
 
     #[test]
     fn test_parse_distribution_with_latest() {
-        let result = VersionParser::parse("corretto@latest").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("corretto@latest").unwrap();
         assert_eq!(result.distribution, Some(Distribution::Corretto));
         assert_eq!(result.version, None);
         assert!(result.latest);
@@ -386,7 +397,9 @@ mod tests {
 
     #[test]
     fn test_parse_distribution_only() {
-        let result = VersionParser::parse("zulu").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("zulu").unwrap();
         assert_eq!(result.distribution, Some(Distribution::Zulu));
         assert_eq!(result.version, None);
         assert!(!result.latest);
@@ -394,7 +407,9 @@ mod tests {
 
     #[test]
     fn test_parse_jre_latest() {
-        let result = VersionParser::parse("jre@latest").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("jre@latest").unwrap();
         assert_eq!(result.distribution, None);
         assert_eq!(result.version, None);
         assert_eq!(result.package_type, Some(PackageType::Jre));
@@ -403,7 +418,9 @@ mod tests {
 
     #[test]
     fn test_parse_jre_distribution_latest() {
-        let result = VersionParser::parse("jre@corretto@latest").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("jre@corretto@latest").unwrap();
         assert_eq!(result.distribution, Some(Distribution::Corretto));
         assert_eq!(result.version, None);
         assert_eq!(result.package_type, Some(PackageType::Jre));
@@ -412,7 +429,9 @@ mod tests {
 
     #[test]
     fn test_parse_jdk_distribution_only() {
-        let result = VersionParser::parse("jdk@temurin").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("jdk@temurin").unwrap();
         assert_eq!(result.distribution, Some(Distribution::Temurin));
         assert_eq!(result.version, None);
         assert_eq!(result.package_type, Some(PackageType::Jdk));
@@ -431,38 +450,40 @@ mod tests {
 
     #[test]
     fn test_parse_with_package_type_prefix() {
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
         // Test JRE prefix
-        let parsed = VersionParser::parse("jre@21").unwrap();
+        let parsed = parser.parse("jre@21").unwrap();
         assert_eq!(parsed.version, Some(Version::new(21, 0, 0)));
         assert_eq!(parsed.distribution, None);
         assert_eq!(parsed.package_type, Some(PackageType::Jre));
 
         // Test JDK prefix (explicit)
-        let parsed = VersionParser::parse("jdk@21").unwrap();
+        let parsed = parser.parse("jdk@21").unwrap();
         assert_eq!(parsed.version, Some(Version::new(21, 0, 0)));
         assert_eq!(parsed.distribution, None);
         assert_eq!(parsed.package_type, Some(PackageType::Jdk));
 
         // Test JRE with distribution
-        let parsed = VersionParser::parse("jre@temurin@21").unwrap();
+        let parsed = parser.parse("jre@temurin@21").unwrap();
         assert_eq!(parsed.version, Some(Version::new(21, 0, 0)));
         assert_eq!(parsed.distribution, Some(Distribution::Temurin));
         assert_eq!(parsed.package_type, Some(PackageType::Jre));
 
         // Test JDK with distribution (explicit)
-        let parsed = VersionParser::parse("jdk@temurin@21").unwrap();
+        let parsed = parser.parse("jdk@temurin@21").unwrap();
         assert_eq!(parsed.version, Some(Version::new(21, 0, 0)));
         assert_eq!(parsed.distribution, Some(Distribution::Temurin));
         assert_eq!(parsed.package_type, Some(PackageType::Jdk));
 
         // Test no prefix (defaults to JDK)
-        let parsed = VersionParser::parse("21").unwrap();
+        let parsed = parser.parse("21").unwrap();
         assert_eq!(parsed.version, Some(Version::new(21, 0, 0)));
         assert_eq!(parsed.distribution, None);
         assert_eq!(parsed.package_type, None); // None means JDK by default
 
         // Test with full version
-        let parsed = VersionParser::parse("jre@21.0.1+12").unwrap();
+        let parsed = parser.parse("jre@21.0.1+12").unwrap();
         assert_eq!(
             parsed.version,
             Some(Version::new(21, 0, 1).with_build("12".to_string()))
@@ -472,7 +493,9 @@ mod tests {
 
     #[test]
     fn test_version_ranges_not_supported() {
-        let result = VersionParser::parse(">=17");
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse(">=17");
         assert!(result.is_err());
         assert!(
             result
@@ -484,7 +507,9 @@ mod tests {
 
     #[test]
     fn test_parse_version_with_build_number() {
-        let result = VersionParser::parse("17.0.9+7").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("17.0.9+7").unwrap();
         assert_eq!(result.distribution, None);
         assert!(result.version.is_some());
         let version = result.version.unwrap();
@@ -496,7 +521,9 @@ mod tests {
 
     #[test]
     fn test_parse_version_with_pre_release() {
-        let result = VersionParser::parse("21.0.1-ea").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("21.0.1-ea").unwrap();
         assert_eq!(result.distribution, None);
         assert!(result.version.is_some());
         let version = result.version.unwrap();
@@ -508,7 +535,9 @@ mod tests {
 
     #[test]
     fn test_parse_version_with_build_and_pre_release() {
-        let result = VersionParser::parse("17.0.2+8-LTS").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("17.0.2+8-LTS").unwrap();
         assert_eq!(result.distribution, None);
         assert!(result.version.is_some());
         let version = result.version.unwrap();
@@ -520,7 +549,9 @@ mod tests {
 
     #[test]
     fn test_parse_distribution_with_complex_version() {
-        let result = VersionParser::parse("corretto@21.0.1-amzn").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("corretto@21.0.1-amzn").unwrap();
         assert_eq!(result.distribution, Some(Distribution::Corretto));
         assert!(result.version.is_some());
         let version = result.version.unwrap();
@@ -532,7 +563,9 @@ mod tests {
 
     #[test]
     fn test_parse_version_with_complex_build() {
-        let result = VersionParser::parse("11.0.21+9-LTS-3299655").unwrap();
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("11.0.21+9-LTS-3299655").unwrap();
         assert_eq!(result.distribution, None);
         assert!(result.version.is_some());
         let version = result.version.unwrap();
@@ -561,17 +594,17 @@ additional_distributions = ["mycustom", "private-jdk", "company-build"]
         fs::write(temp_dir.path().join("config.toml"), config_content).unwrap();
 
         let config = new_kopi_config().unwrap();
-        let parser = VersionParser::with_config(config);
+        let parser = VersionParser::new(&config);
 
         // Test that custom distributions are recognized
-        let result = parser.parse_with_config("mycustom@21").unwrap();
+        let result = parser.parse("mycustom@21").unwrap();
         assert_eq!(
             result.distribution,
             Some(Distribution::Other("mycustom".to_string()))
         );
         assert_eq!(result.version.unwrap().major, 21);
 
-        let result = parser.parse_with_config("private-jdk").unwrap();
+        let result = parser.parse("private-jdk").unwrap();
         assert_eq!(
             result.distribution,
             Some(Distribution::Other("private-jdk".to_string()))
@@ -579,7 +612,7 @@ additional_distributions = ["mycustom", "private-jdk", "company-build"]
         assert_eq!(result.version, None);
 
         // Test case insensitive matching
-        let result = parser.parse_with_config("COMPANY-BUILD@17.0.1").unwrap();
+        let result = parser.parse("COMPANY-BUILD@17.0.1").unwrap();
         // The parser normalizes additional distributions to lowercase
         assert_eq!(
             result.distribution,
@@ -588,7 +621,7 @@ additional_distributions = ["mycustom", "private-jdk", "company-build"]
         assert_eq!(result.version.unwrap().major, 17);
 
         // Test that unknown distributions still fail
-        let result = parser.parse_with_config("unknown-dist@21");
+        let result = parser.parse("unknown-dist@21");
         assert!(result.is_err());
         assert!(
             result

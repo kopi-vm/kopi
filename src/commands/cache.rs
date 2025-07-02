@@ -166,8 +166,8 @@ fn search_cache(
     };
 
     // Parse the version string to check if distribution was specified
-    let parser = VersionParser::with_config(config.clone());
-    let parsed_request = match parser.parse_with_config(&version_string) {
+    let parser = VersionParser::new(&config);
+    let parsed_request = match parser.parse(&version_string) {
         Ok(req) => req,
         Err(e) => {
             if json {
@@ -777,10 +777,13 @@ mod tests {
 
     #[test]
     fn test_search_cache_version_only_no_default_distribution() {
+        use crate::config::KopiConfig;
         use crate::version::parser::VersionParser;
 
         // Test that version-only searches don't default to Temurin
-        let parsed = VersionParser::parse("21").unwrap();
+        let config = KopiConfig::new(std::env::temp_dir()).unwrap();
+        let parser = VersionParser::new(&config);
+        let parsed = parser.parse("21").unwrap();
         assert!(parsed.version.is_some());
         assert_eq!(parsed.distribution, None); // Should not default to any distribution
     }

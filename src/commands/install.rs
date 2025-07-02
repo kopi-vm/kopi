@@ -80,10 +80,10 @@ impl InstallCommand {
 
         // Load config to parse version with additional distributions support
         let config = new_kopi_config()?;
-        let parser = VersionParser::with_config(config.clone());
+        let parser = VersionParser::new(&config);
 
         // Parse version specification
-        let version_request = parser.parse_with_config(version_spec)?;
+        let version_request = parser.parse(version_spec)?;
         trace!("Parsed version request: {:?}", version_request);
 
         // Install command requires a specific version
@@ -477,6 +477,7 @@ impl InstallCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::KopiConfig;
     use crate::error::KopiError;
 
     #[test]
@@ -485,7 +486,9 @@ mod tests {
         assert!(cmd.is_ok());
 
         // Test version parsing is called correctly
-        let version_request = VersionParser::parse("21").unwrap();
+        let config = KopiConfig::new(std::env::temp_dir()).unwrap();
+        let parser = VersionParser::new(&config);
+        let version_request = parser.parse("21").unwrap();
         assert!(version_request.version.is_some());
         assert_eq!(version_request.version.unwrap().major, 21);
         assert_eq!(version_request.distribution, None);
@@ -501,7 +504,9 @@ mod tests {
 
     #[test]
     fn test_parse_version_with_distribution() {
-        let version_request = VersionParser::parse("corretto@17").unwrap();
+        let config = KopiConfig::new(std::env::temp_dir()).unwrap();
+        let parser = VersionParser::new(&config);
+        let version_request = parser.parse("corretto@17").unwrap();
         assert!(version_request.version.is_some());
         assert_eq!(version_request.version.unwrap().major, 17);
         assert_eq!(version_request.distribution, Some(Distribution::Corretto));
@@ -569,7 +574,9 @@ mod tests {
     #[test]
     fn test_invalid_version_format_error() {
         // Test that invalid version format produces appropriate error
-        let result = VersionParser::parse("@@@invalid");
+        let config = KopiConfig::new(std::env::temp_dir()).unwrap();
+        let parser = VersionParser::new(&config);
+        let result = parser.parse("@@@invalid");
         assert!(result.is_err());
         match result {
             Err(KopiError::InvalidVersionFormat(_)) => {}

@@ -109,11 +109,21 @@ impl<'a> PackageSearcher<'a> {
     }
 
     pub fn search(&self, version_string: &str) -> Result<Vec<SearchResult>> {
-        let parsed_request = if let Some(ref config) = self.config {
-            let parser = VersionParser::with_config(config.clone());
-            parser.parse_with_config(version_string)?
-        } else {
-            VersionParser::parse(version_string)?
+        let parsed_request = match &self.config {
+            Some(config) => {
+                let parser = VersionParser::new(config);
+                parser.parse(version_string)?
+            }
+            None => {
+                // When no config is provided, use a default config
+                use crate::config::new_kopi_config;
+                let config = new_kopi_config().unwrap_or_else(|_| {
+                    // If we can't load config, create a minimal one
+                    KopiConfig::new(std::env::temp_dir()).unwrap()
+                });
+                let parser = VersionParser::new(&config);
+                parser.parse(version_string)?
+            }
         };
         self.search_parsed(&parsed_request)
     }
