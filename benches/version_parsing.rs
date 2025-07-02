@@ -1,44 +1,50 @@
 use criterion::{BenchmarkId, Criterion, black_box};
+use kopi::config::KopiConfig;
 use kopi::models::jdk::Version;
 use kopi::version::parser::VersionParser;
+use std::env;
 use std::str::FromStr;
 
 pub fn bench_version_parsing(c: &mut Criterion) {
     let mut group = c.benchmark_group("version_parsing");
 
+    // Create a config instance for benchmarking
+    let config = KopiConfig::new(env::temp_dir()).unwrap();
+    let parser = VersionParser::new(&config);
+
     // Benchmark simple version parsing
     group.bench_function("simple_version", |b| {
-        b.iter(|| VersionParser::parse(black_box("21")))
+        b.iter(|| parser.parse(black_box("21")))
     });
 
     // Benchmark version with minor
     group.bench_function("version_with_minor", |b| {
-        b.iter(|| VersionParser::parse(black_box("21.0")))
+        b.iter(|| parser.parse(black_box("21.0")))
     });
 
     // Benchmark full version
     group.bench_function("full_version", |b| {
-        b.iter(|| VersionParser::parse(black_box("21.0.1")))
+        b.iter(|| parser.parse(black_box("21.0.1")))
     });
 
     // Benchmark complex version with build
     group.bench_function("version_with_build", |b| {
-        b.iter(|| VersionParser::parse(black_box("21.0.1+12")))
+        b.iter(|| parser.parse(black_box("21.0.1+12")))
     });
 
     // Benchmark version with pre-release
     group.bench_function("version_with_prerelease", |b| {
-        b.iter(|| VersionParser::parse(black_box("21.0.1-ea")))
+        b.iter(|| parser.parse(black_box("21.0.1-ea")))
     });
 
     // Benchmark distribution with version
     group.bench_function("distribution_with_version", |b| {
-        b.iter(|| VersionParser::parse(black_box("temurin@21.0.1")))
+        b.iter(|| parser.parse(black_box("temurin@21.0.1")))
     });
 
     // Benchmark latest keyword
     group.bench_function("latest_keyword", |b| {
-        b.iter(|| VersionParser::parse(black_box("latest")))
+        b.iter(|| parser.parse(black_box("latest")))
     });
 
     // Benchmark Version parsing (direct from_str)
