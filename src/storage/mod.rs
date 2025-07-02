@@ -19,16 +19,16 @@ pub fn save_jdk_metadata(
     distribution_version: &str,
     metadata: &Package,
 ) -> Result<()> {
-    let dir_name = format!("{}-{}", distribution.id(), distribution_version);
-    let metadata_filename = format!("{}.meta.json", dir_name);
+    let dir_name = format!("{}-{distribution_version}", distribution.id());
+    let metadata_filename = format!("{dir_name}.meta.json");
     let metadata_path = jdks_dir.join(metadata_filename);
 
     let json_content = serde_json::to_string_pretty(metadata)?;
-    let json_content_with_newline = format!("{}\n", json_content);
+    let json_content_with_newline = format!("{json_content}\n");
 
     fs::write(&metadata_path, json_content_with_newline)?;
 
-    log::debug!("Saved JDK metadata to {:?}", metadata_path);
+    log::debug!("Saved JDK metadata to {metadata_path:?}");
 
     Ok(())
 }

@@ -10,15 +10,12 @@ fn create_test_metadata(id: &str, major: u32, minor: u32, patch: u32) -> JdkMeta
         id: id.to_string(),
         distribution: "temurin".to_string(),
         version: Version::new(major, minor, patch),
-        distribution_version: format!("{}.{}.{}", major, minor, patch),
+        distribution_version: format!("{major}.{minor}.{patch}"),
         architecture: Architecture::X64,
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
         archive_type: ArchiveType::TarGz,
-        download_url: format!(
-            "https://example.com/jdk-{}.{}.{}.tar.gz",
-            major, minor, patch
-        ),
+        download_url: format!("https://example.com/jdk-{major}.{minor}.{patch}.tar.gz"),
         checksum: None,
         checksum_type: Some(ChecksumType::Sha256),
         size: 100_000_000,
@@ -43,7 +40,7 @@ fn create_cache_with_size(size: usize) -> MetadataCache {
         let minor = (i / 10) as u32 % 10;
         let patch = i as u32 % 10;
         packages.push(create_test_metadata(
-            &format!("pkg-{}", i),
+            &format!("pkg-{i}"),
             major,
             minor,
             patch,

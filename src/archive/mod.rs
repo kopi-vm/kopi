@@ -52,8 +52,7 @@ fn detect_by_content(path: &Path) -> Result<ArchiveType> {
     let mut magic_bytes = [0u8; 4];
     file.read_exact(&mut magic_bytes).map_err(|_| {
         KopiError::ValidationError(format!(
-            "Cannot read file to determine archive type: {:?}",
-            path
+            "Cannot read file to determine archive type: {path:?}"
         ))
     })?;
 
@@ -72,8 +71,7 @@ fn detect_by_content(path: &Path) -> Result<ArchiveType> {
     }
 
     Err(KopiError::ValidationError(format!(
-        "Unsupported archive format. File does not appear to be tar.gz or zip: {:?}",
-        path
+        "Unsupported archive format. File does not appear to be tar.gz or zip: {path:?}"
     )))
 }
 
@@ -136,11 +134,11 @@ fn extract_tar_gz(archive_path: &Path, destination: &Path) -> Result<()> {
 
         // Log extraction progress for large archives
         if extracted_count % 100 == 0 {
-            log::debug!("Extracted {} files...", extracted_count);
+            log::debug!("Extracted {extracted_count} files...");
         }
     }
 
-    log::info!("Extracted {} files from tar.gz archive", extracted_count);
+    log::info!("Extracted {extracted_count} files from tar.gz archive");
     Ok(())
 }
 
@@ -159,7 +157,7 @@ fn extract_zip(archive_path: &Path, destination: &Path) -> Result<()> {
                 destination.join(path)
             }
             None => {
-                log::warn!("Skipping file with invalid name at index {}", i);
+                log::warn!("Skipping file with invalid name at index {i}");
                 continue;
             }
         };
@@ -192,7 +190,7 @@ fn extract_zip(archive_path: &Path, destination: &Path) -> Result<()> {
         }
     }
 
-    log::info!("Extracted {} files from zip archive", total_files);
+    log::info!("Extracted {total_files} files from zip archive");
     Ok(())
 }
 
@@ -202,14 +200,12 @@ fn validate_entry_path(entry_path: &Path) -> Result<()> {
         match component {
             std::path::Component::ParentDir => {
                 return Err(KopiError::SecurityError(format!(
-                    "Archive contains path traversal: {:?}",
-                    entry_path
+                    "Archive contains path traversal: {entry_path:?}"
                 )));
             }
             std::path::Component::RootDir => {
                 return Err(KopiError::SecurityError(format!(
-                    "Archive contains absolute path: {:?}",
-                    entry_path
+                    "Archive contains absolute path: {entry_path:?}"
                 )));
             }
             _ => {}
@@ -220,8 +216,7 @@ fn validate_entry_path(entry_path: &Path) -> Result<()> {
     let normalized = normalize_path(entry_path);
     if normalized.starts_with("..") || normalized.starts_with("/") || normalized.starts_with("\\") {
         return Err(KopiError::SecurityError(format!(
-            "Archive entry would extract outside destination: {:?}",
-            entry_path
+            "Archive entry would extract outside destination: {entry_path:?}"
         )));
     }
 

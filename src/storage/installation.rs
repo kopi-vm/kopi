@@ -22,8 +22,7 @@ impl JdkInstaller {
                 .unwrap_or("unknown");
 
             return Err(KopiError::AlreadyExists(format!(
-                "JDK {} is already installed at {:?}",
-                distribution_info, install_path
+                "JDK {distribution_info} is already installed at {install_path:?}"
             )));
         }
 

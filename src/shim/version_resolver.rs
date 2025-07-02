@@ -34,7 +34,7 @@ impl VersionResolver {
     pub fn resolve_version(&self) -> Result<VersionRequest> {
         // Check environment variable first (fastest)
         if let Ok(env_version) = env::var(VERSION_ENV_VAR) {
-            log::debug!("Using version from environment: {}", env_version);
+            log::debug!("Using version from environment: {env_version}");
             return VersionRequest::from_str(&env_version);
         }
 
@@ -60,7 +60,7 @@ impl VersionResolver {
             // Check for .kopi-version first (native format)
             let kopi_version_path = current.join(KOPI_VERSION_FILE);
             if kopi_version_path.exists() {
-                log::debug!("Found .kopi-version at {:?}", kopi_version_path);
+                log::debug!("Found .kopi-version at {kopi_version_path:?}");
                 let content = self.read_version_file(&kopi_version_path)?;
                 return Ok(Some(VersionRequest::from_str(&content)?));
             }
@@ -68,7 +68,7 @@ impl VersionResolver {
             // Check for .java-version (compatibility)
             let java_version_path = current.join(JAVA_VERSION_FILE);
             if java_version_path.exists() {
-                log::debug!("Found .java-version at {:?}", java_version_path);
+                log::debug!("Found .java-version at {java_version_path:?}");
                 let content = self.read_version_file(&java_version_path)?;
                 // .java-version doesn't support distribution@version format
                 return Ok(Some(VersionRequest::new(content)));

@@ -21,32 +21,24 @@ impl DiskSpaceChecker {
             }
         }
 
-        log::debug!(
-            "Checking disk space for path {:?} (using {:?})",
-            path,
-            target_dir
-        );
+        log::debug!("Checking disk space for path {path:?} (using {target_dir:?})");
 
         // Use fs2 for platform-independent disk space checking
         let space_info = fs2::available_space(&target_dir).map_err(|e| {
-            log::error!("Failed to check disk space at {:?}: {}", target_dir, e);
-            KopiError::SystemError(format!(
-                "Failed to check disk space at {:?}: {}",
-                target_dir, e
-            ))
+            log::error!("Failed to check disk space at {target_dir:?}: {e}");
+            KopiError::SystemError(format!("Failed to check disk space at {target_dir:?}: {e}"))
         })?;
 
         let available_mb = space_info / (1024 * 1024);
         log::debug!(
-            "Disk space check: available={}MB, required={}MB",
-            available_mb,
+            "Disk space check: available={available_mb}MB, required={}MB",
             self.min_disk_space_mb
         );
 
         if available_mb < self.min_disk_space_mb {
             return Err(KopiError::DiskSpaceError(format!(
-                "Insufficient disk space at {:?}. Required: {}MB, Available: {}MB",
-                target_dir, self.min_disk_space_mb, available_mb
+                "Insufficient disk space at {target_dir:?}. Required: {}MB, Available: {available_mb}MB",
+                self.min_disk_space_mb
             )));
         }
 

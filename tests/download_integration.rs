@@ -213,14 +213,14 @@ fn test_download_progress_reporting() {
             self.events
                 .lock()
                 .unwrap()
-                .push(format!("start:{}", total_bytes));
+                .push(format!("start:{total_bytes}"));
         }
 
         fn on_progress(&mut self, bytes_downloaded: u64) {
             self.events
                 .lock()
                 .unwrap()
-                .push(format!("progress:{}", bytes_downloaded));
+                .push(format!("progress:{bytes_downloaded}"));
         }
 
         fn on_complete(&mut self) {
@@ -289,7 +289,7 @@ fn test_concurrent_installation_safety() {
                 fs::create_dir_all(context.temp_path.join("bin")).unwrap();
                 fs::write(
                     context.temp_path.join("bin/java"),
-                    format!("java from thread {}", i),
+                    format!("java from thread {i}"),
                 )
                 .unwrap();
 
@@ -602,7 +602,7 @@ fn test_download_connection_reset() {
     let options = DownloadOptions::default();
 
     let result = downloader.download(
-        &format!("http://{}/connection-reset.tar.gz", addr),
+        &format!("http://{addr}/connection-reset.tar.gz"),
         &dest_file,
         &options,
     );
@@ -670,7 +670,7 @@ fn test_download_connection_reset() {
                 }
             }
 
-            assert!(is_connection_error, "Expected connection error, got: {}", e);
+            assert!(is_connection_error, "Expected connection error, got: {e}");
         }
     }
 }
@@ -703,8 +703,7 @@ fn test_download_404_not_found() {
             let error_str = e.to_string();
             assert!(
                 error_str.contains("404") || error_str.contains("Not Found"),
-                "Expected 404 error, got: {}",
-                error_str
+                "Expected 404 error, got: {error_str}"
             );
         }
         _ => panic!("Expected error"),
@@ -753,8 +752,7 @@ fn test_download_rate_limiting() {
             let error_str = e.to_string();
             assert!(
                 error_str.contains("429") || error_str.contains("Too Many Requests"),
-                "Expected 429 error, got: {}",
-                error_str
+                "Expected 429 error, got: {error_str}"
             );
         }
         _ => panic!("Expected error"),

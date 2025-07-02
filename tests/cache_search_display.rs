@@ -259,7 +259,7 @@ fn test_compact_mode_deduplication() {
     // These should appear as duplicates in compact mode
     for arch in [Architecture::X64, Architecture::Aarch64] {
         packages.push(JdkMetadata {
-            id: format!("test-21-{}", arch),
+            id: format!("test-21-{arch}"),
             distribution: "zulu".to_string(),
             version: Version::new(21, 0, 7).with_build("6".to_string()),
             distribution_version: "21.0.7+6".to_string(),
@@ -267,7 +267,7 @@ fn test_compact_mode_deduplication() {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
-            download_url: format!("https://example.com/zulu-21-{}.tar.gz", arch),
+            download_url: format!("https://example.com/zulu-21-{arch}.tar.gz"),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 200000000,
@@ -312,7 +312,7 @@ fn test_detailed_mode_deduplication_keeps_smallest() {
     // Create packages with different sizes (should keep the smallest)
     for (i, size) in [(1, 300_000_000), (2, 200_000_000), (3, 250_000_000)].iter() {
         packages.push(JdkMetadata {
-            id: format!("test-21-size-{}", i),
+            id: format!("test-21-size-{i}"),
             distribution: "temurin".to_string(),
             version: Version::new(21, 0, 1),
             distribution_version: "21.0.1+12".to_string(),
@@ -320,7 +320,7 @@ fn test_detailed_mode_deduplication_keeps_smallest() {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
-            download_url: format!("https://example.com/temurin-21-{}.tar.gz", i),
+            download_url: format!("https://example.com/temurin-21-{i}.tar.gz"),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: *size,

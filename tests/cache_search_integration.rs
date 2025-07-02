@@ -567,17 +567,17 @@ fn test_integration_performance_large_cache() {
     for major in 8..=23 {
         for minor in 0..5 {
             packages.push(JdkMetadata {
-                id: format!("temurin-{}-{}", major, minor),
+                id: format!("temurin-{major}-{minor}"),
                 distribution: "temurin".to_string(),
                 version: Version::new(major, minor, 0),
-                distribution_version: format!("{}.{}.0+36", major, minor),
+                distribution_version: format!("{major}.{minor}.0+36"),
                 architecture: Architecture::X64,
                 operating_system: OperatingSystem::Linux,
                 package_type: PackageType::Jdk,
                 lib_c_type: Some("glibc".to_string()),
                 archive_type: ArchiveType::TarGz,
-                download_url: format!("https://test.com/{}-{}.tar.gz", major, minor),
-                checksum: Some(format!("checksum{}_{}", major, minor)),
+                download_url: format!("https://test.com/{major}-{minor}.tar.gz"),
+                checksum: Some(format!("checksum{major}_{minor}")),
                 checksum_type: Some(ChecksumType::Sha256),
                 size: 190_000_000 + (major * 1_000_000) as u64,
                 javafx_bundled: false,
@@ -624,7 +624,6 @@ fn test_integration_performance_large_cache() {
     // Search should complete quickly even with large cache
     assert!(
         duration.as_millis() < 1000,
-        "Search took too long: {:?}",
-        duration
+        "Search took too long: {duration:?}"
     );
 }

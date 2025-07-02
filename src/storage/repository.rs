@@ -22,7 +22,7 @@ impl JdkRepository {
         distribution: &Distribution,
         distribution_version: &str,
     ) -> Result<PathBuf> {
-        let dir_name = format!("{}-{}", distribution.id(), distribution_version);
+        let dir_name = format!("{}-{distribution_version}", distribution.id());
         Ok(self.config.jdks_dir()?.join(dir_name))
     }
 
@@ -61,8 +61,7 @@ impl JdkRepository {
         let jdks_dir = self.config.jdks_dir()?;
         if !path.starts_with(&jdks_dir) {
             return Err(KopiError::SecurityError(format!(
-                "Refusing to remove directory outside of JDKs directory: {:?}",
-                path
+                "Refusing to remove directory outside of JDKs directory: {path:?}"
             )));
         }
 

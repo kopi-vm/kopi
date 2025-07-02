@@ -18,29 +18,29 @@ pub fn run_shim() -> Result<()> {
 
     // Get tool name from argv[0]
     let tool_name = get_tool_name()?;
-    log::debug!("Shim invoked as: {}", tool_name);
+    log::debug!("Shim invoked as: {tool_name}");
 
     // Resolve JDK version
     let resolver = VersionResolver::new();
     let version_request = resolver.resolve_version()?;
-    log::debug!("Resolved version: {:?}", version_request);
+    log::debug!("Resolved version: {version_request:?}");
 
     // Find JDK installation
     let config = new_kopi_config()?;
     let repository = JdkRepository::new(config);
     let jdk_path = find_jdk_installation(&repository, &version_request)?;
-    log::debug!("JDK path: {:?}", jdk_path);
+    log::debug!("JDK path: {jdk_path:?}");
 
     // Build tool path
     let tool_path = build_tool_path(&jdk_path, &tool_name)?;
-    log::debug!("Tool path: {:?}", tool_path);
+    log::debug!("Tool path: {tool_path:?}");
 
     // Collect arguments (skip argv[0])
     let args: Vec<OsString> = env::args_os().skip(1).collect();
 
     // Log performance
     let elapsed = start.elapsed();
-    log::debug!("Shim resolution completed in {:?}", elapsed);
+    log::debug!("Shim resolution completed in {elapsed:?}");
 
     // Execute the tool
     ShimExecutor::exec(tool_path, args)?;
@@ -120,8 +120,7 @@ fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
     // Verify the tool exists
     if !tool_path.exists() {
         return Err(KopiError::SystemError(format!(
-            "Tool '{}' not found in JDK at {:?}",
-            tool_name, jdk_path
+            "Tool '{tool_name}' not found in JDK at {jdk_path:?}"
         )));
     }
 

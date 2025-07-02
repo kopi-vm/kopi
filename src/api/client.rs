@@ -83,7 +83,7 @@ impl ApiClient {
             let packages = match self.get_packages(Some(query)) {
                 Ok(packages) => packages,
                 Err(e) => {
-                    debug!("Failed to fetch packages for {}: {}", dist.api_parameter, e);
+                    debug!("Failed to fetch packages for {}: {e}", dist.api_parameter);
                     Vec::new()
                 }
             };
@@ -136,7 +136,7 @@ impl ApiClient {
             let packages = match self.get_packages(Some(query)) {
                 Ok(packages) => packages,
                 Err(e) => {
-                    debug!("Failed to fetch packages for {}: {}", dist.api_parameter, e);
+                    debug!("Failed to fetch packages for {}: {e}", dist.api_parameter);
                     Vec::new()
                 }
             };
@@ -151,7 +151,7 @@ impl ApiClient {
     }
 
     pub fn get_packages(&self, query: Option<PackageQuery>) -> Result<Vec<Package>> {
-        let url = format!("{}/{}/packages", self.base_url, API_VERSION);
+        let url = format!("{}/{API_VERSION}/packages", self.base_url);
         let query = query.clone();
 
         self.execute_with_retry(move || {
@@ -198,19 +198,19 @@ impl ApiClient {
     }
 
     pub fn get_distributions(&self) -> Result<Vec<Distribution>> {
-        let url = format!("{}/{}/distributions", self.base_url, API_VERSION);
+        let url = format!("{}/{API_VERSION}/distributions", self.base_url);
         self.execute_with_retry(move || self.session.get(&url))
     }
 
     pub fn get_major_versions(&self) -> Result<Vec<MajorVersion>> {
-        let url = format!("{}/{}/major_versions", self.base_url, API_VERSION);
+        let url = format!("{}/{API_VERSION}/major_versions", self.base_url);
         self.execute_with_retry(move || self.session.get(&url))
     }
 
     pub fn get_package_by_id(&self, package_id: &str) -> Result<PackageInfo> {
         // Special handling for package by ID endpoint which returns an array
-        let url = format!("{}/{}/ids/{}", self.base_url, API_VERSION, package_id);
-        debug!("Fetching package info for ID: {}", package_id);
+        let url = format!("{}/{API_VERSION}/ids/{package_id}", self.base_url);
+        debug!("Fetching package info for ID: {package_id}");
         let package_id_copy = package_id.to_string();
 
         // Use the common retry logic but handle the array response
@@ -227,32 +227,28 @@ impl ApiClient {
                                     Ok(package)
                                 } else {
                                     Err(KopiError::MetadataFetch(format!(
-                                        "No package info found for ID: {} (API v{})",
-                                        package_id_copy, API_VERSION
+                                        "No package info found for ID: {package_id_copy} (API v{API_VERSION})"
                                     )))
                                 }
                             }
                             Err(e) => {
-                                debug!("Failed to parse 'result' field as array: {}", e);
-                                trace!("Result field: {:?}", result);
+                                debug!("Failed to parse 'result' field as array: {e}");
+                                trace!("Result field: {result:?}");
                                 Err(KopiError::MetadataFetch(format!(
-                                    "Failed to parse API v{} response: {}",
-                                    API_VERSION, e
+                                    "Failed to parse API v{API_VERSION} response: {e}"
                                 )))
                             }
                         }
                     } else {
                         Err(KopiError::MetadataFetch(format!(
-                            "Invalid API v{} response: missing 'result' field",
-                            API_VERSION
+                            "Invalid API v{API_VERSION} response: missing 'result' field"
                         )))
                     }
                 }
                 Err(e) => {
-                    debug!("Failed to parse as JSON: {}", e);
+                    debug!("Failed to parse as JSON: {e}");
                     Err(KopiError::MetadataFetch(format!(
-                        "Invalid JSON response from API v{}: {}",
-                        API_VERSION, e
+                        "Invalid JSON response from API v{API_VERSION}: {e}"
                     )))
                 }
             },
@@ -274,26 +270,23 @@ impl ApiClient {
                         match serde_json::from_value::<T>(result.clone()) {
                             Ok(data) => Ok(data),
                             Err(e) => {
-                                debug!("Failed to parse 'result' field: {}", e);
-                                trace!("Result field: {:?}", result);
+                                debug!("Failed to parse 'result' field: {e}");
+                                trace!("Result field: {result:?}");
                                 Err(KopiError::MetadataFetch(format!(
-                                    "Failed to parse API v{} response: {}",
-                                    API_VERSION, e
+                                    "Failed to parse API v{API_VERSION} response: {e}"
                                 )))
                             }
                         }
                     } else {
                         Err(KopiError::MetadataFetch(format!(
-                            "Invalid API v{} response: missing 'result' field",
-                            API_VERSION
+                            "Invalid API v{API_VERSION} response: missing 'result' field"
                         )))
                     }
                 }
                 Err(e) => {
-                    debug!("Failed to parse as JSON: {}", e);
+                    debug!("Failed to parse as JSON: {e}");
                     Err(KopiError::MetadataFetch(format!(
-                        "Invalid JSON response from API v{}: {}",
-                        API_VERSION, e
+                        "Invalid JSON response from API v{API_VERSION}: {e}"
                     )))
                 }
             }
@@ -312,8 +305,7 @@ impl ApiClient {
                     Ok(resp) => resp,
                     Err(e) => {
                         let user_error = KopiError::MetadataFetch(format!(
-                            "Network error connecting to foojay.io API v{}: {}. Please check your internet connection and try again.",
-                            API_VERSION, e
+                            "Network error connecting to foojay.io API v{API_VERSION}: {e}. Please check your internet connection and try again."
                         ));
 
                         if current_try < (MAX_RETRIES - 1) as u64 {
@@ -361,38 +353,32 @@ impl ApiClient {
                                         }
                                     }
                                     Err(_) => format!(
-                                        "HTTP error ({}) from foojay.io API v{}: {}",
+                                        "HTTP error ({}) from foojay.io API v{API_VERSION}: {}",
                                         status.as_u16(),
-                                        API_VERSION,
                                         status.canonical_reason().unwrap_or("Unknown error")
                                     ),
                                 }
                             }
                             Err(_) => format!(
-                                "HTTP error ({}) from foojay.io API v{}: {}",
+                                "HTTP error ({}) from foojay.io API v{API_VERSION}: {}",
                                 status.as_u16(),
-                                API_VERSION,
                                 status.canonical_reason().unwrap_or("Unknown error")
                             ),
                         }
                     } else {
                         match status.as_u16() {
                             404 => format!(
-                                "The requested resource was not found on foojay.io API v{}. The API endpoint may have changed.",
-                                API_VERSION
+                                "The requested resource was not found on foojay.io API v{API_VERSION}. The API endpoint may have changed."
                             ),
                             500..=599 => format!(
-                                "Server error occurred on foojay.io API v{}. Please try again later.",
-                                API_VERSION
+                                "Server error occurred on foojay.io API v{API_VERSION}. Please try again later."
                             ),
                             401 | 403 => format!(
-                                "Authentication failed for foojay.io API v{}. Please check your credentials.",
-                                API_VERSION
+                                "Authentication failed for foojay.io API v{API_VERSION}. Please check your credentials."
                             ),
                             _ => format!(
-                                "HTTP error ({}) from foojay.io API v{}: {}",
+                                "HTTP error ({}) from foojay.io API v{API_VERSION}: {}",
                                 status.as_u16(),
-                                API_VERSION,
                                 status.canonical_reason().unwrap_or("Unknown error")
                             ),
                         }
@@ -407,8 +393,7 @@ impl ApiClient {
                         Err(e) => OperationResult::Err(e),
                     },
                     Err(e) => OperationResult::Err(KopiError::MetadataFetch(format!(
-                        "Failed to read response body: {}",
-                        e
+                        "Failed to read response body: {e}"
                     ))),
                 }
             },

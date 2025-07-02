@@ -127,7 +127,7 @@ fn show_cache_info() -> Result<()> {
     println!("  Distributions: {}", cache.distributions.len());
 
     let total_packages: usize = cache.distributions.values().map(|d| d.packages.len()).sum();
-    println!("  Total JDK packages: {}", total_packages);
+    println!("  Total JDK packages: {total_packages}");
 
     Ok(())
 }
@@ -211,10 +211,7 @@ fn search_cache(
         if !cache.distributions.contains_key(dist_id) {
             // Distribution not in cache, fetch it
             if !json {
-                println!(
-                    "Distribution '{}' not found in cache. Fetching from foojay.io...",
-                    dist_id
-                );
+                println!("Distribution '{dist_id}' not found in cache. Fetching from foojay.io...");
             }
 
             match cache::fetch_and_cache_distribution(dist_id, javafx_bundled, &config) {
@@ -303,7 +300,7 @@ fn search_cache(
     // JSON output mode
     if json {
         let json_output = serde_json::to_string_pretty(&results)?;
-        println!("{}", json_output);
+        println!("{json_output}");
         return Ok(());
     }
 
@@ -515,7 +512,7 @@ fn search_cache(
                         }
                     } else if !detailed && !json {
                         // In compact mode, deduplicate based on version and LTS
-                        let compact_key = format!("{}-{}", display_version, lts_display);
+                        let compact_key = format!("{display_version}-{lts_display}");
                         if !seen_compact_entries.insert(compact_key) {
                             // Already seen this combination, skip it
                             continue;
@@ -563,7 +560,7 @@ fn search_cache(
                             Cell::new(package.package_type.to_string()),
                             Cell::new(os_arch),
                             Cell::new(package.lib_c_type.as_deref().unwrap_or("-")),
-                            Cell::new(format!("{} MB", size_mb)),
+                            Cell::new(format!("{size_mb} MB")),
                         ]
                     } else {
                         // Compact mode (default)
@@ -609,7 +606,7 @@ fn search_cache(
     // Only print the table if it has rows
     if table.row_count() > 0 {
         // Convert table to string and replace separator markers with proper lines
-        let table_str = format!("{}", table);
+        let table_str = format!("{table}");
         let lines: Vec<&str> = table_str.lines().collect();
 
         for line in lines.iter() {
@@ -618,10 +615,10 @@ fn search_cache(
                 // Use the structure from the top border to create the separator
                 if let Some(top_border) = lines.first() {
                     let separator = top_border.replace('┌', "├").replace('┐', "┤");
-                    println!("{}", separator);
+                    println!("{separator}");
                 }
             } else {
-                println!("{}", line);
+                println!("{line}");
             }
         }
     }
@@ -713,7 +710,7 @@ fn list_distributions() -> Result<()> {
         total_versions += count;
     }
 
-    println!("{}", table);
+    println!("{table}");
     println!(
         "\nTotal: {} distributions with {} versions for {}/{}",
         table.row_count(),

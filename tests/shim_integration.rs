@@ -70,7 +70,7 @@ fn test_version_resolution_performance() {
     // Create deeply nested directory structure
     let mut current = temp_dir.path().to_path_buf();
     for i in 0..10 {
-        current = current.join(format!("level{}", i));
+        current = current.join(format!("level{i}"));
         fs::create_dir(&current).unwrap();
     }
 
@@ -95,8 +95,7 @@ fn test_version_resolution_performance() {
     // Version resolution should be fast even with deep directory traversal
     assert!(
         elapsed.as_millis() < 10,
-        "Version resolution took {:?}",
-        elapsed
+        "Version resolution took {elapsed:?}"
     );
 }
 
@@ -198,7 +197,7 @@ fn test_tool_path_construction_unix() {
     let tools = ["java", "javac", "jar", "jps"];
     for tool in &tools {
         let tool_path = bin_dir.join(tool);
-        fs::write(&tool_path, format!("mock {}", tool)).unwrap();
+        fs::write(&tool_path, format!("mock {tool}")).unwrap();
     }
 
     // Verify each tool can be found
@@ -220,7 +219,7 @@ fn test_tool_path_construction_windows() {
     let tools = ["java.exe", "javac.exe", "jar.exe", "jps.exe"];
     for tool in &tools {
         let tool_path = bin_dir.join(tool);
-        fs::write(&tool_path, format!("mock {}", tool)).unwrap();
+        fs::write(&tool_path, format!("mock {tool}")).unwrap();
     }
 
     // Verify each tool can be found

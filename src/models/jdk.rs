@@ -105,7 +105,7 @@ impl std::fmt::Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}.{}.{}", self.major, self.minor, self.patch)?;
         if let Some(build) = &self.build {
-            write!(f, "+{}", build)?;
+            write!(f, "+{build}")?;
         }
         Ok(())
     }
@@ -138,8 +138,7 @@ impl FromStr for Architecture {
             "s390x" => Ok(Architecture::S390x),
             "sparcv9" => Ok(Architecture::Sparcv9),
             _ => Err(KopiError::InvalidConfig(format!(
-                "Unknown architecture: {}",
-                s
+                "Unknown architecture: {s}"
             ))),
         }
     }
@@ -157,7 +156,7 @@ impl std::fmt::Display for Architecture {
             Architecture::S390x => "s390x",
             Architecture::Sparcv9 => "sparcv9",
         };
-        write!(f, "{}", arch)
+        write!(f, "{arch}")
     }
 }
 
@@ -184,8 +183,7 @@ impl FromStr for OperatingSystem {
             "solaris" => Ok(OperatingSystem::Solaris),
             "aix" => Ok(OperatingSystem::Aix),
             _ => Err(KopiError::InvalidConfig(format!(
-                "Unknown operating system: {}",
-                s
+                "Unknown operating system: {s}"
             ))),
         }
     }
@@ -201,7 +199,7 @@ impl std::fmt::Display for OperatingSystem {
             OperatingSystem::Solaris => "solaris",
             OperatingSystem::Aix => "aix",
         };
-        write!(f, "{}", os)
+        write!(f, "{os}")
     }
 }
 
@@ -220,8 +218,7 @@ impl FromStr for PackageType {
             "jdk" => Ok(PackageType::Jdk),
             "jre" => Ok(PackageType::Jre),
             _ => Err(KopiError::InvalidConfig(format!(
-                "Unknown package type: {}",
-                s
+                "Unknown package type: {s}"
             ))),
         }
     }
@@ -233,7 +230,7 @@ impl std::fmt::Display for PackageType {
             PackageType::Jdk => "jdk",
             PackageType::Jre => "jre",
         };
-        write!(f, "{}", pkg)
+        write!(f, "{pkg}")
     }
 }
 
@@ -262,8 +259,7 @@ impl FromStr for ArchiveType {
             "deb" => Ok(ArchiveType::Deb),
             "rpm" => Ok(ArchiveType::Rpm),
             _ => Err(KopiError::InvalidConfig(format!(
-                "Unknown archive type: {}",
-                s
+                "Unknown archive type: {s}"
             ))),
         }
     }

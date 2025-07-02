@@ -72,10 +72,9 @@ impl InstallCommand {
         timeout_secs: Option<u64>,
         javafx_bundled: bool,
     ) -> Result<()> {
-        info!("Installing JDK {}", version_spec);
+        info!("Installing JDK {version_spec}");
         debug!(
-            "Install options: force={}, dry_run={}, no_progress={}, timeout={:?}, javafx_bundled={}",
-            force, dry_run, no_progress, timeout_secs, javafx_bundled
+            "Install options: force={force}, dry_run={dry_run}, no_progress={no_progress}, timeout={timeout_secs:?}, javafx_bundled={javafx_bundled}"
         );
 
         // Load config to parse version with additional distributions support
@@ -84,7 +83,7 @@ impl InstallCommand {
 
         // Parse version specification
         let version_request = parser.parse(version_spec)?;
-        trace!("Parsed version request: {:?}", version_request);
+        trace!("Parsed version request: {version_request:?}");
 
         // Install command requires a specific version
         let version = version_request.version.as_ref().ok_or_else(|| {
@@ -109,7 +108,7 @@ impl InstallCommand {
         debug!("Searching for {} version {}", distribution.name(), version);
         let package =
             self.find_matching_package(&distribution, version, &version_request, javafx_bundled)?;
-        trace!("Found package: {:?}", package);
+        trace!("Found package: {package:?}");
         let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
 
         // Check if already installed using the actual distribution_version
@@ -152,14 +151,13 @@ impl InstallCommand {
             );
             match crate::cache::fetch_package_checksum(&jdk_metadata_with_checksum.id) {
                 Ok((checksum, checksum_type)) => {
-                    info!("Fetched checksum: {} (type: {:?})", checksum, checksum_type);
+                    info!("Fetched checksum: {checksum} (type: {checksum_type:?})");
                     jdk_metadata_with_checksum.checksum = Some(checksum);
                     jdk_metadata_with_checksum.checksum_type = Some(checksum_type);
                 }
                 Err(e) => {
                     warn!(
-                        "Failed to fetch checksum: {}. Proceeding without checksum verification.",
-                        e
+                        "Failed to fetch checksum: {e}. Proceeding without checksum verification."
                     );
                 }
             }
@@ -179,7 +177,7 @@ impl InstallCommand {
         );
         let download_result = download_jdk(&jdk_metadata_with_checksum, no_progress, timeout_secs)?;
         let download_path = download_result.path();
-        debug!("Downloaded to {:?}", download_path);
+        debug!("Downloaded to {download_path:?}");
 
         // Verify checksum
         if let Some(checksum) = &jdk_metadata_with_checksum.checksum {
@@ -211,7 +209,7 @@ impl InstallCommand {
         // Finalize installation
         debug!("Finalizing installation");
         let final_path = self.storage_manager.finalize_installation(context)?;
-        info!("JDK installed to {:?}", final_path);
+        info!("JDK installed to {final_path:?}");
 
         // Save metadata JSON file
         self.storage_manager.save_jdk_metadata(
@@ -237,7 +235,7 @@ impl InstallCommand {
                 version.major
             );
         }
-        println!("\nTo use this JDK, run: kopi use {}", version_spec);
+        println!("\nTo use this JDK, run: kopi use {version_spec}");
 
         Ok(())
     }

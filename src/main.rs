@@ -176,7 +176,7 @@ fn main() {
                 Ok(())
             }
             Commands::Use { version } => {
-                println!("Switching to JDK {} (not yet implemented)", version);
+                println!("Switching to JDK {version} (not yet implemented)");
                 Ok(())
             }
             Commands::Current => {
@@ -184,16 +184,16 @@ fn main() {
                 Ok(())
             }
             Commands::Global { version } => {
-                println!("Setting global JDK to {} (not yet implemented)", version);
+                println!("Setting global JDK to {version} (not yet implemented)");
                 Ok(())
             }
             Commands::Local { version } => {
-                println!("Setting local JDK to {} (not yet implemented)", version);
+                println!("Setting local JDK to {version} (not yet implemented)");
                 Ok(())
             }
             Commands::Which { version } => {
                 let v = version.unwrap_or_else(|| "current".to_string());
-                println!("Path for JDK {} (not yet implemented)", v);
+                println!("Path for JDK {v} (not yet implemented)");
                 Ok(())
             }
             Commands::Cache { command } => command.execute(),

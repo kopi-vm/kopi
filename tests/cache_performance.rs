@@ -50,7 +50,7 @@ fn create_large_test_cache() -> MetadataCache {
                                     ),
                                     distribution: dist_id.to_string(),
                                     version: Version::new(*major, minor, patch),
-                                    distribution_version: format!("{}.{}.{}", major, minor, patch),
+                                    distribution_version: format!("{major}.{minor}.{patch}"),
                                     architecture: *arch,
                                     operating_system: *os,
                                     package_type: *pkg_type,

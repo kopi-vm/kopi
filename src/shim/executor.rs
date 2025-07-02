@@ -15,8 +15,7 @@ impl ShimExecutor {
 
         // exec() only returns on error
         Err(KopiError::SystemError(format!(
-            "Failed to execute {:?}: {}",
-            tool_path, err
+            "Failed to execute {tool_path:?}: {err}"
         )))
     }
 
@@ -32,9 +31,9 @@ impl ShimExecutor {
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit());
 
-        let status = command.status().map_err(|e| {
-            KopiError::SystemError(format!("Failed to execute {:?}: {}", tool_path, e))
-        })?;
+        let status = command
+            .status()
+            .map_err(|e| KopiError::SystemError(format!("Failed to execute {tool_path:?}: {e}")))?;
 
         // Exit with the same code as the child process
         std::process::exit(status.code().unwrap_or(1));

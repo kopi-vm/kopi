@@ -11,8 +11,7 @@ pub fn verify_checksum(file_path: &Path, expected: &str) -> Result<()> {
 
     if calculated != expected {
         return Err(KopiError::ValidationError(format!(
-            "Checksum mismatch: expected {}, got {}",
-            expected, calculated
+            "Checksum mismatch: expected {expected}, got {calculated}"
         )));
     }
 

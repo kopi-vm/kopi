@@ -88,15 +88,14 @@ impl KopiConfig {
         let config_path = kopi_home.join(CONFIG_FILE_NAME);
 
         let config = if config_path.exists() {
-            log::debug!("Loading config from {:?}", config_path);
+            log::debug!("Loading config from {config_path:?}");
             let contents = fs::read_to_string(&config_path)?;
-            let mut loaded: KopiConfig = toml::from_str(&contents).map_err(|e| {
-                KopiError::ConfigError(format!("Failed to parse config.toml: {}", e))
-            })?;
+            let mut loaded: KopiConfig = toml::from_str(&contents)
+                .map_err(|e| KopiError::ConfigError(format!("Failed to parse config.toml: {e}")))?;
             loaded.kopi_home = kopi_home;
             loaded
         } else {
-            log::debug!("Config file not found at {:?}, using defaults", config_path);
+            log::debug!("Config file not found at {config_path:?}, using defaults");
             Self {
                 kopi_home,
                 storage: StorageConfig {
@@ -119,10 +118,10 @@ impl KopiConfig {
         }
 
         let contents = toml::to_string_pretty(self)
-            .map_err(|e| KopiError::ConfigError(format!("Failed to serialize config: {}", e)))?;
+            .map_err(|e| KopiError::ConfigError(format!("Failed to serialize config: {e}")))?;
 
         fs::write(&config_path, contents)?;
-        log::debug!("Saved config to {:?}", config_path);
+        log::debug!("Saved config to {config_path:?}");
         Ok(())
     }
 
@@ -134,9 +133,8 @@ impl KopiConfig {
     /// Get the JDKs directory path and create it if it doesn't exist
     pub fn jdks_dir(&self) -> Result<PathBuf> {
         let dir = self.kopi_home.join(JDKS_DIR_NAME);
-        fs::create_dir_all(&dir).map_err(|e| {
-            KopiError::ConfigError(format!("Failed to create jdks directory: {}", e))
-        })?;
+        fs::create_dir_all(&dir)
+            .map_err(|e| KopiError::ConfigError(format!("Failed to create jdks directory: {e}")))?;
         Ok(dir)
     }
 
@@ -144,7 +142,7 @@ impl KopiConfig {
     pub fn cache_dir(&self) -> Result<PathBuf> {
         let dir = self.kopi_home.join(CACHE_DIR_NAME);
         fs::create_dir_all(&dir).map_err(|e| {
-            KopiError::ConfigError(format!("Failed to create cache directory: {}", e))
+            KopiError::ConfigError(format!("Failed to create cache directory: {e}"))
         })?;
         Ok(dir)
     }
@@ -152,9 +150,8 @@ impl KopiConfig {
     /// Get the bin directory path for shims and create it if it doesn't exist
     pub fn bin_dir(&self) -> Result<PathBuf> {
         let dir = self.kopi_home.join(BIN_DIR_NAME);
-        fs::create_dir_all(&dir).map_err(|e| {
-            KopiError::ConfigError(format!("Failed to create bin directory: {}", e))
-        })?;
+        fs::create_dir_all(&dir)
+            .map_err(|e| KopiError::ConfigError(format!("Failed to create bin directory: {e}")))?;
         Ok(dir)
     }
 
@@ -191,8 +188,7 @@ mod tests {
         let path_str = config.kopi_home.to_string_lossy();
         assert!(
             path_str.contains(".kopi"),
-            "Expected path to contain '.kopi', but got: {}",
-            path_str
+            "Expected path to contain '.kopi', but got: {path_str}"
         );
     }
 

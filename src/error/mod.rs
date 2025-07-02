@@ -107,28 +107,28 @@ impl<'a> ErrorContext<'a> {
         let (suggestion, details) = match error {
             KopiError::VersionNotAvailable(msg) => {
                 let suggestion = Some("Run 'kopi cache search' to see available versions or 'kopi cache refresh' to update the list.".to_string());
-                let details = Some(format!("Version lookup failed: {}", msg));
+                let details = Some(format!("Version lookup failed: {msg}"));
                 (suggestion, details)
             }
             KopiError::InvalidVersionFormat(msg) => {
                 let suggestion = Some("Version format should be: '<version>' or '<distribution>@<version>' (e.g., '21' or 'corretto@17').".to_string());
-                let details = Some(format!("Invalid format: {}", msg));
+                let details = Some(format!("Invalid format: {msg}"));
                 (suggestion, details)
             }
             KopiError::JdkNotInstalled(jdk) => {
-                let suggestion = Some(format!("Run 'kopi install {}' to install this JDK.", jdk));
+                let suggestion = Some(format!("Run 'kopi install {jdk}' to install this JDK."));
                 let details = None;
                 (suggestion, details)
             }
             KopiError::Download(msg) => {
                 let suggestion = Some("Check your internet connection and try again. Use --timeout to increase timeout if needed.".to_string());
-                let details = Some(format!("Download failed: {}", msg));
+                let details = Some(format!("Download failed: {msg}"));
                 (suggestion, details)
             }
             KopiError::Extract(msg) => {
                 let suggestion =
                     Some("Ensure you have enough disk space and try again.".to_string());
-                let details = Some(format!("Extraction failed: {}", msg));
+                let details = Some(format!("Extraction failed: {msg}"));
                 (suggestion, details)
             }
             KopiError::ChecksumMismatch => {
@@ -141,13 +141,11 @@ impl<'a> ErrorContext<'a> {
             KopiError::PermissionDenied(path) => {
                 let suggestion = if cfg!(unix) {
                     Some(format!(
-                        "Try running with sudo or ensure you have write permissions to: {}",
-                        path
+                        "Try running with sudo or ensure you have write permissions to: {path}"
                     ))
                 } else {
                     Some(format!(
-                        "Run as Administrator or ensure you have write permissions to: {}",
-                        path
+                        "Run as Administrator or ensure you have write permissions to: {path}"
                     ))
                 };
                 let details = None;
@@ -155,12 +153,12 @@ impl<'a> ErrorContext<'a> {
             }
             KopiError::DiskSpaceError(msg) => {
                 let suggestion = Some("Free up disk space and try again. JDK installations typically require 300-500MB.".to_string());
-                let details = Some(format!("Disk space issue: {}", msg));
+                let details = Some(format!("Disk space issue: {msg}"));
                 (suggestion, details)
             }
             KopiError::NetworkError(msg) => {
                 let suggestion = Some("Check your internet connection and proxy settings. Try 'kopi cache refresh' to update metadata.".to_string());
-                let details = Some(format!("Network issue: {}", msg));
+                let details = Some(format!("Network issue: {msg}"));
                 (suggestion, details)
             }
             KopiError::Http(http_err) => {
@@ -184,7 +182,7 @@ impl<'a> ErrorContext<'a> {
                 } else {
                     Some("Check your internet connection and try again.".to_string())
                 };
-                let details = Some(format!("HTTP error: {}", http_err));
+                let details = Some(format!("HTTP error: {http_err}"));
                 (suggestion, details)
             }
             KopiError::AlreadyExists(msg) => {
@@ -194,7 +192,7 @@ impl<'a> ErrorContext<'a> {
                 (suggestion, details)
             }
             KopiError::DirectoryNotFound(dir) => {
-                let suggestion = Some(format!("Ensure the directory exists: {}", dir));
+                let suggestion = Some(format!("Ensure the directory exists: {dir}"));
                 let details = None;
                 (suggestion, details)
             }
@@ -222,7 +220,7 @@ impl<'a> ErrorContext<'a> {
                     ),
                     _ => None,
                 };
-                let details = Some(format!("I/O error: {}", io_err));
+                let details = Some(format!("I/O error: {io_err}"));
                 (suggestion, details)
             }
             _ => (None, None),
@@ -251,11 +249,11 @@ impl<'a> fmt::Display for ErrorContext<'a> {
         write!(f, "Error: {}", self.error)?;
 
         if let Some(details) = &self.details {
-            write!(f, "\n\nDetails: {}", details)?;
+            write!(f, "\n\nDetails: {details}")?;
         }
 
         if let Some(suggestion) = &self.suggestion {
-            write!(f, "\n\nSuggestion: {}", suggestion)?;
+            write!(f, "\n\nSuggestion: {suggestion}")?;
         }
 
         Ok(())

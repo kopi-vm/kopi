@@ -11,12 +11,11 @@ pub fn verify_checksum(file_path: &Path, expected_checksum: &str) -> Result<()> 
 
     if actual != expected_checksum {
         return Err(KopiError::ValidationError(format!(
-            "Checksum verification failed for {:?}. Expected: {}, Actual: {}",
-            file_path, expected_checksum, actual
+            "Checksum verification failed for {file_path:?}. Expected: {expected_checksum}, Actual: {actual}"
         )));
     }
 
-    log::debug!("Checksum verified successfully for {:?}", file_path);
+    log::debug!("Checksum verified successfully for {file_path:?}");
     Ok(())
 }
 
@@ -40,16 +39,14 @@ pub fn calculate_sha256(file_path: &Path) -> Result<String> {
 pub fn verify_https_security(url: &str) -> Result<()> {
     if !url.starts_with("https://") {
         return Err(KopiError::SecurityError(format!(
-            "Insecure URL: {}. Only HTTPS URLs are allowed for JDK downloads",
-            url
+            "Insecure URL: {url}. Only HTTPS URLs are allowed for JDK downloads"
         )));
     }
 
     // Additional URL validation
     if url.contains("..") || url.contains("://localhost") || url.contains("://127.0.0.1") {
         return Err(KopiError::SecurityError(format!(
-            "Suspicious URL detected: {}",
-            url
+            "Suspicious URL detected: {url}"
         )));
     }
 
@@ -86,7 +83,7 @@ pub fn is_trusted_domain(url: &str) -> bool {
 
 pub fn audit_log(action: &str, details: &str) {
     // In production, this would write to a secure audit log
-    log::info!("SECURITY AUDIT: {} - {}", action, details);
+    log::info!("SECURITY AUDIT: {action} - {details}");
 }
 
 pub fn verify_file_permissions(path: &Path) -> Result<()> {
@@ -101,8 +98,7 @@ pub fn verify_file_permissions(path: &Path) -> Result<()> {
         // Check if file has dangerous permissions (world-writable)
         if mode & 0o002 != 0 {
             return Err(KopiError::SecurityError(format!(
-                "File {:?} has world-writable permissions",
-                path
+                "File {path:?} has world-writable permissions"
             )));
         }
     }
@@ -149,8 +145,7 @@ pub fn sanitize_path(path: &Path) -> Result<()> {
     // Check for path traversal attempts
     if path_str.contains("..") || path_str.contains("~") {
         return Err(KopiError::SecurityError(format!(
-            "Potential path traversal detected in: {:?}",
-            path
+            "Potential path traversal detected in: {path:?}"
         )));
     }
 
@@ -159,8 +154,7 @@ pub fn sanitize_path(path: &Path) -> Result<()> {
         let path_str = path.to_string_lossy();
         if !path_str.contains(".kopi") {
             return Err(KopiError::SecurityError(format!(
-                "Path {:?} is outside of kopi directory",
-                path
+                "Path {path:?} is outside of kopi directory"
             )));
         }
     }
@@ -192,7 +186,7 @@ pub fn secure_file_permissions(path: &Path) -> Result<()> {
 
     audit_log(
         "SECURE_PERMISSIONS",
-        &format!("Set secure permissions on {:?}", path),
+        &format!("Set secure permissions on {path:?}"),
     );
 
     Ok(())

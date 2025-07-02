@@ -32,7 +32,15 @@ impl MetadataCache {
             distributions: HashMap::new(),
         }
     }
+}
 
+impl Default for MetadataCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MetadataCache {
     pub fn has_version(&self, version: &str) -> bool {
         for dist in self.distributions.values() {
             for package in &dist.packages {
@@ -47,7 +55,7 @@ impl MetadataCache {
     pub fn save(&self, path: &Path) -> Result<()> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|e| {
-                KopiError::ConfigError(format!("Failed to create cache directory: {}", e))
+                KopiError::ConfigError(format!("Failed to create cache directory: {e}"))
             })?;
         }
 
@@ -56,11 +64,11 @@ impl MetadataCache {
         // Write to temporary file first for atomic operation
         let temp_path = path.with_extension("tmp");
         fs::write(&temp_path, json)
-            .map_err(|e| KopiError::ConfigError(format!("Failed to write cache file: {}", e)))?;
+            .map_err(|e| KopiError::ConfigError(format!("Failed to write cache file: {e}")))?;
 
         // Atomic rename
         fs::rename(temp_path, path)
-            .map_err(|e| KopiError::ConfigError(format!("Failed to rename cache file: {}", e)))?;
+            .map_err(|e| KopiError::ConfigError(format!("Failed to rename cache file: {e}")))?;
 
         Ok(())
     }
@@ -87,7 +95,7 @@ impl MetadataCache {
 
 pub fn load_cache(path: &Path) -> Result<MetadataCache> {
     let contents = fs::read_to_string(path)
-        .map_err(|e| KopiError::ConfigError(format!("Failed to read cache file: {}", e)))?;
+        .map_err(|e| KopiError::ConfigError(format!("Failed to read cache file: {e}")))?;
 
     let cache: MetadataCache =
         serde_json::from_str(&contents).map_err(|_e| KopiError::InvalidMetadata)?;
@@ -112,7 +120,7 @@ pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Res
             }
             Err(e) => {
                 // Cache load failed, log warning and fall back to API
-                warn!("Failed to load cache: {}. Falling back to API.", e);
+                warn!("Failed to load cache: {e}. Falling back to API.");
             }
         }
     }
@@ -135,9 +143,7 @@ pub fn fetch_and_cache_metadata_with_options(
     let api_client = ApiClient::new();
     let metadata = api_client
         .fetch_all_metadata_with_options(javafx_bundled)
-        .map_err(|e| {
-            KopiError::MetadataFetch(format!("Failed to fetch metadata from API: {}", e))
-        })?;
+        .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch metadata from API: {e}")))?;
 
     // Convert API response to cache format
     let new_cache = convert_api_to_cache(metadata)?;
@@ -175,13 +181,13 @@ pub fn fetch_and_cache_distribution(
     // Check if distribution exists first
     let distributions = api_client
         .get_distributions()
-        .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch distributions: {}", e)))?;
+        .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch distributions: {e}")))?;
 
     let dist_info = distributions
         .iter()
         .find(|d| d.api_parameter == distribution_name)
         .ok_or_else(|| {
-            KopiError::InvalidConfig(format!("Unknown distribution: {}", distribution_name))
+            KopiError::InvalidConfig(format!("Unknown distribution: {distribution_name}"))
         })?;
 
     // Create package query for this distribution
@@ -200,8 +206,7 @@ pub fn fetch_and_cache_distribution(
 
     let packages = api_client.get_packages(Some(query)).map_err(|e| {
         KopiError::MetadataFetch(format!(
-            "Failed to fetch packages for {}: {}",
-            distribution_name, e
+            "Failed to fetch packages for {distribution_name}: {e}"
         ))
     })?;
 
@@ -234,9 +239,9 @@ pub fn fetch_and_cache_distribution(
 /// Fetch checksum for a specific JDK package
 pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)> {
     let api_client = ApiClient::new();
-    let package_info = api_client.get_package_by_id(package_id).map_err(|e| {
-        KopiError::MetadataFetch(format!("Failed to fetch package checksum: {}", e))
-    })?;
+    let package_info = api_client
+        .get_package_by_id(package_id)
+        .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch package checksum: {e}")))?;
 
     // Parse checksum type
     let checksum_type = match package_info.checksum_type.to_lowercase().as_str() {

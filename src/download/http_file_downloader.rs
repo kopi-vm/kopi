@@ -74,7 +74,7 @@ impl HttpFileDownloader {
         // Build headers for the request
         let mut headers = Vec::new();
         if start_byte > 0 {
-            headers.push(("Range".to_string(), format!("bytes={}-", start_byte)));
+            headers.push(("Range".to_string(), format!("bytes={start_byte}-")));
         }
 
         // Execute request
@@ -118,8 +118,7 @@ impl HttpFileDownloader {
 
         if !(200..300).contains(&status) && status != 206 {
             return Err(KopiError::NetworkError(format!(
-                "Download failed with status: {}",
-                status
+                "Download failed with status: {status}"
             )));
         }
 
@@ -128,8 +127,7 @@ impl HttpFileDownloader {
             if let Ok(length) = content_length.parse::<u64>() {
                 if length > max_size {
                     return Err(KopiError::ValidationError(format!(
-                        "Download size {} exceeds maximum allowed size {}",
-                        length, max_size
+                        "Download size {length} exceeds maximum allowed size {max_size}"
                     )));
                 }
             }

@@ -41,13 +41,10 @@ fn create_realistic_cache() -> MetadataCache {
                     {
                         for pkg_type in [PackageType::Jdk, PackageType::Jre].iter() {
                             packages.push(JdkMetadata {
-                                id: format!(
-                                    "{}-{}.0.{}-{:?}-{:?}",
-                                    dist_id, major, patch, arch, os
-                                ),
+                                id: format!("{dist_id}-{major}.0.{patch}-{arch:?}-{os:?}"),
                                 distribution: dist_id.to_string(),
                                 version: Version::new(major, 0, patch),
-                                distribution_version: format!("{}.0.{}", major, patch),
+                                distribution_version: format!("{major}.0.{patch}"),
                                 architecture: *arch,
                                 operating_system: *os,
                                 package_type: *pkg_type,
@@ -57,8 +54,7 @@ fn create_realistic_cache() -> MetadataCache {
                                     ArchiveType::TarGz
                                 },
                                 download_url: format!(
-                                    "https://example.com/{}-{}.0.{}.tar.gz",
-                                    dist_id, major, patch
+                                    "https://example.com/{dist_id}-{major}.0.{patch}.tar.gz"
                                 ),
                                 checksum: None,
                                 checksum_type: Some(ChecksumType::Sha256),

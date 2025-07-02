@@ -58,8 +58,7 @@ impl<'a> VersionParser<'a> {
             // For the @ format, we should only accept known distributions
             if !self.is_known_distribution(dist_part) {
                 return Err(KopiError::InvalidVersionFormat(format!(
-                    "Unknown distribution: {}",
-                    dist_part
+                    "Unknown distribution: {dist_part}"
                 )));
             }
 
@@ -71,7 +70,7 @@ impl<'a> VersionParser<'a> {
             };
 
             let dist = Distribution::from_str(normalized_dist).map_err(|_| {
-                KopiError::InvalidVersionFormat(format!("Unknown distribution: {}", dist_part))
+                KopiError::InvalidVersionFormat(format!("Unknown distribution: {dist_part}"))
             })?;
 
             if version_part.is_empty() {
@@ -107,7 +106,7 @@ impl<'a> VersionParser<'a> {
                 };
 
                 let dist = Distribution::from_str(normalized_dist).map_err(|_| {
-                    KopiError::InvalidVersionFormat(format!("Unknown distribution: {}", remaining))
+                    KopiError::InvalidVersionFormat(format!("Unknown distribution: {remaining}"))
                 })?;
                 return Ok(ParsedVersionRequest {
                     version: None,
@@ -136,8 +135,7 @@ impl<'a> VersionParser<'a> {
         // Check for version ranges (not yet implemented)
         if version_str.contains(">=") || version_str.contains("<=") || version_str.contains("><") {
             return Err(KopiError::InvalidVersionFormat(format!(
-                "Version ranges are not yet supported: {}",
-                version_str
+                "Version ranges are not yet supported: {version_str}"
             )));
         }
 
@@ -155,7 +153,7 @@ impl<'a> VersionParser<'a> {
             if let Some(pre) = pre_release {
                 // If there's already a build number, combine them
                 if let Some(existing_build) = version.build {
-                    version.build = Some(format!("{}-{}", existing_build, pre));
+                    version.build = Some(format!("{existing_build}-{pre}"));
                 } else {
                     version.build = Some(pre);
                 }

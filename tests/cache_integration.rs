@@ -113,7 +113,7 @@ fn test_cache_offline_mode() {
     // Test loading from cache
     // First verify the cache was written correctly
     let written_content = fs::read_to_string(&cache_path).expect("Should read cache file");
-    println!("Written cache content: {}", written_content);
+    println!("Written cache content: {written_content}");
 
     // Now test loading directly from the cache file to ensure offline mode
     let loaded_content = fs::read_to_string(&cache_path).expect("Should read cache file");

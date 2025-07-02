@@ -172,9 +172,7 @@ fn test_cache_persists_after_fetch() {
 
     assert!(
         output1.status.success(),
-        "First search failed: stdout={}, stderr={}",
-        stdout1,
-        stderr1
+        "First search failed: stdout={stdout1}, stderr={stderr1}"
     );
 
     // Small delay to ensure cache is properly written
@@ -193,9 +191,7 @@ fn test_cache_persists_after_fetch() {
 
     assert!(
         output2.status.success(),
-        "Second search failed: stdout={}, stderr={}",
-        stdout2,
-        stderr2
+        "Second search failed: stdout={stdout2}, stderr={stderr2}"
     );
 
     // Both searches show the same results, which means caching is working
