@@ -23,6 +23,9 @@ pub struct KopiConfig {
 
     #[serde(default = "default_distribution")]
     pub default_distribution: String,
+
+    #[serde(default)]
+    pub additional_distributions: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,6 +103,7 @@ impl KopiConfig {
                     min_disk_space_mb: DEFAULT_MIN_DISK_SPACE_MB,
                 },
                 default_distribution: "temurin".to_string(),
+                additional_distributions: Vec::new(),
             }
         };
 
@@ -208,12 +212,17 @@ mod tests {
         let mut config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         config.storage.min_disk_space_mb = 1024;
         config.default_distribution = "temurin".to_string();
+        config.additional_distributions = vec!["mycustom".to_string(), "private-jdk".to_string()];
 
         config.save().unwrap();
 
         let loaded = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         assert_eq!(loaded.storage.min_disk_space_mb, 1024);
         assert_eq!(loaded.default_distribution, "temurin");
+        assert_eq!(
+            loaded.additional_distributions,
+            vec!["mycustom", "private-jdk"]
+        );
     }
 
     #[test]
@@ -227,6 +236,7 @@ mod tests {
         let loaded = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         assert_eq!(loaded.storage.min_disk_space_mb, DEFAULT_MIN_DISK_SPACE_MB);
         assert_eq!(loaded.default_distribution, "corretto");
+        assert!(loaded.additional_distributions.is_empty());
     }
 
     #[test]
@@ -238,6 +248,7 @@ mod tests {
             &config_path,
             r#"
 default_distribution = "zulu"
+additional_distributions = ["custom1", "custom2"]
 
 [storage]
 min_disk_space_mb = 2048
@@ -248,6 +259,7 @@ min_disk_space_mb = 2048
         let loaded = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         assert_eq!(loaded.storage.min_disk_space_mb, 2048);
         assert_eq!(loaded.default_distribution, "zulu");
+        assert_eq!(loaded.additional_distributions, vec!["custom1", "custom2"]);
     }
 
     #[test]

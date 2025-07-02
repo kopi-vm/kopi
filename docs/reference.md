@@ -339,6 +339,8 @@ kopi cache clear                         # Delete the cache file
 
 ## Supported Distributions
 
+### Default Distributions
+
 - `temurin` - Eclipse Temurin (formerly AdoptOpenJDK)
 - `corretto` - Amazon Corretto
 - `zulu` - Azul Zulu
@@ -348,6 +350,10 @@ kopi cache clear                         # Delete the cache file
 - `sapmachine` - SAP Machine
 - `semeru` - IBM Semeru
 - `dragonwell` - Alibaba Dragonwell
+
+### Custom Distributions
+
+Additional distributions can be configured in `~/.kopi/config.toml` using the `additional_distributions` field. See the Global Config section for details.
 
 ## Configuration Files
 
@@ -361,10 +367,30 @@ Example configuration:
 # Default JDK distribution for installations
 default_distribution = "temurin"
 
+# Additional custom distributions (optional)
+# These are added to the list of recognized distributions
+additional_distributions = ["company-jdk", "custom-build"]
+
 [storage]
 # Minimum required disk space in MB for JDK installation (default: 500)
 min_disk_space_mb = 1024
 ```
+
+#### Custom Distributions
+
+The `additional_distributions` field allows you to use custom or private JDK distributions that are not in Kopi's default list. This is useful for:
+- Corporate internal JDK builds
+- Private distributions
+- Experimental or custom builds
+
+When configured, these distributions can be used with all Kopi commands:
+```bash
+kopi install company-jdk@21
+kopi install CUSTOM-BUILD@17  # Case-insensitive
+kopi cache search company-jdk
+```
+
+Note: Custom distributions are normalized to lowercase for consistency.
 
 ### Project Version Files
 

@@ -1,3 +1,4 @@
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{Distribution, PackageType, Version};
 use std::str::FromStr;
@@ -10,10 +11,28 @@ pub struct ParsedVersionRequest {
     pub latest: bool,
 }
 
-pub struct VersionParser;
+pub struct VersionParser {
+    config: Option<KopiConfig>,
+}
 
 impl VersionParser {
+    pub fn new() -> Self {
+        Self { config: None }
+    }
+
+    pub fn with_config(config: KopiConfig) -> Self {
+        Self {
+            config: Some(config),
+        }
+    }
+
+    // Static parse method for backward compatibility
     pub fn parse(input: &str) -> Result<ParsedVersionRequest> {
+        let parser = Self::new();
+        parser.parse_with_config(input)
+    }
+
+    pub fn parse_with_config(&self, input: &str) -> Result<ParsedVersionRequest> {
         let trimmed = input.trim();
         if trimmed.is_empty() {
             return Err(KopiError::InvalidVersionFormat(
@@ -49,14 +68,21 @@ impl VersionParser {
             let version_part = parts.next().unwrap_or("");
 
             // For the @ format, we should only accept known distributions
-            if !Self::is_known_distribution(dist_part) {
+            if !self.is_known_distribution(dist_part) {
                 return Err(KopiError::InvalidVersionFormat(format!(
                     "Unknown distribution: {}",
                     dist_part
                 )));
             }
 
-            let dist = Distribution::from_str(dist_part).map_err(|_| {
+            // Normalize distribution name to lowercase for consistency with additional_distributions config
+            let normalized_dist = if self.is_default_distribution(dist_part) {
+                dist_part
+            } else {
+                &dist_part.to_lowercase()
+            };
+
+            let dist = Distribution::from_str(normalized_dist).map_err(|_| {
                 KopiError::InvalidVersionFormat(format!("Unknown distribution: {}", dist_part))
             })?;
 
@@ -83,9 +109,16 @@ impl VersionParser {
             (Some(dist), version_part)
         } else {
             // No @ symbol - check if it's a known distribution name
-            if Self::is_known_distribution(remaining) {
+            if self.is_known_distribution(remaining) {
                 // It's a distribution name without version
-                let dist = Distribution::from_str(remaining).map_err(|_| {
+                // Normalize distribution name to lowercase for consistency with additional_distributions config
+                let normalized_dist = if self.is_default_distribution(remaining) {
+                    remaining
+                } else {
+                    &remaining.to_lowercase()
+                };
+
+                let dist = Distribution::from_str(normalized_dist).map_err(|_| {
                     KopiError::InvalidVersionFormat(format!("Unknown distribution: {}", remaining))
                 })?;
                 return Ok(ParsedVersionRequest {
@@ -177,13 +210,7 @@ impl VersionParser {
         matches!(major, 8 | 11 | 17 | 21)
     }
 
-    fn is_known_distribution(name: &str) -> bool {
-        // First check if it looks like a version (starts with a digit)
-        if name.chars().next().is_some_and(|c| c.is_ascii_digit()) {
-            return false;
-        }
-
-        // Check against all known distributions from foojay.io
+    fn is_default_distribution(&self, name: &str) -> bool {
         matches!(
             name.to_lowercase().as_str(),
             "temurin"
@@ -219,6 +246,31 @@ impl VersionParser {
                 | "semeru_certified"
                 | "zulu_prime"
         )
+    }
+
+    fn is_known_distribution(&self, name: &str) -> bool {
+        // First check if it looks like a version (starts with a digit)
+        if name.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+            return false;
+        }
+
+        // Check against default known distributions
+        let is_default = self.is_default_distribution(name);
+
+        // If it's in the default list, return true
+        if is_default {
+            return true;
+        }
+
+        // Check against additional distributions from config
+        if let Some(config) = &self.config {
+            return config
+                .additional_distributions
+                .iter()
+                .any(|dist| dist.eq_ignore_ascii_case(name));
+        }
+
+        false
     }
 }
 
@@ -488,5 +540,66 @@ mod tests {
         assert_eq!(version.minor, 0);
         assert_eq!(version.patch, 21);
         assert_eq!(version.build, Some("9-LTS-3299655".to_string()));
+    }
+
+    #[test]
+    fn test_additional_distributions() {
+        use crate::config::new_kopi_config;
+        use std::fs;
+        use tempfile::TempDir;
+
+        // Create a temporary config with additional distributions
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            std::env::set_var("KOPI_HOME", temp_dir.path());
+        }
+
+        let config_content = r#"
+default_distribution = "temurin"
+additional_distributions = ["mycustom", "private-jdk", "company-build"]
+"#;
+        fs::write(temp_dir.path().join("config.toml"), config_content).unwrap();
+
+        let config = new_kopi_config().unwrap();
+        let parser = VersionParser::with_config(config);
+
+        // Test that custom distributions are recognized
+        let result = parser.parse_with_config("mycustom@21").unwrap();
+        assert_eq!(
+            result.distribution,
+            Some(Distribution::Other("mycustom".to_string()))
+        );
+        assert_eq!(result.version.unwrap().major, 21);
+
+        let result = parser.parse_with_config("private-jdk").unwrap();
+        assert_eq!(
+            result.distribution,
+            Some(Distribution::Other("private-jdk".to_string()))
+        );
+        assert_eq!(result.version, None);
+
+        // Test case insensitive matching
+        let result = parser.parse_with_config("COMPANY-BUILD@17.0.1").unwrap();
+        // The parser normalizes additional distributions to lowercase
+        assert_eq!(
+            result.distribution,
+            Some(Distribution::Other("company-build".to_string()))
+        );
+        assert_eq!(result.version.unwrap().major, 17);
+
+        // Test that unknown distributions still fail
+        let result = parser.parse_with_config("unknown-dist@21");
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Unknown distribution")
+        );
+
+        // Clean up
+        unsafe {
+            std::env::remove_var("KOPI_HOME");
+        }
     }
 }

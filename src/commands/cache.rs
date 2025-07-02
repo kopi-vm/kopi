@@ -166,7 +166,8 @@ fn search_cache(
     };
 
     // Parse the version string to check if distribution was specified
-    let parsed_request = match VersionParser::parse(&version_string) {
+    let parser = VersionParser::with_config(config.clone());
+    let parsed_request = match parser.parse_with_config(&version_string) {
         Ok(req) => req,
         Err(e) => {
             if json {
@@ -244,8 +245,8 @@ fn search_cache(
         }
     }
 
-    // Use the shared searcher
-    let searcher = PackageSearcher::new(Some(&cache));
+    // Use the shared searcher with config for additional distributions
+    let searcher = PackageSearcher::new(Some(&cache)).with_config(config.clone());
     let mut results = searcher.search_parsed(&parsed_request)?;
 
     // Apply LTS filtering if requested

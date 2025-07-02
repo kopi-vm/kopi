@@ -78,8 +78,12 @@ impl InstallCommand {
             force, dry_run, no_progress, timeout_secs, javafx_bundled
         );
 
+        // Load config to parse version with additional distributions support
+        let config = new_kopi_config()?;
+        let parser = VersionParser::with_config(config.clone());
+
         // Parse version specification
-        let version_request = VersionParser::parse(version_spec)?;
+        let version_request = parser.parse_with_config(version_spec)?;
         trace!("Parsed version request: {:?}", version_request);
 
         // Install command requires a specific version
@@ -91,9 +95,6 @@ impl InstallCommand {
 
         // Validate version semantics
         VersionParser::validate_version_semantics(version)?;
-
-        // Load config to get default distribution
-        let config = new_kopi_config()?;
 
         // Use default distribution from config if not specified
         let distribution = if let Some(dist) = version_request.distribution.clone() {

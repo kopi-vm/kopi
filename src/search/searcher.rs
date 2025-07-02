@@ -1,4 +1,5 @@
 use crate::cache::{DistributionCache, MetadataCache};
+use crate::config::KopiConfig;
 use crate::error::Result;
 use crate::models::jdk::{Distribution, JdkMetadata};
 use crate::platform::matches_foojay_libc_type;
@@ -9,6 +10,7 @@ use super::models::{PlatformFilter, SearchResult, SearchResultRef};
 pub struct PackageSearcher<'a> {
     cache: Option<&'a MetadataCache>,
     platform_filter: PlatformFilter,
+    config: Option<KopiConfig>,
 }
 
 impl<'a> PackageSearcher<'a> {
@@ -16,7 +18,13 @@ impl<'a> PackageSearcher<'a> {
         Self {
             cache,
             platform_filter: PlatformFilter::default(),
+            config: None,
         }
+    }
+
+    pub fn with_config(mut self, config: KopiConfig) -> Self {
+        self.config = Some(config);
+        self
     }
 
     pub fn with_platform_filter(mut self, filter: PlatformFilter) -> Self {
@@ -101,7 +109,12 @@ impl<'a> PackageSearcher<'a> {
     }
 
     pub fn search(&self, version_string: &str) -> Result<Vec<SearchResult>> {
-        let parsed_request = VersionParser::parse(version_string)?;
+        let parsed_request = if let Some(ref config) = self.config {
+            let parser = VersionParser::with_config(config.clone());
+            parser.parse_with_config(version_string)?
+        } else {
+            VersionParser::parse(version_string)?
+        };
         self.search_parsed(&parsed_request)
     }
 

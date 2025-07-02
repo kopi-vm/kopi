@@ -94,7 +94,6 @@ pub fn load_cache(path: &Path) -> Result<MetadataCache> {
     Ok(cache)
 }
 
-
 /// Get metadata with optional version check
 pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Result<MetadataCache> {
     let cache_path = config.metadata_cache_path()?;
