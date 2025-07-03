@@ -257,7 +257,7 @@ impl InstallCommand {
         let cache_path = config.metadata_cache_path()?;
         if cache_path.exists() {
             if let Ok(cache) = crate::cache::load_cache(&cache_path) {
-                let searcher = PackageSearcher::new(Some(&cache));
+                let searcher = PackageSearcher::new(&cache, &config);
                 if let Some(jdk_metadata) =
                     searcher.find_exact_package(distribution, &version.to_string(), &arch, &os)
                 {

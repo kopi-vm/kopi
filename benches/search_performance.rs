@@ -1,5 +1,6 @@
 use criterion::{Criterion, black_box};
 use kopi::cache::{DistributionCache, MetadataCache};
+use kopi::config::KopiConfig;
 use kopi::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
     PackageType, Version,
@@ -99,7 +100,8 @@ fn create_realistic_cache() -> MetadataCache {
 pub fn bench_search_performance(c: &mut Criterion) {
     let mut group = c.benchmark_group("search_performance");
     let cache = create_realistic_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = KopiConfig::new(std::env::temp_dir()).expect("Failed to create config");
+    let searcher = PackageSearcher::new(&cache, &config);
 
     // Benchmark simple version search
     group.bench_function("search_major_version", |b| {
@@ -135,7 +137,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
 
     group.bench_function("search_with_platform_filter", |b| {
         let searcher_with_filter =
-            PackageSearcher::new(Some(&cache)).with_platform_filter(platform_filter.clone());
+            PackageSearcher::new(&cache, &config).with_platform_filter(platform_filter.clone());
         b.iter(|| searcher_with_filter.search(black_box("21")))
     });
 

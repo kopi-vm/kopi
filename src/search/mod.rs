@@ -1,7 +1,3 @@
-use crate::cache::{MetadataCache, load_cache};
-use crate::config::KopiConfig;
-use crate::error::Result;
-
 mod models;
 mod searcher;
 
@@ -14,18 +10,3 @@ pub use searcher::PackageSearcher;
 
 // Re-export platform functions from the main platform module for convenience
 pub use crate::platform::{get_current_architecture, get_current_os, get_current_platform};
-
-pub fn create_searcher_with_cache(
-    config: &KopiConfig,
-) -> Result<(MetadataCache, PackageSearcher<'static>)> {
-    let cache_path = config.metadata_cache_path()?;
-
-    if !cache_path.exists() {
-        return Ok((MetadataCache::new(), PackageSearcher::new(None)));
-    }
-
-    let cache = load_cache(&cache_path)?;
-    // This is a bit tricky - we need to ensure the cache outlives the searcher
-    // In practice, the caller will need to manage this lifetime
-    Ok((cache, PackageSearcher::new(None)))
-}

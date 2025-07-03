@@ -1,10 +1,15 @@
 use kopi::cache::{DistributionCache, MetadataCache};
+use kopi::config::KopiConfig;
 use kopi::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
     PackageType, Version,
 };
 use kopi::search::{PackageSearcher, PlatformFilter};
 use std::time::Instant;
+
+fn create_test_config() -> KopiConfig {
+    KopiConfig::new(std::env::temp_dir()).expect("Failed to create test config")
+}
 
 /// Create a test cache for performance testing
 /// Optimized to use less data while still being representative
@@ -111,7 +116,8 @@ fn create_large_test_cache() -> MetadataCache {
 #[test]
 fn test_search_performance_by_version() {
     let cache = create_large_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     // Measure search performance for version search
     let start = Instant::now();
@@ -134,7 +140,8 @@ fn test_search_performance_by_version() {
 #[test]
 fn test_search_performance_by_distribution() {
     let cache = create_large_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     // Measure search performance for distribution search
     let start = Instant::now();
@@ -157,7 +164,8 @@ fn test_search_performance_by_distribution() {
 #[test]
 fn test_search_performance_latest() {
     let cache = create_large_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     // Measure search performance for latest versions
     let start = Instant::now();
@@ -184,12 +192,13 @@ fn test_search_performance_latest() {
 #[test]
 fn test_search_performance_with_platform_filter() {
     let cache = create_large_test_cache();
+    let config = create_test_config();
     let filter = PlatformFilter {
         architecture: Some("x64".to_string()),
         operating_system: Some("linux".to_string()),
         lib_c_type: Some("glibc".to_string()),
     };
-    let searcher = PackageSearcher::new(Some(&cache)).with_platform_filter(filter);
+    let searcher = PackageSearcher::new(&cache, &config).with_platform_filter(filter);
 
     // Measure search performance with platform filters
     let start = Instant::now();
@@ -215,7 +224,7 @@ fn test_search_performance_with_platform_filter() {
 #[test]
 fn test_search_memory_usage() {
     let cache = create_large_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let searcher = PackageSearcher::new(&cache, &config);
 
     // Get initial memory usage (approximate)
     let package_count: usize = cache.distributions.values().map(|d| d.packages.len()).sum();
@@ -242,7 +251,7 @@ fn test_display_rendering_performance() {
     use std::io::Write;
 
     let cache = create_large_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let searcher = PackageSearcher::new(&cache, &config);
 
     // Search for results
     let results = searcher.search("21").unwrap();
@@ -292,7 +301,7 @@ fn test_real_cache_performance() {
     }
 
     let cache = load_cache(&cache_path).unwrap();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let searcher = PackageSearcher::new(&cache, &config);
 
     // Benchmark common search patterns
     let queries = vec!["21", "17", "corretto", "temurin@21", "latest"];

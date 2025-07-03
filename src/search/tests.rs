@@ -1,6 +1,6 @@
 use super::*;
 use crate::cache::{DistributionCache, MetadataCache};
-use crate::config::new_kopi_config;
+use crate::config::{KopiConfig, new_kopi_config};
 use crate::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
     PackageType, Version,
@@ -8,8 +8,11 @@ use crate::models::jdk::{
 use crate::version::parser::ParsedVersionRequest;
 use std::str::FromStr;
 
+fn create_test_config() -> KopiConfig {
+    KopiConfig::new(std::env::temp_dir()).expect("Failed to create test config")
+}
+
 fn create_test_cache() -> MetadataCache {
-    let _config = new_kopi_config().unwrap();
     let mut cache = MetadataCache::new();
 
     let mut packages = Vec::new();
@@ -68,7 +71,8 @@ fn create_test_cache() -> MetadataCache {
 #[test]
 fn test_search_by_major_version() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let results = searcher.search("21").unwrap();
     assert_eq!(results.len(), 1);
@@ -78,7 +82,8 @@ fn test_search_by_major_version() {
 #[test]
 fn test_search_with_distribution() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let results = searcher.search("temurin@17").unwrap();
     assert_eq!(results.len(), 1);
@@ -89,12 +94,13 @@ fn test_search_with_distribution() {
 #[test]
 fn test_search_with_platform_filter() {
     let cache = create_test_cache();
+    let config = create_test_config();
     let filter = PlatformFilter {
         architecture: Some("x64".to_string()),
         operating_system: Some("linux".to_string()),
         lib_c_type: Some("glibc".to_string()),
     };
-    let searcher = PackageSearcher::new(Some(&cache)).with_platform_filter(filter);
+    let searcher = PackageSearcher::new(&cache, &config).with_platform_filter(filter);
 
     let results = searcher.search("17").unwrap();
     assert_eq!(results.len(), 1);
@@ -103,7 +109,8 @@ fn test_search_with_platform_filter() {
 #[test]
 fn test_find_exact_package() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let package = searcher.find_exact_package(&Distribution::Temurin, "21.0.1", "x64", "linux");
 
@@ -114,7 +121,8 @@ fn test_find_exact_package() {
 #[test]
 fn test_search_distribution_only() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let parsed_request = ParsedVersionRequest {
         version: None,
@@ -131,7 +139,8 @@ fn test_search_distribution_only() {
 #[test]
 fn test_search_latest() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let parsed_request = ParsedVersionRequest {
         version: None,
@@ -148,7 +157,8 @@ fn test_search_latest() {
 #[test]
 fn test_search_latest_with_distribution() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let parsed_request = ParsedVersionRequest {
         version: None,
@@ -166,7 +176,8 @@ fn test_search_latest_with_distribution() {
 #[test]
 fn test_search_with_package_type_filter() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let parsed_request = ParsedVersionRequest {
         version: None,
@@ -185,7 +196,9 @@ fn test_search_with_package_type_filter() {
 
 #[test]
 fn test_search_no_cache() {
-    let searcher = PackageSearcher::new(None);
+    let config = create_test_config();
+    let cache = MetadataCache::new();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let results = searcher.search("21").unwrap();
     assert_eq!(results.len(), 0);
@@ -194,7 +207,8 @@ fn test_search_no_cache() {
 #[test]
 fn test_search_invalid_version() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let result = searcher.search("invalid@version@format");
     assert!(result.is_err());
@@ -203,7 +217,8 @@ fn test_search_invalid_version() {
 #[test]
 fn test_search_non_existent_distribution() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let results = searcher.search("corretto@21").unwrap();
     assert_eq!(results.len(), 0);
@@ -212,7 +227,8 @@ fn test_search_non_existent_distribution() {
 #[test]
 fn test_search_non_existent_version() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let results = searcher.search("99").unwrap();
     assert_eq!(results.len(), 0);
@@ -221,12 +237,13 @@ fn test_search_non_existent_version() {
 #[test]
 fn test_platform_filter_no_match() {
     let cache = create_test_cache();
+    let config = create_test_config();
     let filter = PlatformFilter {
         architecture: Some("arm64".to_string()),
         operating_system: Some("linux".to_string()),
         lib_c_type: Some("glibc".to_string()),
     };
-    let searcher = PackageSearcher::new(Some(&cache)).with_platform_filter(filter);
+    let searcher = PackageSearcher::new(&cache, &config).with_platform_filter(filter);
 
     let results = searcher.search("21").unwrap();
     assert_eq!(results.len(), 0);
@@ -235,12 +252,13 @@ fn test_platform_filter_no_match() {
 #[test]
 fn test_platform_filter_lib_c_mismatch() {
     let cache = create_test_cache();
+    let config = create_test_config();
     let filter = PlatformFilter {
         architecture: Some("x64".to_string()),
         operating_system: Some("linux".to_string()),
         lib_c_type: Some("musl".to_string()),
     };
-    let searcher = PackageSearcher::new(Some(&cache)).with_platform_filter(filter);
+    let searcher = PackageSearcher::new(&cache, &config).with_platform_filter(filter);
 
     let results = searcher.search("21").unwrap();
     assert_eq!(results.len(), 0);
@@ -249,6 +267,7 @@ fn test_platform_filter_lib_c_mismatch() {
 #[test]
 fn test_platform_filter_missing_lib_c() {
     let mut cache = create_test_cache();
+    let config = create_test_config();
 
     // Add a package without lib_c_type
     if let Some(dist_cache) = cache.distributions.get_mut("temurin") {
@@ -263,7 +282,7 @@ fn test_platform_filter_missing_lib_c() {
         operating_system: None,
         lib_c_type: Some("glibc".to_string()),
     };
-    let searcher = PackageSearcher::new(Some(&cache)).with_platform_filter(filter);
+    let searcher = PackageSearcher::new(&cache, &config).with_platform_filter(filter);
 
     let results = searcher.search("21").unwrap();
     // Should only find the package with lib_c_type
@@ -274,7 +293,8 @@ fn test_platform_filter_missing_lib_c() {
 #[test]
 fn test_find_auto_selected_package_single_match() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let package =
         searcher.find_auto_selected_package(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
@@ -286,6 +306,7 @@ fn test_find_auto_selected_package_single_match() {
 #[test]
 fn test_find_auto_selected_package_multiple_packages() {
     let mut cache = create_test_cache();
+    let config = create_test_config();
 
     // Add JRE package with same version
     if let Some(dist_cache) = cache.distributions.get_mut("temurin") {
@@ -295,7 +316,7 @@ fn test_find_auto_selected_package_multiple_packages() {
         dist_cache.packages.push(jre_package);
     }
 
-    let searcher = PackageSearcher::new(Some(&cache));
+    let searcher = PackageSearcher::new(&cache, &config);
 
     // Should prefer JDK over JRE
     let package =
@@ -308,6 +329,7 @@ fn test_find_auto_selected_package_multiple_packages() {
 #[test]
 fn test_find_auto_selected_package_with_requested_type() {
     let mut cache = create_test_cache();
+    let config = create_test_config();
 
     // Add JRE package
     if let Some(dist_cache) = cache.distributions.get_mut("temurin") {
@@ -317,7 +339,7 @@ fn test_find_auto_selected_package_with_requested_type() {
         dist_cache.packages.push(jre_package);
     }
 
-    let searcher = PackageSearcher::new(Some(&cache));
+    let searcher = PackageSearcher::new(&cache, &config);
 
     // Request JRE specifically
     let package = searcher.find_auto_selected_package(
@@ -335,7 +357,8 @@ fn test_find_auto_selected_package_with_requested_type() {
 #[test]
 fn test_search_refs_produces_same_results() {
     let cache = create_test_cache();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let parsed_request = ParsedVersionRequest {
         version: None,
@@ -359,7 +382,8 @@ fn test_search_refs_produces_same_results() {
 fn test_empty_cache() {
     let _config = new_kopi_config().unwrap();
     let cache = MetadataCache::new();
-    let searcher = PackageSearcher::new(Some(&cache));
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
 
     let results = searcher.search("21").unwrap();
     assert_eq!(results.len(), 0);
@@ -371,6 +395,7 @@ fn test_empty_cache() {
 #[test]
 fn test_latest_with_version_filter() {
     let mut cache = create_test_cache();
+    let config = create_test_config();
 
     // Add more versions
     if let Some(dist_cache) = cache.distributions.get_mut("temurin") {
@@ -387,7 +412,7 @@ fn test_latest_with_version_filter() {
         dist_cache.packages.push(v22);
     }
 
-    let searcher = PackageSearcher::new(Some(&cache));
+    let searcher = PackageSearcher::new(&cache, &config);
 
     // Request latest with version filter
     let parsed_request = ParsedVersionRequest {

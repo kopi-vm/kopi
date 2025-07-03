@@ -8,23 +8,18 @@ use crate::version::parser::{ParsedVersionRequest, VersionParser};
 use super::models::{PlatformFilter, SearchResult, SearchResultRef};
 
 pub struct PackageSearcher<'a> {
-    cache: Option<&'a MetadataCache>,
+    cache: &'a MetadataCache,
     platform_filter: PlatformFilter,
-    config: Option<KopiConfig>,
+    config: &'a KopiConfig,
 }
 
 impl<'a> PackageSearcher<'a> {
-    pub fn new(cache: Option<&'a MetadataCache>) -> Self {
+    pub fn new(cache: &'a MetadataCache, config: &'a KopiConfig) -> Self {
         Self {
             cache,
             platform_filter: PlatformFilter::default(),
-            config: None,
+            config,
         }
-    }
-
-    pub fn with_config(mut self, config: KopiConfig) -> Self {
-        self.config = Some(config);
-        self
     }
 
     pub fn with_platform_filter(mut self, filter: PlatformFilter) -> Self {
@@ -41,10 +36,7 @@ impl<'a> PackageSearcher<'a> {
         'a: 'b,
         F: Fn(&'b str, &'b DistributionCache, &'b JdkMetadata) -> R,
     {
-        let cache = match self.cache {
-            Some(cache) => cache,
-            None => return Ok(Vec::new()),
-        };
+        let cache = self.cache;
 
         let mut results = Vec::new();
 
@@ -109,22 +101,8 @@ impl<'a> PackageSearcher<'a> {
     }
 
     pub fn search(&self, version_string: &str) -> Result<Vec<SearchResult>> {
-        let parsed_request = match &self.config {
-            Some(config) => {
-                let parser = VersionParser::new(config);
-                parser.parse(version_string)?
-            }
-            None => {
-                // When no config is provided, use a default config
-                use crate::config::new_kopi_config;
-                let config = new_kopi_config().unwrap_or_else(|_| {
-                    // If we can't load config, create a minimal one
-                    KopiConfig::new(std::env::temp_dir()).unwrap()
-                });
-                let parser = VersionParser::new(&config);
-                parser.parse(version_string)?
-            }
-        };
+        let parser = VersionParser::new(self.config);
+        let parsed_request = parser.parse(version_string)?;
         self.search_parsed(&parsed_request)
     }
 
@@ -175,7 +153,7 @@ impl<'a> PackageSearcher<'a> {
         architecture: &str,
         operating_system: &str,
     ) -> Option<JdkMetadata> {
-        let cache = self.cache?;
+        let cache = self.cache;
 
         // Look up distribution by its API name
         let dist_cache = cache.distributions.get(distribution.id())?;
@@ -200,7 +178,7 @@ impl<'a> PackageSearcher<'a> {
         operating_system: &str,
         requested_package_type: Option<crate::models::jdk::PackageType>,
     ) -> Option<JdkMetadata> {
-        let cache = self.cache?;
+        let cache = self.cache;
 
         // Look up distribution by its API name
         let dist_cache = cache.distributions.get(distribution.id())?;

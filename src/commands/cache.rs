@@ -243,7 +243,7 @@ fn search_cache(
     }
 
     // Use the shared searcher with config for additional distributions
-    let searcher = PackageSearcher::new(Some(&cache)).with_config(config.clone());
+    let searcher = PackageSearcher::new(&cache, &config);
     let mut results = searcher.search_parsed(&parsed_request)?;
 
     // Apply LTS filtering if requested
