@@ -172,7 +172,7 @@ fn test_storage_installation_workflow() {
 
     let temp_home = tempdir().unwrap();
     let config = KopiConfig::new(temp_home.path().to_path_buf()).unwrap();
-    let storage = JdkRepository::new(config);
+    let storage = JdkRepository::new(&config);
     let distribution = Distribution::Temurin;
 
     // Prepare installation
@@ -270,7 +270,7 @@ fn test_concurrent_installation_safety() {
 
     let temp_home = tempdir().unwrap();
     let config = KopiConfig::new(temp_home.path().to_path_buf()).unwrap();
-    let storage = Arc::new(JdkRepository::new(config));
+    let storage = Arc::new(JdkRepository::new(&config));
     let distribution = Distribution::Temurin;
 
     let mut handles = vec![];
@@ -321,7 +321,7 @@ fn test_disk_space_simulation() {
     // In a real integration test, we'd need to mock the filesystem
     let temp_home = tempdir().unwrap();
     let config = KopiConfig::new(temp_home.path().to_path_buf()).unwrap();
-    let storage = JdkRepository::new(config);
+    let storage = JdkRepository::new(&config);
     let distribution = Distribution::Temurin;
 
     // The disk space check should pass on most systems

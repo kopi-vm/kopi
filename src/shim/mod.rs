@@ -27,7 +27,7 @@ pub fn run_shim() -> Result<()> {
 
     // Find JDK installation
     let config = new_kopi_config()?;
-    let repository = JdkRepository::new(config);
+    let repository = JdkRepository::new(&config);
     let jdk_path = find_jdk_installation(&repository, &version_request)?;
     log::debug!("JDK path: {jdk_path:?}");
 
@@ -206,7 +206,7 @@ mod tests {
     fn test_find_jdk_installation_not_found() {
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let repository = JdkRepository::new(config);
+        let repository = JdkRepository::new(&config);
 
         let version_request =
             VersionRequest::new("99".to_string()).with_distribution("nonexistent".to_string());

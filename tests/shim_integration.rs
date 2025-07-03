@@ -155,7 +155,7 @@ fn test_jdk_path_resolution() {
 
     // Test repository listing
     let config = KopiConfig::new(kopi_home.to_path_buf()).unwrap();
-    let repository = JdkRepository::new(config);
+    let repository = JdkRepository::new(&config);
     let installed_jdks = repository.list_installed_jdks().unwrap();
 
     assert_eq!(installed_jdks.len(), 1);

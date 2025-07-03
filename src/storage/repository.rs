@@ -8,12 +8,12 @@ use crate::storage::listing::{InstalledJdk, JdkLister};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub struct JdkRepository {
-    config: KopiConfig,
+pub struct JdkRepository<'a> {
+    config: &'a KopiConfig,
 }
 
-impl JdkRepository {
-    pub fn new(config: KopiConfig) -> Self {
+impl<'a> JdkRepository<'a> {
+    pub fn new(config: &'a KopiConfig) -> Self {
         Self { config }
     }
 
@@ -85,16 +85,30 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    fn create_test_storage_manager() -> (JdkRepository, TempDir) {
-        let temp_dir = TempDir::new().unwrap();
-        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let manager = JdkRepository::new(config);
-        (manager, temp_dir)
+    struct TestStorage {
+        config: KopiConfig,
+        _temp_dir: TempDir,
+    }
+
+    impl TestStorage {
+        fn new() -> Self {
+            let temp_dir = TempDir::new().unwrap();
+            let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+            TestStorage {
+                config,
+                _temp_dir: temp_dir,
+            }
+        }
+
+        fn manager(&self) -> JdkRepository {
+            JdkRepository::new(&self.config)
+        }
     }
 
     #[test]
     fn test_jdk_install_path() {
-        let (manager, _temp) = create_test_storage_manager();
+        let test_storage = TestStorage::new();
+        let manager = test_storage.manager();
         let distribution = Distribution::Temurin;
 
         let path = manager
@@ -105,7 +119,8 @@ mod tests {
 
     #[test]
     fn test_remove_jdk_security() {
-        let (manager, _temp) = create_test_storage_manager();
+        let test_storage = TestStorage::new();
+        let manager = test_storage.manager();
 
         let result = manager.remove_jdk(Path::new("/etc/passwd"));
         assert!(result.is_err());
@@ -127,7 +142,7 @@ min_disk_space_mb = 1024
         .unwrap();
 
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let manager = JdkRepository::new(config);
+        let manager = JdkRepository::new(&config);
         assert_eq!(manager.config.storage.min_disk_space_mb, 1024);
     }
 
@@ -136,7 +151,7 @@ min_disk_space_mb = 1024
         let temp_dir = TempDir::new().unwrap();
 
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let manager = JdkRepository::new(config);
+        let manager = JdkRepository::new(&config);
         assert_eq!(manager.config.storage.min_disk_space_mb, 500);
     }
 }

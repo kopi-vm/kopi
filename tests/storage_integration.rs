@@ -5,11 +5,24 @@ use kopi::storage::JdkRepository;
 use std::fs;
 use tempfile::TempDir;
 
-fn create_test_storage_manager() -> (JdkRepository, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
-    let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-    let manager = JdkRepository::new(config);
-    (manager, temp_dir)
+struct TestStorage {
+    config: KopiConfig,
+    _temp_dir: TempDir,
+}
+
+impl TestStorage {
+    fn new() -> Self {
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        TestStorage {
+            config,
+            _temp_dir: temp_dir,
+        }
+    }
+
+    fn manager(&self) -> JdkRepository {
+        JdkRepository::new(&self.config)
+    }
 }
 
 fn create_test_package() -> Package {
@@ -42,7 +55,8 @@ fn create_test_package() -> Package {
 
 #[test]
 fn test_full_installation_workflow() {
-    let (manager, _temp) = create_test_storage_manager();
+    let test_storage = TestStorage::new();
+    let manager = test_storage.manager();
     let distribution = Distribution::Temurin;
     let version = "21.0.1+35.1";
 
@@ -76,7 +90,8 @@ fn test_full_installation_workflow() {
 
 #[test]
 fn test_failed_installation_cleanup() {
-    let (manager, _temp) = create_test_storage_manager();
+    let test_storage = TestStorage::new();
+    let manager = test_storage.manager();
     let distribution = Distribution::Corretto;
     let version = "17.0.9";
 
@@ -95,7 +110,8 @@ fn test_failed_installation_cleanup() {
 
 #[test]
 fn test_multiple_jdk_installations() {
-    let (manager, _temp) = create_test_storage_manager();
+    let test_storage = TestStorage::new();
+    let manager = test_storage.manager();
 
     let installations = vec![
         (Distribution::Temurin, "21.0.1"),
@@ -119,7 +135,8 @@ fn test_multiple_jdk_installations() {
 
 #[test]
 fn test_jdk_removal() {
-    let (manager, _temp) = create_test_storage_manager();
+    let test_storage = TestStorage::new();
+    let manager = test_storage.manager();
     let distribution = Distribution::Temurin;
     let version = "21.0.1";
 
@@ -140,7 +157,8 @@ fn test_jdk_removal() {
 
 #[test]
 fn test_archive_with_single_directory() {
-    let (manager, _temp) = create_test_storage_manager();
+    let test_storage = TestStorage::new();
+    let manager = test_storage.manager();
     let distribution = Distribution::Temurin;
     let version = "21.0.1";
 

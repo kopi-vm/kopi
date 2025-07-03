@@ -14,19 +14,13 @@ use std::str::FromStr;
 
 pub struct InstallCommand {
     api_client: ApiClient,
-    storage_manager: JdkRepository,
 }
 
 impl InstallCommand {
     pub fn new() -> Result<Self> {
-        let config = new_kopi_config()?;
-        let storage_manager = JdkRepository::new(config);
         let api_client = ApiClient::new();
 
-        Ok(Self {
-            api_client,
-            storage_manager,
-        })
+        Ok(Self { api_client })
     }
 
     fn get_current_architecture(&self) -> String {
@@ -111,10 +105,12 @@ impl InstallCommand {
         trace!("Found package: {package:?}");
         let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
 
+        // Create storage manager with config
+        let repository = JdkRepository::new(&config);
+
         // Check if already installed using the actual distribution_version
-        let installation_dir = self
-            .storage_manager
-            .jdk_install_path(&distribution, &jdk_metadata.distribution_version)?;
+        let installation_dir =
+            repository.jdk_install_path(&distribution, &jdk_metadata.distribution_version)?;
 
         if dry_run {
             println!(
@@ -188,13 +184,13 @@ impl InstallCommand {
         // Prepare installation context
         let context = if force && installation_dir.exists() {
             // Remove existing installation first
-            self.storage_manager.remove_jdk(&installation_dir)?;
-            self.storage_manager.prepare_jdk_installation(
+            repository.remove_jdk(&installation_dir)?;
+            repository.prepare_jdk_installation(
                 &distribution,
                 &jdk_metadata_with_checksum.distribution_version,
             )?
         } else {
-            self.storage_manager.prepare_jdk_installation(
+            repository.prepare_jdk_installation(
                 &distribution,
                 &jdk_metadata_with_checksum.distribution_version,
             )?
@@ -208,11 +204,11 @@ impl InstallCommand {
 
         // Finalize installation
         debug!("Finalizing installation");
-        let final_path = self.storage_manager.finalize_installation(context)?;
+        let final_path = repository.finalize_installation(context)?;
         info!("JDK installed to {final_path:?}");
 
         // Save metadata JSON file
-        self.storage_manager.save_jdk_metadata(
+        repository.save_jdk_metadata(
             &distribution,
             &jdk_metadata_with_checksum.distribution_version,
             &package,
