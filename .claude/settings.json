@@ -17,12 +17,19 @@
       "Bash(tree:*)",
       "Bash(ls:*)",
       "Bash(jq:*)",
+      "Bash(rg:*)",
       "Bash(cat:*)",
       "Bash(rustc:*)",
       "Bash(kill:*)",
       "Bash(chmod:*)",
       "Bash(sccache:*)"
     ],
-    "deny": []
+    "deny": [
+      "Bash(sudo:*)",
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git reset:*)",
+      "Bash(git rebase:*)"
+    ]
   }
 }
