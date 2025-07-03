@@ -224,6 +224,7 @@ fn test_search_performance_with_platform_filter() {
 #[test]
 fn test_search_memory_usage() {
     let cache = create_large_test_cache();
+    let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
 
     // Get initial memory usage (approximate)
@@ -251,6 +252,7 @@ fn test_display_rendering_performance() {
     use std::io::Write;
 
     let cache = create_large_test_cache();
+    let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
 
     // Search for results

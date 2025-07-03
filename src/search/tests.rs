@@ -1,6 +1,6 @@
 use super::*;
 use crate::cache::{DistributionCache, MetadataCache};
-use crate::config::{KopiConfig, new_kopi_config};
+use crate::config::KopiConfig;
 use crate::models::jdk::{
     Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
     PackageType, Version,
@@ -380,7 +380,6 @@ fn test_search_refs_produces_same_results() {
 
 #[test]
 fn test_empty_cache() {
-    let _config = new_kopi_config().unwrap();
     let cache = MetadataCache::new();
     let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);

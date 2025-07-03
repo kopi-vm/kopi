@@ -269,18 +269,18 @@ fn test_concurrent_installation_safety() {
     use std::thread;
 
     let temp_home = tempdir().unwrap();
-    let config = KopiConfig::new(temp_home.path().to_path_buf()).unwrap();
-    let storage = Arc::new(JdkRepository::new(&config));
+    let config = Arc::new(KopiConfig::new(temp_home.path().to_path_buf()).unwrap());
     let distribution = Distribution::Temurin;
 
     let mut handles = vec![];
 
     // Try to install the same JDK from multiple threads
     for i in 0..3 {
-        let storage = storage.clone();
+        let config = config.clone();
         let dist = distribution.clone();
 
         let handle = thread::spawn(move || {
+            let storage = JdkRepository::new(&config);
             let result = storage.prepare_jdk_installation(&dist, "21.0.1+35.1");
 
             if let Ok(context) = result {
@@ -309,6 +309,7 @@ fn test_concurrent_installation_safety() {
     assert_eq!(successes, 1);
 
     // Verify the JDK was installed
+    let storage = JdkRepository::new(&config);
     let installed = storage.list_installed_jdks().unwrap();
     assert_eq!(installed.len(), 1);
 }
