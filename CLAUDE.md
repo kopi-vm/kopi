@@ -303,3 +303,14 @@ fn test_parse_foojay_api_response() {
     assert_eq!(packages[0].distribution, "temurin");
 }
 ```
+
+### Avoid Generic "Manager" Naming
+- When the name "manager" appears in file names, structs, traits, or similar constructs, consider more specific and descriptive alternatives
+- "Manager" is often too abstract and doesn't clearly communicate the responsibility
+- Choose names that describe what the component actually does
+- Examples of better alternatives:
+  - `FileManager` → `FileSystem`, `FileStore`, `FileRepository`
+  - `ConnectionManager` → `ConnectionPool`, `ConnectionFactory`
+  - `TaskManager` → `TaskScheduler`, `TaskExecutor`, `TaskQueue`
+  - `ShimManager` → `ShimInstaller`, `ShimRegistry`, `ShimProvisioner`
+- This principle helps maintain code clarity and makes the codebase more intuitive
