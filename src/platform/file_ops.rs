@@ -2,7 +2,6 @@
 
 use std::path::Path;
 
-#[cfg(unix)]
 use std::fs;
 
 #[cfg(unix)]
@@ -41,6 +40,25 @@ pub fn is_executable(path: &Path) -> std::io::Result<bool> {
 pub fn is_executable(path: &Path) -> std::io::Result<bool> {
     // On Windows, check for .exe extension
     Ok(path.extension().map(|ext| ext == "exe").unwrap_or(false))
+}
+
+/// Set file permissions from a Unix mode value.
+///
+/// On Unix systems, this sets the file permissions to the specified mode.
+/// On Windows, this is a no-op as Windows doesn't use Unix-style permissions.
+///
+/// This is useful when extracting files from archives that preserve Unix permissions.
+#[cfg(unix)]
+pub fn set_permissions_from_mode(path: &Path, mode: u32) -> std::io::Result<()> {
+    use std::fs::Permissions;
+    fs::set_permissions(path, Permissions::from_mode(mode))
+}
+
+/// Set file permissions from a Unix mode value (Windows - no-op)
+#[cfg(windows)]
+pub fn set_permissions_from_mode(_path: &Path, _mode: u32) -> std::io::Result<()> {
+    // Windows doesn't use Unix-style permissions
+    Ok(())
 }
 
 /// Atomically rename a file from source to destination.

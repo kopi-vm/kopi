@@ -1,4 +1,5 @@
 use crate::error::{KopiError, Result};
+use crate::platform::file_ops;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -175,13 +176,9 @@ fn extract_zip(archive_path: &Path, destination: &Path) -> Result<()> {
             std::io::copy(&mut file, &mut outfile)?;
         }
 
-        // Set permissions on Unix systems
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            if let Some(mode) = file.unix_mode() {
-                fs::set_permissions(&outpath, fs::Permissions::from_mode(mode))?;
-            }
+        // Set permissions from archive metadata
+        if let Some(mode) = file.unix_mode() {
+            file_ops::set_permissions_from_mode(&outpath, mode)?;
         }
 
         // Log extraction progress for large archives
