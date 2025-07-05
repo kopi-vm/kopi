@@ -1,5 +1,5 @@
 use kopi::models::jdk::Distribution;
-use kopi::platform::shell::{self as shim_platform, Shell};
+use kopi::platform::shell::{self as shim_platform};
 use kopi::shim::installer::ShimInstaller;
 use kopi::shim::tools::{ToolRegistry, default_shim_tools};
 use serial_test::serial;
@@ -411,18 +411,6 @@ fn test_platform_shell_detection() {
     // Should return some shell
     let shell_name = shell.get_shell_name();
     assert!(!shell_name.is_empty());
-}
-
-#[test]
-fn test_path_instructions_generation() {
-    let shims_dir = Path::new("/home/user/.kopi/shims");
-    let shell = Shell::Bash;
-
-    let instructions = shell.generate_path_instructions(shims_dir);
-
-    // Verify instructions contain the path
-    assert!(instructions.contains("/home/user/.kopi/shims"));
-    assert!(instructions.contains("export PATH="));
 }
 
 #[test]

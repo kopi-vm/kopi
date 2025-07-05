@@ -114,70 +114,6 @@ impl Shell {
             Shell::Unknown(name) => name,
         }
     }
-
-    /// Generate PATH update instructions for this shell
-    pub fn generate_path_instructions(&self, shims_dir: &Path) -> String {
-        let shims_path = shims_dir.to_string_lossy();
-
-        match self {
-            Shell::Bash | Shell::Zsh => {
-                format!(
-                    r#"# Add Kopi shims to PATH
-export PATH="{}:$PATH"
-
-# To make this permanent, add the above line to your {}
-"#,
-                    shims_path,
-                    self.get_config_file()
-                        .map(|p| p.to_string_lossy().to_string())
-                        .unwrap_or_else(|| format!("~/.{}", self.get_shell_name()))
-                )
-            }
-            Shell::Fish => {
-                format!(
-                    r#"# Add Kopi shims to PATH
-set -gx PATH {shims_path} $PATH
-
-# To make this permanent, add the above line to ~/.config/fish/config.fish
-"#
-                )
-            }
-            Shell::PowerShell => {
-                format!(
-                    r#"# Add Kopi shims to PATH
-$env:Path = "{shims_path};$env:Path"
-
-# To make this permanent, add the following to your PowerShell profile:
-# $env:Path = "{shims_path};$env:Path"
-#
-# You can edit your profile by running:
-# notepad $PROFILE
-"#
-                )
-            }
-            Shell::Cmd => {
-                format!(
-                    r#"REM Add Kopi shims to PATH temporarily
-set PATH={shims_path};%PATH%
-
-REM To make this permanent, use the System Properties dialog:
-REM 1. Right-click "This PC" or "My Computer"
-REM 2. Click "Properties" -> "Advanced system settings"
-REM 3. Click "Environment Variables"
-REM 4. Edit the PATH variable and add: {shims_path}
-"#
-                )
-            }
-            Shell::Unknown(_) => {
-                format!(
-                    r#"# Add Kopi shims to PATH
-# Add this line to your shell configuration file:
-export PATH="{shims_path}:$PATH"
-"#
-                )
-            }
-        }
-    }
 }
 
 /// Check if a directory is in PATH
@@ -245,21 +181,6 @@ mod tests {
                 env::remove_var("HOME");
             }
         }
-    }
-
-    #[test]
-    fn test_path_instructions() {
-        let shims_dir = Path::new("/home/user/.kopi/shims");
-
-        let bash_instructions = Shell::Bash.generate_path_instructions(shims_dir);
-        assert!(bash_instructions.contains("export PATH="));
-        assert!(bash_instructions.contains("/home/user/.kopi/shims"));
-
-        let fish_instructions = Shell::Fish.generate_path_instructions(shims_dir);
-        assert!(fish_instructions.contains("set -gx PATH"));
-
-        let ps_instructions = Shell::PowerShell.generate_path_instructions(shims_dir);
-        assert!(ps_instructions.contains("$env:Path"));
     }
 
     #[test]
