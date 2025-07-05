@@ -13,6 +13,14 @@ pub mod version_resolver;
 
 use version_resolver::VersionResolver;
 
+/// Run the shim with the provided arguments
+/// Returns the exit code
+pub fn run(_args: Vec<String>) -> Result<i32> {
+    // The shim implementation doesn't need the args vector since it reads from env::args_os()
+    run_shim()?;
+    Ok(0)
+}
+
 pub fn run_shim() -> Result<()> {
     let start = std::time::Instant::now();
 

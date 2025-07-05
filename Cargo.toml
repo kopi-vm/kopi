@@ -86,5 +86,9 @@ serial_test = "3.2.0"
 name = "kopi_bench"
 harness = false
 
+[[bin]]
+name = "kopi-shim"
+path = "src/bin/kopi-shim.rs"
+
 [lints.rust]
 unused_variables = "deny"

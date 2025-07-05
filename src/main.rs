@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand};
 use kopi::commands::cache::CacheCommand;
 use kopi::commands::install::InstallCommand;
+use kopi::commands::setup::SetupCommand;
+use kopi::commands::shim::ShimCommand;
 use kopi::error::{Result, format_error_chain, get_exit_code};
 
 #[derive(Parser)]
@@ -124,6 +126,19 @@ enum Commands {
         #[arg(long)]
         javafx_bundled: bool,
     },
+
+    /// Initial setup and configuration
+    Setup {
+        /// Force recreation of shims even if they exist
+        #[arg(short, long)]
+        force: bool,
+    },
+
+    /// Manage tool shims
+    Shim {
+        #[command(subcommand)]
+        command: ShimCommand,
+    },
 }
 
 fn setup_logger(cli: &Cli) {
@@ -221,6 +236,11 @@ fn main() {
                 };
                 cache_cmd.execute()
             }
+            Commands::Setup { force } => {
+                let command = SetupCommand::new()?;
+                command.execute(force)
+            }
+            Commands::Shim { command } => command.execute(),
         }
     })();
 

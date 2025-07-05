@@ -12,6 +12,7 @@ const DEFAULT_MIN_DISK_SPACE_MB: u64 = 500;
 const JDKS_DIR_NAME: &str = "jdks";
 const CACHE_DIR_NAME: &str = "cache";
 const BIN_DIR_NAME: &str = "bin";
+const SHIMS_DIR_NAME: &str = "shims";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KopiConfig {
@@ -147,11 +148,20 @@ impl KopiConfig {
         Ok(dir)
     }
 
-    /// Get the bin directory path for shims and create it if it doesn't exist
+    /// Get the bin directory path for kopi binary and create it if it doesn't exist
     pub fn bin_dir(&self) -> Result<PathBuf> {
         let dir = self.kopi_home.join(BIN_DIR_NAME);
         fs::create_dir_all(&dir)
             .map_err(|e| KopiError::ConfigError(format!("Failed to create bin directory: {e}")))?;
+        Ok(dir)
+    }
+
+    /// Get the shims directory path and create it if it doesn't exist
+    pub fn shims_dir(&self) -> Result<PathBuf> {
+        let dir = self.kopi_home.join(SHIMS_DIR_NAME);
+        fs::create_dir_all(&dir).map_err(|e| {
+            KopiError::ConfigError(format!("Failed to create shims directory: {e}"))
+        })?;
         Ok(dir)
     }
 
