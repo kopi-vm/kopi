@@ -652,7 +652,29 @@ fn test_download_connection_reset() {
                 is_connection_error = is_connection_io_error(io_error);
             }
 
-            // If not found in KopiError::Io, check the error chain for IO errors
+            // Check if it's a KopiError::Http variant (attohttpc errors often wrap IO errors)
+            if !is_connection_error {
+                if let kopi::error::KopiError::Http(_) = &e {
+                    // For Http errors, we need to check the error chain for IO errors
+                    let mut error_chain: &dyn std::error::Error = &e;
+                    loop {
+                        if let Some(io_error) = error_chain.downcast_ref::<std::io::Error>() {
+                            if is_connection_io_error(io_error) {
+                                is_connection_error = true;
+                                break;
+                            }
+                        }
+
+                        // Move to the next error in the chain
+                        match error_chain.source() {
+                            Some(source) => error_chain = source,
+                            None => break,
+                        }
+                    }
+                }
+            }
+
+            // If still not found, check the entire error chain for IO errors
             if !is_connection_error {
                 let mut error_chain: &dyn std::error::Error = &e;
                 loop {
