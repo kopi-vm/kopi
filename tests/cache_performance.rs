@@ -293,6 +293,7 @@ fn test_display_rendering_performance() {
 #[test]
 fn test_real_cache_performance() {
     use kopi::cache::load_cache;
+    use kopi::config::new_kopi_config;
 
     // This test only runs with real cache data
     let config = new_kopi_config().unwrap();

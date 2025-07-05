@@ -203,7 +203,11 @@ mod tests {
     fn test_shell_detection() {
         // This test is environment-dependent, so we just verify it returns something
         let shell = detect_shell();
-        assert!(!matches!(shell, Shell::Unknown(_)) || true);
+        // The shell might be Unknown in some test environments, so we just verify we got a result
+        assert!(matches!(
+            shell,
+            Shell::Bash | Shell::Zsh | Shell::Fish | Shell::PowerShell | Shell::Unknown(_)
+        ));
     }
 
     #[test]
