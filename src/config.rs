@@ -261,7 +261,8 @@ min_disk_space_mb = 2048
     #[test]
     fn test_resolve_kopi_home_from_env() {
         let temp_dir = TempDir::new().unwrap();
-        let abs_path = temp_dir.path().to_path_buf();
+        // Ensure we have a canonicalized absolute path on all platforms
+        let abs_path = temp_dir.path().canonicalize().unwrap();
 
         unsafe {
             env::set_var("KOPI_HOME", &abs_path);
