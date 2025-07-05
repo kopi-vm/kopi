@@ -63,10 +63,28 @@ impl MetadataCache {
 
         // Write to temporary file first for atomic operation
         let temp_path = path.with_extension("tmp");
+
+        // Clean up any leftover temp file from previous failed attempts
+        if temp_path.exists() {
+            fs::remove_file(&temp_path).map_err(|e| {
+                KopiError::ConfigError(format!("Failed to remove old temp file: {e}"))
+            })?;
+        }
+
         fs::write(&temp_path, json)
             .map_err(|e| KopiError::ConfigError(format!("Failed to write cache file: {e}")))?;
 
-        // Atomic rename
+        // Atomic rename - on Windows, we need to handle existing file
+        #[cfg(windows)]
+        {
+            // On Windows, rename fails if destination exists, so remove it first
+            if path.exists() {
+                fs::remove_file(path).map_err(|e| {
+                    KopiError::ConfigError(format!("Failed to remove old cache file: {e}"))
+                })?;
+            }
+        }
+
         fs::rename(temp_path, path)
             .map_err(|e| KopiError::ConfigError(format!("Failed to rename cache file: {e}")))?;
 

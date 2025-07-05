@@ -1,5 +1,4 @@
 use kopi::models::jdk::Distribution;
-use kopi::platform;
 use kopi::platform::shell::{self as shim_platform, Shell};
 use kopi::shim::installer::ShimInstaller;
 use kopi::shim::tools::{ToolRegistry, default_shim_tools};
@@ -7,21 +6,25 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
+/// Helper function to build tool path with platform-appropriate extension
+fn tool_path(dir: &Path, tool_name: &str) -> PathBuf {
+    let ext = kopi::platform::executable_extension();
+    if ext.is_empty() {
+        dir.join(tool_name)
+    } else {
+        dir.join(format!("{}{}", tool_name, ext))
+    }
+}
+
 /// Helper function to create a mock kopi-shim binary
 fn create_mock_kopi_shim(kopi_bin_dir: &Path) -> PathBuf {
-    #[cfg(windows)]
-    let shim_name = "kopi-shim.exe";
-
-    #[cfg(not(windows))]
-    let shim_name = "kopi-shim";
-
+    let shim_name = kopi::platform::shim_binary_name();
     let shim_path = kopi_bin_dir.join(shim_name);
 
     // Create a dummy file to act as the kopi-shim binary
     fs::write(&shim_path, "mock shim binary").unwrap();
 
-    #[cfg(unix)]
-    platform::file_ops::make_executable(&shim_path).unwrap();
+    kopi::platform::file_ops::make_executable(&shim_path).unwrap();
 
     shim_path
 }
@@ -50,12 +53,7 @@ fn setup_test_env() -> (TempDir, PathBuf, ShimInstaller) {
         .unwrap()
         .to_path_buf();
 
-    #[cfg(windows)]
-    let shim_binary_name = "kopi-shim.exe";
-
-    #[cfg(not(windows))]
-    let shim_binary_name = "kopi-shim";
-
+    let shim_binary_name = kopi::platform::shim_binary_name();
     let expected_shim_path = current_exe_dir.join(shim_binary_name);
     if !expected_shim_path.exists() {
         fs::copy(&kopi_shim_path, &expected_shim_path).unwrap();
@@ -92,10 +90,7 @@ fn test_create_and_remove_shim() {
     assert!(shims.contains(&"java".to_string()));
 
     // Verify the shim file exists
-    let java_shim_path = installer.shims_dir().join("java");
-    #[cfg(windows)]
-    let java_shim_path = installer.shims_dir().join("java.exe");
-
+    let java_shim_path = tool_path(installer.shims_dir(), "java");
     assert!(java_shim_path.exists());
 
     // Remove the shim
@@ -150,16 +145,15 @@ fn test_list_multiple_shims() {
 }
 
 #[test]
-#[cfg(unix)]
 #[ignore = "This test modifies shared test binaries and can interfere with other tests"]
-fn test_verify_shims_unix() {
+fn test_verify_shims() {
     let (_temp_dir, _shim_binary_path, installer) = setup_test_env();
 
     // Create a valid shim
     installer.create_shim("java").unwrap();
 
     // Debug: Check what was created
-    let java_shim = installer.shims_dir().join("java");
+    let java_shim = tool_path(installer.shims_dir(), "java");
     eprintln!("Java shim path: {:?}", java_shim);
     eprintln!("Java shim exists: {}", java_shim.exists());
     if java_shim.exists() {
@@ -179,13 +173,19 @@ fn test_verify_shims_unix() {
     assert!(broken.is_empty());
 
     // Now break the shim by reading where it actually points to and removing that
-    let java_shim = installer.shims_dir().join("java");
-    let actual_target = fs::read_link(&java_shim).unwrap();
-    eprintln!("Removing actual target: {:?}", actual_target);
+    let java_shim = tool_path(installer.shims_dir(), "java");
+    // Only test symlink breakage on platforms that use symlinks
+    if kopi::platform::uses_symlinks_for_shims() {
+        let actual_target = fs::read_link(&java_shim).unwrap();
+        eprintln!("Removing actual target: {:?}", actual_target);
 
-    // Remove the actual target file
-    if actual_target.exists() {
-        fs::remove_file(&actual_target).unwrap();
+        // Remove the actual target file
+        if actual_target.exists() {
+            fs::remove_file(&actual_target).unwrap();
+        }
+    } else {
+        // On Windows, corrupt the shim directly
+        fs::write(&java_shim, "corrupted").unwrap();
     }
 
     // Verify again - should find broken shim
@@ -199,7 +199,12 @@ fn test_verify_shims_unix() {
     );
     if !broken.is_empty() {
         assert_eq!(broken[0].0, "java");
-        assert!(broken[0].1.contains("Broken symlink"));
+        if kopi::platform::uses_symlinks_for_shims() {
+            assert!(broken[0].1.contains("Broken symlink"));
+        } else {
+            // On Windows, the corrupted file would be reported differently
+            assert!(!broken[0].1.is_empty());
+        }
     }
 }
 
@@ -210,9 +215,7 @@ fn test_repair_shim() {
     // Create a shim
     installer.create_shim("javadoc").unwrap();
 
-    let shim_path = installer.shims_dir().join("javadoc");
-    #[cfg(windows)]
-    let shim_path = installer.shims_dir().join("javadoc.exe");
+    let shim_path = tool_path(installer.shims_dir(), "javadoc");
 
     // Corrupt the shim
     fs::write(&shim_path, "corrupted").unwrap();
@@ -223,15 +226,11 @@ fn test_repair_shim() {
     // Verify it exists and is not corrupted
     assert!(shim_path.exists());
 
-    #[cfg(unix)]
-    {
+    if kopi::platform::uses_symlinks_for_shims() {
         // On Unix, it should be a symlink
         let metadata = fs::symlink_metadata(&shim_path).unwrap();
         assert!(metadata.file_type().is_symlink());
-    }
-
-    #[cfg(windows)]
-    {
+    } else {
         // On Windows, it should be a copy of the shim binary
         let content = fs::read(&shim_path).unwrap();
         assert_ne!(content, b"corrupted");
@@ -358,39 +357,27 @@ fn test_find_executables_in_jdk_bin() {
     // Create mock JDK tools
     let tools = vec!["java", "javac", "jar", "jshell"];
 
-    #[cfg(unix)]
-    {
-        for tool in &tools {
-            let tool_path = bin_dir.join(tool);
+    for tool in &tools {
+        let tool_path = tool_path(&bin_dir, tool);
+        if kopi::platform::executable_extension().is_empty() {
+            // Unix: create shell script
             fs::write(&tool_path, "#!/bin/sh\necho mock").unwrap();
-            platform::file_ops::make_executable(&tool_path).unwrap();
-        }
-
-        // Also create a non-executable file
-        fs::write(bin_dir.join("README"), "not executable").unwrap();
-    }
-
-    #[cfg(windows)]
-    {
-        for tool in &tools {
-            let tool_path = bin_dir.join(format!("{}.exe", tool));
+        } else {
+            // Windows: create mock executable
             fs::write(&tool_path, "mock executable").unwrap();
         }
-
-        // Also create a non-exe file
-        fs::write(bin_dir.join("README.txt"), "not executable").unwrap();
+        kopi::platform::file_ops::make_executable(&tool_path).unwrap();
     }
+
+    // Also create a non-executable file
+    fs::write(bin_dir.join("README.txt"), "not executable").unwrap();
 
     // TODO: find_executables was part of PlatformUtils which was removed
     // For now, manually verify the expected tools exist
     let mut found = Vec::new();
     for tool in &tools {
-        #[cfg(unix)]
-        let tool_path = bin_dir.join(tool);
-        #[cfg(windows)]
-        let tool_path = bin_dir.join(format!("{}.exe", tool));
-
-        if tool_path.exists() {
+        let tp = tool_path(&bin_dir, tool);
+        if tp.exists() {
             found.push(tool.to_string());
         }
     }

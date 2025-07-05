@@ -1,7 +1,9 @@
 //! Platform-specific file operations.
 
-use std::fs;
 use std::path::Path;
+
+#[cfg(unix)]
+use std::fs;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;

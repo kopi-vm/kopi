@@ -325,11 +325,38 @@ fn test_metadata_persistence() {
 
     // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("cache").arg("refresh").assert().success();
+    let output = cmd.arg("cache").arg("refresh").output().unwrap();
+
+    // Print debug info if the command failed
+    if !output.status.success() {
+        eprintln!("cache refresh failed with status: {:?}", output.status);
+        eprintln!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    }
+    assert!(output.status.success(), "cache refresh command failed");
 
     // Check that metadata.json was created
-    let metadata_file = kopi_home.join("cache").join("metadata.json");
-    assert!(metadata_file.exists());
+    let cache_dir = kopi_home.join("cache");
+    let metadata_file = cache_dir.join("metadata.json");
+
+    // Print debug info about the cache directory
+    eprintln!("Cache directory exists: {}", cache_dir.exists());
+    if cache_dir.exists() {
+        eprintln!("Cache directory contents:");
+        if let Ok(entries) = std::fs::read_dir(&cache_dir) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    eprintln!("  - {:?}", entry.path());
+                }
+            }
+        }
+    }
+
+    assert!(
+        metadata_file.exists(),
+        "metadata.json not found at {:?}",
+        metadata_file
+    );
 
     // Second install should use cached metadata
     let mut cmd = get_test_command(&kopi_home);
