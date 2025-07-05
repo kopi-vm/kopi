@@ -4,7 +4,10 @@ use crate::config::new_kopi_config;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{Distribution, JdkMetadata};
-use crate::platform::{get_foojay_libc_type, get_platform_description, matches_foojay_libc_type};
+use crate::platform::{
+    get_current_architecture, get_current_os, get_foojay_libc_type, get_platform_description,
+    matches_foojay_libc_type,
+};
 use crate::search::PackageSearcher;
 use crate::security::verify_checksum;
 use crate::storage::JdkRepository;
@@ -21,40 +24,6 @@ impl InstallCommand {
         let api_client = ApiClient::new();
 
         Ok(Self { api_client })
-    }
-
-    fn get_current_architecture(&self) -> String {
-        #[cfg(target_arch = "x86_64")]
-        return "x64".to_string();
-
-        #[cfg(target_arch = "x86")]
-        return "x86".to_string();
-
-        #[cfg(target_arch = "aarch64")]
-        return "aarch64".to_string();
-
-        #[cfg(target_arch = "arm")]
-        return "arm32".to_string();
-
-        #[cfg(target_arch = "powerpc64")]
-        return if cfg!(target_endian = "little") {
-            "ppc64le".to_string()
-        } else {
-            "ppc64".to_string()
-        };
-
-        #[cfg(target_arch = "s390x")]
-        return "s390x".to_string();
-
-        #[cfg(not(any(
-            target_arch = "x86_64",
-            target_arch = "x86",
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "powerpc64",
-            target_arch = "s390x"
-        )))]
-        return "unknown".to_string();
     }
 
     pub fn execute(
@@ -244,8 +213,8 @@ impl InstallCommand {
         javafx_bundled: bool,
     ) -> Result<crate::api::Package> {
         // Build query parameters
-        let arch = self.get_current_architecture();
-        let os = self.get_current_os();
+        let arch = get_current_architecture();
+        let os = get_current_os();
         let lib_c_type = get_foojay_libc_type();
 
         // First try to find the package in cache if it exists
@@ -380,23 +349,9 @@ impl InstallCommand {
         Ok(package)
     }
 
-    fn get_current_os(&self) -> String {
-        #[cfg(target_os = "linux")]
-        return "linux".to_string();
-
-        #[cfg(target_os = "windows")]
-        return "windows".to_string();
-
-        #[cfg(target_os = "macos")]
-        return "macos".to_string();
-
-        #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
-        return "unknown".to_string();
-    }
-
     fn convert_package_to_metadata(&self, package: crate::api::Package) -> Result<JdkMetadata> {
-        let arch = self.get_current_architecture();
-        let os = self.get_current_os();
+        let arch = get_current_architecture();
+        let os = get_current_os();
 
         // Validate lib_c_type compatibility
         if let Some(ref lib_c_type) = package.lib_c_type {
@@ -508,8 +463,7 @@ mod tests {
 
     #[test]
     fn test_get_current_architecture() {
-        let cmd = InstallCommand::new().unwrap();
-        let arch = cmd.get_current_architecture();
+        let arch = get_current_architecture();
         // Should return a valid architecture string
         assert!(!arch.is_empty());
         assert_ne!(arch, "unknown");
@@ -517,8 +471,7 @@ mod tests {
 
     #[test]
     fn test_get_current_os() {
-        let cmd = InstallCommand::new().unwrap();
-        let os = cmd.get_current_os();
+        let os = get_current_os();
         // Should return a valid OS string
         assert!(!os.is_empty());
         assert_ne!(os, "unknown");
