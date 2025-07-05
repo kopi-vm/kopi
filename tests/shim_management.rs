@@ -23,7 +23,20 @@ fn create_mock_kopi_shim(kopi_bin_dir: &Path) -> PathBuf {
     let shim_path = kopi_bin_dir.join(shim_name);
 
     // Create a dummy file to act as the kopi-shim binary
-    fs::write(&shim_path, "mock shim binary").unwrap();
+    #[cfg(windows)]
+    {
+        // On Windows, create a mock PE file that passes validation
+        // PE header starts with "MZ" (DOS header) and needs to be at least 1KB
+        let mut mock_exe = vec![0x4D, 0x5A]; // MZ header
+        mock_exe.extend(vec![0u8; 1024]); // Pad to make it at least 1KB
+        fs::write(&shim_path, mock_exe).unwrap();
+    }
+
+    #[cfg(not(windows))]
+    {
+        // On Unix, just create a simple script
+        fs::write(&shim_path, "#!/bin/sh\necho mock shim binary").unwrap();
+    }
 
     kopi::platform::file_ops::make_executable(&shim_path).unwrap();
 
@@ -245,8 +258,9 @@ fn test_repair_shim() {
         // On Windows, it should be a copy of the shim binary
         let content = fs::read(&shim_path).unwrap();
         assert_ne!(content, b"corrupted");
-        // It should contain our mock content
-        assert_eq!(content, b"mock shim binary");
+        // It should be a valid PE file (starts with MZ header)
+        assert!(content.len() >= 1024);
+        assert_eq!(&content[0..2], &[0x4D, 0x5A]);
     }
 }
 

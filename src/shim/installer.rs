@@ -225,7 +225,7 @@ impl ShimInstaller {
 
     #[cfg(windows)]
     fn verify_single_shim(&self, shim_path: &Path) -> Result<()> {
-        // On Windows, just check if file exists and is executable
+        // On Windows, shims are copies of kopi-shim.exe
         if !shim_path.exists() {
             return Err(KopiError::SystemError("Shim file missing".to_string()));
         }
@@ -234,6 +234,27 @@ impl ShimInstaller {
         let metadata = fs::metadata(shim_path)?;
         if !metadata.is_file() {
             return Err(KopiError::SystemError("Not a regular file".to_string()));
+        }
+
+        // Check if the file size is reasonable for an executable
+        // kopi-shim.exe should be at least several KB
+        if metadata.len() < 1024 {
+            return Err(KopiError::SystemError(
+                "Shim file too small - likely corrupted".to_string(),
+            ));
+        }
+
+        // Optionally verify it's a valid PE executable by checking the DOS header
+        // PE files start with "MZ" (0x4D5A)
+        let mut file = fs::File::open(shim_path)?;
+        let mut header = [0u8; 2];
+        use std::io::Read;
+        if file.read_exact(&mut header).is_ok() {
+            if header != [0x4D, 0x5A] {
+                return Err(KopiError::SystemError(
+                    "Invalid executable format - not a PE file".to_string(),
+                ));
+            }
         }
 
         Ok(())
