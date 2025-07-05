@@ -76,7 +76,7 @@ fn test_cleanup_verification() {
 
         // Verify it exists while guard is alive
         assert!(path.exists());
-        assert!(path.starts_with("target/home"));
+        assert!(path.to_string_lossy().contains("target/home"));
 
         // Create some files
         let test_home = test_home.setup_kopi_structure();

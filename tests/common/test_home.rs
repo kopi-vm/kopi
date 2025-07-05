@@ -19,8 +19,11 @@ impl TestHomeGuard {
             .map(char::from)
             .collect();
 
-        // Create directory under target/home
-        let path = PathBuf::from("target/home").join(random_name);
+        // Create directory under target/home with absolute path
+        let relative_path = PathBuf::from("target/home").join(random_name);
+        let path = std::env::current_dir()
+            .expect("Failed to get current directory")
+            .join(relative_path);
         fs::create_dir_all(&path).expect("Failed to create test home directory");
 
         Self { path }
@@ -73,7 +76,8 @@ mod tests {
             let guard = TestHomeGuard::new();
             let path = guard.path().to_path_buf();
             assert!(path.exists());
-            assert!(path.starts_with("target/home"));
+            assert!(path.ends_with(path.file_name().unwrap())); // Should end with random name
+            assert!(path.to_string_lossy().contains("target/home")); // Should contain target/home in path
             path
         };
         // After guard is dropped, directory should be cleaned up
