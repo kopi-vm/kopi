@@ -2,6 +2,7 @@ use crate::download::checksum::verify_checksum;
 use crate::download::client::{AttohttpcClient, HttpClient, HttpResponse};
 use crate::download::options::DownloadOptions;
 use crate::error::{KopiError, Result};
+use crate::platform;
 use std::fs::{self, File};
 use std::io::{BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
@@ -102,7 +103,7 @@ impl HttpFileDownloader {
 
         // Move temp file to final destination if we used a temp file
         if is_temp {
-            fs::rename(&downloaded_path, destination)?;
+            platform::file_ops::atomic_rename(&downloaded_path, destination)?;
         }
 
         // Complete progress reporting

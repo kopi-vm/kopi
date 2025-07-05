@@ -9,6 +9,7 @@ use crate::api::{ApiClient, ApiMetadata};
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{ChecksumType, Distribution as JdkDistribution, JdkMetadata};
+use crate::platform;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MetadataCache {
@@ -74,18 +75,8 @@ impl MetadataCache {
         fs::write(&temp_path, json)
             .map_err(|e| KopiError::ConfigError(format!("Failed to write cache file: {e}")))?;
 
-        // Atomic rename - on Windows, we need to handle existing file
-        #[cfg(windows)]
-        {
-            // On Windows, rename fails if destination exists, so remove it first
-            if path.exists() {
-                fs::remove_file(path).map_err(|e| {
-                    KopiError::ConfigError(format!("Failed to remove old cache file: {e}"))
-                })?;
-            }
-        }
-
-        fs::rename(temp_path, path)
+        // Use platform-specific atomic rename
+        platform::file_ops::atomic_rename(&temp_path, path)
             .map_err(|e| KopiError::ConfigError(format!("Failed to rename cache file: {e}")))?;
 
         Ok(())

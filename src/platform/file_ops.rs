@@ -42,3 +42,20 @@ pub fn is_executable(path: &Path) -> std::io::Result<bool> {
     // On Windows, check for .exe extension
     Ok(path.extension().map(|ext| ext == "exe").unwrap_or(false))
 }
+
+/// Atomically rename a file from source to destination.
+///
+/// On Unix systems, rename is atomic by default.
+/// On Windows, we need to remove the destination file first if it exists,
+/// as Windows rename fails if the destination already exists.
+pub fn atomic_rename(from: &Path, to: &Path) -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        // On Windows, rename fails if destination exists, so remove it first
+        if to.exists() {
+            fs::remove_file(to)?;
+        }
+    }
+
+    fs::rename(from, to)
+}
