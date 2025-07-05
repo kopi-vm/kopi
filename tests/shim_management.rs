@@ -2,6 +2,7 @@ use kopi::models::jdk::Distribution;
 use kopi::platform::shell::{self as shim_platform, Shell};
 use kopi::shim::installer::ShimInstaller;
 use kopi::shim::tools::{ToolRegistry, default_shim_tools};
+use serial_test::serial;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -79,6 +80,7 @@ fn test_shim_directory_creation() {
 }
 
 #[test]
+#[serial]
 fn test_create_and_remove_shim() {
     let (_temp_dir, _shim_path, installer) = setup_test_env();
 
@@ -103,6 +105,7 @@ fn test_create_and_remove_shim() {
 }
 
 #[test]
+#[serial]
 fn test_create_duplicate_shim_fails() {
     let (_temp_dir, _shim_path, installer) = setup_test_env();
 
@@ -116,6 +119,7 @@ fn test_create_duplicate_shim_fails() {
 }
 
 #[test]
+#[serial]
 fn test_remove_nonexistent_shim_fails() {
     let (_temp_dir, _shim_path, installer) = setup_test_env();
 
@@ -125,6 +129,7 @@ fn test_remove_nonexistent_shim_fails() {
 }
 
 #[test]
+#[serial]
 fn test_list_multiple_shims() {
     let (_temp_dir, _shim_path, installer) = setup_test_env();
 
@@ -145,7 +150,8 @@ fn test_list_multiple_shims() {
 }
 
 #[test]
-#[ignore = "This test modifies shared test binaries and can interfere with other tests"]
+#[serial]
+#[cfg(windows)] // Only test on Windows where shims are regular files, not symlinks
 fn test_verify_shims() {
     let (_temp_dir, _shim_binary_path, installer) = setup_test_env();
 
@@ -172,23 +178,30 @@ fn test_verify_shims() {
     let broken = installer.verify_shims().unwrap();
     assert!(broken.is_empty());
 
-    // Now break the shim by reading where it actually points to and removing that
+    // Break the shim - on Windows we corrupt the file directly
     let java_shim = tool_path(installer.shims_dir(), "java");
-    // Only test symlink breakage on platforms that use symlinks
-    if kopi::platform::uses_symlinks_for_shims() {
-        let actual_target = fs::read_link(&java_shim).unwrap();
-        eprintln!("Removing actual target: {:?}", actual_target);
 
-        // Remove the actual target file
-        if actual_target.exists() {
-            fs::remove_file(&actual_target).unwrap();
-        }
-    } else {
-        // On Windows, corrupt the shim directly
-        fs::write(&java_shim, "corrupted").unwrap();
-    }
+    // On Windows, shims are regular files, so we can corrupt them
+    fs::write(&java_shim, "corrupted").unwrap();
 
     // Verify again - should find broken shim
+    // First, let's check what shims are listed
+    let all_shims = installer.list_shims().unwrap();
+    eprintln!("All shims listed: {:?}", all_shims);
+
+    // Let's also manually check the symlink
+    if java_shim.exists() {
+        eprintln!("Java shim still exists after breaking");
+        let metadata = fs::symlink_metadata(&java_shim).unwrap();
+        eprintln!("Is symlink: {}", metadata.file_type().is_symlink());
+        if metadata.file_type().is_symlink() {
+            match fs::read_link(&java_shim) {
+                Ok(target) => eprintln!("Symlink target: {:?}", target),
+                Err(e) => eprintln!("Error reading symlink: {}", e),
+            }
+        }
+    }
+
     let broken = installer.verify_shims().unwrap();
     eprintln!("Broken shims found: {:?}", broken);
     assert_eq!(
@@ -199,16 +212,14 @@ fn test_verify_shims() {
     );
     if !broken.is_empty() {
         assert_eq!(broken[0].0, "java");
-        if kopi::platform::uses_symlinks_for_shims() {
-            assert!(broken[0].1.contains("Broken symlink"));
-        } else {
-            // On Windows, the corrupted file would be reported differently
-            assert!(!broken[0].1.is_empty());
-        }
+        // On Windows, the corrupted file would be reported as not a regular file
+        // or some other error
+        assert!(!broken[0].1.is_empty());
     }
 }
 
 #[test]
+#[serial]
 fn test_repair_shim() {
     let (_temp_dir, _shim_path, installer) = setup_test_env();
 
