@@ -1,5 +1,6 @@
 use crate::error::{KopiError, Result};
 use crate::models::jdk::VersionRequest;
+use dirs::home_dir;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -103,8 +104,8 @@ impl VersionResolver {
     fn get_global_default(&self) -> Result<Option<VersionRequest>> {
         // For now, we'll check for a global config file
         // This will be enhanced when config system is fully implemented
-        if let Ok(home) = env::var("HOME") {
-            let global_version_path = PathBuf::from(home).join(".kopi").join("default-version");
+        if let Some(home) = home_dir() {
+            let global_version_path = home.join(".kopi").join("default-version");
 
             if global_version_path.exists() {
                 let content = self.read_version_file(&global_version_path)?;
