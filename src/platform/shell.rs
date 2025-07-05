@@ -263,14 +263,38 @@ mod tests {
         // Save original PATH
         let original_path = env::var("PATH").unwrap_or_default();
 
-        // Set a test PATH
-        unsafe {
-            env::set_var("PATH", "/usr/bin:/usr/local/bin:/home/user/.kopi/shims");
+        // Set a test PATH with platform-specific paths and separators
+        let separator = platform::path_separator();
+        let test_paths: Vec<&str>;
+        let test_dir: &Path;
+        let not_in_path_dir: &Path;
+
+        #[cfg(windows)]
+        {
+            test_paths = vec![
+                "C:\\Windows\\System32",
+                "C:\\Program Files",
+                "C:\\Users\\test\\.kopi\\shims",
+            ];
+            test_dir = Path::new("C:\\Windows\\System32");
+            not_in_path_dir = Path::new("C:\\opt\\bin");
         }
 
-        assert!(is_in_path(Path::new("/usr/bin")));
-        assert!(is_in_path(Path::new("/home/user/.kopi/shims")));
-        assert!(!is_in_path(Path::new("/opt/bin")));
+        #[cfg(not(windows))]
+        {
+            test_paths = vec!["/usr/bin", "/usr/local/bin", "/home/user/.kopi/shims"];
+            test_dir = Path::new("/usr/bin");
+            not_in_path_dir = Path::new("/opt/bin");
+        }
+
+        let test_path_string = test_paths.join(&separator.to_string());
+        unsafe {
+            env::set_var("PATH", &test_path_string);
+        }
+
+        assert!(is_in_path(test_dir));
+        assert!(is_in_path(Path::new(test_paths[2])));
+        assert!(!is_in_path(not_in_path_dir));
 
         // Restore original PATH
         unsafe {
