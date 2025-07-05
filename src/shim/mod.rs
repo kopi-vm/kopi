@@ -7,10 +7,10 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub mod executor;
+pub mod installer;
+pub mod tools;
 pub mod version_resolver;
 
-use executor::ShimExecutor;
 use version_resolver::VersionResolver;
 
 pub fn run_shim() -> Result<()> {
@@ -43,10 +43,12 @@ pub fn run_shim() -> Result<()> {
     log::debug!("Shim resolution completed in {elapsed:?}");
 
     // Execute the tool
-    ShimExecutor::exec(tool_path, args)?;
+    let err = crate::platform::process::exec_replace(&tool_path, args);
 
-    // This should not be reached on Unix (exec replaces process)
-    Ok(())
+    // exec_replace only returns on error
+    Err(KopiError::SystemError(format!(
+        "Failed to execute {tool_path:?}: {err}"
+    )))
 }
 
 fn get_tool_name() -> Result<String> {
@@ -111,11 +113,13 @@ fn version_matches(installed_version: &str, pattern: &str) -> bool {
 fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
     let bin_dir = jdk_path.join("bin");
 
-    #[cfg(target_os = "windows")]
-    let tool_path = bin_dir.join(format!("{}.exe", tool_name));
+    let tool_filename = if crate::platform::executable_extension().is_empty() {
+        tool_name.to_string()
+    } else {
+        format!("{}{}", tool_name, crate::platform::executable_extension())
+    };
 
-    #[cfg(not(target_os = "windows"))]
-    let tool_path = bin_dir.join(tool_name);
+    let tool_path = bin_dir.join(tool_filename);
 
     // Verify the tool exists
     if !tool_path.exists() {

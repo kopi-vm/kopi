@@ -68,7 +68,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
 - Platform-specific shim creation requirements
 
 ### Deliverables
-1. **Shim Manager Module** (`/src/shim/manager.rs`)
+1. **Shim Installer Module** (`/src/shim/installer.rs`)
    - Shim directory creation (~/.kopi/shims/)
    - Unix: Symlink creation to kopi-shim binary
    - Windows: Individual .exe file copying
@@ -83,7 +83,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
    - Version-based tool filtering (e.g., GraalVM js removed in v23+)
    - Tool categorization (core, debug, monitoring, etc.)
 
-3. **Platform Utilities** (`/src/shim/platform.rs`)
+3. **Platform Utilities** (`/src/platform/shell.rs`)
    - Unix symlink operations
    - Windows file copying
    - Permission management
@@ -91,9 +91,9 @@ This document outlines the phased implementation plan for the Kopi shims system,
    - Shell-specific PATH update instructions
 
 4. **Unit Tests** (use mocks extensively)
-   - `src/shim/manager.rs` - Shim creation and removal tests (mock filesystem)
+   - `src/shim/installer.rs` - Shim creation and removal tests (mock filesystem)
    - `src/shim/tools.rs` - Tool registry and filtering tests (mock data)
-   - `src/shim/platform.rs` - Platform operation tests (mock OS operations)
+   - `src/platform/shell.rs` - Platform operation tests (mock OS operations)
 
 5. **Integration Tests** (`/tests/shim_management.rs`) (no mocks)
    - Real shim creation on different platforms

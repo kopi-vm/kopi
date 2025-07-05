@@ -1,4 +1,4 @@
-//! Platform detection utilities for the entire application.
+//! Platform detection utilities.
 //!
 //! This module provides functions to detect the current system's platform
 //! characteristics (architecture, OS, libc type) which are used throughout
