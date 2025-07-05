@@ -1,4 +1,5 @@
 use crate::error::{KopiError, Result};
+use crate::platform::permissions;
 use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::{self, Read};
@@ -87,53 +88,12 @@ pub fn audit_log(action: &str, details: &str) {
 }
 
 pub fn verify_file_permissions(path: &Path) -> Result<()> {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
+    let is_secure = permissions::check_file_permissions(path)?;
 
-        let metadata = std::fs::metadata(path)?;
-        let permissions = metadata.permissions();
-        let mode = permissions.mode();
-
-        // Check if file has dangerous permissions (world-writable)
-        if mode & 0o002 != 0 {
-            return Err(KopiError::SecurityError(format!(
-                "File {path:?} has world-writable permissions"
-            )));
-        }
-    }
-
-    #[cfg(windows)]
-    {
-        use std::fs;
-
-        let metadata = fs::metadata(path)?;
-
-        // On Windows, check if the file is read-only and exists
-        if !metadata.is_file() {
-            return Err(KopiError::SecurityError(format!(
-                "Path {:?} is not a regular file",
-                path
-            )));
-        }
-
-        // Check if the file has the read-only attribute
-        // In Windows, files without read-only attribute are writable by the owner
-        // For JDK files, we generally want them to be read-only after installation
-        if metadata.permissions().readonly() {
-            log::debug!("File {:?} is read-only (secure)", path);
-        } else {
-            log::warn!(
-                "File {:?} is writable - consider setting read-only for security",
-                path
-            );
-        }
-
-        // Additional Windows-specific security checks could include:
-        // - Checking ACLs (Access Control Lists) using Windows API
-        // - Verifying file ownership
-        // - Checking for alternate data streams
-        // For now, we do basic checks that work with std::fs
+    if !is_secure {
+        return Err(KopiError::SecurityError(format!(
+            "File {path:?} has insecure permissions"
+        )));
     }
 
     Ok(())
@@ -165,24 +125,7 @@ pub fn sanitize_path(path: &Path) -> Result<()> {
 /// Set file permissions to read-only for security
 /// This is especially important for JDK files after installation
 pub fn secure_file_permissions(path: &Path) -> Result<()> {
-    let metadata = std::fs::metadata(path)?;
-    let mut permissions = metadata.permissions();
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        // Set to 644 (owner: read/write, group: read, others: read)
-        // This prevents accidental modification while allowing execution
-        permissions.set_mode(0o644);
-    }
-
-    #[cfg(windows)]
-    {
-        // Set the read-only attribute on Windows
-        permissions.set_readonly(true);
-    }
-
-    std::fs::set_permissions(path, permissions)?;
+    permissions::set_secure_permissions(path)?;
 
     audit_log(
         "SECURE_PERMISSIONS",
