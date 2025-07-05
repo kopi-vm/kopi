@@ -13,7 +13,21 @@ pub fn create_symlink(target: &Path, link: &Path) -> std::io::Result<()> {
 /// Create a symlink (Windows - copies the file instead)
 #[cfg(windows)]
 pub fn create_symlink(target: &Path, link: &Path) -> std::io::Result<()> {
-    fs::copy(target, link)?;
+    // Copy the file and verify the copy succeeded
+    let bytes_copied = fs::copy(target, link)?;
+
+    // Verify the file sizes match
+    let source_size = fs::metadata(target)?.len();
+    if bytes_copied != source_size {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!(
+                "Copy size mismatch: expected {} bytes, copied {} bytes",
+                source_size, bytes_copied
+            ),
+        ));
+    }
+
     Ok(())
 }
 

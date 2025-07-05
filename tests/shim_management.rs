@@ -7,6 +7,24 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
+/// Cleanup function to remove any test artifacts
+fn cleanup_test_shim() {
+    if let Ok(current_exe) = std::env::current_exe() {
+        if let Some(dir) = current_exe.parent() {
+            let shim_path = dir.join(kopi::platform::shim_binary_name());
+            if shim_path.exists() {
+                // Only remove if it's our test shim (check size or content)
+                if let Ok(content) = fs::read(&shim_path) {
+                    // Our test shim has a specific pattern
+                    if content.len() > 128 && content.len() < 4096 {
+                        let _ = fs::remove_file(&shim_path);
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Helper function to build tool path with platform-appropriate extension
 fn tool_path(dir: &Path, tool_name: &str) -> PathBuf {
     let ext = kopi::platform::executable_extension();
@@ -28,8 +46,30 @@ fn create_mock_kopi_shim(kopi_bin_dir: &Path) -> PathBuf {
         // On Windows, create a mock PE file that passes validation
         // PE header starts with "MZ" (DOS header) and needs to be at least 1KB
         let mut mock_exe = vec![0x4D, 0x5A]; // MZ header
-        mock_exe.extend(vec![0u8; 1024]); // Pad to make it at least 1KB
-        fs::write(&shim_path, mock_exe).unwrap();
+        // Add DOS stub
+        mock_exe.extend(&[0x90; 62]); // Pad to offset 64
+        // Add PE signature offset at 0x3C (60)
+        mock_exe[60] = 0x80; // PE header at offset 128
+        mock_exe[61] = 0x00;
+        mock_exe[62] = 0x00;
+        mock_exe[63] = 0x00;
+        // Pad to PE header location
+        mock_exe.extend(&[0x00; 64]);
+        // Add PE signature "PE\0\0"
+        mock_exe.extend(b"PE\0\0");
+        // Add enough padding to make it > 1KB
+        mock_exe.extend(vec![0u8; 2048]);
+
+        fs::write(&shim_path, &mock_exe).unwrap();
+        eprintln!(
+            "Created mock kopi-shim at {:?} with size {} bytes",
+            shim_path,
+            mock_exe.len()
+        );
+
+        // Verify what was written
+        let written = fs::read(&shim_path).unwrap();
+        eprintln!("Verified written size: {} bytes", written.len());
     }
 
     #[cfg(not(windows))]
@@ -45,6 +85,9 @@ fn create_mock_kopi_shim(kopi_bin_dir: &Path) -> PathBuf {
 
 /// Helper to set up a test environment with kopi-shim binary
 fn setup_test_env() -> (TempDir, PathBuf, ShimInstaller) {
+    // Cleanup any previous test artifacts
+    cleanup_test_shim();
+
     let temp_dir = TempDir::new().unwrap();
     let kopi_home = temp_dir.path();
 
@@ -69,9 +112,34 @@ fn setup_test_env() -> (TempDir, PathBuf, ShimInstaller) {
 
     let shim_binary_name = kopi::platform::shim_binary_name();
     let expected_shim_path = current_exe_dir.join(shim_binary_name);
-    if !expected_shim_path.exists() {
-        fs::copy(&kopi_shim_path, &expected_shim_path).unwrap();
+
+    // Always create a fresh copy for this test
+    if expected_shim_path.exists() {
+        fs::remove_file(&expected_shim_path).ok();
     }
+
+    eprintln!(
+        "Copying mock shim from {:?} to {:?}",
+        kopi_shim_path, expected_shim_path
+    );
+
+    // Read the source file to ensure we have the data
+    let source_data = fs::read(&kopi_shim_path).unwrap();
+    eprintln!("Source shim size: {} bytes", source_data.len());
+
+    // Write to destination
+    fs::write(&expected_shim_path, &source_data).unwrap();
+
+    // Make it executable on Windows too
+    kopi::platform::file_ops::make_executable(&expected_shim_path).ok();
+
+    // Verify the copy
+    let copied_size = fs::metadata(&expected_shim_path).unwrap().len();
+    eprintln!("Copied shim size: {} bytes", copied_size);
+
+    // Double-check the content
+    let copied_data = fs::read(&expected_shim_path).unwrap();
+    assert_eq!(source_data.len(), copied_data.len(), "Copy size mismatch");
 
     (temp_dir, kopi_shim_path, installer)
 }
@@ -166,30 +234,67 @@ fn test_list_multiple_shims() {
 #[serial]
 #[cfg(windows)] // Only test on Windows where shims are regular files, not symlinks
 fn test_verify_shims() {
-    let (_temp_dir, _shim_binary_path, installer) = setup_test_env();
+    let (_temp_dir, shim_binary_path, installer) = setup_test_env();
+
+    // Debug: Verify the kopi-shim binary that will be used as source
+    eprintln!("\n=== Verifying source kopi-shim ===");
+    eprintln!("Source kopi-shim path: {:?}", shim_binary_path);
+    if shim_binary_path.exists() {
+        let metadata = fs::metadata(&shim_binary_path).unwrap();
+        eprintln!("Source kopi-shim size: {} bytes", metadata.len());
+    }
+
+    // Also check where installer will look for kopi-shim
+    let current_exe_dir = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    let expected_kopi_shim = current_exe_dir.join(kopi::platform::shim_binary_name());
+    eprintln!(
+        "Installer will look for kopi-shim at: {:?}",
+        expected_kopi_shim
+    );
+    if expected_kopi_shim.exists() {
+        let metadata = fs::metadata(&expected_kopi_shim).unwrap();
+        eprintln!("Expected kopi-shim size: {} bytes", metadata.len());
+    }
 
     // Create a valid shim
+    eprintln!("\n=== Creating java shim ===");
     installer.create_shim("java").unwrap();
 
     // Debug: Check what was created
     let java_shim = tool_path(installer.shims_dir(), "java");
+    eprintln!("\n=== Verifying created shim ===");
     eprintln!("Java shim path: {:?}", java_shim);
     eprintln!("Java shim exists: {}", java_shim.exists());
     if java_shim.exists() {
-        let metadata = fs::symlink_metadata(&java_shim).unwrap();
-        eprintln!(
-            "Java shim is symlink: {}",
-            metadata.file_type().is_symlink()
-        );
-        if metadata.file_type().is_symlink() {
-            let target = fs::read_link(&java_shim).unwrap();
-            eprintln!("Java shim target: {:?}", target);
+        let metadata = fs::metadata(&java_shim).unwrap();
+        eprintln!("Java shim size: {} bytes", metadata.len());
+        eprintln!("Java shim is file: {}", metadata.is_file());
+
+        // Check first few bytes
+        let content = fs::read(&java_shim).unwrap();
+        if content.len() >= 4 {
+            eprintln!(
+                "First 4 bytes: {:02X} {:02X} {:02X} {:02X}",
+                content[0], content[1], content[2], content[3]
+            );
         }
+        eprintln!("Total content length: {} bytes", content.len());
     }
 
     // Verify - should find no broken shims
+    eprintln!("\n=== Running verify_shims ===");
     let broken = installer.verify_shims().unwrap();
-    assert!(broken.is_empty());
+    if !broken.is_empty() {
+        eprintln!("Broken shims found: {:?}", broken);
+    }
+    assert!(
+        broken.is_empty(),
+        "Expected no broken shims after initial creation"
+    );
 
     // Break the shim - on Windows we corrupt the file directly
     let java_shim = tool_path(installer.shims_dir(), "java");
@@ -198,57 +303,72 @@ fn test_verify_shims() {
     fs::write(&java_shim, "corrupted").unwrap();
 
     // Verify again - should find broken shim
-    // First, let's check what shims are listed
-    let all_shims = installer.list_shims().unwrap();
-    eprintln!("All shims listed: {:?}", all_shims);
-
-    // Let's also manually check the symlink
-    if java_shim.exists() {
-        eprintln!("Java shim still exists after breaking");
-        let metadata = fs::symlink_metadata(&java_shim).unwrap();
-        eprintln!("Is symlink: {}", metadata.file_type().is_symlink());
-        if metadata.file_type().is_symlink() {
-            match fs::read_link(&java_shim) {
-                Ok(target) => eprintln!("Symlink target: {:?}", target),
-                Err(e) => eprintln!("Error reading symlink: {}", e),
-            }
-        }
-    }
-
     let broken = installer.verify_shims().unwrap();
-    eprintln!("Broken shims found: {:?}", broken);
+    eprintln!("Broken shims found after corruption: {:?}", broken);
     assert_eq!(
         broken.len(),
         1,
-        "Expected 1 broken shim, found {}",
+        "Expected 1 broken shim after corruption, found {}",
         broken.len()
     );
-    if !broken.is_empty() {
-        assert_eq!(broken[0].0, "java");
-        // On Windows, the corrupted file would be reported as not a regular file
-        // or some other error
-        assert!(!broken[0].1.is_empty());
-    }
+    assert_eq!(broken[0].0, "java");
+    assert!(
+        broken[0].1.contains("too small"),
+        "Expected 'too small' error, got: {}",
+        broken[0].1
+    );
 }
 
 #[test]
 #[serial]
 fn test_repair_shim() {
-    let (_temp_dir, _shim_path, installer) = setup_test_env();
+    let (_temp_dir, _shim_binary_path, installer) = setup_test_env();
+
+    // Debug: Verify source kopi-shim before test
+    eprintln!("\n=== test_repair_shim: Verifying source kopi-shim ===");
+    let current_exe_dir = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    let expected_kopi_shim = current_exe_dir.join(kopi::platform::shim_binary_name());
+    if expected_kopi_shim.exists() {
+        let metadata = fs::metadata(&expected_kopi_shim).unwrap();
+        eprintln!("Source kopi-shim size: {} bytes", metadata.len());
+        let content = fs::read(&expected_kopi_shim).unwrap();
+        if content.len() >= 2 {
+            eprintln!(
+                "Source first 2 bytes: {:02X} {:02X}",
+                content[0], content[1]
+            );
+        }
+    }
 
     // Create a shim
     installer.create_shim("javadoc").unwrap();
 
     let shim_path = tool_path(installer.shims_dir(), "javadoc");
 
+    // Verify initial shim
+    eprintln!("\n=== Initial shim state ===");
+    if shim_path.exists() {
+        let metadata = fs::metadata(&shim_path).unwrap();
+        eprintln!("Initial shim size: {} bytes", metadata.len());
+    }
+
     // Corrupt the shim
+    eprintln!("\n=== Corrupting shim ===");
     fs::write(&shim_path, "corrupted").unwrap();
+    let corrupted_size = fs::metadata(&shim_path).unwrap().len();
+    eprintln!("Corrupted shim size: {} bytes", corrupted_size);
 
     // Repair it
+    eprintln!("\n=== Repairing shim ===");
     installer.repair_shim("javadoc").unwrap();
 
     // Verify it exists and is not corrupted
-    assert!(shim_path.exists());
+    eprintln!("\n=== Verifying repaired shim ===");
+    assert!(shim_path.exists(), "Shim should exist after repair");
 
     if kopi::platform::uses_symlinks_for_shims() {
         // On Unix, it should be a symlink
@@ -257,10 +377,29 @@ fn test_repair_shim() {
     } else {
         // On Windows, it should be a copy of the shim binary
         let content = fs::read(&shim_path).unwrap();
-        assert_ne!(content, b"corrupted");
+        eprintln!("Repaired shim size: {} bytes", content.len());
+        if content.len() >= 4 {
+            eprintln!(
+                "Repaired first 4 bytes: {:02X} {:02X} {:02X} {:02X}",
+                content[0], content[1], content[2], content[3]
+            );
+        }
+
+        assert_ne!(
+            content, b"corrupted",
+            "Shim should not contain corrupted content after repair"
+        );
         // It should be a valid PE file (starts with MZ header)
-        assert!(content.len() >= 1024);
-        assert_eq!(&content[0..2], &[0x4D, 0x5A]);
+        assert!(
+            content.len() >= 1024,
+            "Repaired shim should be at least 1024 bytes, but was {} bytes",
+            content.len()
+        );
+        assert_eq!(
+            &content[0..2],
+            &[0x4D, 0x5A],
+            "Repaired shim should start with MZ header"
+        );
     }
 }
 
