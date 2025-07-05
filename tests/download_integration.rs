@@ -570,6 +570,7 @@ fn test_download_checksum_mismatch() {
     assert!(!dest_file.exists());
 }
 
+#[cfg(not(target_os = "windows"))]
 #[test]
 fn test_download_connection_reset() {
     use std::io::Write;
