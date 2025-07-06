@@ -27,6 +27,9 @@ pub struct KopiConfig {
 
     #[serde(default)]
     pub additional_distributions: Vec<String>,
+
+    #[serde(default)]
+    pub auto_install: AutoInstallConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,6 +44,40 @@ impl Default for StorageConfig {
             min_disk_space_mb: DEFAULT_MIN_DISK_SPACE_MB,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoInstallConfig {
+    #[serde(default = "default_auto_install_enabled")]
+    pub enabled: bool,
+
+    #[serde(default = "default_prompt_enabled")]
+    pub prompt: bool,
+
+    #[serde(default = "default_timeout_secs")]
+    pub timeout_secs: u64,
+}
+
+impl Default for AutoInstallConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            prompt: true,
+            timeout_secs: 300,
+        }
+    }
+}
+
+fn default_auto_install_enabled() -> bool {
+    true
+}
+
+fn default_prompt_enabled() -> bool {
+    true
+}
+
+fn default_timeout_secs() -> u64 {
+    300 // 5 minutes
 }
 
 fn default_min_disk_space_mb() -> u64 {
@@ -88,7 +125,7 @@ impl KopiConfig {
     pub fn new(kopi_home: PathBuf) -> Result<Self> {
         let config_path = kopi_home.join(CONFIG_FILE_NAME);
 
-        let config = if config_path.exists() {
+        let mut config = if config_path.exists() {
             log::debug!("Loading config from {config_path:?}");
             let contents = fs::read_to_string(&config_path)?;
             let mut loaded: KopiConfig = toml::from_str(&contents)
@@ -104,8 +141,12 @@ impl KopiConfig {
                 },
                 default_distribution: "temurin".to_string(),
                 additional_distributions: Vec::new(),
+                auto_install: AutoInstallConfig::default(),
             }
         };
+
+        // Apply environment variable overrides
+        config.apply_env_overrides();
 
         Ok(config)
     }
@@ -175,6 +216,53 @@ impl KopiConfig {
     pub fn config_path(&self) -> PathBuf {
         self.kopi_home.join(CONFIG_FILE_NAME)
     }
+
+    /// Apply environment variable overrides to the configuration
+    fn apply_env_overrides(&mut self) {
+        // Auto-install settings
+        if let Ok(val) = std::env::var("KOPI_AUTO_INSTALL") {
+            self.auto_install.enabled = val.to_lowercase() == "true";
+            log::debug!("Applied KOPI_AUTO_INSTALL={} override", val);
+        }
+
+        if let Ok(val) = std::env::var("KOPI_AUTO_INSTALL_PROMPT") {
+            self.auto_install.prompt = val.to_lowercase() != "false";
+            log::debug!("Applied KOPI_AUTO_INSTALL_PROMPT={} override", val);
+        }
+
+        if let Ok(val) = std::env::var("KOPI_AUTO_INSTALL_TIMEOUT") {
+            if let Ok(timeout) = val.parse::<u64>() {
+                self.auto_install.timeout_secs = timeout;
+                log::debug!("Applied KOPI_AUTO_INSTALL_TIMEOUT={} override", timeout);
+            } else {
+                log::warn!(
+                    "Invalid KOPI_AUTO_INSTALL_TIMEOUT value '{}', ignoring",
+                    val
+                );
+            }
+        }
+
+        // Storage settings
+        if let Ok(val) = std::env::var("KOPI_MIN_DISK_SPACE_MB") {
+            if let Ok(mb) = val.parse::<u64>() {
+                self.storage.min_disk_space_mb = mb;
+                log::debug!("Applied KOPI_MIN_DISK_SPACE_MB={} override", mb);
+            } else {
+                log::warn!("Invalid KOPI_MIN_DISK_SPACE_MB value '{}', ignoring", val);
+            }
+        }
+
+        // Default distribution
+        if let Ok(val) = std::env::var("KOPI_DEFAULT_DISTRIBUTION") {
+            if !val.trim().is_empty() {
+                self.default_distribution = val.trim().to_string();
+                log::debug!(
+                    "Applied KOPI_DEFAULT_DISTRIBUTION={} override",
+                    self.default_distribution
+                );
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -204,6 +292,12 @@ mod tests {
 
     #[test]
     fn test_load_missing_config() {
+        // Clear any environment variables that might affect the test
+        unsafe {
+            env::remove_var("KOPI_MIN_DISK_SPACE_MB");
+            env::remove_var("KOPI_DEFAULT_DISTRIBUTION");
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         assert_eq!(config.storage.min_disk_space_mb, DEFAULT_MIN_DISK_SPACE_MB);
@@ -213,12 +307,24 @@ mod tests {
 
     #[test]
     fn test_save_and_load_config() {
+        // Clear any environment variables that might affect the test
+        unsafe {
+            env::remove_var("KOPI_MIN_DISK_SPACE_MB");
+            env::remove_var("KOPI_DEFAULT_DISTRIBUTION");
+            env::remove_var("KOPI_AUTO_INSTALL");
+            env::remove_var("KOPI_AUTO_INSTALL_PROMPT");
+            env::remove_var("KOPI_AUTO_INSTALL_TIMEOUT");
+        }
+
         let temp_dir = TempDir::new().unwrap();
 
         let mut config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         config.storage.min_disk_space_mb = 1024;
         config.default_distribution = "temurin".to_string();
         config.additional_distributions = vec!["mycustom".to_string(), "private-jdk".to_string()];
+        config.auto_install.enabled = true;
+        config.auto_install.prompt = false;
+        config.auto_install.timeout_secs = 600;
 
         config.save().unwrap();
 
@@ -229,10 +335,19 @@ mod tests {
             loaded.additional_distributions,
             vec!["mycustom", "private-jdk"]
         );
+        assert!(loaded.auto_install.enabled);
+        assert!(!loaded.auto_install.prompt);
+        assert_eq!(loaded.auto_install.timeout_secs, 600);
     }
 
     #[test]
     fn test_partial_config() {
+        // Clear any environment variables that might affect the test
+        unsafe {
+            env::remove_var("KOPI_MIN_DISK_SPACE_MB");
+            env::remove_var("KOPI_DEFAULT_DISTRIBUTION");
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join(CONFIG_FILE_NAME);
 
@@ -247,6 +362,12 @@ mod tests {
 
     #[test]
     fn test_config_with_storage_section() {
+        // Clear any environment variables that might affect the test
+        unsafe {
+            env::remove_var("KOPI_MIN_DISK_SPACE_MB");
+            env::remove_var("KOPI_DEFAULT_DISTRIBUTION");
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join(CONFIG_FILE_NAME);
 
@@ -363,5 +484,123 @@ min_disk_space_mb = 2048
 
         config.bin_dir().unwrap();
         assert!(kopi_home.join("bin").exists());
+    }
+
+    #[test]
+    fn test_auto_install_config_defaults() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+
+        // Test default auto-install settings
+        assert!(config.auto_install.enabled);
+        assert!(config.auto_install.prompt);
+        assert_eq!(config.auto_install.timeout_secs, 300);
+    }
+
+    #[test]
+    fn test_partial_config_with_auto_install() {
+        // Clear any environment variables that might affect the test
+        unsafe {
+            env::remove_var("KOPI_AUTO_INSTALL");
+            env::remove_var("KOPI_AUTO_INSTALL_PROMPT");
+            env::remove_var("KOPI_AUTO_INSTALL_TIMEOUT");
+            env::remove_var("KOPI_DEFAULT_DISTRIBUTION");
+        }
+
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join(CONFIG_FILE_NAME);
+
+        // Write partial config with only auto_install section
+        fs::write(
+            &config_path,
+            r#"
+[auto_install]
+enabled = true
+timeout_secs = 120
+"#,
+        )
+        .unwrap();
+
+        let loaded = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        assert!(loaded.auto_install.enabled);
+        assert!(loaded.auto_install.prompt); // Should use default
+        assert_eq!(loaded.auto_install.timeout_secs, 120);
+        assert_eq!(loaded.default_distribution, "temurin"); // Should use default
+    }
+
+    #[test]
+    fn test_env_var_overrides() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join(CONFIG_FILE_NAME);
+
+        // Write config with specific values
+        fs::write(
+            &config_path,
+            r#"
+default_distribution = "temurin"
+
+[auto_install]
+enabled = true
+prompt = true
+timeout_secs = 300
+
+[storage]
+min_disk_space_mb = 500
+"#,
+        )
+        .unwrap();
+
+        // Set environment variables to override config
+        unsafe {
+            env::set_var("KOPI_AUTO_INSTALL", "false");
+            env::set_var("KOPI_AUTO_INSTALL_PROMPT", "false");
+            env::set_var("KOPI_AUTO_INSTALL_TIMEOUT", "600");
+            env::set_var("KOPI_MIN_DISK_SPACE_MB", "1024");
+            env::set_var("KOPI_DEFAULT_DISTRIBUTION", "corretto");
+        }
+
+        let loaded = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+
+        // Verify environment overrides
+        assert!(!loaded.auto_install.enabled);
+        assert!(!loaded.auto_install.prompt);
+        assert_eq!(loaded.auto_install.timeout_secs, 600);
+        assert_eq!(loaded.storage.min_disk_space_mb, 1024);
+        assert_eq!(loaded.default_distribution, "corretto");
+
+        // Cleanup
+        unsafe {
+            env::remove_var("KOPI_AUTO_INSTALL");
+            env::remove_var("KOPI_AUTO_INSTALL_PROMPT");
+            env::remove_var("KOPI_AUTO_INSTALL_TIMEOUT");
+            env::remove_var("KOPI_MIN_DISK_SPACE_MB");
+            env::remove_var("KOPI_DEFAULT_DISTRIBUTION");
+        }
+    }
+
+    #[test]
+    fn test_env_var_invalid_values() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Set invalid environment variable values
+        unsafe {
+            env::set_var("KOPI_AUTO_INSTALL_TIMEOUT", "not_a_number");
+            env::set_var("KOPI_MIN_DISK_SPACE_MB", "invalid");
+            env::set_var("KOPI_DEFAULT_DISTRIBUTION", ""); // Empty value
+        }
+
+        let loaded = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+
+        // Should use defaults for invalid values
+        assert_eq!(loaded.auto_install.timeout_secs, 300);
+        assert_eq!(loaded.storage.min_disk_space_mb, DEFAULT_MIN_DISK_SPACE_MB);
+        assert_eq!(loaded.default_distribution, "temurin"); // Should keep default
+
+        // Cleanup
+        unsafe {
+            env::remove_var("KOPI_AUTO_INSTALL_TIMEOUT");
+            env::remove_var("KOPI_MIN_DISK_SPACE_MB");
+            env::remove_var("KOPI_DEFAULT_DISTRIBUTION");
+        }
     }
 }

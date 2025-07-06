@@ -27,7 +27,6 @@ impl VersionResolver {
         Self::default()
     }
 
-    #[cfg(test)]
     pub fn with_dir(dir: PathBuf) -> Self {
         Self { current_dir: dir }
     }

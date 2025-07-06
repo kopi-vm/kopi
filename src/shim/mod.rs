@@ -4,13 +4,18 @@ use crate::models::jdk::{Distribution, VersionRequest};
 use crate::storage::JdkRepository;
 use std::env;
 use std::ffi::OsString;
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+pub mod auto_install;
+pub mod errors;
 pub mod installer;
 pub mod tools;
 pub mod version_resolver;
 
+use auto_install::AutoInstaller;
+use errors::{ShimErrorBuilder, format_shim_error};
 use version_resolver::VersionResolver;
 
 /// Run the shim with the provided arguments
@@ -30,13 +35,56 @@ pub fn run_shim() -> Result<()> {
 
     // Resolve JDK version
     let resolver = VersionResolver::new();
-    let version_request = resolver.resolve_version()?;
+    let version_request = match resolver.resolve_version() {
+        Ok(req) => req,
+        Err(KopiError::NoLocalVersion) => {
+            let error = ShimErrorBuilder::no_version_found(
+                &std::env::current_dir()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|_| ".".to_string()),
+            );
+            eprintln!(
+                "{}",
+                format_shim_error(&error, std::io::stderr().is_terminal())
+            );
+            std::process::exit(error.exit_code());
+        }
+        Err(e) => return Err(e),
+    };
     log::debug!("Resolved version: {version_request:?}");
 
     // Find JDK installation
     let config = new_kopi_config()?;
     let repository = JdkRepository::new(&config);
-    let jdk_path = find_jdk_installation(&repository, &version_request)?;
+    let jdk_path = match find_jdk_installation(&repository, &version_request) {
+        Ok(path) => path,
+        Err(KopiError::JdkNotInstalled(_)) => {
+            // Try auto-install if enabled
+            let auto_installer = AutoInstaller::new(&config);
+            match auto_installer.auto_install(&version_request) {
+                Ok(path) => path,
+                Err(_e) => {
+                    // Enhanced error message for JDK not installed
+                    let default_dist = "temurin".to_string();
+                    let distribution = version_request
+                        .distribution
+                        .as_ref()
+                        .unwrap_or(&default_dist);
+                    let error = ShimErrorBuilder::jdk_not_installed(
+                        &version_request.version_pattern,
+                        distribution,
+                        auto_installer.is_enabled(),
+                    );
+                    eprintln!(
+                        "{}",
+                        format_shim_error(&error, std::io::stderr().is_terminal())
+                    );
+                    std::process::exit(error.exit_code());
+                }
+            }
+        }
+        Err(e) => return Err(e),
+    };
     log::debug!("JDK path: {jdk_path:?}");
 
     // Build tool path
@@ -131,8 +179,24 @@ fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
 
     // Verify the tool exists
     if !tool_path.exists() {
+        // Only exit in production code, not during tests
+        #[cfg(not(test))]
+        {
+            let error = ShimErrorBuilder::tool_not_found(
+                tool_name,
+                jdk_path.to_str().unwrap_or("<invalid path>"),
+            )?;
+            eprintln!(
+                "{}",
+                format_shim_error(&error, std::io::stderr().is_terminal())
+            );
+            std::process::exit(error.exit_code());
+        }
+
+        #[cfg(test)]
         return Err(KopiError::SystemError(format!(
-            "Tool '{tool_name}' not found in JDK at {jdk_path:?}"
+            "Tool '{}' not found in JDK at {:?}",
+            tool_name, jdk_path
         )));
     }
 
