@@ -176,15 +176,17 @@ impl<'a> AutoInstaller<'a> {
                 // Find the installed JDK
                 let installed_jdks = repository.list_installed_jdks()?;
 
-                // Extract version string from parsed request
-                let version_str = parsed_request
-                    .version
-                    .map(|v| v.to_string())
-                    .unwrap_or_else(|| "".to_string());
+                // Extract the version pattern from the version spec
+                // For "temurin@21", we need to extract "21"
+                let version_pattern = if let Some(at_pos) = version_spec.find('@') {
+                    &version_spec[at_pos + 1..]
+                } else {
+                    version_spec
+                };
 
                 for jdk in installed_jdks {
                     if jdk.distribution.to_lowercase() == distribution.id()
-                        && (version_str.is_empty() || jdk.version.starts_with(&version_str))
+                        && super::version_matches(&jdk.version, version_pattern)
                     {
                         return Ok(jdk.path);
                     }
