@@ -249,6 +249,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
+    #[serial]
     fn test_default_config() {
         // Clear KOPI_HOME to ensure we get the default behavior
         unsafe {
@@ -374,7 +375,13 @@ min_disk_space_mb = 2048
     }
 
     #[test]
+    #[serial]
     fn test_resolve_kopi_home_from_env() {
+        // Clear any existing KOPI_HOME first
+        unsafe {
+            env::remove_var("KOPI_HOME");
+        }
+
         let temp_dir = TempDir::new().unwrap();
         // Ensure we have a canonicalized absolute path on all platforms
         let abs_path = temp_dir.path().canonicalize().unwrap();
@@ -391,6 +398,7 @@ min_disk_space_mb = 2048
     }
 
     #[test]
+    #[serial]
     fn test_resolve_kopi_home_relative_path() {
         // Set a relative path
         unsafe {
@@ -408,6 +416,7 @@ min_disk_space_mb = 2048
     }
 
     #[test]
+    #[serial]
     fn test_resolve_kopi_home_default() {
         unsafe {
             env::remove_var("KOPI_HOME");
@@ -419,7 +428,17 @@ min_disk_space_mb = 2048
     }
 
     #[test]
+    #[serial]
     fn test_directory_paths() {
+        // Clear any environment variables that might affect the test
+        unsafe {
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+            env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
+            env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
+            env::remove_var("KOPI_STORAGE__MIN_DISK_SPACE_MB");
+            env::remove_var("KOPI_DEFAULT_DISTRIBUTION");
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let kopi_home = temp_dir.path();
         let config = KopiConfig::new(kopi_home.to_path_buf()).unwrap();
@@ -449,7 +468,17 @@ min_disk_space_mb = 2048
     }
 
     #[test]
+    #[serial]
     fn test_directory_creation_on_access() {
+        // Clear any environment variables that might affect the test
+        unsafe {
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+            env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
+            env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
+            env::remove_var("KOPI_STORAGE__MIN_DISK_SPACE_MB");
+            env::remove_var("KOPI_DEFAULT_DISTRIBUTION");
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let kopi_home = temp_dir.path();
         let config = KopiConfig::new(kopi_home.to_path_buf()).unwrap();
@@ -471,7 +500,15 @@ min_disk_space_mb = 2048
     }
 
     #[test]
+    #[serial]
     fn test_auto_install_config_defaults() {
+        // Clear any environment variables that might affect the test
+        unsafe {
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+            env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
+            env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
 

@@ -262,6 +262,12 @@ mod tests {
     use crate::config::KopiConfig;
 
     fn create_test_config() -> KopiConfig {
+        // Clear any leftover environment variables
+        unsafe {
+            std::env::remove_var("KOPI_AUTO_INSTALL");
+            std::env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+        }
+
         // Create a test config with a temporary directory
         let temp_dir = std::env::temp_dir();
         KopiConfig::new(temp_dir).unwrap()

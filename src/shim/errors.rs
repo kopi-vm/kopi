@@ -91,7 +91,7 @@ impl ShimError {
                     AutoInstallStatus::Disabled => {
                         format!(
                             "To install it, run:\n  kopi install {}@{}\n\n\
-                            Or enable auto-install:\n  export KOPI_AUTO_INSTALL=true",
+                            Or enable auto-install:\n  export KOPI_AUTO_INSTALL__ENABLED=true",
                             distribution, version
                         )
                     }
@@ -178,7 +178,7 @@ impl ShimError {
             } => vec![
                 format!("Install the JDK: kopi install {}@{}", distribution, version),
                 "List available versions: kopi cache search".to_string(),
-                "Enable auto-install: export KOPI_AUTO_INSTALL=true".to_string(),
+                "Enable auto-install: export KOPI_AUTO_INSTALL__ENABLED=true".to_string(),
             ],
 
             ShimError::ToolNotFound { tool, .. } => vec![
@@ -355,7 +355,7 @@ mod tests {
 
         assert!(message.contains("JDK temurin 21 is not installed"));
         assert!(message.contains("kopi install temurin@21"));
-        assert!(message.contains("KOPI_AUTO_INSTALL=true"));
+        assert!(message.contains("KOPI_AUTO_INSTALL__ENABLED=true"));
     }
 
     #[test]
@@ -448,7 +448,10 @@ mod tests {
 
         // Test each auto-install status
         let statuses = vec![
-            (AutoInstallStatus::Disabled, "export KOPI_AUTO_INSTALL=true"),
+            (
+                AutoInstallStatus::Disabled,
+                "export KOPI_AUTO_INSTALL__ENABLED=true",
+            ),
             (AutoInstallStatus::UserDeclined, "Installation was declined"),
             (AutoInstallStatus::InProgress, "currently installing"),
             (

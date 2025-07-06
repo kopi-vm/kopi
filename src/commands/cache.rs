@@ -725,10 +725,12 @@ fn list_distributions() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::env;
     use tempfile::TempDir;
 
     #[test]
+    #[serial]
     fn test_cache_info_no_cache() {
         let temp_dir = TempDir::new().unwrap();
         unsafe {
@@ -737,9 +739,14 @@ mod tests {
 
         let result = show_cache_info();
         assert!(result.is_ok());
+
+        unsafe {
+            env::remove_var("KOPI_HOME");
+        }
     }
 
     #[test]
+    #[serial]
     fn test_clear_cache_no_cache() {
         let temp_dir = TempDir::new().unwrap();
         unsafe {
@@ -748,9 +755,14 @@ mod tests {
 
         let result = clear_cache();
         assert!(result.is_ok());
+
+        unsafe {
+            env::remove_var("KOPI_HOME");
+        }
     }
 
     #[test]
+    #[serial]
     fn test_list_distributions_no_cache() {
         let temp_dir = TempDir::new().unwrap();
         unsafe {
@@ -759,9 +771,14 @@ mod tests {
 
         let result = list_distributions();
         assert!(result.is_ok());
+
+        unsafe {
+            env::remove_var("KOPI_HOME");
+        }
     }
 
     #[test]
+    #[serial]
     fn test_search_cache_with_lts_filter_no_cache() {
         let temp_dir = TempDir::new().unwrap();
         unsafe {
@@ -770,6 +787,10 @@ mod tests {
 
         let result = search_cache("21".to_string(), false, false, false, true, false);
         assert!(result.is_ok());
+
+        unsafe {
+            env::remove_var("KOPI_HOME");
+        }
     }
 
     #[test]

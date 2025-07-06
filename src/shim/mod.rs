@@ -280,6 +280,14 @@ mod tests {
 
     #[test]
     fn test_find_jdk_installation_not_found() {
+        // Clear any leftover environment variables
+        unsafe {
+            std::env::remove_var("KOPI_AUTO_INSTALL");
+            std::env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+            std::env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
+            std::env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         let repository = JdkRepository::new(&config);

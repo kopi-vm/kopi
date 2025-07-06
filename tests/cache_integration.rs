@@ -2,6 +2,7 @@ mod common;
 use common::TestHomeGuard;
 use kopi::cache::{MetadataCache, fetch_and_cache_metadata, get_metadata};
 use kopi::config::new_kopi_config;
+use serial_test::serial;
 use std::fs;
 use std::path::PathBuf;
 
@@ -10,6 +11,7 @@ fn get_test_cache_path(test_home: &TestHomeGuard) -> PathBuf {
 }
 
 #[test]
+#[serial]
 #[ignore] // This test requires network access
 fn test_fetch_and_cache_metadata() {
     let test_home = TestHomeGuard::new();
@@ -60,6 +62,7 @@ fn test_fetch_and_cache_metadata() {
 }
 
 #[test]
+#[serial]
 fn test_cache_offline_mode() {
     use kopi::cache::DistributionCache;
     use kopi::models::jdk::{
@@ -128,6 +131,7 @@ fn test_cache_offline_mode() {
 }
 
 #[test]
+#[serial]
 fn test_find_package_in_cache() {
     use kopi::cache::DistributionCache;
     use kopi::models::jdk::{
@@ -179,6 +183,7 @@ fn test_find_package_in_cache() {
 }
 
 #[test]
+#[serial]
 fn test_cache_corruption_recovery() {
     let test_home = TestHomeGuard::new();
     let test_home = test_home.setup_kopi_structure();
@@ -202,6 +207,7 @@ fn test_cache_corruption_recovery() {
 }
 
 #[test]
+#[serial]
 fn test_cache_with_install_command() {
     use kopi::cache::DistributionCache;
     use kopi::commands::install::InstallCommand;

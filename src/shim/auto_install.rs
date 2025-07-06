@@ -254,22 +254,31 @@ impl<'a> AutoInstaller<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::env;
     use tempfile::TempDir;
 
     fn setup_test_config() -> (TempDir, KopiConfig) {
+        // Clear any auto-install environment variables
+        unsafe {
+            std::env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+            std::env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
+            std::env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         (temp_dir, config)
     }
 
     #[test]
+    #[serial]
     fn test_auto_installer_enabled_by_default() {
         let (_temp_dir, config) = setup_test_config();
 
         // Clear environment variable
         unsafe {
-            env::remove_var("KOPI_AUTO_INSTALL");
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
         }
 
         let installer = AutoInstaller::new(&config);
@@ -277,12 +286,13 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_auto_installer_enabled_via_env() {
         let (temp_dir, _config) = setup_test_config();
 
         // Set environment variable before creating config
         unsafe {
-            env::set_var("KOPI_AUTO_INSTALL", "true");
+            env::set_var("KOPI_AUTO_INSTALL__ENABLED", "true");
         }
 
         // Create new config to pick up environment variable
@@ -291,17 +301,18 @@ mod tests {
         assert!(installer.is_enabled());
 
         unsafe {
-            env::remove_var("KOPI_AUTO_INSTALL");
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
         }
     }
 
     #[test]
+    #[serial]
     fn test_auto_installer_prompts_enabled_by_default() {
         let (temp_dir, _config) = setup_test_config();
 
         unsafe {
-            env::set_var("KOPI_AUTO_INSTALL", "true");
-            env::remove_var("KOPI_AUTO_INSTALL_PROMPT");
+            env::set_var("KOPI_AUTO_INSTALL__ENABLED", "true");
+            env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
         }
 
         // Create new config to pick up environment variable
@@ -310,17 +321,18 @@ mod tests {
         assert!(installer.enable_prompts);
 
         unsafe {
-            env::remove_var("KOPI_AUTO_INSTALL");
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
         }
     }
 
     #[test]
+    #[serial]
     fn test_auto_installer_prompts_disabled_via_env() {
         let (temp_dir, _config) = setup_test_config();
 
         unsafe {
-            env::set_var("KOPI_AUTO_INSTALL", "true");
-            env::set_var("KOPI_AUTO_INSTALL_PROMPT", "false");
+            env::set_var("KOPI_AUTO_INSTALL__ENABLED", "true");
+            env::set_var("KOPI_AUTO_INSTALL__PROMPT", "false");
         }
 
         // Create new config to pick up environment variable
@@ -329,8 +341,8 @@ mod tests {
         assert!(!installer.enable_prompts);
 
         unsafe {
-            env::remove_var("KOPI_AUTO_INSTALL");
-            env::remove_var("KOPI_AUTO_INSTALL_PROMPT");
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+            env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
         }
     }
 
@@ -376,12 +388,13 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_auto_install_disabled_returns_error() {
         let (temp_dir, _config) = setup_test_config();
 
         // Explicitly disable auto-install
         unsafe {
-            env::set_var("KOPI_AUTO_INSTALL", "false");
+            env::set_var("KOPI_AUTO_INSTALL__ENABLED", "false");
         }
 
         // Create new config to pick up environment variable
@@ -397,7 +410,7 @@ mod tests {
 
         // Cleanup
         unsafe {
-            env::remove_var("KOPI_AUTO_INSTALL");
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
         }
     }
 

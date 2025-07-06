@@ -6,6 +6,7 @@ mod auto_install_integration_tests {
     use kopi::shim::auto_install::AutoInstaller;
     use kopi::shim::errors::{AutoInstallStatus, ShimError, ShimErrorBuilder};
     use kopi::shim::version_resolver::VersionResolver;
+    use serial_test::serial;
     use std::env;
     use std::fs;
     use std::sync::{Arc, Mutex};
@@ -20,9 +21,9 @@ mod auto_install_integration_tests {
 
         // Clear any auto-install environment variables
         unsafe {
-            env::remove_var("KOPI_AUTO_INSTALL");
-            env::remove_var("KOPI_AUTO_INSTALL_PROMPT");
-            env::remove_var("KOPI_AUTO_INSTALL_TIMEOUT");
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+            env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
+            env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
         }
 
         (temp_dir, config)
@@ -58,15 +59,23 @@ mod auto_install_integration_tests {
     }
 
     #[test]
+    #[serial]
     fn test_auto_install_environment_overrides_config() {
-        let (temp_dir, _config) = setup_test_env();
+        // Clear environment variables first
+        unsafe {
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+            env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
+            env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
+        }
+
+        let temp_dir = TempDir::new().unwrap();
 
         // Set environment variable before creating config
         unsafe {
-            env::set_var("KOPI_AUTO_INSTALL", "false");
+            env::set_var("KOPI_AUTO_INSTALL__ENABLED", "false");
         }
 
-        // Create new config to pick up environment variable
+        // Create config which should pick up the environment variable
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         assert!(!config.auto_install.enabled);
 
@@ -75,7 +84,7 @@ mod auto_install_integration_tests {
 
         // Cleanup
         unsafe {
-            env::remove_var("KOPI_AUTO_INSTALL");
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
         }
     }
 
@@ -165,12 +174,20 @@ mod auto_install_integration_tests {
     }
 
     #[test]
+    #[serial]
     fn test_timeout_configuration() {
-        let (temp_dir, _config) = setup_test_env();
+        // Clear environment variables first
+        unsafe {
+            env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+            env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
+            env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
+        }
+
+        let temp_dir = TempDir::new().unwrap();
 
         // Environment variable should override config
         unsafe {
-            env::set_var("KOPI_AUTO_INSTALL_TIMEOUT", "30");
+            env::set_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS", "30");
         }
 
         // Create new config to pick up environment variable
@@ -181,7 +198,7 @@ mod auto_install_integration_tests {
 
         // Cleanup
         unsafe {
-            env::remove_var("KOPI_AUTO_INSTALL_TIMEOUT");
+            env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
         }
     }
 

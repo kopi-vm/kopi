@@ -92,6 +92,12 @@ mod tests {
 
     impl TestStorage {
         fn new() -> Self {
+            // Clear any leftover environment variables
+            unsafe {
+                std::env::remove_var("KOPI_AUTO_INSTALL");
+                std::env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+            }
+
             let temp_dir = TempDir::new().unwrap();
             let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
             TestStorage {
