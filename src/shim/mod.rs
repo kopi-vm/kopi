@@ -8,13 +8,10 @@ use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub mod auto_install;
 pub mod errors;
 pub mod installer;
 pub mod tools;
 pub mod version_resolver;
-
-use auto_install::AutoInstaller;
 use errors::{ShimErrorBuilder, format_shim_error};
 use version_resolver::VersionResolver;
 
@@ -59,28 +56,72 @@ pub fn run_shim() -> Result<()> {
     let jdk_path = match find_jdk_installation(&repository, &version_request) {
         Ok(path) => path,
         Err(KopiError::JdkNotInstalled(_)) => {
-            // Try auto-install if enabled
-            let auto_installer = AutoInstaller::new(&config);
-            match auto_installer.auto_install(&version_request) {
-                Ok(path) => path,
-                Err(_e) => {
-                    // Enhanced error message for JDK not installed
-                    let default_dist = "temurin".to_string();
-                    let distribution = version_request
-                        .distribution
-                        .as_ref()
-                        .unwrap_or(&default_dist);
-                    let error = ShimErrorBuilder::jdk_not_installed(
-                        &version_request.version_pattern,
-                        distribution,
-                        auto_installer.is_enabled(),
-                    );
-                    eprintln!(
-                        "{}",
-                        format_shim_error(&error, std::io::stderr().is_terminal())
-                    );
-                    std::process::exit(error.exit_code());
+            // Check if auto-install is enabled
+            let auto_install_enabled = config.auto_install.enabled;
+
+            if auto_install_enabled {
+                // Try to delegate to main kopi binary for installation
+                match delegate_auto_install(&version_request) {
+                    Ok(()) => {
+                        // Retry finding the JDK after installation
+                        match find_jdk_installation(&repository, &version_request) {
+                            Ok(path) => path,
+                            Err(_) => {
+                                // Still not found after installation attempt
+                                let default_dist = "temurin".to_string();
+                                let distribution = version_request
+                                    .distribution
+                                    .as_ref()
+                                    .unwrap_or(&default_dist);
+                                let error = ShimErrorBuilder::jdk_not_installed(
+                                    &version_request.version_pattern,
+                                    distribution,
+                                    auto_install_enabled,
+                                );
+                                eprintln!(
+                                    "{}",
+                                    format_shim_error(&error, std::io::stderr().is_terminal())
+                                );
+                                std::process::exit(error.exit_code());
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        // Auto-install failed or was declined
+                        let default_dist = "temurin".to_string();
+                        let distribution = version_request
+                            .distribution
+                            .as_ref()
+                            .unwrap_or(&default_dist);
+                        let error = ShimErrorBuilder::jdk_not_installed(
+                            &version_request.version_pattern,
+                            distribution,
+                            auto_install_enabled,
+                        );
+                        eprintln!(
+                            "{}",
+                            format_shim_error(&error, std::io::stderr().is_terminal())
+                        );
+                        std::process::exit(error.exit_code());
+                    }
                 }
+            } else {
+                // Auto-install is disabled
+                let default_dist = "temurin".to_string();
+                let distribution = version_request
+                    .distribution
+                    .as_ref()
+                    .unwrap_or(&default_dist);
+                let error = ShimErrorBuilder::jdk_not_installed(
+                    &version_request.version_pattern,
+                    distribution,
+                    auto_install_enabled,
+                );
+                eprintln!(
+                    "{}",
+                    format_shim_error(&error, std::io::stderr().is_terminal())
+                );
+                std::process::exit(error.exit_code());
             }
         }
         Err(e) => return Err(e),
@@ -201,6 +242,69 @@ fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
     }
 
     Ok(tool_path)
+}
+
+fn delegate_auto_install(version_request: &VersionRequest) -> Result<()> {
+    // Build the version specification for the install command
+    let version_spec = if let Some(dist) = &version_request.distribution {
+        format!("{}@{}", dist, version_request.version_pattern)
+    } else {
+        version_request.version_pattern.clone()
+    };
+
+    log::info!(
+        "Delegating auto-install to main kopi binary for {}",
+        version_spec
+    );
+
+    // Find the kopi binary in the same directory as the shim
+    let kopi_path = find_kopi_binary()?;
+
+    // Execute kopi install command
+    let mut cmd = std::process::Command::new(&kopi_path);
+    cmd.arg("install").arg(&version_spec);
+
+    match cmd.status() {
+        Ok(status) if status.success() => {
+            log::info!("Successfully delegated installation of {}", version_spec);
+            Ok(())
+        }
+        Ok(status) => {
+            log::warn!("kopi install command failed with status: {:?}", status);
+            Err(KopiError::SystemError(format!(
+                "Failed to install {}: command exited with status {:?}",
+                version_spec, status
+            )))
+        }
+        Err(e) => {
+            log::error!("Failed to execute kopi install command: {}", e);
+            Err(KopiError::SystemError(format!(
+                "Failed to execute kopi install command: {}",
+                e
+            )))
+        }
+    }
+}
+
+fn find_kopi_binary() -> Result<PathBuf> {
+    // First try to find kopi in the same directory as the current executable
+    if let Ok(current_exe) = std::env::current_exe() {
+        if let Some(parent) = current_exe.parent() {
+            let kopi_path = parent.join(if cfg!(windows) { "kopi.exe" } else { "kopi" });
+            if kopi_path.exists() {
+                return Ok(kopi_path);
+            }
+        }
+    }
+
+    // Fallback to searching in PATH
+    if let Ok(kopi_in_path) = which::which(if cfg!(windows) { "kopi.exe" } else { "kopi" }) {
+        return Ok(kopi_in_path);
+    }
+
+    Err(KopiError::SystemError(
+        "Could not find kopi binary for auto-installation".to_string(),
+    ))
 }
 
 #[cfg(test)]

@@ -15,6 +15,15 @@ inherits = "release"
 lto = false
 codegen-units = 16
 
+# Optimized profile for minimal shim binary size
+[profile.release-shim]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+opt-level = "z"  # Optimize for size
+panic = "abort"  # Smaller binary without unwinding
+strip = true  # Strip symbols
+
 # Optimize test builds
 [profile.test]
 opt-level = 1  # Basic optimization
