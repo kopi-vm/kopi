@@ -216,6 +216,42 @@ auto_install_prompt = false  # Default: false
 install_timeout = 300  # Seconds
 ```
 
+## Auto-Installation Behavior
+
+### Design Principle
+
+The shim binary is designed to be lightweight and fast for normal operations. Auto-installation is an exceptional case that occurs only when:
+
+1. A requested JDK version is not installed
+2. Auto-installation is enabled in configuration
+3. The user invokes a Java tool that requires the missing JDK
+
+### Implementation Strategy
+
+When auto-installation is triggered, the shim will:
+
+1. **Spawn the main kopi binary as a subprocess** to handle the installation
+2. **Pass appropriate arguments** to install the required JDK version
+3. **Wait for the installation to complete**
+4. **Retry locating the JDK** after successful installation
+5. **Proceed with normal execution** using the newly installed JDK
+
+This approach keeps the shim binary small (< 1MB) while delegating complex installation logic to the main kopi binary. The process overhead is acceptable in this case because:
+
+- Auto-installation is an infrequent operation
+- The time spent spawning a subprocess is negligible compared to downloading and extracting a JDK
+- It allows the shim to remain lightweight for the common case (JDK already installed)
+
+Example subprocess invocation:
+```rust
+// When auto-installation is needed
+Command::new("kopi")
+    .arg("install")
+    .arg(format!("{}@{}", distribution, version))
+    .arg("--auto")
+    .status()?;
+```
+
 ## Shim Management Commands
 
 | Command | Description |

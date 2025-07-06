@@ -334,6 +334,28 @@ Based on our analysis, we recommend implementing a **shim-based approach** simil
    - Compiled Rust shims for minimal overhead (1-20ms)
    - Direct execution without intermediate processes
 
+5. **Auto-Installation Exception**:
+   While the design prioritizes avoiding process chains for performance, auto-installation is handled as an exceptional case:
+   - **Normal operation**: Shim directly executes the target JDK binary (no process chain)
+   - **Auto-installation**: When a requested JDK is not installed and auto-install is enabled, the shim spawns the main kopi binary as a subprocess to handle the installation
+   - This exception is acceptable because:
+     - Auto-installation is an infrequent operation (typically happens once per JDK version)
+     - The subprocess overhead is negligible compared to the time spent downloading and extracting a JDK
+     - It keeps the shim binary small (< 1MB) by not including installation logic
+     - Users can disable auto-installation if subprocess spawning is undesirable
+   
+   ```rust
+   // Auto-installation subprocess call (exceptional case only)
+   if auto_install_enabled && jdk_not_found {
+       Command::new("kopi")
+           .arg("install")
+           .arg(format!("{}@{}", distribution, version))
+           .arg("--auto")
+           .status()?;
+       // Retry finding JDK after installation
+   }
+   ```
+
 ## Rationale
 
 1. **Shim-based approach** provides the best balance of compatibility and functionality
