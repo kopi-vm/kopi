@@ -252,6 +252,13 @@ pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)
         .get_package_by_id(package_id)
         .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch package checksum: {e}")))?;
 
+    // Check if checksum is empty
+    if package_info.checksum.is_empty() {
+        return Err(KopiError::MetadataFetch(format!(
+            "No checksum available for package ID: {package_id}"
+        )));
+    }
+
     // Parse checksum type
     let checksum_type = match package_info.checksum_type.to_lowercase().as_str() {
         "sha256" => ChecksumType::Sha256,
