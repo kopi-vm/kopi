@@ -37,7 +37,6 @@ After analyzing popular version managers (volta, nvm, pyenv, asdf, mise), we ide
    ```bash
    kopi install <version>              # Install a specific JDK version
    kopi install <distribution>@<version>  # Install specific distribution
-   kopi install --list                 # List available JDK versions from foojay.io
    kopi uninstall <version>            # Remove an installed JDK version
    kopi uninstall <distribution>@<version>  # Remove specific distribution
    ```
@@ -48,27 +47,41 @@ After analyzing popular version managers (volta, nvm, pyenv, asdf, mise), we ide
    kopi shell                      # Launch new shell with JDK environment configured
    kopi global <version>           # Set default JDK version globally
    kopi local <version>            # Set JDK version for current project
-   kopi pin <version>              # Pin JDK version in project config
+   kopi pin <version>              # Alias for 'kopi local' (pins JDK version in project config)
    ```
 
 3. **Information Commands**
    ```bash
    kopi list                       # List installed JDK versions
-   kopi list --remote              # List available versions from foojay.io
    kopi current                    # Show current JDK version and details
    kopi which                      # Show path to current java executable
    ```
 
-4. **Project Configuration**
+4. **Cache Management Commands**
+   ```bash
+   kopi cache search [version]     # Search available JDK versions from foojay.io
+   kopi cache refresh              # Update metadata cache from foojay.io
+   kopi cache clear                # Clear the metadata cache
+   ```
+
+5. **Project Configuration**
    ```bash
    kopi init                       # Initialize kopi in current project
    kopi env                        # Show JDK environment variables
    ```
 
-5. **Advanced Features**
+6. **Setup and Maintenance**
+   ```bash
+   kopi setup                      # Initial setup and configuration
+   kopi shim list                  # List installed shims
+   kopi shim create                # Create shims for JDK tools
+   ```
+
+7. **Advanced Features**
    ```bash
    kopi default <distribution>     # Set default distribution for installations
-   kopi refresh                    # Update metadata cache from foojay.io
+   kopi refresh                    # Alias for 'kopi cache refresh'
+   kopi search [version]           # Alias for 'kopi cache search'
    kopi prune                      # Remove unused JDK versions
    kopi doctor                     # Diagnose kopi installation issues
    ```
@@ -169,10 +182,10 @@ The `kopi shell` command provides an alternative approach:
 
 ## Implementation Priority
 
-1. Phase 1: Core commands (`install`, `list`, `use`, `current`)
-2. Phase 2: Project support (`local`, `pin`, config files) and `shell` command
-3. Phase 3: Advanced features (`default`, `doctor`, `prune`, `migrate`)
-4. Phase 4: Shell completions and enhanced integration
+1. Phase 1: Core commands (`install`, `list`, `use`, `current`, `which`, `global`)
+2. Phase 2: Project support (`local`, config files) and `shell` command
+3. Phase 3: Cache management (`cache search`, `cache refresh`, `cache clear`) and setup (`setup`, `shim`)
+4. Phase 4: Advanced features (`default`, `doctor`, `prune`) and shell completions
 
 ## References
 - Volta CLI: https://docs.volta.sh/
