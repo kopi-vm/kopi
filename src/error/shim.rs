@@ -1,4 +1,4 @@
-use crate::error::{KopiError, Result};
+use super::{KopiError, Result};
 use std::fmt;
 
 /// Shim-specific error types with clear categorization

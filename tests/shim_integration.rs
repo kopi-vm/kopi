@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod shim_integration_tests {
     use kopi::error::KopiError;
-    use kopi::shim::errors::{AutoInstallStatus, ShimError, ShimErrorBuilder};
+    use kopi::error::shim::{AutoInstallStatus, ShimError, ShimErrorBuilder};
     use kopi::shim::version_resolver::VersionResolver;
     use std::fs;
     use tempfile::TempDir;
@@ -78,8 +78,8 @@ mod shim_integration_tests {
             assert!(!suggestions.is_empty());
 
             // Test both colored and non-colored output
-            let colored = kopi::shim::errors::format_shim_error(&error, true);
-            let plain = kopi::shim::errors::format_shim_error(&error, false);
+            let colored = kopi::error::shim::format_shim_error(&error, true);
+            let plain = kopi::error::shim::format_shim_error(&error, false);
 
             assert!(colored.contains("Error:"));
             assert!(plain.contains("Error:"));

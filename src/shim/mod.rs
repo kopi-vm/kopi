@@ -8,11 +8,10 @@ use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub mod errors;
 pub mod installer;
 pub mod tools;
 pub mod version_resolver;
-use errors::{ShimErrorBuilder, format_shim_error};
+use crate::error::shim::{ShimErrorBuilder, format_shim_error};
 use version_resolver::VersionResolver;
 
 /// Run the shim with the provided arguments

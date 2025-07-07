@@ -1,6 +1,8 @@
 use std::fmt;
 use thiserror::Error;
 
+pub mod shim;
+
 #[derive(Error, Debug)]
 pub enum KopiError {
     #[error("JDK version '{0}' is not available")]
