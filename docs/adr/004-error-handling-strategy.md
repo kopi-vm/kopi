@@ -12,10 +12,11 @@ Kopi needs a robust error handling strategy that provides:
 - Type safety and maintainability
 
 ## Decision
-We will adopt a hybrid error handling approach using:
-1. **thiserror** for defining structured error types in modules
-2. **color-eyre** for user-friendly error reporting in the main binary
-3. **anyhow** for error context in application logic where specific error types aren't needed
+We will use **thiserror** exclusively for all error handling throughout the codebase. This provides:
+- Strongly-typed, well-defined error types
+- Clear error messages with proper context
+- Type-safe error propagation
+- No ad-hoc error context that can obscure the actual error source
 
 ### Error Architecture
 
@@ -125,50 +126,48 @@ impl From<DownloadError> for KopiError {
 #### Main Application
 ```rust
 // src/main.rs
-use color_eyre::eyre::Result;
+use crate::error::{KopiError, Result};
 use std::process;
 
-fn main() -> Result<()> {
-    // Install color-eyre for better error reports
-    color_eyre::install()?;
-    
+fn main() {
     // Run the application
     if let Err(e) = run() {
         // Handle broken pipe gracefully
-        if let Some(io_err) = e.downcast_ref::<std::io::Error>() {
+        if let KopiError::Io(io_err) = &e {
             if io_err.kind() == std::io::ErrorKind::BrokenPipe {
                 process::exit(0);
             }
         }
         
         // Map errors to appropriate exit codes
-        let exit_code = match e.downcast_ref::<KopiError>() {
-            Some(KopiError::JdkNotInstalled(_)) => 127,  // Command not found
-            Some(KopiError::PermissionDenied(_)) => 126,  // Permission denied
-            Some(KopiError::InvalidVersionFormat(_)) => 2, // Invalid argument
+        let exit_code = match &e {
+            KopiError::JdkNotInstalled(_) => 127,  // Command not found
+            KopiError::PermissionDenied(_) => 126,  // Permission denied
+            KopiError::InvalidVersionFormat(_) => 2, // Invalid argument
             _ => 1,  // General error
         };
         
+        // Print error message
+        eprintln!("Error: {}", e);
+        
         process::exit(exit_code);
     }
-    
-    Ok(())
 }
 ```
 
-#### Context Addition
+#### Error Propagation
 ```rust
-use anyhow::{Context, Result};
+use crate::error::{KopiError, Result};
 
 fn install_jdk(version: &str) -> Result<()> {
     let metadata = fetch_metadata(version)
-        .with_context(|| format!("Failed to fetch metadata for JDK {}", version))?;
+        .map_err(|e| KopiError::MetadataFetch(format!("Failed for JDK {}: {}", version, e)))?;
     
     let download_path = download_jdk(&metadata)
-        .context("Failed to download JDK archive")?;
+        .map_err(|e| KopiError::Download(e.to_string()))?;
     
     extract_archive(&download_path)
-        .with_context(|| format!("Failed to extract JDK archive at {:?}", download_path))?;
+        .map_err(|e| KopiError::Extract(format!("Archive at {:?}: {}", download_path, e)))?;
     
     Ok(())
 }
@@ -185,16 +184,17 @@ Following standard Unix conventions:
 ## Consequences
 
 ### Positive
-- Clear, user-friendly error messages with color-eyre
-- Type-safe error propagation with thiserror
-- Easy to add context to errors with anyhow
+- Strongly-typed error handling with no ambiguity
+- Clear, structured error messages
+- Type-safe error propagation throughout the codebase
 - Proper exit codes for shell scripting
 - Graceful handling of common CLI scenarios
+- Single error handling approach reduces complexity
 
 ### Negative
-- Three different error handling crates (complexity)
-- Need to maintain error type conversions
-- Slightly larger binary size due to color-eyre
+- Must define specific error types for all error cases
+- More verbose than ad-hoc error context
+- Requires discipline to maintain proper error types
 
 ### Neutral
 - Developers need to understand when to use each approach
@@ -202,12 +202,10 @@ Following standard Unix conventions:
 
 ## Implementation Plan
 
-1. Add dependencies to `Cargo.toml`:
+1. Add dependency to `Cargo.toml`:
    ```toml
    [dependencies]
    thiserror = "1.0"
-   anyhow = "1.0"
-   color-eyre = "0.6"
    ```
 
 2. Create `src/error.rs` with core error types

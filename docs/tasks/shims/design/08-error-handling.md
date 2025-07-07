@@ -3,35 +3,27 @@
 ## Error Types
 
 ```rust
+use thiserror::Error;
+
+#[derive(Error, Debug)]
 enum ShimError {
+    #[error("No Java version specified. Create a .kopi-version file or run 'kopi use <version>'")]
     NoVersionFound,
+    
+    #[error("Java {0} is not installed. Installing automatically...")]
     VersionNotInstalled(String),
-    ToolNotFound(String, String),
-    ExecutionFailed(std::io::Error),
+    
+    #[error("Tool '{tool}' not found in Java {version}. The JDK installation may be corrupted.")]
+    ToolNotFound { tool: String, version: String },
+    
+    #[error("Failed to execute tool: {0}")]
+    ExecutionFailed(#[from] std::io::Error),
+    
+    #[error("Failed to install JDK: {0}")]
     InstallationFailed(String),
 }
 
-impl Display for ShimError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            ShimError::NoVersionFound => {
-                write!(f, "No Java version specified. Create a .kopi-version file or run 'kopi use <version>'")
-            }
-            ShimError::VersionNotInstalled(v) => {
-                write!(f, "Java {} is not installed. Installing automatically...", v)
-            }
-            ShimError::ToolNotFound(tool, version) => {
-                write!(f, "Tool '{}' not found in Java {}. The JDK installation may be corrupted.", tool, version)
-            }
-            ShimError::ExecutionFailed(e) => {
-                write!(f, "Failed to execute tool: {}", e)
-            }
-            ShimError::InstallationFailed(msg) => {
-                write!(f, "Failed to install JDK: {}", msg)
-            }
-        }
-    }
-}
+// The Display implementation is automatically derived by thiserror
 ```
 
 ## Automatic Installation Flow
@@ -64,7 +56,7 @@ fn main() {
     execute_tool(&tool_path);
 }
 
-fn install_jdk_from_shim(version: &Version) -> Result<()> {
+fn install_jdk_from_shim(version: &Version) -> Result<(), ShimError> {
     eprintln!("kopi: Java {} is not installed. Installing automatically...", version);
     
     // Show progress indicator
@@ -83,14 +75,14 @@ fn install_jdk_from_shim(version: &Version) -> Result<()> {
     
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        bail!("Installation failed: {}", stderr);
+        return Err(ShimError::InstallationFailed(format!("Installation failed: {}", stderr)));
     }
     
     eprintln!("kopi: Successfully installed Java {}", version);
     Ok(())
 }
 
-fn find_kopi_binary() -> Result<PathBuf> {
+fn find_kopi_binary() -> Result<PathBuf, ShimError> {
     // 1. Check if kopi is in the same directory as the shim
     let shim_dir = env::current_exe()?.parent().unwrap().to_path_buf();
     let kopi_path = shim_dir.join("kopi");
@@ -115,7 +107,7 @@ fn find_kopi_binary() -> Result<PathBuf> {
     }
     
     // 3. Fall back to PATH
-    which::which("kopi").map_err(|_| anyhow!("Cannot find kopi binary"))
+    which::which("kopi").map_err(|_| ShimError::InstallationFailed("Cannot find kopi binary".to_string()))
 }
 ```
 
@@ -147,7 +139,7 @@ auto_install_prompt = true  # Default: false
 
 ### Interactive Prompt Option
 ```rust
-fn should_install_jdk(version: &Version) -> Result<bool> {
+fn should_install_jdk(version: &Version) -> Result<bool, ShimError> {
     let config = KopiConfig::load()?;
     
     if !config.shims.auto_install {
@@ -183,7 +175,7 @@ fn should_install_jdk(version: &Version) -> Result<bool> {
 
 ```rust
 // Coordination between multiple shim processes
-fn install_jdk_with_coordination(version: &Version) -> Result<()> {
+fn install_jdk_with_coordination(version: &Version) -> Result<(), ShimError> {
     let lock_file = get_kopi_home()?.join(".locks").join(format!("{}.lock", version));
     
     // Try to acquire exclusive lock
@@ -213,7 +205,7 @@ fn install_jdk_with_coordination(version: &Version) -> Result<()> {
                 }
                 
                 if start.elapsed() > timeout {
-                    bail!("Timeout waiting for Java {} installation", version);
+                    return Err(ShimError::InstallationFailed(format!("Timeout waiting for Java {} installation", version)));
                 }
                 
                 thread::sleep(Duration::from_secs(1));

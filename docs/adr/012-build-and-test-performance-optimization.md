@@ -24,12 +24,12 @@ The Kopi project's build and test execution times have become significantly long
 ```rust
 // Before
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // No async operations
 }
 
 // After
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Same code without async overhead
 }
 ```

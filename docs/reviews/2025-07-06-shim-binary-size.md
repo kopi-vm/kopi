@@ -110,7 +110,7 @@ kopi/
 **Dependencies for kopi-shim:**
 ```toml
 [dependencies]
-anyhow = "1.0"
+thiserror = "1.0"
 dirs = "6.0"
 log = "0.4"
 toml = "0.8"

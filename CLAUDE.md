@@ -240,15 +240,25 @@ Primary commands to implement:
 
 ### Error Message Format
 ```rust
-// Use anyhow for error handling with context
-use anyhow::{Context, Result};
+// Use thiserror for strongly-typed error handling
+use thiserror::Error;
 
-// Add context to errors
+// Define specific error types with clear messages
+#[derive(Error, Debug)]
+pub enum KopiError {
+    #[error("Failed to download JDK: {0}")]
+    DownloadError(String),
+    
+    #[error("JDK version '{version}' not found. Run 'kopi list-remote' to see available versions.")]
+    VersionNotFound { version: String },
+    
+    #[error("Network error: {0}")]
+    Network(#[from] reqwest::Error),
+}
+
+// Return specific error types
 operation()
-    .context("Failed to download JDK")?;
-
-// User-friendly error messages
-bail!("JDK version '{}' not found. Run 'kopi list-remote' to see available versions.", version);
+    .map_err(|e| KopiError::DownloadError(e.to_string()))?;
 ```
 
 ## Developer Principles
