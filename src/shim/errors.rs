@@ -89,10 +89,14 @@ impl ShimError {
 
                 let action = match auto_install_status {
                     AutoInstallStatus::Disabled => {
+                        let enable_cmd = if cfg!(windows) {
+                            "set KOPI_AUTO_INSTALL__ENABLED=true"
+                        } else {
+                            "export KOPI_AUTO_INSTALL__ENABLED=true"
+                        };
                         format!(
-                            "To install it, run:\n  kopi install {}@{}\n\n\
-                            Or enable auto-install:\n  export KOPI_AUTO_INSTALL__ENABLED=true",
-                            distribution, version
+                            "To install it, run:\n  kopi install {distribution}@{version}\n\n\
+                            Or enable auto-install:\n  {enable_cmd}"
                         )
                     }
                     AutoInstallStatus::UserDeclined => {
@@ -152,7 +156,7 @@ impl ShimError {
             }
 
             ShimError::ExecutionError { message, .. } => {
-                format!("Failed to execute Java tool: {}", message)
+                format!("Failed to execute Java tool: {message}")
             }
         }
     }
@@ -160,21 +164,35 @@ impl ShimError {
     /// Get suggested fixes for the error
     pub fn suggestions(&self) -> Vec<String> {
         match self {
-            ShimError::NoVersionFound { .. } => vec![
-                "Create a .kopi-version file: echo 'temurin@21' > .kopi-version".to_string(),
-                "Set environment variable: export KOPI_JAVA_VERSION='temurin@21'".to_string(),
-                "Set a global default: kopi global temurin@21".to_string(),
-            ],
+            ShimError::NoVersionFound { .. } => {
+                let set_cmd = if cfg!(windows) {
+                    "set KOPI_JAVA_VERSION=temurin@21"
+                } else {
+                    "export KOPI_JAVA_VERSION='temurin@21'"
+                };
+                vec![
+                    "Create a .kopi-version file: echo 'temurin@21' > .kopi-version".to_string(),
+                    format!("Set environment variable: {}", set_cmd),
+                    "Set a global default: kopi global temurin@21".to_string(),
+                ]
+            }
 
             ShimError::JdkNotInstalled {
                 version,
                 distribution,
                 ..
-            } => vec![
-                format!("Install the JDK: kopi install {}@{}", distribution, version),
-                "List available versions: kopi cache search".to_string(),
-                "Enable auto-install: export KOPI_AUTO_INSTALL__ENABLED=true".to_string(),
-            ],
+            } => {
+                let enable_cmd = if cfg!(windows) {
+                    "set KOPI_AUTO_INSTALL__ENABLED=true"
+                } else {
+                    "export KOPI_AUTO_INSTALL__ENABLED=true"
+                };
+                vec![
+                    format!("Install the JDK: kopi install {}@{}", distribution, version),
+                    "List available versions: kopi cache search".to_string(),
+                    format!("Enable auto-install: {}", enable_cmd),
+                ]
+            }
 
             ShimError::ToolNotFound { tool, .. } => vec![
                 format!("Verify the tool name: which {}", tool),
