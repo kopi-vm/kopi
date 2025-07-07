@@ -6,7 +6,6 @@ mod shim_integration_tests {
     use std::fs;
     use tempfile::TempDir;
 
-
     #[test]
     fn test_version_file_search_paths() {
         let temp_dir = TempDir::new().unwrap();
@@ -87,5 +86,4 @@ mod shim_integration_tests {
             assert!(!plain.contains("\x1b[")); // No color codes in plain output
         }
     }
-
 }

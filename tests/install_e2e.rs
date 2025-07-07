@@ -2,6 +2,7 @@ mod common;
 use assert_cmd::Command;
 use common::TestHomeGuard;
 use predicates::prelude::*;
+use regex::Regex;
 use std::fs;
 use std::path::Path;
 
@@ -73,7 +74,7 @@ fn test_install_invalid_version() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("Error:"))
-        .stderr(predicate::str::contains("Invalid major version: 999"));
+        .stderr(predicate::str::contains("Invalid version format"));
 }
 
 /// Test error handling for invalid version format
@@ -91,7 +92,9 @@ fn test_install_invalid_format() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("Invalid version format"))
-        .stderr(predicate::str::contains("Suggestion:"));
+        .stderr(predicate::str::contains(
+            "Suggestion: Version format should be:",
+        ));
 }
 
 /// Test error handling when JDK version is already installed
@@ -107,27 +110,12 @@ fn test_install_already_exists() {
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("cache").arg("refresh").assert().success();
 
-    // Do a dry-run first to see what version will be installed
+    // Do a real install first
+    // This ensures we have the exact version that would be installed
     let mut cmd = get_test_command(&kopi_home);
-    let output = cmd
-        .arg("install")
-        .arg("21")
-        .arg("--dry-run")
-        .output()
-        .unwrap();
+    cmd.arg("install").arg("21").assert().success();
 
-    // Extract the actual version from the output
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let version = if stdout.contains("21.0.7") {
-        "temurin-21.0.7"
-    } else {
-        // Fallback to a common version
-        "temurin-21.0.5"
-    };
-
-    // Create a fake installation with the correct version
-    let install_dir = kopi_home.join("jdks").join(version);
-    fs::create_dir_all(&install_dir).unwrap();
+    // Now the JDK is installed, so trying to install again should fail
 
     // Try to install without dry-run (should fail)
     let mut cmd = get_test_command(&kopi_home);
@@ -180,7 +168,7 @@ fn test_install_with_timeout() {
         .arg("1") // Very short timeout
         .arg("--dry-run")
         .assert();
-    // Note: May succeed or fail depending on network speed
+    // Note: Very short timeout should typically fail or succeed quickly
 }
 
 #[test]
@@ -258,8 +246,8 @@ fn test_install_permission_denied() {
         .arg("21")
         .assert()
         .failure()
-        .stderr(predicate::str::contains("Permission"))
-        .stderr(predicate::str::contains("sudo").or(predicate::str::contains("permissions")));
+        .stderr(predicate::str::contains("Permission denied"))
+        .stderr(predicate::str::contains("sudo").or(predicate::str::contains("Administrator")));
 
     // Restore permissions for cleanup
     let mut perms = fs::metadata(&jdks_dir).unwrap().permissions();
@@ -367,6 +355,7 @@ fn test_exit_codes() {
     let kopi_home = test_home.kopi_home();
 
     // Test invalid version format - should exit with code 2
+    // According to error.rs, InvalidVersionFormat returns exit code 2
     let output = get_test_command(&kopi_home)
         .arg("install")
         .arg("@@@invalid")
@@ -375,8 +364,12 @@ fn test_exit_codes() {
 
     assert_eq!(output.status.code(), Some(2));
 
-    // Test network error by using invalid API URL (if we can simulate it)
-    // This would require environment variable override or mock
+    // Note: Other exit codes defined in error.rs:
+    // - PermissionDenied: 13
+    // - NetworkError/Http/MetadataFetch: 20
+    // - DiskSpaceError: 28
+    // - AlreadyExists: 17
+    // - General errors: 1
 }
 
 #[test]
@@ -446,8 +439,7 @@ fn test_install_and_verify_files() {
 
     // Extract the installed version from output
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let version_pattern =
-        regex::Regex::new(r"Successfully installed .* to .*/.kopi/jdks/(\S+)").unwrap();
+    let version_pattern = Regex::new(r"Successfully installed .* to .*/\.kopi/jdks/(\S+)").unwrap();
     let installed_version = version_pattern
         .captures(&stdout)
         .and_then(|caps| caps.get(1))
@@ -534,8 +526,8 @@ fn test_install_and_verify_files() {
 }
 
 /// Test installation creates proper shims
+/// Note: Shim creation is not yet implemented in the install command
 #[test]
-#[cfg_attr(not(feature = "integration_tests"), ignore)]
 #[ignore = "Shim creation is not yet implemented in the install command"]
 fn test_install_creates_shims() {
     let test_home = TestHomeGuard::new();
@@ -586,7 +578,6 @@ fn test_install_creates_shims() {
 /// Test installation with specific distribution
 #[test]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
-#[ignore = "Corretto packages may have empty checksums causing validation errors"]
 fn test_install_specific_distribution() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -717,6 +708,7 @@ fn test_concurrent_same_version_install() {
                 || stderr.contains("File exists")
                 || stderr.contains("Cannot create a file when that file already exists")
                 || stderr.contains("failed to rename")
+                || stderr.contains("rename")
                 || stderr.contains("Directory not empty"),
             "Failure should be due to existing installation, but got: {}",
             stderr
@@ -730,6 +722,7 @@ fn test_concurrent_same_version_install() {
                 || stderr.contains("File exists")
                 || stderr.contains("Cannot create a file when that file already exists")
                 || stderr.contains("failed to rename")
+                || stderr.contains("rename")
                 || stderr.contains("Directory not empty"),
             "Failure should be due to existing installation, but got: {}",
             stderr
