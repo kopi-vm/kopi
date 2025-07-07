@@ -29,6 +29,12 @@ pub enum ShimError {
 
     /// Generic shim execution error
     ExecutionError { message: String, exit_code: i32 },
+
+    /// Kopi binary not found (infrastructure problem)
+    KopiNotFound {
+        searched_paths: Vec<String>,
+        is_auto_install_context: bool,
+    },
 }
 
 #[derive(Debug)]
@@ -55,6 +61,9 @@ impl ShimError {
             }
             ShimError::PermissionDenied { path, .. } => KopiError::PermissionDenied(path),
             ShimError::ExecutionError { message, .. } => KopiError::SystemError(message),
+            ShimError::KopiNotFound { .. } => {
+                KopiError::SystemError("Kopi binary not found".to_string())
+            }
         }
     }
 
@@ -158,6 +167,35 @@ impl ShimError {
             ShimError::ExecutionError { message, .. } => {
                 format!("Failed to execute Java tool: {message}")
             }
+
+            ShimError::KopiNotFound {
+                searched_paths,
+                is_auto_install_context,
+            } => {
+                let base_msg = if *is_auto_install_context {
+                    "Cannot auto-install JDK: kopi binary not found (infrastructure problem)."
+                } else {
+                    "Kopi binary not found (infrastructure problem)."
+                };
+
+                let searched_msg = if !searched_paths.is_empty() {
+                    format!(
+                        "\n\nSearched in:\n{}",
+                        searched_paths
+                            .iter()
+                            .map(|p| format!("  - {p}"))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    )
+                } else {
+                    String::new()
+                };
+
+                let fix_msg = "\n\nThis indicates that kopi is not properly installed or not in your PATH.\n\
+                    Please ensure kopi is installed and accessible from the command line.";
+
+                format!("{base_msg}{searched_msg}{fix_msg}")
+            }
         }
     }
 
@@ -214,6 +252,16 @@ impl ShimError {
                 "Verify shims are correctly set up: kopi shim verify".to_string(),
                 "Reinstall shims if needed: kopi setup".to_string(),
             ],
+
+            ShimError::KopiNotFound { .. } => vec![
+                "Verify kopi is installed correctly".to_string(),
+                if cfg!(windows) {
+                    "Add kopi to your PATH environment variable".to_string()
+                } else {
+                    "Add kopi to your PATH: export PATH=\"$HOME/.kopi/bin:$PATH\"".to_string()
+                },
+                "Reinstall kopi if necessary".to_string(),
+            ],
         }
     }
 
@@ -225,6 +273,7 @@ impl ShimError {
             ShimError::ToolNotFound { .. } => 5,
             ShimError::PermissionDenied { .. } => 13,
             ShimError::ExecutionError { exit_code, .. } => *exit_code,
+            ShimError::KopiNotFound { .. } => 127, // Standard "command not found" exit code
         }
     }
 }
@@ -309,6 +358,13 @@ impl ShimErrorBuilder {
             version: version.to_string(),
             distribution: distribution.to_string(),
             auto_install_status,
+        }
+    }
+
+    pub fn kopi_not_found(searched_paths: Vec<String>, is_auto_install_context: bool) -> ShimError {
+        ShimError::KopiNotFound {
+            searched_paths,
+            is_auto_install_context,
         }
     }
 

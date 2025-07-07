@@ -24,6 +24,14 @@ pub fn shim_binary_name() -> &'static str {
     return "kopi-shim";
 }
 
+/// Get the kopi binary name for the current platform
+pub fn kopi_binary_name() -> &'static str {
+    #[cfg(windows)]
+    return "kopi.exe";
+    #[cfg(not(windows))]
+    return "kopi";
+}
+
 /// Check if the current platform uses symlinks for shims
 pub fn uses_symlinks_for_shims() -> bool {
     #[cfg(unix)]
@@ -78,6 +86,15 @@ mod tests {
         assert_eq!(name, "kopi-shim.exe");
         #[cfg(not(windows))]
         assert_eq!(name, "kopi-shim");
+    }
+
+    #[test]
+    fn test_kopi_binary_name() {
+        let name = kopi_binary_name();
+        #[cfg(windows)]
+        assert_eq!(name, "kopi.exe");
+        #[cfg(not(windows))]
+        assert_eq!(name, "kopi");
     }
 
     #[test]

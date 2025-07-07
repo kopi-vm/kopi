@@ -23,6 +23,6 @@ pub use detection::{
 
 // Re-export constants
 pub use constants::{
-    executable_extension, is_reserved_name, path_separator, shim_binary_name,
+    executable_extension, is_reserved_name, kopi_binary_name, path_separator, shim_binary_name,
     uses_symlinks_for_shims,
 };
