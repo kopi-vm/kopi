@@ -7,3 +7,6 @@ RUSTC_WRAPPER = "sccache"
 [build]
 # Enable incremental compilation
 incremental = true
+
+[alias]
+it = "test --features integration_tests"
