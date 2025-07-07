@@ -4,6 +4,7 @@ use kopi::commands::install::InstallCommand;
 use kopi::commands::setup::SetupCommand;
 use kopi::commands::shim::ShimCommand;
 use kopi::error::{Result, format_error_chain, get_exit_code};
+use kopi::logging;
 
 #[derive(Parser)]
 #[command(name = "kopi")]
@@ -142,18 +143,7 @@ enum Commands {
 }
 
 fn setup_logger(cli: &Cli) {
-    let env_filter = match cli.verbose {
-        0 => "kopi=warn",
-        1 => "kopi=info",
-        2 => "kopi=debug",
-        _ => "kopi=trace",
-    };
-
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(env_filter))
-        .format_timestamp(None)
-        .format_module_path(false)
-        .format_target(false)
-        .init();
+    logging::setup_logger(cli.verbose);
 }
 
 fn main() {
