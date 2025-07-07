@@ -6,3 +6,5 @@
 # Benchmark results - only track baselines
 benchmarks/results/
 !benchmarks/baselines/
+
+*.local.json
