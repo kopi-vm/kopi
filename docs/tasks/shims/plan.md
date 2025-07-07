@@ -20,12 +20,17 @@ This document outlines the phased implementation plan for the Kopi shims system,
 
 ### Deliverables
 1. **Shim Binary Module** (`/src/shim/mod.rs`)
-   - Tool name detection from argv[0]
+   - Tool name detection:
+     - Unix: From argv[0]
+     - Windows: From current executable name (for .exe handling)
    - Version resolution logic (.kopi-version, .java-version)
    - Environment variable caching (KOPI_JAVA_VERSION)
    - JDK path resolution
    - Platform-specific execution (exec on Unix, CreateProcess on Windows)
-   - Performance optimizations (< 20ms overhead)
+   - Performance optimizations:
+     - < 20ms total overhead
+     - < 1MB binary size
+     - < 10ms cold start time
 
 2. **Version Resolution Module** (`/src/shim/version_resolver.rs`)
    - Directory traversal for version files
@@ -77,11 +82,15 @@ This document outlines the phased implementation plan for the Kopi shims system,
    - Cleanup on removal
 
 2. **Tool Registry Module** (`/src/shim/tools.rs`)
-   - Standard JDK tool definitions
-   - Distribution-specific tool mappings
+   - Standard JDK tool definitions (java, javac, jar, javadoc, javap, etc.)
+   - Distribution-specific tool mappings:
+     - GraalVM: gu, native-image, polyglot, lli, js (removed in 23.0.0)
+     - OpenJ9: traceformat, jextract
+     - Corretto: jmc (only in version 11)
    - Tool availability checking
    - Version-based tool filtering (e.g., GraalVM js removed in v23+)
    - Tool categorization (core, debug, monitoring, etc.)
+   - Deprecated tool exclusions (pack200, unpack200)
 
 3. **Platform Utilities** (`/src/platform/shell.rs`)
    - Unix symlink operations
@@ -161,10 +170,16 @@ This document outlines the phased implementation plan for the Kopi shims system,
      ```
 
 5. **Shell Integration Module** (`/src/shell/mod.rs`)
-   - Shell detection (bash, zsh, fish, PowerShell)
+   - Shell detection (bash, zsh, fish, PowerShell, CMD)
+   - Shell configuration file detection:
+     - Bash: ~/.bashrc, ~/.bash_profile
+     - Zsh: ~/.zshrc, ~/.zprofile
+     - Fish: ~/.config/fish/config.fish
+     - PowerShell: $PROFILE
    - PATH update instruction generation
-   - RC file detection (.bashrc, .zshrc, etc.)
-   - Manual instruction formatting
+   - Automatic vs. manual configuration options
+   - PATH separator handling (`:` Unix, `;` Windows)
+   - Clear instruction formatting with examples
 
 6. **Unit Tests** (use mocks extensively)
    - `src/commands/setup.rs` - Setup logic tests (mock filesystem)
@@ -198,10 +213,17 @@ This document outlines the phased implementation plan for the Kopi shims system,
    - Missing JDK detection
    - Configuration checking (auto-install enabled)
    - User prompting (if configured)
-   - Lock file coordination
-   - Install command invocation
-   - Progress indication
+   - Subprocess model for installation:
+     - Spawn main kopi binary as subprocess
+     - Pass install command arguments
+     - Monitor subprocess output
+   - Lock file coordination to prevent concurrent installs
+   - Progress indication:
+     - Forward subprocess output to stderr
+     - Show download progress bars
+     - Display installation status
    - Timeout protection (5 minutes default)
+   - Graceful handling of installation failures
 
 2. **Error Handler Enhancement** (`/src/shim/errors.rs`)
    - Clear error categories:
@@ -214,10 +236,20 @@ This document outlines the phased implementation plan for the Kopi shims system,
    - Error code mapping
 
 3. **Configuration Integration** (`/src/config/mod.rs` updates)
+   - Configuration structure:
+     ```toml
+     [shims]
+     additional_tools = ["gu", "native-image"]    # Extra tools to create shims for
+     exclude_tools = ["pack200", "unpack200"]     # Deprecated tools to exclude
+     auto_install = true                          # Auto-install missing JDKs
+     auto_install_prompt = false                  # Prompt before installing
+     install_timeout = 300                        # Installation timeout in seconds
+     ```
    - Auto-install settings
    - Prompt preferences
    - Timeout configuration
    - Default distribution settings
+   - Tool inclusion/exclusion lists
 
 4. **Unit Tests** (use mocks extensively)
    - `src/shim/auto_install.rs` - Auto-install logic tests (mock install)
@@ -255,9 +287,13 @@ This document outlines the phased implementation plan for the Kopi shims system,
 2. **Security Enhancements** (`/src/shim/security.rs`)
    - Path validation (stay within ~/.kopi)
    - Symlink target verification
-   - Input sanitization
-   - Permission verification
+   - Input sanitization:
+     - Version string validation (alphanumeric + @.-_)
+     - Tool name validation
+   - Permission verification (executable permissions)
    - No privilege escalation
+   - SHA-256 checksum validation for downloads
+   - Curated tool list enforcement
 
 3. **Benchmark Suite** (`/benches/shim_bench.rs`)
    - Tool invocation overhead measurement
@@ -368,6 +404,47 @@ This document outlines the phased implementation plan for the Kopi shims system,
 - Use CreateProcess and wait
 - Handle PowerShell and CMD
 - Consider antivirus scanning delays
+
+## Design Principles (from design documents)
+
+### Key Requirements
+1. **Zero Process Chains**: Direct execution without intermediate processes
+2. **Explicit Over Implicit**: Shims created only through explicit user actions
+3. **Predictable Behavior**: Users always know which shims exist
+4. **Security**: Only expose curated, user-facing tools
+5. **Graceful Degradation**: Clear, actionable error messages
+
+### Error Message Guidelines
+- **Clear problem description**: What went wrong
+- **Root cause**: Why it happened
+- **Actionable solution**: How to fix it
+- **Example format**:
+  ```
+  Error: Java version 'temurin@21' not installed
+  
+  The project requires temurin@21 but it's not installed.
+  
+  To fix this, run:
+    kopi install temurin@21
+  
+  Or enable auto-install in ~/.kopi/config.toml:
+    [shims]
+    auto_install = true
+  ```
+
+## Updates from Design Review
+
+This plan has been updated based on the comprehensive design documents to include:
+1. **Platform-specific tool detection**: Windows uses current exe name, not just argv[0]
+2. **Specific performance targets**: < 10ms cold start time added
+3. **Distribution tool details**: Complete list of vendor-specific tools
+4. **Shell configuration files**: Specific file paths for each shell
+5. **Subprocess model**: Clarified auto-install uses subprocess, not direct integration
+6. **Configuration structure**: Added TOML configuration example
+7. **Security enhancements**: Added SHA-256 validation and input sanitization details
+8. **Deprecated tool handling**: Added pack200/unpack200 exclusion
+9. **Progress indication**: Detailed how progress is shown during auto-install
+10. **Error message formatting**: Added guidelines for clear, actionable errors
 
 ## Next Steps
 Begin with Phase 1, focusing on building the core shim binary with efficient tool detection, version resolution, and process execution capabilities while maintaining the performance target of < 20ms overhead.
