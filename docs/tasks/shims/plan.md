@@ -138,22 +138,46 @@ This document outlines the phased implementation plan for the Kopi shims system,
      - `--distribution`: Filter by distribution
    - Help text and examples
 
-4. **Shell Integration Module** (`/src/shell/mod.rs`)
+4. **Install Command Integration** (`/src/commands/install.rs` enhancement)
+   - After successful JDK installation (after `finalize_installation`):
+     - Call shim verification/creation functionality
+     - Detect distribution-specific tools from the installed JDK
+     - Create missing shims based on:
+       - Standard JDK tools list
+       - Distribution-specific tools (e.g., GraalVM's `gu`, `native-image`)
+       - User configuration preferences
+     - Report newly created shims to the user
+   - Example output:
+     ```
+     Successfully installed graalvm 21.0.2 to ~/.kopi/jdks/graalvm-21.0.2
+     
+     Verifying shims...
+     Created 3 new shims:
+       - gu
+       - native-image
+       - polyglot
+     
+     To use this JDK, run: kopi use graalvm@21
+     ```
+
+5. **Shell Integration Module** (`/src/shell/mod.rs`)
    - Shell detection (bash, zsh, fish, PowerShell)
    - PATH update instruction generation
    - RC file detection (.bashrc, .zshrc, etc.)
    - Manual instruction formatting
 
-5. **Unit Tests** (use mocks extensively)
+6. **Unit Tests** (use mocks extensively)
    - `src/commands/setup.rs` - Setup logic tests (mock filesystem)
    - `src/commands/shim.rs` - Command logic tests (mock shim operations)
+   - `src/commands/install.rs` - Post-install shim creation tests (mock shim operations)
    - `src/shell/mod.rs` - Shell detection tests (mock environment)
 
-6. **Integration Tests** (`/tests/shim_commands.rs`) (no mocks)
+7. **Integration Tests** (`/tests/shim_commands.rs`) (no mocks)
    - Full command execution testing
    - Shell configuration verification
    - Multi-tool shim creation
    - Error message validation
+   - Post-install shim creation verification
 
 ### Success Criteria
 - `kopi setup` creates functioning shims
