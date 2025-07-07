@@ -34,7 +34,7 @@ kopi install zulu@11.0.15                # Zulu JDK version 11.0.15
 
 ### `kopi uninstall`
 
-Remove an installed JDK version.
+Remove an installed JDK version. (Not yet implemented)
 
 **Usage:**
 ```bash
@@ -46,25 +46,16 @@ kopi uninstall <distribution>@<version>  # Remove specific distribution
 
 ### `kopi use`
 
-Switch to a JDK version in current shell.
+Switch to a JDK version in current shell. (Not yet implemented)
 
 **Usage:**
 ```bash
 kopi use <version>                       # Switch to a JDK version in current shell
 ```
 
-### `kopi shell`
-
-Launch new shell with JDK environment configured.
-
-**Usage:**
-```bash
-kopi shell                               # Launch new shell with JDK environment configured
-```
-
 ### `kopi global`
 
-Set default JDK version globally.
+Set default JDK version globally. (Not yet implemented)
 
 **Usage:**
 ```bash
@@ -73,7 +64,7 @@ kopi global <version>                    # Set default JDK version globally
 
 ### `kopi local`
 
-Set JDK version for current project.
+Set JDK version for current project. (Not yet implemented)
 
 **Usage:**
 ```bash
@@ -82,28 +73,28 @@ kopi local <version>                     # Set JDK version for current project
 
 ### `kopi pin`
 
-Pin JDK version in project config.
+Alias for 'kopi local'. (Not yet implemented)
 
 **Usage:**
 ```bash
-kopi pin <version>                       # Pin JDK version in project config
+kopi pin <version>                       # Alias for 'kopi local' (pins JDK version in project config)
 ```
 
 ## Information Commands
 
 ### `kopi list`
 
-List installed JDK versions.
+List installed JDK versions. (Not yet implemented)
 
 **Usage:**
 ```bash
 kopi list                                # List installed JDK versions
-kopi list --remote                       # List available versions from foojay.io
+kopi list --all                          # Show all versions including remote ones (not yet implemented)
 ```
 
 ### `kopi current`
 
-Show current JDK version and details.
+Show current JDK version and details. (Not yet implemented)
 
 **Usage:**
 ```bash
@@ -112,38 +103,42 @@ kopi current                             # Show current JDK version and details
 
 ### `kopi which`
 
-Show path to current java executable.
+Show path to current java executable. (Not yet implemented)
 
 **Usage:**
 ```bash
 kopi which                               # Show path to current java executable
+kopi which <version>                     # Show path for specific JDK version
 ```
 
-## Project Configuration Commands
+## Setup and Maintenance Commands
 
-### `kopi init`
+### `kopi setup`
 
-Initialize kopi in current project.
+Initial setup and configuration for kopi. Creates necessary directories and installs shims.
 
 **Usage:**
 ```bash
-kopi init                                # Initialize kopi in current project
+kopi setup                               # Initial setup and configuration
+kopi setup --force                       # Force recreation of shims even if they exist
 ```
 
-### `kopi env`
+### `kopi shim`
 
-Show JDK environment variables.
+Manage tool shims for JDK executables.
 
 **Usage:**
 ```bash
-kopi env                                 # Show JDK environment variables
+kopi shim list                           # List all installed shims
+kopi shim create                         # Create shims for JDK tools
+kopi shim create --force                 # Force recreation of shims
 ```
 
 ## Advanced Features
 
 ### `kopi default`
 
-Set default distribution for installations.
+Set default distribution for installations. (Not yet implemented)
 
 **Usage:**
 ```bash
@@ -190,7 +185,7 @@ kopi search 21 --lts-only                # Only show LTS versions
 
 ### `kopi prune`
 
-Remove unused JDK versions.
+Remove unused JDK versions. (Not yet implemented)
 
 **Usage:**
 ```bash
@@ -199,44 +194,12 @@ kopi prune                               # Remove unused JDK versions
 
 ### `kopi doctor`
 
-Diagnose kopi installation issues.
+Diagnose kopi installation issues. (Not yet implemented)
 
 **Usage:**
 ```bash
 kopi doctor                              # Diagnose kopi installation issues
 ```
-
-### `kopi migrate`
-
-Migrate version files from other Java version managers.
-
-**Usage:**
-```bash
-kopi migrate                             # Auto-detect and migrate
-kopi migrate jenv                        # Migrate from jenv
-kopi migrate asdf                        # Migrate from asdf
-```
-
-**Options:**
-- `--keep-original`: Preserve original version files
-- `--dry-run`: Preview changes without applying them
-- `--recursive`: Handle monorepos (migrate all subdirectories)
-
-**Examples:**
-```bash
-# Migrate from jenv, keeping original files
-kopi migrate jenv --keep-original
-
-# Preview migration from asdf
-kopi migrate asdf --dry-run
-
-# Migrate entire monorepo
-kopi migrate --recursive
-```
-
-**Migration mappings:**
-- jenv: `openjdk64-11.0.15` → `temurin@11.0.15`
-- asdf: `temurin-21.0.1+12` → `temurin@21.0.1+12`
 
 ## Cache Management Commands
 
@@ -455,13 +418,13 @@ Version resolution order (highest to lowest priority):
 Kopi uses shims for transparent version management:
 - Add `~/.kopi/bin` to PATH
 - Creates shims for `java`, `javac`, `jar`, etc.
-- Automatic version switching based on project configuration
+- Automatic version switching based on project configuration (when implemented)
 
-The `kopi shell` command provides an alternative approach:
-- Launches a new shell subprocess with JDK environment variables properly configured
-- Sets `JAVA_HOME`, updates `PATH` to include JDK bin directory
-- Useful for isolated environments or when shim approach isn't suitable
-- Respects project-specific JDK versions if launched within a project directory
+Note: The `kopi shell` command is planned but not yet implemented. When available, it will:
+- Launch a new shell subprocess with JDK environment variables properly configured
+- Set `JAVA_HOME`, update `PATH` to include JDK bin directory
+- Provide isolated environments when shim approach isn't suitable
+- Respect project-specific JDK versions when launched within a project directory
 
 ## Version Specification Format
 
