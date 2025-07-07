@@ -236,8 +236,7 @@ fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
 
         #[cfg(test)]
         return Err(KopiError::SystemError(format!(
-            "Tool '{}' not found in JDK at {:?}",
-            tool_name, jdk_path
+            "Tool '{tool_name}' not found in JDK at {jdk_path:?}"
         )));
     }
 
@@ -252,10 +251,7 @@ fn delegate_auto_install(version_request: &VersionRequest) -> Result<()> {
         version_request.version_pattern.clone()
     };
 
-    log::info!(
-        "Delegating auto-install to main kopi binary for {}",
-        version_spec
-    );
+    log::info!("Delegating auto-install to main kopi binary for {version_spec}");
 
     // Find the kopi binary in the same directory as the shim
     let kopi_path = find_kopi_binary()?;
@@ -266,21 +262,19 @@ fn delegate_auto_install(version_request: &VersionRequest) -> Result<()> {
 
     match cmd.status() {
         Ok(status) if status.success() => {
-            log::info!("Successfully delegated installation of {}", version_spec);
+            log::info!("Successfully delegated installation of {version_spec}");
             Ok(())
         }
         Ok(status) => {
-            log::warn!("kopi install command failed with status: {:?}", status);
+            log::warn!("kopi install command failed with status: {status:?}");
             Err(KopiError::SystemError(format!(
-                "Failed to install {}: command exited with status {:?}",
-                version_spec, status
+                "Failed to install {version_spec}: command exited with status {status:?}"
             )))
         }
         Err(e) => {
-            log::error!("Failed to execute kopi install command: {}", e);
+            log::error!("Failed to execute kopi install command: {e}");
             Err(KopiError::SystemError(format!(
-                "Failed to execute kopi install command: {}",
-                e
+                "Failed to execute kopi install command: {e}"
             )))
         }
     }

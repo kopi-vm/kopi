@@ -24,70 +24,68 @@ fn setup_test_cache() -> (TestHomeGuard, std::sync::MutexGuard<'static, ()>) {
     let mut cache = MetadataCache::new();
 
     // Add Temurin packages
-    let mut temurin_packages = Vec::new();
-
-    // Temurin 21.0.1
-    temurin_packages.push(JdkMetadata {
-        id: "temurin-21".to_string(),
-        distribution: "temurin".to_string(),
-        version: Version::new(21, 0, 1),
-        distribution_version: "21.0.1".to_string(),
-        architecture: Architecture::X64,
-        operating_system: OperatingSystem::Linux,
-        package_type: PackageType::Jdk,
-        archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/temurin-21.tar.gz".to_string(),
-        checksum: None,
-        checksum_type: Some(ChecksumType::Sha256),
-        size: 100_000_000,
-        lib_c_type: Some("glibc".to_string()),
-        javafx_bundled: false,
-        term_of_support: Some("lts".to_string()),
-        release_status: Some("ga".to_string()),
-        latest_build_available: Some(true),
-    });
-
-    // Temurin 17.0.9
-    temurin_packages.push(JdkMetadata {
-        id: "temurin-17".to_string(),
-        distribution: "temurin".to_string(),
-        version: Version::new(17, 0, 9),
-        distribution_version: "17.0.9".to_string(),
-        architecture: Architecture::X64,
-        operating_system: OperatingSystem::Linux,
-        package_type: PackageType::Jdk,
-        archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/temurin-17.tar.gz".to_string(),
-        checksum: None,
-        checksum_type: Some(ChecksumType::Sha256),
-        size: 90_000_000,
-        lib_c_type: Some("glibc".to_string()),
-        javafx_bundled: false,
-        term_of_support: Some("lts".to_string()),
-        release_status: Some("ga".to_string()),
-        latest_build_available: Some(true),
-    });
-
-    // Temurin 11.0.21
-    temurin_packages.push(JdkMetadata {
-        id: "temurin-11".to_string(),
-        distribution: "temurin".to_string(),
-        version: Version::new(11, 0, 21),
-        distribution_version: "11.0.21".to_string(),
-        architecture: Architecture::X64,
-        operating_system: OperatingSystem::Linux,
-        package_type: PackageType::Jdk,
-        archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/temurin-11.tar.gz".to_string(),
-        checksum: None,
-        checksum_type: Some(ChecksumType::Sha256),
-        size: 85_000_000,
-        lib_c_type: Some("glibc".to_string()),
-        javafx_bundled: false,
-        term_of_support: Some("lts".to_string()),
-        release_status: Some("ga".to_string()),
-        latest_build_available: Some(true),
-    });
+    let temurin_packages = vec![
+        // Temurin 21.0.1
+        JdkMetadata {
+            id: "temurin-21".to_string(),
+            distribution: "temurin".to_string(),
+            version: Version::new(21, 0, 1),
+            distribution_version: "21.0.1".to_string(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: "https://example.com/temurin-21.tar.gz".to_string(),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 100_000_000,
+            lib_c_type: Some("glibc".to_string()),
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+        },
+        // Temurin 17.0.9
+        JdkMetadata {
+            id: "temurin-17".to_string(),
+            distribution: "temurin".to_string(),
+            version: Version::new(17, 0, 9),
+            distribution_version: "17.0.9".to_string(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: "https://example.com/temurin-17.tar.gz".to_string(),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 90_000_000,
+            lib_c_type: Some("glibc".to_string()),
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+        },
+        // Temurin 11.0.21
+        JdkMetadata {
+            id: "temurin-11".to_string(),
+            distribution: "temurin".to_string(),
+            version: Version::new(11, 0, 21),
+            distribution_version: "11.0.21".to_string(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: "https://example.com/temurin-11.tar.gz".to_string(),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 85_000_000,
+            lib_c_type: Some("glibc".to_string()),
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+        },
+    ];
 
     cache.distributions.insert(
         "temurin".to_string(),
@@ -99,49 +97,48 @@ fn setup_test_cache() -> (TestHomeGuard, std::sync::MutexGuard<'static, ()>) {
     );
 
     // Add Corretto packages
-    let mut corretto_packages = Vec::new();
-
-    // Corretto 21.0.2
-    corretto_packages.push(JdkMetadata {
-        id: "corretto-21".to_string(),
-        distribution: "corretto".to_string(),
-        version: Version::new(21, 0, 2),
-        distribution_version: "21.0.2".to_string(),
-        architecture: Architecture::X64,
-        operating_system: OperatingSystem::Linux,
-        package_type: PackageType::Jdk,
-        archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/corretto-21.tar.gz".to_string(),
-        checksum: None,
-        checksum_type: Some(ChecksumType::Sha256),
-        size: 105_000_000,
-        lib_c_type: Some("glibc".to_string()),
-        javafx_bundled: false,
-        term_of_support: Some("lts".to_string()),
-        release_status: Some("ga".to_string()),
-        latest_build_available: Some(true),
-    });
-
-    // Corretto 17.0.10
-    corretto_packages.push(JdkMetadata {
-        id: "corretto-17".to_string(),
-        distribution: "corretto".to_string(),
-        version: Version::new(17, 0, 10),
-        distribution_version: "17.0.10".to_string(),
-        architecture: Architecture::X64,
-        operating_system: OperatingSystem::Linux,
-        package_type: PackageType::Jdk,
-        archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/corretto-17.tar.gz".to_string(),
-        checksum: None,
-        checksum_type: Some(ChecksumType::Sha256),
-        size: 95_000_000,
-        lib_c_type: Some("glibc".to_string()),
-        javafx_bundled: false,
-        term_of_support: Some("lts".to_string()),
-        release_status: Some("ga".to_string()),
-        latest_build_available: Some(true),
-    });
+    let corretto_packages = vec![
+        // Corretto 21.0.2
+        JdkMetadata {
+            id: "corretto-21".to_string(),
+            distribution: "corretto".to_string(),
+            version: Version::new(21, 0, 2),
+            distribution_version: "21.0.2".to_string(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: "https://example.com/corretto-21.tar.gz".to_string(),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 105_000_000,
+            lib_c_type: Some("glibc".to_string()),
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+        },
+        // Corretto 17.0.10
+        JdkMetadata {
+            id: "corretto-17".to_string(),
+            distribution: "corretto".to_string(),
+            version: Version::new(17, 0, 10),
+            distribution_version: "17.0.10".to_string(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: "https://example.com/corretto-17.tar.gz".to_string(),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 95_000_000,
+            lib_c_type: Some("glibc".to_string()),
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+        },
+    ];
 
     cache.distributions.insert(
         "corretto".to_string(),

@@ -439,7 +439,8 @@ fn test_install_and_verify_files() {
 
     // Extract the installed version from output
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let version_pattern = Regex::new(r"Successfully installed .* to .*[/\\]\.kopi[/\\]jdks[/\\](\S+)").unwrap();
+    let version_pattern =
+        Regex::new(r"Successfully installed .* to .*[/\\]\.kopi[/\\]jdks[/\\](\S+)").unwrap();
     let installed_version = version_pattern
         .captures(&stdout)
         .and_then(|caps| caps.get(1))
@@ -479,8 +480,7 @@ fn test_install_and_verify_files() {
     let jdk_dir = kopi_home.join("jdks").join(&installed_version);
     assert!(
         jdk_dir.exists(),
-        "JDK directory should exist at {:?}",
-        jdk_dir
+        "JDK directory should exist at {jdk_dir:?}"
     );
     assert!(jdk_dir.is_dir(), "JDK path should be a directory");
 
@@ -494,19 +494,17 @@ fn test_install_and_verify_files() {
     let core_executables = vec!["java", "javac", "jar", "javadoc"];
 
     for exe in &core_executables {
-        let exe_path = bin_dir.join(format!("{}{}", exe, exe_ext));
+        let exe_path = bin_dir.join(format!("{exe}{exe_ext}"));
         assert!(
             exe_path.exists(),
-            "Executable {} should exist at {:?}",
-            exe,
-            exe_path
+            "Executable {exe} should exist at {exe_path:?}"
         );
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
             let metadata = fs::metadata(&exe_path).unwrap();
             let mode = metadata.permissions().mode();
-            assert!(mode & 0o111 != 0, "{} should be executable", exe);
+            assert!(mode & 0o111 != 0, "{exe} should be executable");
         }
     }
 
@@ -559,7 +557,7 @@ fn test_install_creates_shims() {
     let default_shims = vec!["java", "javac", "javadoc", "jar", "jshell"];
 
     for shim in &default_shims {
-        let shim_path = shims_dir.join(format!("{}{}", shim, exe_ext));
+        let shim_path = shims_dir.join(format!("{shim}{exe_ext}"));
         // Note: jshell might not exist in JDK 8, so we'll check but not fail
         if shim_path.exists() {
             #[cfg(unix)]
@@ -567,11 +565,11 @@ fn test_install_creates_shims() {
                 use std::os::unix::fs::PermissionsExt;
                 let metadata = fs::metadata(&shim_path).unwrap();
                 let mode = metadata.permissions().mode();
-                assert!(mode & 0o111 != 0, "Shim {} should be executable", shim);
+                assert!(mode & 0o111 != 0, "Shim {shim} should be executable");
             }
         } else if *shim != "jshell" {
             // jshell is only available from JDK 9+
-            panic!("Shim {} should exist at {:?}", shim, shim_path);
+            panic!("Shim {shim} should exist at {shim_path:?}");
         }
     }
 }
@@ -602,10 +600,7 @@ fn test_install_specific_distribution() {
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
-        panic!(
-            "Installation failed.\nSTDOUT:\n{}\nSTDERR:\n{}",
-            stdout, stderr
-        );
+        panic!("Installation failed.\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}");
     }
 
     // Verify the installation directory contains "corretto"
@@ -711,8 +706,7 @@ fn test_concurrent_same_version_install() {
                 || stderr.contains("failed to rename")
                 || stderr.contains("rename")
                 || stderr.contains("Directory not empty"),
-            "Failure should be due to existing installation, but got: {}",
-            stderr
+            "Failure should be due to existing installation, but got: {stderr}"
         );
     }
     if !result2.status.success() {
@@ -725,8 +719,7 @@ fn test_concurrent_same_version_install() {
                 || stderr.contains("failed to rename")
                 || stderr.contains("rename")
                 || stderr.contains("Directory not empty"),
-            "Failure should be due to existing installation, but got: {}",
-            stderr
+            "Failure should be due to existing installation, but got: {stderr}"
         );
     }
 }
@@ -764,7 +757,7 @@ fn test_install_cleanup_on_failure() {
         for entry in entries {
             let name = entry.file_name();
             if name.to_string_lossy().starts_with("install-") {
-                panic!("Found leftover installation directory: {:?}", name);
+                panic!("Found leftover installation directory: {name:?}");
             }
         }
     }
@@ -778,7 +771,7 @@ fn test_simple_install_debug() {
     test_home.setup_kopi_structure();
     let kopi_home = test_home.kopi_home();
 
-    eprintln!("KOPI_HOME: {:?}", kopi_home);
+    eprintln!("KOPI_HOME: {kopi_home:?}");
 
     // First refresh cache with verbose output
     let mut cmd = get_test_command(&kopi_home);
@@ -828,10 +821,8 @@ fn test_simple_install_debug() {
     let jdks_dir = kopi_home.join("jdks");
     if jdks_dir.exists() {
         eprintln!("JDKs directory exists");
-        for entry in fs::read_dir(&jdks_dir).unwrap() {
-            if let Ok(entry) = entry {
-                eprintln!("  Found: {:?}", entry.path());
-            }
+        for entry in fs::read_dir(&jdks_dir).unwrap().flatten() {
+            eprintln!("  Found: {:?}", entry.path());
         }
     } else {
         eprintln!("JDKs directory does not exist!");

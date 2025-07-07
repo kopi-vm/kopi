@@ -299,8 +299,8 @@ fn test_concurrent_environment_access() {
             let kopi_home = test_home.kopi_home();
 
             // Create unique content for this environment
-            let unique_file = format!("thread_{}_data.txt", i);
-            let unique_content = format!("Data from thread {}", i);
+            let unique_file = format!("thread_{i}_data.txt");
+            let unique_content = format!("Data from thread {i}");
             fs::write(kopi_home.join(&unique_file), &unique_content).unwrap();
 
             // Create a mock JDK specific to this thread
@@ -312,9 +312,7 @@ fn test_concurrent_environment_access() {
             let jdk_path = kopi_home.join("jdks").join(&jdk_name);
             assert!(
                 jdk_path.exists(),
-                "Thread {} should have its JDK directory: {}",
-                i,
-                jdk_name
+                "Thread {i} should have its JDK directory: {jdk_name}"
             );
 
             // Verify only this thread's JDK exists
@@ -324,12 +322,8 @@ fn test_concurrent_environment_access() {
                 .map(|entry| entry.file_name().to_string_lossy().to_string())
                 .collect();
 
-            assert_eq!(jdks.len(), 1, "Thread {} should have exactly one JDK", i);
-            assert_eq!(
-                jdks[0], jdk_name,
-                "Thread {} should only have its own JDK",
-                i
-            );
+            assert_eq!(jdks.len(), 1, "Thread {i} should have exactly one JDK");
+            assert_eq!(jdks[0], jdk_name, "Thread {i} should only have its own JDK");
         });
 
         handles.push(handle);
@@ -364,21 +358,21 @@ fn test_simultaneous_operations_different_environments() {
 
         // Perform operations
         for i in 0..5 {
-            let file_name = format!("env1_file_{}.txt", i);
+            let file_name = format!("env1_file_{i}.txt");
             fs::write(
                 kopi_home.join(&file_name),
-                format!("Environment 1 - File {}", i),
+                format!("Environment 1 - File {i}"),
             )
             .unwrap();
 
             // Simulate JDK operation
-            let jdk_dir = kopi_home.join("jdks").join(format!("env1-jdk-{}", i));
+            let jdk_dir = kopi_home.join("jdks").join(format!("env1-jdk-{i}"));
             fs::create_dir_all(&jdk_dir).unwrap();
         }
 
         // Verify all files exist
         for i in 0..5 {
-            assert!(kopi_home.join(format!("env1_file_{}.txt", i)).exists());
+            assert!(kopi_home.join(format!("env1_file_{i}.txt")).exists());
         }
 
         kopi_home
@@ -396,21 +390,21 @@ fn test_simultaneous_operations_different_environments() {
 
         // Perform operations
         for i in 0..5 {
-            let file_name = format!("env2_file_{}.txt", i);
+            let file_name = format!("env2_file_{i}.txt");
             fs::write(
                 kopi_home.join(&file_name),
-                format!("Environment 2 - File {}", i),
+                format!("Environment 2 - File {i}"),
             )
             .unwrap();
 
             // Simulate JDK operation
-            let jdk_dir = kopi_home.join("jdks").join(format!("env2-jdk-{}", i));
+            let jdk_dir = kopi_home.join("jdks").join(format!("env2-jdk-{i}"));
             fs::create_dir_all(&jdk_dir).unwrap();
         }
 
         // Verify all files exist
         for i in 0..5 {
-            assert!(kopi_home.join(format!("env2_file_{}.txt", i)).exists());
+            assert!(kopi_home.join(format!("env2_file_{i}.txt")).exists());
         }
 
         kopi_home
@@ -424,13 +418,13 @@ fn test_simultaneous_operations_different_environments() {
     for i in 0..5 {
         // Environment 1 should not have environment 2's files
         assert!(
-            !kopi_home1.join(format!("env2_file_{}.txt", i)).exists(),
+            !kopi_home1.join(format!("env2_file_{i}.txt")).exists(),
             "Environment 1 should not contain environment 2's files"
         );
 
         // Environment 2 should not have environment 1's files
         assert!(
-            !kopi_home2.join(format!("env1_file_{}.txt", i)).exists(),
+            !kopi_home2.join(format!("env1_file_{i}.txt")).exists(),
             "Environment 2 should not contain environment 1's files"
         );
     }

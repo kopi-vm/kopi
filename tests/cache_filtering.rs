@@ -167,9 +167,7 @@ fn test_cache_list_distributions_no_cache() {
     // or show an appropriate message
     assert!(
         output.status.success(),
-        "Command failed. stdout: {}, stderr: {}",
-        stdout,
-        stderr
+        "Command failed. stdout: {stdout}, stderr: {stderr}"
     );
 
     // The behavior might have changed - it might auto-fetch or show distributions
@@ -178,8 +176,7 @@ fn test_cache_list_distributions_no_cache() {
             || stdout.contains("Fetching")
             || stdout.contains("Available distributions")
             || stdout.contains("Distribution"),
-        "Unexpected output. stdout: {}",
-        stdout
+        "Unexpected output. stdout: {stdout}"
     );
 }
 

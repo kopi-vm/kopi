@@ -69,7 +69,7 @@ impl ShimCommand {
 
         // Try to find the tool in the registry
         if let Some(tool_info) = registry.get_tool(tool_name) {
-            installer.create_shim(&tool_info.name)?;
+            installer.create_shim(tool_info.name)?;
             println!(
                 "{}",
                 format!("Created shim for '{}'", tool_info.name)
@@ -85,7 +85,7 @@ impl ShimCommand {
             installer.create_shim(tool_name)?;
             println!(
                 "{}",
-                format!("Created shim for '{}'", tool_name).green().bold()
+                format!("Created shim for '{tool_name}'").green().bold()
             );
             println!(
                 "  {}",
@@ -101,7 +101,7 @@ impl ShimCommand {
         installer.remove_shim(tool_name)?;
         println!(
             "{}",
-            format!("Removed shim for '{}'", tool_name).green().bold()
+            format!("Removed shim for '{tool_name}'").green().bold()
         );
         Ok(())
     }
@@ -138,7 +138,7 @@ impl ShimCommand {
 
         for shim_name in &shims {
             // Check if shim is valid by verifying it points to kopi-shim
-            let shim_path = config.shims_dir()?.join(&shim_name);
+            let shim_path = config.shims_dir()?.join(shim_name);
             let status = if shim_path.exists() {
                 "✓ Valid".green().to_string()
             } else {
@@ -152,7 +152,7 @@ impl ShimCommand {
             ]);
         }
 
-        println!("{}", table);
+        println!("{table}");
         println!();
         println!("Total: {} shims", shims.len().to_string().bold());
 
@@ -186,9 +186,9 @@ impl ShimCommand {
             };
 
             let version_info = match (info.min_version, info.max_version) {
-                (Some(min), Some(max)) => format!("v{}-{}", min, max),
-                (Some(min), None) => format!("v{}+", min),
-                (None, Some(max)) => format!("up to v{}", max),
+                (Some(min), Some(max)) => format!("v{min}-{max}"),
+                (Some(min), None) => format!("v{min}+"),
+                (None, Some(max)) => format!("up to v{max}"),
                 (None, None) => "All versions".to_string(),
             };
 
@@ -200,7 +200,7 @@ impl ShimCommand {
             ]);
         }
 
-        println!("{}", table);
+        println!("{table}");
         println!();
         println!("To create a shim: {}", "kopi shim add <tool>".cyan());
 

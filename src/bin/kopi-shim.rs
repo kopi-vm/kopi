@@ -10,7 +10,7 @@ fn main() {
     match shim::run(args) {
         Ok(code) => process::exit(code),
         Err(e) => {
-            eprintln!("Error: {}", e);
+            eprintln!("Error: {e}");
             process::exit(1);
         }
     }

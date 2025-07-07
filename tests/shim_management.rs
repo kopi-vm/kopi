@@ -31,7 +31,7 @@ fn tool_path(dir: &Path, tool_name: &str) -> PathBuf {
     if ext.is_empty() {
         dir.join(tool_name)
     } else {
-        dir.join(format!("{}{}", tool_name, ext))
+        dir.join(format!("{tool_name}{ext}"))
     }
 }
 
@@ -118,10 +118,7 @@ fn setup_test_env() -> (TempDir, PathBuf, ShimInstaller) {
         fs::remove_file(&expected_shim_path).ok();
     }
 
-    eprintln!(
-        "Copying mock shim from {:?} to {:?}",
-        kopi_shim_path, expected_shim_path
-    );
+    eprintln!("Copying mock shim from {kopi_shim_path:?} to {expected_shim_path:?}");
 
     // Read the source file to ensure we have the data
     let source_data = fs::read(&kopi_shim_path).unwrap();
@@ -135,7 +132,7 @@ fn setup_test_env() -> (TempDir, PathBuf, ShimInstaller) {
 
     // Verify the copy
     let copied_size = fs::metadata(&expected_shim_path).unwrap().len();
-    eprintln!("Copied shim size: {} bytes", copied_size);
+    eprintln!("Copied shim size: {copied_size} bytes");
 
     // Double-check the content
     let copied_data = fs::read(&expected_shim_path).unwrap();
@@ -360,7 +357,7 @@ fn test_repair_shim() {
     eprintln!("\n=== Corrupting shim ===");
     fs::write(&shim_path, "corrupted").unwrap();
     let corrupted_size = fs::metadata(&shim_path).unwrap().len();
-    eprintln!("Corrupted shim size: {} bytes", corrupted_size);
+    eprintln!("Corrupted shim size: {corrupted_size} bytes");
 
     // Repair it
     eprintln!("\n=== Repairing shim ===");
@@ -478,8 +475,7 @@ fn test_default_shim_tools_are_valid() {
         let tool = registry.get_tool(tool_name);
         assert!(
             tool.is_some(),
-            "Default tool '{}' not found in registry",
-            tool_name
+            "Default tool '{tool_name}' not found in registry"
         );
     }
 }

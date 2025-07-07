@@ -58,7 +58,7 @@ impl SetupCommand {
 
         for dir in dirs {
             if !dir.exists() {
-                fs::create_dir_all(&dir)?;
+                fs::create_dir_all(dir)?;
                 println!("  Created: {}", dir.display());
             } else {
                 println!("  Exists: {}", dir.display());
@@ -83,14 +83,13 @@ impl SetupCommand {
             println!("  Building from source...");
 
             let output = Command::new("cargo")
-                .args(&["build", "--bin", "kopi-shim", "--release"])
+                .args(["build", "--bin", "kopi-shim", "--release"])
                 .output()?;
 
             if !output.status.success() {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 return Err(crate::error::KopiError::SystemError(format!(
-                    "Failed to build kopi-shim: {}",
-                    stderr
+                    "Failed to build kopi-shim: {stderr}"
                 )));
             }
 
@@ -151,10 +150,10 @@ impl SetupCommand {
 
         for tool_name in core_tools {
             match installer.create_shim(tool_name) {
-                Ok(_) => println!("  ✓ {}", tool_name),
+                Ok(_) => println!("  ✓ {tool_name}"),
                 Err(e) => {
                     if !force {
-                        println!("  ⚠ {} ({})", tool_name, e);
+                        println!("  ⚠ {tool_name} ({e})");
                     } else {
                         return Err(e);
                     }
@@ -175,7 +174,7 @@ impl SetupCommand {
         println!("Add the following directory to your PATH:");
         println!("  {}", shims_dir.display().to_string().bold());
 
-        println!("\n{}", format!("For {:?} shell:", shell).italic());
+        println!("\n{}", format!("For {shell:?} shell:").italic());
         match shell {
             Shell::Bash => {
                 println!("\nAdd to ~/.bashrc:");

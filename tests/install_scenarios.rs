@@ -344,18 +344,15 @@ fn test_metadata_persistence() {
     if cache_dir.exists() {
         eprintln!("Cache directory contents:");
         if let Ok(entries) = std::fs::read_dir(&cache_dir) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    eprintln!("  - {:?}", entry.path());
-                }
+            for entry in entries.flatten() {
+                eprintln!("  - {:?}", entry.path());
             }
         }
     }
 
     assert!(
         metadata_file.exists(),
-        "metadata.json not found at {:?}",
-        metadata_file
+        "metadata.json not found at {metadata_file:?}"
     );
 
     // Second install should use cached metadata

@@ -50,8 +50,7 @@ fn create_large_test_cache() -> MetadataCache {
                             for pkg_type in &package_types {
                                 packages.push(JdkMetadata {
                                     id: format!(
-                                        "{}-{}.{}.{}-{:?}-{:?}",
-                                        dist_id, major, minor, patch, arch, os
+                                        "{dist_id}-{major}.{minor}.{patch}-{arch:?}-{os:?}"
                                     ),
                                     distribution: dist_id.to_string(),
                                     version: Version::new(*major, minor, patch),
@@ -65,8 +64,7 @@ fn create_large_test_cache() -> MetadataCache {
                                         ArchiveType::TarGz
                                     },
                                     download_url: format!(
-                                        "https://example.com/{}/jdk-{}.{}.{}.tar.gz",
-                                        dist_id, major, minor, patch
+                                        "https://example.com/{dist_id}/jdk-{major}.{minor}.{patch}.tar.gz"
                                     ),
                                     checksum: None,
                                     checksum_type: Some(ChecksumType::Sha256),
@@ -124,14 +122,13 @@ fn test_search_performance_by_version() {
     let results = searcher.search("21").unwrap();
     let duration = start.elapsed();
 
-    println!("Search for version '21' took: {:?}", duration);
+    println!("Search for version '21' took: {duration:?}");
     println!("Found {} results", results.len());
 
     // Should complete within 100ms for typical cache sizes
     assert!(
         duration.as_millis() < 100,
-        "Search took too long: {:?}",
-        duration
+        "Search took too long: {duration:?}"
     );
     assert!(!results.is_empty(), "Should find results for version 21");
 }
@@ -148,14 +145,13 @@ fn test_search_performance_by_distribution() {
     let results = searcher.search("corretto").unwrap();
     let duration = start.elapsed();
 
-    println!("Search for distribution 'corretto' took: {:?}", duration);
+    println!("Search for distribution 'corretto' took: {duration:?}");
     println!("Found {} results", results.len());
 
     // Should complete within 100ms
     assert!(
         duration.as_millis() < 100,
-        "Search took too long: {:?}",
-        duration
+        "Search took too long: {duration:?}"
     );
     assert!(!results.is_empty(), "Should find results for corretto");
 }
@@ -172,14 +168,13 @@ fn test_search_performance_latest() {
     let results = searcher.search("latest").unwrap();
     let duration = start.elapsed();
 
-    println!("Search for 'latest' took: {:?}", duration);
+    println!("Search for 'latest' took: {duration:?}");
     println!("Found {} results", results.len());
 
     // Should complete within 100ms
     assert!(
         duration.as_millis() < 100,
-        "Search took too long: {:?}",
-        duration
+        "Search took too long: {duration:?}"
     );
     assert_eq!(
         results.len(),
@@ -205,14 +200,13 @@ fn test_search_performance_with_platform_filter() {
     let results = searcher.search("17").unwrap();
     let duration = start.elapsed();
 
-    println!("Search with platform filter took: {:?}", duration);
+    println!("Search with platform filter took: {duration:?}");
     println!("Found {} results", results.len());
 
     // Should complete within 100ms
     assert!(
         duration.as_millis() < 100,
-        "Search took too long: {:?}",
-        duration
+        "Search took too long: {duration:?}"
     );
     assert!(
         !results.is_empty(),
@@ -230,7 +224,7 @@ fn test_search_memory_usage() {
     // Get initial memory usage (approximate)
     let package_count: usize = cache.distributions.values().map(|d| d.packages.len()).sum();
 
-    println!("Cache contains {} total packages", package_count);
+    println!("Cache contains {package_count} total packages");
 
     // Perform multiple searches to check for memory leaks
     for i in 0..100 {
@@ -238,8 +232,7 @@ fn test_search_memory_usage() {
         let results = searcher.search(&major_version.to_string()).unwrap();
         assert!(
             !results.is_empty(),
-            "Should find results for version {}",
-            major_version
+            "Should find results for version {major_version}"
         );
     }
 
@@ -277,14 +270,13 @@ fn test_display_rendering_performance() {
 
     let duration = start.elapsed();
 
-    println!("Display rendering took: {:?}", duration);
+    println!("Display rendering took: {duration:?}");
     println!("Rendered {} rows", results.len());
 
     // Display rendering should be very fast
     assert!(
         duration.as_millis() < 50,
-        "Display rendering took too long: {:?}",
-        duration
+        "Display rendering took too long: {duration:?}"
     );
 }
 
@@ -324,9 +316,7 @@ fn test_real_cache_performance() {
         // Real cache should still be fast
         assert!(
             duration.as_millis() < 200,
-            "Real cache search for '{}' took too long: {:?}",
-            query,
-            duration
+            "Real cache search for '{query}' took too long: {duration:?}"
         );
     }
 }

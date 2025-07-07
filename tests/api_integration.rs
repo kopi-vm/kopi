@@ -12,11 +12,7 @@ fn test_get_distributions_real_api() {
     let client = ApiClient::new();
     let result = client.get_distributions();
 
-    assert!(
-        result.is_ok(),
-        "Failed to fetch distributions: {:?}",
-        result
-    );
+    assert!(result.is_ok(), "Failed to fetch distributions: {result:?}");
     let distributions = result.unwrap();
     assert!(!distributions.is_empty(), "No distributions returned");
 
@@ -35,11 +31,7 @@ fn test_get_major_versions_real_api() {
     let client = ApiClient::new();
     let result = client.get_major_versions();
 
-    assert!(
-        result.is_ok(),
-        "Failed to fetch major versions: {:?}",
-        result
-    );
+    assert!(result.is_ok(), "Failed to fetch major versions: {result:?}");
     let versions = result.unwrap();
     assert!(!versions.is_empty(), "No major versions returned");
 
@@ -71,7 +63,7 @@ fn test_get_packages_with_query_real_api() {
 
     let result = client.get_packages(Some(query));
 
-    assert!(result.is_ok(), "Failed to fetch packages: {:?}", result);
+    assert!(result.is_ok(), "Failed to fetch packages: {result:?}");
     let packages = result.unwrap();
     assert!(!packages.is_empty(), "No packages returned for query");
 

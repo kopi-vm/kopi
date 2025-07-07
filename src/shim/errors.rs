@@ -49,9 +49,9 @@ impl ShimError {
                 version,
                 distribution,
                 ..
-            } => KopiError::JdkNotInstalled(format!("{}@{}", distribution, version)),
+            } => KopiError::JdkNotInstalled(format!("{distribution}@{version}")),
             ShimError::ToolNotFound { tool, .. } => {
-                KopiError::SystemError(format!("Tool '{}' not found", tool))
+                KopiError::SystemError(format!("Tool '{tool}' not found"))
             }
             ShimError::PermissionDenied { path, .. } => KopiError::PermissionDenied(path),
             ShimError::ExecutionError { message, .. } => KopiError::SystemError(message),
@@ -73,7 +73,7 @@ impl ShimError {
                     {}",
                     searched_paths
                         .iter()
-                        .map(|p| format!("  - {}", p))
+                        .map(|p| format!("  - {p}"))
                         .collect::<Vec<_>>()
                         .join("\n"),
                     suggestion
@@ -85,7 +85,7 @@ impl ShimError {
                 distribution,
                 auto_install_status,
             } => {
-                let base_msg = format!("JDK {} {} is not installed.", distribution, version);
+                let base_msg = format!("JDK {distribution} {version} is not installed.");
 
                 let action = match auto_install_status {
                     AutoInstallStatus::Disabled => {
@@ -96,24 +96,23 @@ impl ShimError {
                         )
                     }
                     AutoInstallStatus::UserDeclined => {
-                        format!("Installation was declined. To install manually:\n  kopi install {}@{}", distribution, version)
+                        format!("Installation was declined. To install manually:\n  kopi install {distribution}@{version}")
                     }
                     AutoInstallStatus::InProgress => {
                         "Another process is currently installing this JDK. Please wait and try again.".to_string()
                     }
                     AutoInstallStatus::Failed(reason) => {
                         format!(
-                            "Auto-installation failed: {}\n\n\
-                            To install manually:\n  kopi install {}@{}",
-                            reason, distribution, version
+                            "Auto-installation failed: {reason}\n\n\
+                            To install manually:\n  kopi install {distribution}@{version}"
                         )
                     }
                     AutoInstallStatus::NotApplicable => {
-                        format!("To install it, run:\n  kopi install {}@{}", distribution, version)
+                        format!("To install it, run:\n  kopi install {distribution}@{version}")
                     }
                 };
 
-                format!("{}\n\n{}", base_msg, action)
+                format!("{base_msg}\n\n{action}")
             }
 
             ShimError::ToolNotFound {
@@ -123,9 +122,8 @@ impl ShimError {
             } => {
                 if available_tools.is_empty() {
                     format!(
-                        "Tool '{}' not found in JDK at {}.\n\n\
-                        This JDK installation may be corrupted. Try reinstalling it.",
-                        tool, jdk_path
+                        "Tool '{tool}' not found in JDK at {jdk_path}.\n\n\
+                        This JDK installation may be corrupted. Try reinstalling it."
                     )
                 } else {
                     format!(
@@ -136,7 +134,7 @@ impl ShimError {
                         jdk_path,
                         available_tools
                             .iter()
-                            .map(|t| format!("  - {}", t))
+                            .map(|t| format!("  - {t}"))
                             .collect::<Vec<_>>()
                             .join("\n")
                     )
@@ -150,10 +148,7 @@ impl ShimError {
                     "Try running as Administrator or check file permissions."
                 };
 
-                format!(
-                    "Permission denied while {} '{}'.\n\n{}",
-                    operation, path, suggestion
-                )
+                format!("Permission denied while {operation} '{path}'.\n\n{suggestion}")
             }
 
             ShimError::ExecutionError { message, .. } => {
@@ -246,9 +241,9 @@ pub fn format_shim_error(error: &ShimError, use_color: bool) -> String {
     // Suggestions
     let suggestions = error.suggestions();
     if !suggestions.is_empty() {
-        output.push_str(&format!("\n{}{}Suggestions:{}\n", yellow, bold, reset));
+        output.push_str(&format!("\n{yellow}{bold}Suggestions:{reset}\n"));
         for suggestion in suggestions {
-            output.push_str(&format!("  {} {}\n", cyan, suggestion));
+            output.push_str(&format!("  {cyan} {suggestion}\n"));
         }
     }
 
@@ -470,9 +465,7 @@ mod tests {
             let message = error.user_message();
             assert!(
                 message.contains(expected_text),
-                "Expected '{}' in message: {}",
-                expected_text,
-                message
+                "Expected '{expected_text}' in message: {message}"
             );
         }
     }
