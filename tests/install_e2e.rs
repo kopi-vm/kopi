@@ -439,7 +439,7 @@ fn test_install_and_verify_files() {
 
     // Extract the installed version from output
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let version_pattern = Regex::new(r"Successfully installed .* to .*/\.kopi/jdks/(\S+)").unwrap();
+    let version_pattern = Regex::new(r"Successfully installed .* to .*[/\\]\.kopi[/\\]jdks[/\\](\S+)").unwrap();
     let installed_version = version_pattern
         .captures(&stdout)
         .and_then(|caps| caps.get(1))
@@ -456,6 +456,7 @@ fn test_install_and_verify_files() {
                     .unwrap()
                     .filter_map(|e| e.ok())
                     .filter(|e| e.path().is_dir())
+                    .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
                     .collect();
 
                 eprintln!("JDKs directory contents:");
