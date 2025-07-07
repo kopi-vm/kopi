@@ -138,9 +138,7 @@ mod tests {
 
     #[test]
     fn test_resolve_from_kopi_version_file() {
-        // Create temp dir under ./target/test-tmp/
-        fs::create_dir_all("./target/test-tmp").unwrap();
-        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
         let version_file = temp_path.join(KOPI_VERSION_FILE);
@@ -154,9 +152,7 @@ mod tests {
 
     #[test]
     fn test_resolve_from_java_version_file() {
-        // Create temp dir under ./target/test-tmp/
-        fs::create_dir_all("./target/test-tmp").unwrap();
-        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
         let version_file = temp_path.join(JAVA_VERSION_FILE);
@@ -170,9 +166,7 @@ mod tests {
 
     #[test]
     fn test_resolve_searches_parent_directories() {
-        // Create temp dir under ./target/test-tmp/
-        fs::create_dir_all("./target/test-tmp").unwrap();
-        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let parent_dir = temp_dir.path().to_path_buf();
 
         let child_dir = parent_dir.join("child");
@@ -191,9 +185,7 @@ mod tests {
 
     #[test]
     fn test_kopi_version_takes_precedence() {
-        // Create temp dir under ./target/test-tmp/
-        fs::create_dir_all("./target/test-tmp").unwrap();
-        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
         // Create both version files
@@ -213,9 +205,7 @@ mod tests {
 
     #[test]
     fn test_empty_version_file_error() {
-        // Create temp dir under ./target/test-tmp/
-        fs::create_dir_all("./target/test-tmp").unwrap();
-        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
         let version_file = temp_path.join(KOPI_VERSION_FILE);
@@ -228,9 +218,7 @@ mod tests {
 
     #[test]
     fn test_whitespace_trimmed() {
-        // Create temp dir under ./target/test-tmp/
-        fs::create_dir_all("./target/test-tmp").unwrap();
-        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
         let version_file = temp_path.join(JAVA_VERSION_FILE);
@@ -243,9 +231,7 @@ mod tests {
 
     #[test]
     fn test_no_version_found() {
-        // Create temp dir under ./target/test-tmp/
-        fs::create_dir_all("./target/test-tmp").unwrap();
-        let temp_dir = TempDir::new_in("./target/test-tmp").unwrap();
+        let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
         let resolver = VersionResolver::with_dir(temp_path.clone());
