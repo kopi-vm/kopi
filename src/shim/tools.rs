@@ -222,6 +222,13 @@ impl ToolRegistry {
                 min_version: None,
                 max_version: Some(8), // Removed in JDK 9
             },
+            ToolInfo {
+                name: "jhsdb",
+                category: ToolCategory::Debug,
+                description: "HotSpot debugger",
+                min_version: Some(9),
+                max_version: None,
+            },
             // Monitoring tools
             ToolInfo {
                 name: "jps",
@@ -256,6 +263,13 @@ impl ToolRegistry {
                 category: ToolCategory::Monitoring,
                 description: "Java Flight Recorder",
                 min_version: Some(11),
+                max_version: None,
+            },
+            ToolInfo {
+                name: "jstatd",
+                category: ToolCategory::Monitoring,
+                description: "JVM statistics daemon",
+                min_version: None,
                 max_version: None,
             },
             // Security tools
@@ -321,6 +335,41 @@ impl ToolRegistry {
                 category: ToolCategory::Utility,
                 description: "Serial version inspector",
                 min_version: None,
+                max_version: None,
+            },
+            ToolInfo {
+                name: "rmiregistry",
+                category: ToolCategory::Utility,
+                description: "Java RMI registry",
+                min_version: None,
+                max_version: None,
+            },
+            ToolInfo {
+                name: "jdeprscan",
+                category: ToolCategory::Utility,
+                description: "Deprecated API scanner",
+                min_version: Some(9),
+                max_version: None,
+            },
+            ToolInfo {
+                name: "jimage",
+                category: ToolCategory::Utility,
+                description: "JDK module image tool",
+                min_version: Some(9),
+                max_version: None,
+            },
+            ToolInfo {
+                name: "jrunscript",
+                category: ToolCategory::Utility,
+                description: "Script execution tool",
+                min_version: None,
+                max_version: None,
+            },
+            ToolInfo {
+                name: "jwebserver",
+                category: ToolCategory::Utility,
+                description: "Simple web server",
+                min_version: Some(18),
                 max_version: None,
             },
             ToolInfo {
