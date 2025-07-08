@@ -10,3 +10,4 @@ incremental = true
 
 [alias]
 it = "test --features integration_tests"
+shim = "build --bin kopi-shim --profile release-shim"
