@@ -25,10 +25,10 @@ EOF
 
 first=true
 # Find all estimates.json files and consolidate
-find "$RESULTS_DIR" -name "estimates.json" -type f | while read -r estimates_file; do
+find "$RESULTS_DIR" -name "estimates.json" -type f | grep -v "/change/" | sort | while read -r estimates_file; do
     # Extract benchmark name from path
     bench_path="${estimates_file#$RESULTS_DIR/}"
-    bench_name=$(dirname "$bench_path" | sed 's|/base||' | tr '/' '.')
+    bench_name=$(dirname "$bench_path" | sed -e 's|/base$||' -e 's|/new$||' | tr '/' '.')
     
     if [ "$first" = true ]; then
         first=false

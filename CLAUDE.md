@@ -124,16 +124,6 @@ cargo install sccache
   - `test` profile: Tests run with optimization level 1 and limited debug info
   - `release-fast` profile: Fast release builds without LTO for development
 
-### Benchmarking
-To measure performance impact of changes:
-```bash
-# Run all benchmarks
-cargo bench
-
-# Compare with baseline
-cargo bench -- --baseline main
-```
-
 ## Architecture
 
 ### Project Structure

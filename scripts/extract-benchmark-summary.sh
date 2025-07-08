@@ -65,8 +65,8 @@ done
 
 # Performance comparison if baseline exists
 if [ -f "$CRITERION_DIR/report/index.html" ]; then
-    echo "## Performance Changes"
+    echo "## Performance Comparison"
     echo ""
-    echo "Run 'cargo bench -- --baseline <name>' to compare with saved baselines"
+    echo "To compare with baselines, use: ./scripts/check-performance.sh [baseline-name]"
     echo "HTML report available at: $CRITERION_DIR/report/index.html"
 fi

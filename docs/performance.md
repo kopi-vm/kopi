@@ -38,11 +38,8 @@ cargo bench version_parsing
 cargo bench cache_operations
 cargo bench search_performance
 
-# Run with baseline comparison
-cargo bench -- --baseline main
-
-# Save results as a new baseline
-cargo bench -- --save-baseline my-feature
+# Note: This project uses a custom baseline system instead of Criterion's native baseline feature.
+# Use the provided scripts for baseline management (see below).
 ```
 
 ### Benchmark Coverage
@@ -110,17 +107,22 @@ Based on current benchmarks, these are the performance targets:
 
 To prevent performance regressions:
 
-1. **Before making changes:**
+1. **Save current benchmarks:**
    ```bash
-   cargo bench -- --save-baseline before-change
+   ./scripts/save-benchmark.sh
    ```
 
-2. **After making changes:**
+2. **Check for regressions against baseline:**
    ```bash
-   cargo bench -- --baseline before-change
+   ./scripts/check-performance.sh
+   # Or compare with a specific baseline
+   ./scripts/check-performance.sh v0.1.0
    ```
 
-3. **Check for regressions** in the output or HTML report
+3. **View detailed results** in the Criterion HTML report:
+   ```bash
+   open target/criterion/report/index.html
+   ```
 
 ### Performance Best Practices
 
@@ -148,6 +150,7 @@ To add a new benchmark:
    - `benches/version_parsing.rs` - Version parsing logic
    - `benches/cache_operations.rs` - Cache-related operations
    - `benches/search_performance.rs` - Search algorithms
+   - Or create a new file and register it in `benches/kopi_bench.rs`
 
 2. Add your benchmark:
    ```rust
@@ -160,7 +163,17 @@ To add a new benchmark:
    ```
 
 3. Use `black_box` to prevent compiler optimizations
-4. Run and verify the benchmark works correctly
+4. If creating a new file, add it to `benches/kopi_bench.rs`:
+   ```rust
+   criterion_group!(
+       benches,
+       version_parsing::benches,
+       cache_operations::benches,
+       search_performance::benches,
+       your_new_module::benches  // Add your module here
+   );
+   ```
+5. Run and verify the benchmark works correctly
 
 ## Test Performance
 
@@ -236,21 +249,40 @@ For faster feedback in your IDE:
 To track performance over time, save benchmark results:
 
 ```bash
-# Run and save benchmarks
+# Run and save benchmarks (also updates main baseline if on main branch)
 ./scripts/save-benchmark.sh
 
-# Check for performance regressions
+# Check for performance regressions against main baseline
 ./scripts/check-performance.sh
 
 # Compare with specific baseline
 ./scripts/check-performance.sh v0.1.0
+
+# Extract human-readable summary from current results
+./scripts/extract-benchmark-summary.sh
+
+# Manually create a baseline from saved results
+./scripts/create-baseline.sh benchmarks/results/2025-01-08 > benchmarks/baselines/custom.json
 ```
+
+### Script Details
+
+- **save-benchmark.sh**: Runs benchmarks, saves results with metadata, and updates baselines
+- **check-performance.sh**: Compares current benchmarks against a baseline (default: main)
+  - Exits with code 0 if no regressions > 5%
+  - Exits with code 1 if regressions are detected
+  - Shows improvements, regressions, and unchanged benchmarks
+- **extract-benchmark-summary.sh**: Generates a human-readable summary from Criterion results
+- **create-baseline.sh**: Creates a consolidated baseline JSON from benchmark results
 
 Benchmark results are stored in:
 - `benchmarks/baselines/` - Baseline results (tracked in Git)
+  - `main.json` - Baseline for the main branch
+  - `vX.Y.Z.json` - Baselines for version tags
 - `benchmarks/results/YYYY-MM-DD/` - Daily runs (local only, not in Git)
 
-The CI automatically:
-- Runs benchmarks on PRs and alerts on regressions > 10%
-- Saves results as GitHub Actions artifacts (90 day retention)
-- Updates baselines when merging to main
+The custom baseline system:
+- Automatically updates `main.json` when running benchmarks on the main branch
+- Creates version-specific baselines for tagged releases
+- Detects regressions > 5% when comparing with baselines
+- Provides detailed performance summaries with improvement/regression indicators
