@@ -10,6 +10,8 @@ use crate::platform::{
 };
 use crate::search::PackageSearcher;
 use crate::security::verify_checksum;
+use crate::shim::discovery::{discover_distribution_tools, discover_jdk_tools};
+use crate::shim::installer::ShimInstaller;
 use crate::storage::JdkRepository;
 use crate::version::parser::VersionParser;
 use log::{debug, info, trace, warn};
@@ -192,6 +194,40 @@ impl InstallCommand {
             jdk_metadata_with_checksum.distribution_version,
             final_path.display()
         );
+
+        // Create shims if enabled in config
+        if config.shims.auto_create_shims {
+            debug!("Auto-creating shims for newly installed JDK");
+
+            // Discover JDK tools
+            let mut tools = discover_jdk_tools(&final_path)?;
+            debug!("Discovered {} standard JDK tools", tools.len());
+
+            // Discover distribution-specific tools
+            let extra_tools = discover_distribution_tools(&final_path, Some(distribution.id()))?;
+            if !extra_tools.is_empty() {
+                debug!(
+                    "Discovered {} distribution-specific tools",
+                    extra_tools.len()
+                );
+                tools.extend(extra_tools);
+            }
+
+            if !tools.is_empty() {
+                println!("\nCreating shims...");
+                let shim_installer = ShimInstaller::new(config.kopi_home());
+                let created_shims = shim_installer.create_missing_shims(&tools)?;
+
+                if !created_shims.is_empty() {
+                    println!("Created {} new shims:", created_shims.len());
+                    for shim in &created_shims {
+                        println!("  - {shim}");
+                    }
+                } else {
+                    debug!("All shims already exist");
+                }
+            }
+        }
 
         // Show hint about using the JDK
         if VersionParser::is_lts_version(version.major) {

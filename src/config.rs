@@ -31,6 +31,9 @@ pub struct KopiConfig {
 
     #[serde(default)]
     pub auto_install: AutoInstallConfig,
+
+    #[serde(default)]
+    pub shims: ShimsConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,6 +70,12 @@ impl Default for AutoInstallConfig {
             timeout_secs: 300,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ShimsConfig {
+    #[serde(default = "default_true")]
+    pub auto_create_shims: bool,
 }
 
 // Default value functions
@@ -131,7 +140,8 @@ impl KopiConfig {
             .set_default("additional_distributions", Vec::<String>::new())?
             .set_default("auto_install.enabled", true)?
             .set_default("auto_install.prompt", true)?
-            .set_default("auto_install.timeout_secs", 300)?;
+            .set_default("auto_install.timeout_secs", 300)?
+            .set_default("shims.auto_create_shims", true)?;
 
         // Add the config file if it exists
         if config_path.exists() {
@@ -516,6 +526,21 @@ min_disk_space_mb = 2048
         assert!(config.auto_install.enabled);
         assert!(config.auto_install.prompt);
         assert_eq!(config.auto_install.timeout_secs, 300);
+    }
+
+    #[test]
+    #[serial]
+    fn test_shims_config_defaults() {
+        // Clear any environment variables that might affect the test
+        unsafe {
+            env::remove_var("KOPI_SHIMS__AUTO_CREATE_SHIMS");
+        }
+
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+
+        // Test default shims settings
+        assert!(config.shims.auto_create_shims);
     }
 
     #[test]

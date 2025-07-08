@@ -45,11 +45,7 @@ impl ShimInstaller {
             )));
         }
 
-        #[cfg(unix)]
-        self.create_unix_shim(tool_name, &shim_path)?;
-
-        #[cfg(windows)]
-        self.create_windows_shim(tool_name, &shim_path)?;
+        self.create_shim_internal(tool_name, &shim_path)?;
 
         log::info!("Created shim for '{tool_name}' at {shim_path:?}");
         Ok(())
@@ -135,14 +131,35 @@ impl ShimInstaller {
         }
 
         // Recreate it
-        #[cfg(unix)]
-        self.create_unix_shim(tool_name, &shim_path)?;
-
-        #[cfg(windows)]
-        self.create_windows_shim(tool_name, &shim_path)?;
+        self.create_shim_internal(tool_name, &shim_path)?;
 
         log::info!("Repaired shim for '{tool_name}'");
         Ok(())
+    }
+
+    /// Create shims for any tools that don't already have them
+    pub fn create_missing_shims(&self, tools: &[String]) -> Result<Vec<String>> {
+        self.init_shims_directory()?;
+
+        let mut created_shims = Vec::new();
+
+        for tool in tools {
+            let shim_path = self.get_shim_path(tool);
+
+            // Skip if shim already exists
+            if shim_path.exists() {
+                log::debug!("Shim for '{tool}' already exists");
+                continue;
+            }
+
+            // Create the shim
+            self.create_shim_internal(tool, &shim_path)?;
+
+            log::info!("Created shim for '{tool}' at {shim_path:?}");
+            created_shims.push(tool.clone());
+        }
+
+        Ok(created_shims)
     }
 
     /// Get the path for a shim
@@ -155,25 +172,24 @@ impl ShimInstaller {
         self.shims_dir.join(shim_name)
     }
 
-    #[cfg(unix)]
-    fn create_unix_shim(&self, _tool_name: &str, shim_path: &Path) -> Result<()> {
+    /// Internal method to create a shim with platform-specific implementation
+    fn create_shim_internal(&self, _tool_name: &str, shim_path: &Path) -> Result<()> {
         // Find the kopi-shim binary
         let kopi_shim_path = self.find_kopi_shim_binary()?;
 
-        // Create symlink to kopi-shim
-        platform::symlink::create_symlink(&kopi_shim_path, shim_path)?;
+        #[cfg(unix)]
+        {
+            // Create symlink to kopi-shim
+            platform::symlink::create_symlink(&kopi_shim_path, shim_path)?;
+            // Ensure symlink is executable (symlinks inherit permissions from target)
+        }
 
-        // Ensure symlink is executable (symlinks inherit permissions from target)
-        Ok(())
-    }
-
-    #[cfg(windows)]
-    fn create_windows_shim(&self, _tool_name: &str, shim_path: &Path) -> Result<()> {
-        // On Windows, we need to copy the kopi-shim.exe for each tool
-        let kopi_shim_path = self.find_kopi_shim_binary()?;
-
-        // Copy the file
-        platform::symlink::create_symlink(&kopi_shim_path, shim_path)?;
+        #[cfg(windows)]
+        {
+            // On Windows, we need to copy the kopi-shim.exe for each tool
+            // Copy the file
+            platform::symlink::create_symlink(&kopi_shim_path, shim_path)?;
+        }
 
         Ok(())
     }
