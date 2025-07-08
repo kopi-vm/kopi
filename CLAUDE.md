@@ -133,21 +133,35 @@ kopi/
 ├── src/
 │   ├── api/             # API integration with foojay.io
 │   ├── archive/         # Archive extraction functionality (TAR/ZIP)
+│   ├── bin/             # Binary executables (kopi-shim)
+│   ├── cache/           # Metadata caching functionality
 │   ├── commands/        # Command implementations
 │   ├── download/        # Download management and progress reporting
+│   ├── error/           # Error handling and formatting
 │   ├── models/          # Data models and structures
+│   ├── platform/        # Platform-specific functionality
+│   ├── search/          # JDK search functionality
 │   ├── security/        # Security validation and HTTPS verification
+│   ├── shim/            # Shim management
 │   ├── storage/         # Storage and disk space management
 │   └── version/         # Version parsing and handling
 ├── tests/               # Integration tests
+│   └── common/          # Common test utilities
+├── benches/             # Performance benchmarks
+├── benchmarks/          # Benchmark results and history
 ├── docs/
 │   ├── adr/             # Architecture Decision Records
-│   └── reference.md     # User reference manual
+│   ├── reviews/         # Code and design reviews
+│   └── tasks/           # Task planning documents
+├── scripts/             # Development and CI scripts
 └── Cargo.toml           # Project dependencies and metadata
 ```
 
 Key files:
 - `/src/main.rs` - Application entry point with CLI command parsing
+- `/src/lib.rs` - Library entry point for shared functionality
+- `/src/config.rs` - Configuration management
+- `/src/bin/kopi-shim.rs` - Shim binary for transparent JDK switching
 - `/docs/adr/` - Architecture Decision Records documenting design choices
 - `/docs/reference.md` - User reference manual with command documentation
 - Uses `clap` v4.5.40 with derive feature for CLI argument parsing
