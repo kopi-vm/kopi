@@ -230,17 +230,19 @@ Primary commands to implement:
 1. **User Errors**: Invalid input, missing arguments, or incorrect usage
    - Return clear, actionable error messages
    - Include examples of correct usage
-   - Use exit code 1
+   - Exit codes: 2 (invalid format/config), 3 (no local version), 4 (JDK not installed)
 
 2. **Network Errors**: Failed API calls or downloads
    - Implement retry logic with exponential backoff
    - Provide offline fallback when possible (cached metadata)
    - Show progress indicators for long operations
+   - Exit code: 20
 
 3. **System Errors**: Permission issues, disk space, missing dependencies
    - Check permissions before operations
    - Validate available disk space before downloads
    - Provide platform-specific guidance
+   - Exit codes: 13 (permission denied), 28 (disk space), 127 (command not found)
 
 ### Error Message Format
 ```rust
@@ -251,19 +253,47 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum KopiError {
     #[error("Failed to download JDK: {0}")]
-    DownloadError(String),
+    Download(String),
     
-    #[error("JDK version '{version}' not found. Run 'kopi list-remote' to see available versions.")]
-    VersionNotFound { version: String },
+    #[error("JDK version '{0}' is not available")]
+    VersionNotAvailable(String),
     
     #[error("Network error: {0}")]
-    Network(#[from] reqwest::Error),
+    NetworkError(String),
+    
+    #[error(transparent)]
+    Http(#[from] attohttpc::Error),
 }
 
 // Return specific error types
 operation()
-    .map_err(|e| KopiError::DownloadError(e.to_string()))?;
+    .map_err(|e| KopiError::Download(e.to_string()))?;
 ```
+
+### Error Context System
+The codebase includes an `ErrorContext` system that provides helpful suggestions and details based on error types:
+
+```rust
+use crate::error::{ErrorContext, format_error_with_color};
+
+// Errors are automatically enriched with context when displayed
+match result {
+    Err(e) => {
+        let context = ErrorContext::new(&e);
+        eprintln!("{}", format_error_with_color(&e, std::io::stderr().is_terminal()));
+        std::process::exit(get_exit_code(&e));
+    }
+    Ok(_) => {}
+}
+```
+
+The `ErrorContext` system automatically provides:
+- User-friendly suggestions for common errors (e.g., "Run 'kopi cache search' to see available versions")
+- Platform-specific guidance (e.g., different commands for Windows vs Unix)  
+- Detailed error information when available
+- Proper exit codes based on error type (see `get_exit_code`)
+
+Note: Most error handling is done automatically by the framework. When creating new errors, simply use the appropriate `KopiError` variant and the context system will handle the rest.
 
 ## Developer Principles
 
