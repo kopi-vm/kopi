@@ -267,4 +267,3 @@ impl<'a> fmt::Display for ErrorContext<'a> {
         Ok(())
     }
 }
-

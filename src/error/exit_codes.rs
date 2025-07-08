@@ -25,4 +25,3 @@ pub fn get_exit_code(error: &KopiError) -> i32 {
         _ => 1,
     }
 }
-

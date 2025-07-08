@@ -1,3 +1,4 @@
+use crate::error::format::format_error_with_color;
 use crate::error::*;
 
 #[test]
@@ -177,3 +178,50 @@ fn test_format_error_chain() {
     assert!(formatted.contains("Invalid version format"));
 }
 
+#[test]
+fn test_format_error_with_color_reset() {
+    // Test that color codes are properly reset at the end
+    let error = KopiError::JdkNotInstalled {
+        jdk_spec: "temurin@21".to_string(),
+        version: Some("21".to_string()),
+        distribution: Some("temurin".to_string()),
+        auto_install_enabled: false,
+        auto_install_failed: None,
+        user_declined: false,
+        install_in_progress: false,
+    };
+
+    let formatted = format_error_with_color(&error, true);
+
+    // The output should end with a reset code
+    assert!(formatted.ends_with("\x1b[0m"));
+
+    // Check that the output contains expected elements
+    assert!(formatted.contains("Error:"));
+    assert!(formatted.contains("Suggestions:"));
+    assert!(formatted.contains("kopi install temurin@21"));
+}
+
+#[test]
+fn test_format_error_no_color_no_reset() {
+    // Test that when color is disabled, no ANSI codes are added
+    let error = KopiError::JdkNotInstalled {
+        jdk_spec: "temurin@21".to_string(),
+        version: Some("21".to_string()),
+        distribution: Some("temurin".to_string()),
+        auto_install_enabled: false,
+        auto_install_failed: None,
+        user_declined: false,
+        install_in_progress: false,
+    };
+
+    let formatted = format_error_with_color(&error, false);
+
+    // The output should NOT contain any ANSI escape codes
+    assert!(!formatted.contains("\x1b["));
+
+    // But should still contain the text content
+    assert!(formatted.contains("Error:"));
+    assert!(formatted.contains("Suggestions:"));
+    assert!(formatted.contains("kopi install temurin@21"));
+}

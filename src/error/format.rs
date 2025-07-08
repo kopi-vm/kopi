@@ -35,6 +35,10 @@ pub fn format_error_with_color(error: &KopiError, use_color: bool) -> String {
         }
     }
 
+    // Always end with a reset to ensure no color bleeding
+    if use_color && !output.is_empty() {
+        output.push_str(reset);
+    }
+
     output
 }
-
