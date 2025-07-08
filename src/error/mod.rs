@@ -1,8 +1,6 @@
 use std::fmt;
 use thiserror::Error;
 
-pub mod shim;
-
 #[derive(Error, Debug)]
 pub enum KopiError {
     #[error("JDK version '{0}' is not available")]
@@ -11,8 +9,16 @@ pub enum KopiError {
     #[error("Invalid version format: {0}")]
     InvalidVersionFormat(String),
 
-    #[error("JDK '{0}' is not installed")]
-    JdkNotInstalled(String),
+    #[error("JDK '{jdk_spec}' is not installed")]
+    JdkNotInstalled {
+        jdk_spec: String,
+        version: Option<String>,
+        distribution: Option<String>,
+        auto_install_enabled: bool,
+        auto_install_failed: Option<String>,
+        user_declined: bool,
+        install_in_progress: bool,
+    },
 
     #[error("Failed to download JDK: {0}")]
     Download(String),
@@ -24,7 +30,7 @@ pub enum KopiError {
     ChecksumMismatch,
 
     #[error("No JDK configured for current project")]
-    NoLocalVersion,
+    NoLocalVersion { searched_paths: Vec<String> },
 
     #[error("Configuration file error: {0}")]
     ConfigFile(String),
@@ -40,6 +46,19 @@ pub enum KopiError {
 
     #[error("Failed to create shim: {0}")]
     ShimCreation(String),
+
+    #[error("Tool '{tool}' not found in JDK at {jdk_path}")]
+    ToolNotFound {
+        tool: String,
+        jdk_path: String,
+        available_tools: Vec<String>,
+    },
+
+    #[error("Kopi binary not found")]
+    KopiNotFound {
+        searched_paths: Vec<String>,
+        is_auto_install_context: bool,
+    },
 
     #[error("Failed to fetch metadata: {0}")]
     MetadataFetch(String),
@@ -117,8 +136,38 @@ impl<'a> ErrorContext<'a> {
                 let details = Some(format!("Invalid format: {msg}"));
                 (suggestion, details)
             }
-            KopiError::JdkNotInstalled(jdk) => {
-                let suggestion = Some(format!("Run 'kopi install {jdk}' to install this JDK."));
+            KopiError::JdkNotInstalled {
+                jdk_spec,
+                auto_install_enabled,
+                auto_install_failed,
+                user_declined,
+                install_in_progress,
+                ..
+            } => {
+                let suggestion = if *install_in_progress {
+                    Some("Another process is currently installing this JDK. Please wait and try again.".to_string())
+                } else if *user_declined {
+                    Some(format!(
+                        "Installation was declined. To install manually: kopi install {jdk_spec}"
+                    ))
+                } else if let Some(reason) = auto_install_failed {
+                    Some(format!(
+                        "Auto-installation failed: {reason}\n\nTo install manually: kopi install {jdk_spec}"
+                    ))
+                } else if *auto_install_enabled {
+                    Some(format!(
+                        "Run 'kopi install {jdk_spec}' to install this JDK."
+                    ))
+                } else {
+                    let enable_cmd = if cfg!(windows) {
+                        "set KOPI_AUTO_INSTALL__ENABLED=true"
+                    } else {
+                        "export KOPI_AUTO_INSTALL__ENABLED=true"
+                    };
+                    Some(format!(
+                        "Run 'kopi install {jdk_spec}' to install this JDK.\n\nOr enable auto-install: {enable_cmd}"
+                    ))
+                };
                 let details = None;
                 (suggestion, details)
             }
@@ -138,6 +187,30 @@ impl<'a> ErrorContext<'a> {
                 let details = Some(
                     "The downloaded file's checksum doesn't match the expected value.".to_string(),
                 );
+                (suggestion, details)
+            }
+            KopiError::NoLocalVersion { searched_paths } => {
+                let set_cmd = if cfg!(windows) {
+                    "set KOPI_JAVA_VERSION=temurin@21"
+                } else {
+                    "export KOPI_JAVA_VERSION='temurin@21'"
+                };
+                let suggestion = Some(format!(
+                    "To configure a Java version for this project:\n  - Create a .kopi-version file: echo 'temurin@21' > .kopi-version\n  - Set environment variable: {}\n  - Set a global default: kopi global temurin@21",
+                    set_cmd
+                ));
+                let details = if searched_paths.is_empty() {
+                    None
+                } else {
+                    Some(format!(
+                        "Searched in:\n{}",
+                        searched_paths
+                            .iter()
+                            .map(|p| format!("  - {p}"))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    ))
+                };
                 (suggestion, details)
             }
             KopiError::PermissionDenied(path) => {
@@ -225,6 +298,56 @@ impl<'a> ErrorContext<'a> {
                 let details = Some(format!("I/O error: {io_err}"));
                 (suggestion, details)
             }
+            KopiError::ToolNotFound {
+                tool: _,
+                jdk_path,
+                available_tools,
+            } => {
+                let suggestion = if available_tools.is_empty() {
+                    Some(format!(
+                        "This JDK installation at {jdk_path} may be corrupted. Try reinstalling it."
+                    ))
+                } else {
+                    Some(format!(
+                        "Available tools in this JDK:\n{}\n\nThis tool may not be available in this JDK distribution or version.",
+                        available_tools
+                            .iter()
+                            .map(|t| format!("  - {t}"))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    ))
+                };
+                let details = None;
+                (suggestion, details)
+            }
+            KopiError::KopiNotFound {
+                searched_paths,
+                is_auto_install_context,
+            } => {
+                let suggestion = if cfg!(windows) {
+                    Some("Verify kopi is installed correctly and add it to your PATH environment variable.".to_string())
+                } else {
+                    Some("Verify kopi is installed correctly. Add kopi to your PATH: export PATH=\"$HOME/.kopi/bin:$PATH\"".to_string())
+                };
+                let details = if !searched_paths.is_empty() {
+                    Some(format!(
+                        "{}Searched in:\n{}",
+                        if *is_auto_install_context {
+                            "Cannot auto-install JDK. "
+                        } else {
+                            ""
+                        },
+                        searched_paths
+                            .iter()
+                            .map(|p| format!("  - {p}"))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    ))
+                } else {
+                    None
+                };
+                (suggestion, details)
+            }
             _ => (None, None),
         };
 
@@ -267,11 +390,50 @@ pub fn format_error_chain(error: &KopiError) -> String {
     context.to_string()
 }
 
+/// Format error for display to user with colors and formatting (primarily for shim errors)
+pub fn format_error_with_color(error: &KopiError, use_color: bool) -> String {
+    let red = if use_color { "\x1b[31m" } else { "" };
+    let yellow = if use_color { "\x1b[33m" } else { "" };
+    let cyan = if use_color { "\x1b[36m" } else { "" };
+    let reset = if use_color { "\x1b[0m" } else { "" };
+    let bold = if use_color { "\x1b[1m" } else { "" };
+
+    let context = ErrorContext::new(error);
+    let mut output = String::new();
+
+    // Error header
+    output.push_str(&format!("{}{}Error:{} {}\n", red, bold, reset, error));
+
+    // Details
+    if let Some(details) = &context.details {
+        output.push_str(&format!("\n{details}\n"));
+    }
+
+    // Suggestions
+    if let Some(suggestion) = &context.suggestion {
+        output.push_str(&format!("\n{yellow}{bold}Suggestions:{reset}\n"));
+        // Split suggestion by newlines and add cyan bullet points
+        for line in suggestion.lines() {
+            if !line.trim().is_empty() {
+                output.push_str(&format!("{cyan}• {line}{reset}\n"));
+            }
+        }
+    }
+
+    output
+}
+
 pub fn get_exit_code(error: &KopiError) -> i32 {
     match error {
         KopiError::InvalidVersionFormat(_)
         | KopiError::InvalidConfig(_)
         | KopiError::ValidationError(_) => 2,
+
+        KopiError::NoLocalVersion { .. } => 3,
+
+        KopiError::JdkNotInstalled { .. } => 4,
+
+        KopiError::ToolNotFound { .. } => 5,
 
         KopiError::PermissionDenied(_) => 13,
 
@@ -280,6 +442,8 @@ pub fn get_exit_code(error: &KopiError) -> i32 {
         KopiError::DiskSpaceError(_) => 28,
 
         KopiError::AlreadyExists(_) => 17,
+
+        KopiError::KopiNotFound { .. } => 127, // Standard "command not found" exit code
 
         _ => 1,
     }
@@ -297,6 +461,38 @@ mod tests {
         assert!(context.suggestion.is_some());
         assert!(context.suggestion.unwrap().contains("kopi cache search"));
         assert!(context.details.is_some());
+    }
+
+    #[test]
+    fn test_error_context_no_local_version() {
+        let error = KopiError::NoLocalVersion {
+            searched_paths: vec!["/home/user/project".to_string(), "/home/user".to_string()],
+        };
+        let context = ErrorContext::new(&error);
+
+        assert!(context.suggestion.is_some());
+        assert!(context.suggestion.unwrap().contains(".kopi-version"));
+        assert!(context.details.is_some());
+        assert!(context.details.unwrap().contains("/home/user/project"));
+    }
+
+    #[test]
+    fn test_error_context_jdk_not_installed() {
+        let error = KopiError::JdkNotInstalled {
+            jdk_spec: "temurin@21".to_string(),
+            version: Some("21".to_string()),
+            distribution: Some("temurin".to_string()),
+            auto_install_enabled: false,
+            auto_install_failed: None,
+            user_declined: false,
+            install_in_progress: false,
+        };
+        let context = ErrorContext::new(&error);
+
+        assert!(context.suggestion.is_some());
+        let suggestion = context.suggestion.unwrap();
+        assert!(suggestion.contains("kopi install temurin@21"));
+        assert!(suggestion.contains("KOPI_AUTO_INSTALL__ENABLED=true"));
     }
 
     #[test]
@@ -353,6 +549,32 @@ mod tests {
             2
         );
         assert_eq!(
+            get_exit_code(&KopiError::NoLocalVersion {
+                searched_paths: vec![]
+            }),
+            3
+        );
+        assert_eq!(
+            get_exit_code(&KopiError::JdkNotInstalled {
+                jdk_spec: "test".to_string(),
+                version: None,
+                distribution: None,
+                auto_install_enabled: false,
+                auto_install_failed: None,
+                user_declined: false,
+                install_in_progress: false,
+            }),
+            4
+        );
+        assert_eq!(
+            get_exit_code(&KopiError::ToolNotFound {
+                tool: "java".to_string(),
+                jdk_path: "/test".to_string(),
+                available_tools: vec![],
+            }),
+            5
+        );
+        assert_eq!(
             get_exit_code(&KopiError::PermissionDenied("test".to_string())),
             13
         );
@@ -367,6 +589,13 @@ mod tests {
         assert_eq!(
             get_exit_code(&KopiError::AlreadyExists("test".to_string())),
             17
+        );
+        assert_eq!(
+            get_exit_code(&KopiError::KopiNotFound {
+                searched_paths: vec![],
+                is_auto_install_context: false,
+            }),
+            127
         );
         assert_eq!(get_exit_code(&KopiError::Download("test".to_string())), 1);
     }

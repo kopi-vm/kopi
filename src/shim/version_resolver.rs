@@ -32,6 +32,8 @@ impl VersionResolver {
     }
 
     pub fn resolve_version(&self) -> Result<VersionRequest> {
+        let mut searched_paths = Vec::new();
+
         // Check environment variable first (fastest)
         if let Ok(env_version) = env::var(VERSION_ENV_VAR) {
             log::debug!("Using version from environment: {env_version}");
@@ -39,7 +41,10 @@ impl VersionResolver {
         }
 
         // Search for version files
-        if let Some(version_request) = self.search_version_files()? {
+        let (version_request, mut file_paths) = self.search_version_files()?;
+        searched_paths.append(&mut file_paths);
+
+        if let Some(version_request) = version_request {
             return Ok(version_request);
         }
 
@@ -50,19 +55,23 @@ impl VersionResolver {
         }
 
         // No version found
-        Err(KopiError::NoLocalVersion)
+        Err(KopiError::NoLocalVersion { searched_paths })
     }
 
-    fn search_version_files(&self) -> Result<Option<VersionRequest>> {
+    fn search_version_files(&self) -> Result<(Option<VersionRequest>, Vec<String>)> {
         let mut current = self.current_dir.clone();
+        let mut searched_paths = Vec::new();
 
         loop {
+            // Add current directory to searched paths
+            searched_paths.push(current.display().to_string());
+
             // Check for .kopi-version first (native format)
             let kopi_version_path = current.join(KOPI_VERSION_FILE);
             if kopi_version_path.exists() {
                 log::debug!("Found .kopi-version at {kopi_version_path:?}");
                 let content = self.read_version_file(&kopi_version_path)?;
-                return Ok(Some(VersionRequest::from_str(&content)?));
+                return Ok((Some(VersionRequest::from_str(&content)?), searched_paths));
             }
 
             // Check for .java-version (compatibility)
@@ -71,7 +80,7 @@ impl VersionResolver {
                 log::debug!("Found .java-version at {java_version_path:?}");
                 let content = self.read_version_file(&java_version_path)?;
                 // .java-version doesn't support distribution@version format
-                return Ok(Some(VersionRequest::new(content)));
+                return Ok((Some(VersionRequest::new(content)), searched_paths));
             }
 
             // Move to parent directory
@@ -81,7 +90,7 @@ impl VersionResolver {
             }
         }
 
-        Ok(None)
+        Ok((None, searched_paths))
     }
 
     fn read_version_file(&self, path: &Path) -> Result<String> {
@@ -236,6 +245,6 @@ mod tests {
 
         let resolver = VersionResolver::with_dir(temp_path.clone());
         let result = resolver.resolve_version();
-        assert!(matches!(result, Err(KopiError::NoLocalVersion)));
+        assert!(matches!(result, Err(KopiError::NoLocalVersion { .. })));
     }
 }

@@ -11,7 +11,7 @@ use std::str::FromStr;
 pub mod installer;
 pub mod tools;
 pub mod version_resolver;
-use crate::error::shim::{ShimErrorBuilder, format_shim_error};
+use crate::error::format_error_with_color;
 use version_resolver::VersionResolver;
 
 /// Run the shim with the provided arguments
@@ -33,17 +33,12 @@ pub fn run_shim() -> Result<()> {
     let resolver = VersionResolver::new();
     let version_request = match resolver.resolve_version() {
         Ok(req) => req,
-        Err(KopiError::NoLocalVersion) => {
-            let error = ShimErrorBuilder::no_version_found(
-                &std::env::current_dir()
-                    .map(|p| p.display().to_string())
-                    .unwrap_or_else(|_| ".".to_string()),
-            );
+        Err(e @ KopiError::NoLocalVersion { .. }) => {
             eprintln!(
                 "{}",
-                format_shim_error(&error, std::io::stderr().is_terminal())
+                format_error_with_color(&e, std::io::stderr().is_terminal())
             );
-            std::process::exit(error.exit_code());
+            std::process::exit(crate::error::get_exit_code(&e));
         }
         Err(e) => return Err(e),
     };
@@ -54,106 +49,87 @@ pub fn run_shim() -> Result<()> {
     let repository = JdkRepository::new(&config);
     let jdk_path = match find_jdk_installation(&repository, &version_request) {
         Ok(path) => path,
-        Err(KopiError::JdkNotInstalled(_)) => {
-            // Check if auto-install is enabled
-            let auto_install_enabled = config.auto_install.enabled;
+        Err(mut err) => {
+            if let KopiError::JdkNotInstalled {
+                jdk_spec,
+                auto_install_enabled: enabled,
+                ..
+            } = &mut err
+            {
+                // Check if auto-install is enabled
+                let auto_install_enabled = config.auto_install.enabled;
+                *enabled = auto_install_enabled;
 
-            if auto_install_enabled {
-                // Try to delegate to main kopi binary for installation
-                match delegate_auto_install(&version_request, &config) {
-                    Ok(()) => {
-                        // Retry finding the JDK after installation
-                        match find_jdk_installation(&repository, &version_request) {
-                            Ok(path) => path,
-                            Err(_) => {
-                                // Still not found after installation attempt
-                                let default_dist = "temurin".to_string();
-                                let distribution = version_request
-                                    .distribution
-                                    .as_ref()
-                                    .unwrap_or(&default_dist);
-                                let error = ShimErrorBuilder::jdk_not_installed(
-                                    &version_request.version_pattern,
-                                    distribution,
-                                    auto_install_enabled,
-                                );
-                                eprintln!(
-                                    "{}",
-                                    format_shim_error(&error, std::io::stderr().is_terminal())
-                                );
-                                std::process::exit(error.exit_code());
+                if auto_install_enabled {
+                    // Try to delegate to main kopi binary for installation
+                    match delegate_auto_install(&version_request, &config) {
+                        Ok(()) => {
+                            // Retry finding the JDK after installation
+                            match find_jdk_installation(&repository, &version_request) {
+                                Ok(path) => path,
+                                Err(_) => {
+                                    // Still not found after installation attempt
+                                    let error = KopiError::JdkNotInstalled {
+                                        jdk_spec: jdk_spec.clone(),
+                                        version: Some(version_request.version_pattern.clone()),
+                                        distribution: version_request.distribution.clone(),
+                                        auto_install_enabled,
+                                        auto_install_failed: Some(
+                                            "Installation succeeded but JDK still not found"
+                                                .to_string(),
+                                        ),
+                                        user_declined: false,
+                                        install_in_progress: false,
+                                    };
+                                    eprintln!(
+                                        "{}",
+                                        format_error_with_color(
+                                            &error,
+                                            std::io::stderr().is_terminal()
+                                        )
+                                    );
+                                    std::process::exit(crate::error::get_exit_code(&error));
+                                }
                             }
                         }
-                    }
-                    Err(e) => {
-                        // Check if it's specifically a kopi not found error
-                        if let KopiError::SystemError(msg) = &e {
-                            if msg.contains("kopi binary not found") {
-                                // Build list of searched paths
-                                let mut paths = Vec::new();
-
-                                // Add config directories
-                                if let Ok(bin_dir) = config.bin_dir() {
-                                    paths.push(bin_dir.display().to_string());
-                                }
-
-                                #[cfg(target_os = "windows")]
-                                {
-                                    if let Ok(shims_dir) = config.shims_dir() {
-                                        paths.push(format!("{} (via shims)", shims_dir.display()));
-                                    }
-                                }
-
-                                paths.push("PATH".to_string());
-
-                                let error = ShimErrorBuilder::kopi_not_found(paths, true);
-
+                        Err(e) => {
+                            // Check if it's specifically a kopi not found error
+                            if let KopiError::KopiNotFound { .. } = &e {
                                 eprintln!(
                                     "{}",
-                                    format_shim_error(&error, std::io::stderr().is_terminal())
+                                    format_error_with_color(&e, std::io::stderr().is_terminal())
                                 );
-                                std::process::exit(error.exit_code());
+                                std::process::exit(crate::error::get_exit_code(&e));
                             }
-                        }
 
-                        // Auto-install failed for other reasons
-                        let default_dist = "temurin".to_string();
-                        let distribution = version_request
-                            .distribution
-                            .as_ref()
-                            .unwrap_or(&default_dist);
-                        let error = ShimErrorBuilder::jdk_not_installed(
-                            &version_request.version_pattern,
-                            distribution,
-                            auto_install_enabled,
-                        );
-                        eprintln!(
-                            "{}",
-                            format_shim_error(&error, std::io::stderr().is_terminal())
-                        );
-                        std::process::exit(error.exit_code());
+                            // Auto-install failed for other reasons
+                            let error = KopiError::JdkNotInstalled {
+                                jdk_spec: jdk_spec.clone(),
+                                version: Some(version_request.version_pattern.clone()),
+                                distribution: version_request.distribution.clone(),
+                                auto_install_enabled,
+                                auto_install_failed: Some(e.to_string()),
+                                user_declined: false,
+                                install_in_progress: false,
+                            };
+                            eprintln!(
+                                "{}",
+                                format_error_with_color(&error, std::io::stderr().is_terminal())
+                            );
+                            std::process::exit(crate::error::get_exit_code(&error));
+                        }
                     }
+                } else {
+                    eprintln!(
+                        "{}",
+                        format_error_with_color(&err, std::io::stderr().is_terminal())
+                    );
+                    std::process::exit(crate::error::get_exit_code(&err));
                 }
             } else {
-                // Auto-install is disabled
-                let default_dist = "temurin".to_string();
-                let distribution = version_request
-                    .distribution
-                    .as_ref()
-                    .unwrap_or(&default_dist);
-                let error = ShimErrorBuilder::jdk_not_installed(
-                    &version_request.version_pattern,
-                    distribution,
-                    auto_install_enabled,
-                );
-                eprintln!(
-                    "{}",
-                    format_shim_error(&error, std::io::stderr().is_terminal())
-                );
-                std::process::exit(error.exit_code());
+                return Err(err);
             }
         }
-        Err(e) => return Err(e),
     };
     log::debug!("JDK path: {jdk_path:?}");
 
@@ -216,11 +192,15 @@ fn find_jdk_installation(
     }
 
     // No matching JDK found
-    Err(KopiError::JdkNotInstalled(format!(
-        "{}@{}",
-        distribution.id(),
-        version_request.version_pattern
-    )))
+    Err(KopiError::JdkNotInstalled {
+        jdk_spec: format!("{}@{}", distribution.id(), version_request.version_pattern),
+        version: Some(version_request.version_pattern.clone()),
+        distribution: Some(distribution.id().to_string()),
+        auto_install_enabled: false, // Will be updated by caller
+        auto_install_failed: None,
+        user_declined: false,
+        install_in_progress: false,
+    })
 }
 
 fn version_matches(installed_version: &str, pattern: &str) -> bool {
@@ -252,15 +232,41 @@ fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
         // Only exit in production code, not during tests
         #[cfg(not(test))]
         {
-            let error = ShimErrorBuilder::tool_not_found(
-                tool_name,
-                jdk_path.to_str().unwrap_or("<invalid path>"),
-            )?;
+            // List available tools in the JDK bin directory
+            let mut available_tools = Vec::new();
+
+            if bin_dir.exists() {
+                if let Ok(entries) = std::fs::read_dir(&bin_dir) {
+                    for entry in entries.flatten() {
+                        if let Some(name) = entry.file_name().to_str() {
+                            // Remove .exe extension on Windows
+                            let tool_name_clean = if cfg!(windows) && name.ends_with(".exe") {
+                                &name[..name.len() - 4]
+                            } else {
+                                name
+                            };
+
+                            // Only include executable files
+                            if entry.metadata().map(|m| m.is_file()).unwrap_or(false) {
+                                available_tools.push(tool_name_clean.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+
+            available_tools.sort();
+
+            let error = KopiError::ToolNotFound {
+                tool: tool_name.to_string(),
+                jdk_path: jdk_path.to_str().unwrap_or("<invalid path>").to_string(),
+                available_tools,
+            };
             eprintln!(
                 "{}",
-                format_shim_error(&error, std::io::stderr().is_terminal())
+                format_error_with_color(&error, std::io::stderr().is_terminal())
             );
-            std::process::exit(error.exit_code());
+            std::process::exit(crate::error::get_exit_code(&error));
         }
 
         #[cfg(test)]
@@ -370,8 +376,11 @@ fn find_kopi_binary(config: &KopiConfig) -> Result<PathBuf> {
         return Ok(kopi_in_path);
     }
 
-    // Return a specific ShimError for kopi not found
-    Err(ShimErrorBuilder::kopi_not_found(searched_paths, true).to_kopi_error())
+    // Return a specific error for kopi not found
+    Err(KopiError::KopiNotFound {
+        searched_paths,
+        is_auto_install_context: true,
+    })
 }
 
 #[cfg(test)]
@@ -468,7 +477,7 @@ mod tests {
 
         let result = find_jdk_installation(&repository, &version_request);
         assert!(result.is_err());
-        assert!(matches!(result, Err(KopiError::JdkNotInstalled(_))));
+        assert!(matches!(result, Err(KopiError::JdkNotInstalled { .. })));
     }
 
     #[test]

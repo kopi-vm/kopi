@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod shim_integration_tests {
-    use kopi::error::KopiError;
-    use kopi::error::shim::{AutoInstallStatus, ShimError, ShimErrorBuilder};
+    use kopi::error::{ErrorContext, KopiError, format_error_with_color};
     use kopi::shim::version_resolver::VersionResolver;
     use std::fs;
     use tempfile::TempDir;
@@ -38,52 +37,77 @@ mod shim_integration_tests {
         let resolver = VersionResolver::with_dir(project_dir.clone());
         let result = resolver.resolve_version();
 
-        assert!(matches!(result, Err(KopiError::NoLocalVersion)));
-
-        // Test error formatting
-        let error = ShimErrorBuilder::no_version_found(&project_dir.display().to_string());
-        let message = error.user_message();
-
-        // Should include searched paths
-        assert!(message.contains("Searched in:"));
-        assert!(message.contains(&project_dir.display().to_string()));
+        // Check that it's a NoLocalVersion error with searched paths
+        match result {
+            Err(KopiError::NoLocalVersion { searched_paths }) => {
+                // Should include the project directory and its parents
+                assert!(!searched_paths.is_empty());
+                assert!(
+                    searched_paths
+                        .iter()
+                        .any(|p| p.contains(&project_dir.display().to_string()))
+                );
+            }
+            _ => panic!("Expected NoLocalVersion error"),
+        }
     }
 
     #[test]
-    fn test_shim_error_formatting() {
+    fn test_error_formatting() {
         // Test various error scenarios
         let errors = vec![
-            ShimError::JdkNotInstalled {
-                version: "21".to_string(),
-                distribution: "temurin".to_string(),
-                auto_install_status: AutoInstallStatus::Disabled,
+            KopiError::JdkNotInstalled {
+                jdk_spec: "temurin@21".to_string(),
+                version: Some("21".to_string()),
+                distribution: Some("temurin".to_string()),
+                auto_install_enabled: false,
+                auto_install_failed: None,
+                user_declined: false,
+                install_in_progress: false,
             },
-            ShimError::JdkNotInstalled {
-                version: "21".to_string(),
-                distribution: "temurin".to_string(),
-                auto_install_status: AutoInstallStatus::Failed("Network error".to_string()),
+            KopiError::JdkNotInstalled {
+                jdk_spec: "temurin@21".to_string(),
+                version: Some("21".to_string()),
+                distribution: Some("temurin".to_string()),
+                auto_install_enabled: true,
+                auto_install_failed: Some("Network error".to_string()),
+                user_declined: false,
+                install_in_progress: false,
             },
-            ShimError::ToolNotFound {
+            KopiError::ToolNotFound {
                 tool: "javap".to_string(),
                 jdk_path: "/home/user/.kopi/jdks/temurin-21".to_string(),
                 available_tools: vec!["java".to_string(), "javac".to_string()],
             },
+            KopiError::NoLocalVersion {
+                searched_paths: vec![
+                    "/home/user/project".to_string(),
+                    "/home/user".to_string(),
+                    "/home".to_string(),
+                ],
+            },
+            KopiError::KopiNotFound {
+                searched_paths: vec!["/home/user/.kopi/bin".to_string(), "PATH".to_string()],
+                is_auto_install_context: true,
+            },
         ];
 
         for error in errors {
-            let message = error.user_message();
-            assert!(!message.is_empty());
-
-            let suggestions = error.suggestions();
-            assert!(!suggestions.is_empty());
+            // Test ErrorContext
+            let context = ErrorContext::new(&error);
+            assert!(context.suggestion.is_some(), "Error should have suggestion");
 
             // Test both colored and non-colored output
-            let colored = kopi::error::shim::format_shim_error(&error, true);
-            let plain = kopi::error::shim::format_shim_error(&error, false);
+            let colored = format_error_with_color(&error, true);
+            let plain = format_error_with_color(&error, false);
 
             assert!(colored.contains("Error:"));
             assert!(plain.contains("Error:"));
             assert!(!plain.contains("\x1b[")); // No color codes in plain output
+
+            if colored.contains("Suggestions:") {
+                assert!(colored.contains("\x1b[")); // Should have color codes
+            }
         }
     }
 }
