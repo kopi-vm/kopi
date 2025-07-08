@@ -76,7 +76,7 @@ pub fn discover_jdk_tools(jdk_path: &Path) -> Result<Vec<String>> {
 ///
 /// Some distributions include additional tools:
 /// - GraalVM: gu (GraalVM updater), native-image
-/// - IBM Semeru: semeru-version
+/// - IBM Semeru/OpenJ9: jdmpview, jitserver, jpackcore, traceformat
 pub fn discover_distribution_tools(
     jdk_path: &Path,
     distribution: Option<&str>,
@@ -98,6 +98,23 @@ pub fn discover_distribution_tools(
                     let tool_path = bin_dir.join(&tool_name);
                     if tool_path.exists() && is_executable(&tool_path)? {
                         debug!("Discovered GraalVM tool: {tool}");
+                        extra_tools.push(tool.to_string());
+                    }
+                }
+            }
+            "semeru" | "openj9" => {
+                // Check for IBM Semeru/OpenJ9-specific tools
+                let bin_dir = jdk_path.join("bin");
+
+                for tool in &["jdmpview", "jitserver", "jpackcore", "traceformat"] {
+                    let tool_name = if cfg!(windows) {
+                        format!("{tool}.exe")
+                    } else {
+                        tool.to_string()
+                    };
+                    let tool_path = bin_dir.join(&tool_name);
+                    if tool_path.exists() && is_executable(&tool_path)? {
+                        debug!("Discovered Semeru/OpenJ9 tool: {tool}");
                         extra_tools.push(tool.to_string());
                     }
                 }
@@ -231,7 +248,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let jdk_path = temp_dir.path();
 
-        // For non-GraalVM distributions, should return empty
+        // For non-GraalVM/non-Semeru distributions, should return empty
         let tools = discover_distribution_tools(jdk_path, Some("temurin")).unwrap();
         assert!(tools.is_empty());
 
@@ -240,6 +257,47 @@ mod tests {
 
         let tools = discover_distribution_tools(jdk_path, None).unwrap();
         assert!(tools.is_empty());
+    }
+
+    #[test]
+    fn test_discover_distribution_tools_semeru() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path();
+        let bin_dir = jdk_path.join("bin");
+        fs::create_dir(&bin_dir).unwrap();
+
+        // Create dummy Semeru/OpenJ9 tools
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            for tool in &["jdmpview", "jitserver", "jpackcore", "traceformat"] {
+                let tool_path = bin_dir.join(tool);
+                fs::write(&tool_path, "#!/bin/sh\necho test").unwrap();
+                fs::set_permissions(&tool_path, fs::Permissions::from_mode(0o755)).unwrap();
+            }
+        }
+
+        #[cfg(windows)]
+        {
+            for tool in &[
+                "jdmpview.exe",
+                "jitserver.exe",
+                "jpackcore.exe",
+                "traceformat.exe",
+            ] {
+                let tool_path = bin_dir.join(tool);
+                fs::write(&tool_path, "test").unwrap();
+            }
+        }
+
+        let tools = discover_distribution_tools(jdk_path, Some("semeru")).unwrap();
+
+        assert_eq!(tools.len(), 4);
+        assert!(tools.contains(&"jdmpview".to_string()));
+        assert!(tools.contains(&"jitserver".to_string()));
+        assert!(tools.contains(&"jpackcore".to_string()));
+        assert!(tools.contains(&"traceformat".to_string()));
     }
 
     #[test]

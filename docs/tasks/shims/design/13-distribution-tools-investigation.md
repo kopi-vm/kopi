@@ -19,11 +19,13 @@ To verify whether the current implementation of `discover_distribution_tools` in
 - **Eclipse Temurin** 21.0.7
 - **Amazon Corretto** 21.0.7.6.1
 - **Azul Zulu** 21.42.19
+- **Alibaba Dragonwell** 21.0.7.0.7.6
+- **IBM Semeru** 21.0.7
 
 ### Installation Attempted but Failed
-- **GraalVM** 21 (archive extraction error)
-- **BellSoft Liberica** 21 (version format mismatch)
-- **SAP Machine** 21 (not available in metadata)
+- **GraalVM** 21, 22 (nested archive extraction error with `license-information-user-manual.zip`)
+- **BellSoft Liberica** 21, 21.0.7+9, 21+37 (version format mismatch - kopi adds ".0.0" to version)
+- **SAP Machine** 21 (not available in kopi metadata)
 
 ## Findings
 
@@ -51,25 +53,43 @@ rmiregistry  - RMI registry
 
 These appear to be standard JDK tools that should be added to the tool registry.
 
-### 3. No Additional Distribution-Specific Tools Found
+### 3. IBM Semeru Contains OpenJ9-Specific Tools
 
-In the distributions successfully analyzed (Temurin, Corretto, Zulu), no vendor-specific tools were discovered beyond the standard JDK toolset. All three distributions contained identical tool sets.
+**IBM Semeru** includes four distribution-specific tools not found in HotSpot-based JDKs:
+- **jdmpview** - Java dump viewer for analyzing system dumps
+- **jitserver** - JIT compilation server for offloading JIT compilation
+- **jpackcore** - Tool for packaging core dumps
+- **traceformat** - Tool for formatting trace files
+
+These tools are specific to the OpenJ9 VM that Semeru uses.
+
+### 4. Other Distributions
+
+- **Alibaba Dragonwell**: No distribution-specific tools found (contains only standard JDK tools)
+- **Temurin, Corretto, Zulu**: No vendor-specific tools discovered beyond the standard JDK toolset
 
 ## Recommendations
 
 1. **Maintain GraalVM Special Handling**: The current implementation correctly identifies GraalVM-specific tools.
 
-2. **Update Standard Tools Registry**: Add the seven missing standard tools to `/src/shim/tools.rs`:
+2. **Add IBM Semeru/OpenJ9 Special Handling**: Update `discover_distribution_tools` to recognize Semeru's four specific tools:
+   - jdmpview
+   - jitserver
+   - jpackcore
+   - traceformat
+
+3. **Update Standard Tools Registry**: Add the seven missing standard tools to `/src/shim/tools.rs`:
    - Consider version constraints (e.g., `jwebserver` requires Java 18+)
    - These tools should be categorized appropriately (Debug, Utility, etc.)
 
-3. **Future Distribution Investigations**: 
-   - IBM Semeru (may include `semeru-version` as noted in comments)
+4. **Future Distribution Investigations**: 
    - Red Hat Mandrel (GraalVM derivative, may have unique tools)
-   - Alibaba Dragonwell
+   - OpenJDK
+   - Trava OpenJDK
+   - Tencent Kona
    - BellSoft Liberica (once version format issues are resolved)
 
-4. **Consider Tool Discovery Enhancement**: The current approach of hardcoding distribution-specific tools works for known cases but could be enhanced with:
+5. **Consider Tool Discovery Enhancement**: The current approach of hardcoding distribution-specific tools works for known cases but could be enhanced with:
    - Dynamic discovery of non-standard tools
    - Metadata about tool availability per distribution version
    - Caching of discovered tools per installation
@@ -82,4 +102,9 @@ In the distributions successfully analyzed (Temurin, Corretto, Zulu), no vendor-
 
 ## Conclusion
 
-The current implementation of `discover_distribution_tools` is correct for its intended purpose. GraalVM is appropriately special-cased due to its unique tools. No other distributions in the tested set require special handling at this time.
+The investigation revealed that two distributions require special handling in `discover_distribution_tools`:
+
+1. **GraalVM** - Already correctly implemented with `gu` and `native-image`
+2. **IBM Semeru** - Newly discovered to include four OpenJ9-specific tools that need to be added
+
+The implementation has been updated to handle both distributions. Additionally, seven standard JDK tools were found to be missing from the tool registry and have been added.
