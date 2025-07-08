@@ -62,6 +62,60 @@ impl Version {
             false
         }
     }
+
+    /// Flexibly matches a version string against this version.
+    /// Treats "21", "21.0", and "21.0.0" as equivalent when comparing.
+    /// Also handles versions with build numbers like "21+37" or "21.0.0+37".
+    pub fn matches_version_string(&self, version_str: &str) -> bool {
+        // Try to parse the version string
+        if let Ok(other) = Version::from_str(version_str) {
+            // First check if build number was specified and if it matches
+            let build_matches = if version_str.contains('+') {
+                // Build was specified in the query, must match exactly
+                self.build == other.build
+            } else {
+                // Build was not specified in the query, ignore it
+                true
+            };
+
+            if !build_matches {
+                return false;
+            }
+
+            // Now check version components based on what was specified
+            if version_str.contains('.') {
+                // Count the dots to determine what was explicitly specified
+                let dot_count = version_str
+                    .split('+')
+                    .next()
+                    .unwrap_or("")
+                    .matches('.')
+                    .count();
+
+                match dot_count {
+                    0 => {
+                        // Only major version specified (shouldn't happen if contains '.')
+                        self.major == other.major
+                    }
+                    1 => {
+                        // Major and minor specified (e.g., "21.0" or "21.0+37")
+                        self.major == other.major && self.minor == other.minor
+                    }
+                    _ => {
+                        // Full version specified (e.g., "21.0.0" or "21.0.0+37")
+                        self.major == other.major
+                            && self.minor == other.minor
+                            && self.patch == other.patch
+                    }
+                }
+            } else {
+                // No dots, just major version (e.g., "21" or "21+37")
+                self.major == other.major
+            }
+        } else {
+            false
+        }
+    }
 }
 
 impl FromStr for Version {
@@ -455,6 +509,41 @@ mod tests {
         assert!(v17_0_9.matches_pattern("17.0"));
         assert!(v17_0_9.matches_pattern("17.0.9"));
         assert!(!v17_0_9.matches_pattern("17.0.8"));
+    }
+
+    #[test]
+    fn test_matches_version_string() {
+        // Test flexible matching with major version only
+        let v21_0_0_build = Version::new(21, 0, 0).with_build("37".to_string());
+        assert!(v21_0_0_build.matches_version_string("21"));
+        assert!(v21_0_0_build.matches_version_string("21.0"));
+        assert!(v21_0_0_build.matches_version_string("21.0.0"));
+        assert!(v21_0_0_build.matches_version_string("21.0.0+37"));
+        assert!(!v21_0_0_build.matches_version_string("21.0.0+38"));
+        assert!(!v21_0_0_build.matches_version_string("22"));
+
+        // Test with non-zero minor/patch
+        let v21_0_7_build = Version::new(21, 0, 7).with_build("9".to_string());
+        assert!(v21_0_7_build.matches_version_string("21"));
+        assert!(v21_0_7_build.matches_version_string("21.0"));
+        assert!(!v21_0_7_build.matches_version_string("21.0.0"));
+        assert!(v21_0_7_build.matches_version_string("21.0.7"));
+        assert!(v21_0_7_build.matches_version_string("21.0.7+9"));
+        assert!(!v21_0_7_build.matches_version_string("21.0.7+10"));
+
+        // Test version without build
+        let v17_0_9 = Version::new(17, 0, 9);
+        assert!(v17_0_9.matches_version_string("17"));
+        assert!(v17_0_9.matches_version_string("17.0"));
+        assert!(v17_0_9.matches_version_string("17.0.9"));
+        assert!(!v17_0_9.matches_version_string("17.0.8"));
+        assert!(!v17_0_9.matches_version_string("17.1"));
+
+        // Test major-only version with build
+        let v23_build = Version::new(23, 0, 0).with_build("38".to_string());
+        assert!(v23_build.matches_version_string("23"));
+        assert!(v23_build.matches_version_string("23+38"));
+        assert!(!v23_build.matches_version_string("23+37"));
     }
 
     #[test]
