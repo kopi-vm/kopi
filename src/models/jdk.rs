@@ -337,6 +337,7 @@ impl std::fmt::Display for ArchiveType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ChecksumType {
+    Sha1,
     Sha256,
     Sha512,
     Md5,
@@ -646,5 +647,20 @@ mod tests {
     #[test]
     fn test_default_distribution() {
         assert_eq!(Distribution::default_distribution(), "temurin");
+    }
+
+    #[test]
+    fn test_checksum_type_serialization() {
+        // Test serialization of all checksum types
+        assert_eq!(serde_json::to_string(&ChecksumType::Sha1).unwrap(), "\"sha1\"");
+        assert_eq!(serde_json::to_string(&ChecksumType::Sha256).unwrap(), "\"sha256\"");
+        assert_eq!(serde_json::to_string(&ChecksumType::Sha512).unwrap(), "\"sha512\"");
+        assert_eq!(serde_json::to_string(&ChecksumType::Md5).unwrap(), "\"md5\"");
+
+        // Test deserialization
+        assert_eq!(serde_json::from_str::<ChecksumType>("\"sha1\"").unwrap(), ChecksumType::Sha1);
+        assert_eq!(serde_json::from_str::<ChecksumType>("\"sha256\"").unwrap(), ChecksumType::Sha256);
+        assert_eq!(serde_json::from_str::<ChecksumType>("\"sha512\"").unwrap(), ChecksumType::Sha512);
+        assert_eq!(serde_json::from_str::<ChecksumType>("\"md5\"").unwrap(), ChecksumType::Md5);
     }
 }

@@ -301,10 +301,16 @@ pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)
 
     // Parse checksum type
     let checksum_type = match package_info.checksum_type.to_lowercase().as_str() {
+        "sha1" => ChecksumType::Sha1,
         "sha256" => ChecksumType::Sha256,
         "sha512" => ChecksumType::Sha512,
         "md5" => ChecksumType::Md5,
-        _ => ChecksumType::Sha256, // Default to SHA256
+        unsupported => {
+            warn!(
+                "Unsupported checksum type '{unsupported}' received from foojay API. Defaulting to SHA256."
+            );
+            ChecksumType::Sha256 // Default to SHA256
+        }
     };
 
     Ok((package_info.checksum, checksum_type))
