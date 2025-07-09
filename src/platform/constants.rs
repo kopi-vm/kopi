@@ -16,6 +16,11 @@ pub fn executable_extension() -> &'static str {
     return "";
 }
 
+/// Add the platform-specific executable extension to a file name
+pub fn with_executable_extension(name: &str) -> String {
+    format!("{}{}", name, executable_extension())
+}
+
 /// Get the shim binary name for the current platform
 pub fn shim_binary_name() -> &'static str {
     #[cfg(windows)]
@@ -77,6 +82,21 @@ mod tests {
         assert_eq!(ext, ".exe");
         #[cfg(not(windows))]
         assert_eq!(ext, "");
+    }
+
+    #[test]
+    fn test_with_executable_extension() {
+        let java_exe = with_executable_extension("java");
+        #[cfg(windows)]
+        assert_eq!(java_exe, "java.exe");
+        #[cfg(not(windows))]
+        assert_eq!(java_exe, "java");
+
+        let javac_exe = with_executable_extension("javac");
+        #[cfg(windows)]
+        assert_eq!(javac_exe, "javac.exe");
+        #[cfg(not(windows))]
+        assert_eq!(javac_exe, "javac");
     }
 
     #[test]

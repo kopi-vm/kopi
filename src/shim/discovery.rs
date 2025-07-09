@@ -4,8 +4,26 @@ use log::debug;
 
 use crate::error::Result;
 use crate::platform::file_ops::is_executable;
+use crate::platform::with_executable_extension;
 
 use super::tools::ToolRegistry;
+
+/// Helper function to check for distribution-specific tools in the bin directory
+fn check_tools_exist(jdk_path: &Path, tools: &[&str]) -> Result<Vec<String>> {
+    let mut found_tools = Vec::new();
+    let bin_dir = jdk_path.join("bin");
+
+    for tool in tools {
+        let tool_name = with_executable_extension(tool);
+        let tool_path = bin_dir.join(&tool_name);
+        if tool_path.exists() && is_executable(&tool_path)? {
+            debug!("Discovered distribution-specific tool: {tool}");
+            found_tools.push(tool.to_string());
+        }
+    }
+
+    Ok(found_tools)
+}
 
 /// Discovers available JDK tools in an installed JDK.
 ///
@@ -82,72 +100,38 @@ pub fn discover_distribution_tools(
     jdk_path: &Path,
     distribution: Option<&str>,
 ) -> Result<Vec<String>> {
-    let mut extra_tools = Vec::new();
-
     if let Some(dist) = distribution {
         match dist.to_lowercase().as_str() {
             "graalvm" | "graal" => {
                 // Check for GraalVM-specific tools
-                let bin_dir = jdk_path.join("bin");
-
-                for tool in &[
-                    "native-image",
-                    "native-image-configure",
-                    "native-image-inspect",
-                ] {
-                    let tool_name = if cfg!(windows) {
-                        format!("{tool}.exe")
-                    } else {
-                        tool.to_string()
-                    };
-                    let tool_path = bin_dir.join(&tool_name);
-                    if tool_path.exists() && is_executable(&tool_path)? {
-                        debug!("Discovered GraalVM tool: {tool}");
-                        extra_tools.push(tool.to_string());
-                    }
-                }
+                check_tools_exist(
+                    jdk_path,
+                    &[
+                        "native-image",
+                        "native-image-configure",
+                        "native-image-inspect",
+                    ],
+                )
             }
             "semeru" | "openj9" => {
                 // Check for IBM Semeru/OpenJ9-specific tools
-                let bin_dir = jdk_path.join("bin");
-
-                for tool in &["jdmpview", "jitserver", "jpackcore", "traceformat"] {
-                    let tool_name = if cfg!(windows) {
-                        format!("{tool}.exe")
-                    } else {
-                        tool.to_string()
-                    };
-                    let tool_path = bin_dir.join(&tool_name);
-                    if tool_path.exists() && is_executable(&tool_path)? {
-                        debug!("Discovered Semeru/OpenJ9 tool: {tool}");
-                        extra_tools.push(tool.to_string());
-                    }
-                }
+                check_tools_exist(
+                    jdk_path,
+                    &["jdmpview", "jitserver", "jpackcore", "traceformat"],
+                )
             }
             "sap_machine" | "sapmachine" => {
                 // Check for SAP Machine-specific tools
-                let bin_dir = jdk_path.join("bin");
-
-                for tool in &["asprof"] {
-                    let tool_name = if cfg!(windows) {
-                        format!("{tool}.exe")
-                    } else {
-                        tool.to_string()
-                    };
-                    let tool_path = bin_dir.join(&tool_name);
-                    if tool_path.exists() && is_executable(&tool_path)? {
-                        debug!("Discovered SAP Machine tool: {tool}");
-                        extra_tools.push(tool.to_string());
-                    }
-                }
+                check_tools_exist(jdk_path, &["asprof"])
             }
             _ => {
                 // No special handling for other distributions yet
+                Ok(Vec::new())
             }
         }
+    } else {
+        Ok(Vec::new())
     }
-
-    Ok(extra_tools)
 }
 
 #[cfg(test)]
