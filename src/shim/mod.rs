@@ -1,4 +1,4 @@
-use crate::config::{KopiConfig, new_kopi_config};
+use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
 use crate::models::jdk::{Distribution, VersionRequest};
 use crate::storage::JdkRepository;
@@ -8,11 +8,13 @@ use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+pub mod auto_install;
 pub mod discovery;
 pub mod installer;
 pub mod tools;
 pub mod version_resolver;
 use crate::error::format_error_with_color;
+use auto_install::AutoInstaller;
 use version_resolver::VersionResolver;
 
 /// Run the shim with the provided arguments
@@ -58,67 +60,110 @@ pub fn run_shim() -> Result<()> {
             } = &mut err
             {
                 // Check if auto-install is enabled
-                let auto_install_enabled = config.auto_install.enabled;
+                let auto_installer = AutoInstaller::new(std::sync::Arc::new(config.clone()));
+                let auto_install_enabled = auto_installer.should_auto_install();
                 *enabled = auto_install_enabled;
 
                 if auto_install_enabled {
-                    // Try to delegate to main kopi binary for installation
-                    match delegate_auto_install(&version_request, &config) {
-                        Ok(()) => {
-                            // Retry finding the JDK after installation
-                            match find_jdk_installation(&repository, &version_request) {
-                                Ok(path) => path,
-                                Err(_) => {
-                                    // Still not found after installation attempt
-                                    let error = KopiError::JdkNotInstalled {
-                                        jdk_spec: jdk_spec.clone(),
-                                        version: Some(version_request.version_pattern.clone()),
-                                        distribution: version_request.distribution.clone(),
-                                        auto_install_enabled,
-                                        auto_install_failed: Some(
-                                            "Installation succeeded but JDK still not found"
-                                                .to_string(),
-                                        ),
-                                        user_declined: false,
-                                        install_in_progress: false,
-                                    };
+                    // Check if we should prompt the user
+                    let version_spec = if let Some(dist) = &version_request.distribution {
+                        format!("{}@{}", dist, version_request.version_pattern)
+                    } else {
+                        version_request.version_pattern.clone()
+                    };
+
+                    let should_install = match auto_installer.prompt_user(&version_spec) {
+                        Ok(approved) => approved,
+                        Err(e) => {
+                            eprintln!(
+                                "{}",
+                                format_error_with_color(&e, std::io::stderr().is_terminal())
+                            );
+                            false
+                        }
+                    };
+
+                    if should_install {
+                        // Try to install the JDK
+                        match auto_installer.install_jdk(&version_request) {
+                            Ok(()) => {
+                                // Retry finding the JDK after installation
+                                match find_jdk_installation(&repository, &version_request) {
+                                    Ok(path) => path,
+                                    Err(_) => {
+                                        // Still not found after installation attempt
+                                        let error = KopiError::JdkNotInstalled {
+                                            jdk_spec: jdk_spec.clone(),
+                                            version: Some(version_request.version_pattern.clone()),
+                                            distribution: version_request.distribution.clone(),
+                                            auto_install_enabled,
+                                            auto_install_failed: Some(
+                                                "Installation succeeded but JDK still not found"
+                                                    .to_string(),
+                                            ),
+                                            user_declined: false,
+                                            install_in_progress: false,
+                                        };
+                                        eprintln!(
+                                            "{}",
+                                            format_error_with_color(
+                                                &error,
+                                                std::io::stderr().is_terminal()
+                                            )
+                                        );
+                                        std::process::exit(crate::error::get_exit_code(&error));
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                // Check if it's specifically a kopi not found error
+                                if let KopiError::KopiNotFound { .. } = &e {
                                     eprintln!(
                                         "{}",
                                         format_error_with_color(
-                                            &error,
+                                            &e,
                                             std::io::stderr().is_terminal()
                                         )
                                     );
-                                    std::process::exit(crate::error::get_exit_code(&error));
+                                    std::process::exit(crate::error::get_exit_code(&e));
                                 }
-                            }
-                        }
-                        Err(e) => {
-                            // Check if it's specifically a kopi not found error
-                            if let KopiError::KopiNotFound { .. } = &e {
+
+                                // Auto-install failed for other reasons
+                                let error = KopiError::JdkNotInstalled {
+                                    jdk_spec: jdk_spec.clone(),
+                                    version: Some(version_request.version_pattern.clone()),
+                                    distribution: version_request.distribution.clone(),
+                                    auto_install_enabled,
+                                    auto_install_failed: Some(e.to_string()),
+                                    user_declined: false,
+                                    install_in_progress: false,
+                                };
                                 eprintln!(
                                     "{}",
-                                    format_error_with_color(&e, std::io::stderr().is_terminal())
+                                    format_error_with_color(
+                                        &error,
+                                        std::io::stderr().is_terminal()
+                                    )
                                 );
-                                std::process::exit(crate::error::get_exit_code(&e));
+                                std::process::exit(crate::error::get_exit_code(&error));
                             }
-
-                            // Auto-install failed for other reasons
-                            let error = KopiError::JdkNotInstalled {
-                                jdk_spec: jdk_spec.clone(),
-                                version: Some(version_request.version_pattern.clone()),
-                                distribution: version_request.distribution.clone(),
-                                auto_install_enabled,
-                                auto_install_failed: Some(e.to_string()),
-                                user_declined: false,
-                                install_in_progress: false,
-                            };
-                            eprintln!(
-                                "{}",
-                                format_error_with_color(&error, std::io::stderr().is_terminal())
-                            );
-                            std::process::exit(crate::error::get_exit_code(&error));
                         }
+                    } else {
+                        // User declined installation
+                        let error = KopiError::JdkNotInstalled {
+                            jdk_spec: jdk_spec.clone(),
+                            version: Some(version_request.version_pattern.clone()),
+                            distribution: version_request.distribution.clone(),
+                            auto_install_enabled,
+                            auto_install_failed: None,
+                            user_declined: true,
+                            install_in_progress: false,
+                        };
+                        eprintln!(
+                            "{}",
+                            format_error_with_color(&error, std::io::stderr().is_terminal())
+                        );
+                        std::process::exit(crate::error::get_exit_code(&error));
                     }
                 } else {
                     eprintln!(
@@ -279,111 +324,6 @@ fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
     Ok(tool_path)
 }
 
-fn delegate_auto_install(version_request: &VersionRequest, config: &KopiConfig) -> Result<()> {
-    // Build the version specification for the install command
-    let version_spec = if let Some(dist) = &version_request.distribution {
-        format!("{}@{}", dist, version_request.version_pattern)
-    } else {
-        version_request.version_pattern.clone()
-    };
-
-    log::info!("Delegating auto-install to main kopi binary for {version_spec}");
-
-    // Find the kopi binary in the same directory as the shim
-    let kopi_path = match find_kopi_binary(config) {
-        Ok(path) => path,
-        Err(e) => {
-            // Check if it's specifically a kopi not found error
-            if let KopiError::SystemError(msg) = &e {
-                if msg.contains("kopi binary not found") {
-                    // Re-throw with the original error to preserve the ShimError details
-                    return Err(e);
-                }
-            }
-            return Err(e);
-        }
-    };
-
-    // Execute kopi install command
-    let mut cmd = std::process::Command::new(&kopi_path);
-    cmd.arg("install").arg(&version_spec);
-
-    match cmd.status() {
-        Ok(status) if status.success() => {
-            log::info!("Successfully delegated installation of {version_spec}");
-            Ok(())
-        }
-        Ok(status) => {
-            log::warn!("kopi install command failed with status: {status:?}");
-            Err(KopiError::SystemError(format!(
-                "Failed to install {version_spec}: command exited with status {status:?}"
-            )))
-        }
-        Err(e) => {
-            log::error!("Failed to execute kopi install command: {e}");
-            Err(KopiError::SystemError(format!(
-                "Failed to execute kopi install command: {e}"
-            )))
-        }
-    }
-}
-
-fn find_kopi_binary(config: &KopiConfig) -> Result<PathBuf> {
-    let mut searched_paths = Vec::new();
-    let kopi_name = crate::platform::kopi_binary_name();
-
-    // Note: std::env::current_exe() resolves symlinks and returns the canonical path
-    // On Unix: shims are symlinks to kopi-shim, so current_exe() returns .kopi/bin/kopi-shim
-    // On Windows: shims are copies of kopi-shim.exe in .kopi/shims/
-    if let Ok(current_exe) = std::env::current_exe() {
-        if let Some(parent) = current_exe.parent() {
-            // On Windows, shims are copied to shims directory
-            // We need to look for kopi.exe in bin directory
-            #[cfg(target_os = "windows")]
-            {
-                // Get the shims directory from config
-                if let Ok(shims_dir) = config.shims_dir() {
-                    // Check if we're in the shims directory
-                    if parent == shims_dir {
-                        // Look for kopi in the bin directory
-                        if let Ok(bin_dir) = config.bin_dir() {
-                            let kopi_bin_path = bin_dir.join(kopi_name);
-                            searched_paths.push(kopi_bin_path.display().to_string());
-                            if kopi_bin_path.exists() {
-                                return Ok(kopi_bin_path);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Allow unused on non-Windows
-            #[cfg(not(target_os = "windows"))]
-            let _ = config;
-
-            // On non-Windows: kopi-shim and kopi are both in bin directory
-            // On Windows: also check same directory as fallback
-            let kopi_path = parent.join(kopi_name);
-            searched_paths.push(kopi_path.display().to_string());
-            if kopi_path.exists() {
-                return Ok(kopi_path);
-            }
-        }
-    }
-
-    // Fallback to searching in PATH
-    searched_paths.push("PATH".to_string());
-    if let Ok(kopi_in_path) = which::which(kopi_name) {
-        return Ok(kopi_in_path);
-    }
-
-    // Return a specific error for kopi not found
-    Err(KopiError::KopiNotFound {
-        searched_paths,
-        is_auto_install_context: true,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -479,34 +419,5 @@ mod tests {
         let result = find_jdk_installation(&repository, &version_request);
         assert!(result.is_err());
         assert!(matches!(result, Err(KopiError::JdkNotInstalled { .. })));
-    }
-
-    #[test]
-    #[cfg(target_os = "windows")]
-    fn test_find_kopi_binary_windows_shims_directory() {
-        // This test simulates the Windows scenario where:
-        // - The shim is in .kopi/shims/
-        // - kopi.exe should be found in .kopi/bin/
-
-        // Note: This is a unit test that demonstrates the logic.
-        // In practice, we can't easily mock std::env::current_exe()
-        // so this test documents the expected behavior.
-
-        // Expected behavior:
-        // 1. If current exe is in a "shims" directory on Windows
-        // 2. Look for kopi.exe in ../bin/kopi.exe
-        // 3. If not found, fall back to PATH
-    }
-
-    #[test]
-    fn test_find_kopi_binary_not_found() {
-        // This test verifies that find_kopi_binary returns the correct error
-        // when kopi is not found anywhere.
-        // Note: We can't easily test this without mocking which::which
-        // and std::env::current_exe(), so this documents expected behavior.
-
-        // Expected error should contain:
-        // - List of searched paths
-        // - Indication that this is an auto-install context
     }
 }

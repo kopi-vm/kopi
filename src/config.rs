@@ -72,10 +72,33 @@ impl Default for AutoInstallConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShimsConfig {
     #[serde(default = "default_true")]
     pub auto_create_shims: bool,
+    #[serde(default)]
+    pub additional_tools: Vec<String>,
+    #[serde(default)]
+    pub exclude_tools: Vec<String>,
+    #[serde(default = "default_false")]
+    pub auto_install: bool,
+    #[serde(default = "default_true")]
+    pub auto_install_prompt: bool,
+    #[serde(default = "default_shim_install_timeout")]
+    pub install_timeout: u64,
+}
+
+impl Default for ShimsConfig {
+    fn default() -> Self {
+        Self {
+            auto_create_shims: true,
+            additional_tools: Vec::new(),
+            exclude_tools: Vec::new(),
+            auto_install: false,
+            auto_install_prompt: true,
+            install_timeout: 600,
+        }
+    }
 }
 
 // Default value functions
@@ -83,8 +106,16 @@ fn default_true() -> bool {
     true
 }
 
+fn default_false() -> bool {
+    false
+}
+
 fn default_timeout_secs() -> u64 {
     300
+}
+
+fn default_shim_install_timeout() -> u64 {
+    600 // 10 minutes for shim-specific installations
 }
 
 fn default_min_disk_space_mb() -> u64 {
@@ -141,7 +172,12 @@ impl KopiConfig {
             .set_default("auto_install.enabled", true)?
             .set_default("auto_install.prompt", true)?
             .set_default("auto_install.timeout_secs", 300)?
-            .set_default("shims.auto_create_shims", true)?;
+            .set_default("shims.auto_create_shims", true)?
+            .set_default("shims.additional_tools", Vec::<String>::new())?
+            .set_default("shims.exclude_tools", Vec::<String>::new())?
+            .set_default("shims.auto_install", false)?
+            .set_default("shims.auto_install_prompt", true)?
+            .set_default("shims.install_timeout", 600)?;
 
         // Add the config file if it exists
         if config_path.exists() {

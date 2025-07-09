@@ -874,10 +874,7 @@ fn test_install_jre_package() {
     );
     eprintln!("JRE install status: {:?}", output.status);
 
-    assert!(
-        output.status.success(),
-        "JRE installation should succeed"
-    );
+    assert!(output.status.success(), "JRE installation should succeed");
 
     // Extract the installed version from output
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -910,7 +907,7 @@ fn test_install_jre_package() {
 
     // Verify JRE-specific executables
     let exe_ext = if cfg!(windows) { ".exe" } else { "" };
-    
+
     // JRE should contain java
     let java_path = bin_dir.join(format!("java{exe_ext}"));
     assert!(
@@ -958,10 +955,7 @@ fn test_install_jre_package() {
     let shims_dir = kopi_home.join("bin");
     if shims_dir.exists() {
         let java_shim = shims_dir.join("java");
-        assert!(
-            java_shim.exists(),
-            "java shim should be created for JRE"
-        );
+        assert!(java_shim.exists(), "java shim should be created for JRE");
 
         // javac shim should NOT be created for JRE
         let javac_shim = shims_dir.join("javac");
