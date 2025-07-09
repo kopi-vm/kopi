@@ -1,7 +1,7 @@
 # Distribution-Specific Tools Investigation Report
 
 ## Investigation Date
-2025-07-08 (Updated: 2025-07-09 - Additional BellSoft Liberica attempts)
+2025-07-08 (Updated: 2025-07-09 - BellSoft Liberica and Red Hat Mandrel investigations)
 
 ## Purpose
 To verify whether the current implementation of `discover_distribution_tools` in `/src/shim/discovery.rs` correctly handles distribution-specific tools, and to identify any additional distributions that may require special handling.
@@ -24,6 +24,7 @@ To verify whether the current implementation of `discover_distribution_tools` in
 - **GraalVM** 21.0.7 (re-attempted successfully on 2025-07-09)
 - **SAP Machine** 21.0.7 (installed on 2025-07-09)
 - **BellSoft Liberica** 21.0.7+9 (installed on 2025-07-09 after checksum fix)
+- **Red Hat Mandrel** 21.3.6 (installed on 2025-07-09)
 
 
 ## Findings
@@ -131,10 +132,39 @@ The complete list of tools in Liberica 21.0.7+9 matches the standard JDK toolset
 - The NIK (Native Image Kit) may be available in special Liberica distributions, but not in the standard releases available through foojay.io
 - No additional configuration is needed for `discover_distribution_tools` as Liberica contains no unique tools
 
+## Red Hat Mandrel Investigation (Completed 2025-07-09)
+
+### Installation and Analysis
+**Red Hat Mandrel** 21.3.6 was successfully installed and analyzed. Mandrel is a downstream distribution of GraalVM focused on native image generation for Quarkus applications.
+
+### Investigation Results
+Mandrel 21.3.6 includes the following tools:
+- **Standard JDK tools**: All expected standard tools present
+- **native-image**: Present (expected for GraalVM derivative)
+- **Deprecated/Legacy tools** present in Mandrel but NOT in modern JDKs:
+  - `jaotc` - Java Ahead-of-Time compiler (removed in JDK 17+)
+  - `jjs` - Nashorn JavaScript shell (removed in JDK 15+)
+  - `pack200` - JAR compression tool (removed in JDK 14+)
+  - `unpack200` - JAR decompression tool (removed in JDK 14+)
+  - `rmic` - RMI compiler (deprecated since JDK 8, removed in JDK 15+)
+  - `rmid` - RMI activation daemon (deprecated since JDK 8, removed in JDK 15+)
+
+### Key Findings
+- Mandrel 21.3.6 appears to be based on an older JDK version that still includes deprecated tools
+- No Mandrel-specific tools found beyond the expected `native-image`
+- Unlike full GraalVM, Mandrel does NOT include:
+  - `gu` (GraalVM updater)
+  - `js` (JavaScript runtime)
+  - `native-image-configure` or `native-image-inspect`
+
+### Recommendations
+- No special handling needed in `discover_distribution_tools` for Mandrel
+- The deprecated tools (`jaotc`, `jjs`, `pack200`, `unpack200`, `rmic`, `rmid`) should NOT be added to the standard tools registry as they are obsolete
+- The existing GraalVM handling for `native-image` is sufficient for Mandrel
+
 ## Future Recommendations
 
 1. **Distribution Investigations Still Needed**: 
-   - Red Hat Mandrel (GraalVM derivative, may have unique tools)
    - OpenJDK
    - Trava OpenJDK
    - Tencent Kona
@@ -161,6 +191,9 @@ The complete list of tools in Liberica 21.0.7+9 matches the standard JDK toolset
 - BellSoft Liberica 21.0.7+9 was successfully installed after checksum verification fix (2025-07-09)
 - Investigation revealed foojay.io provides SHA1 checksums for Liberica, which is now properly handled
 - Liberica contains only standard JDK tools with no distribution-specific additions
+- Red Hat Mandrel 21.3.6 was successfully installed and analyzed (2025-07-09)
+- Mandrel includes deprecated tools (jaotc, jjs, pack200/unpack200, rmic/rmid) that are not present in modern JDKs
+- Mandrel is a GraalVM derivative focused on Quarkus, containing only native-image from GraalVM tools
 
 ## Conclusion
 
@@ -190,5 +223,12 @@ The investigation successfully identified distribution-specific tools and missin
    - Fixed: kopi now supports multiple checksum algorithms (SHA1, SHA256, SHA512, MD5)
    - Investigation result: Liberica contains only standard JDK tools
    - No distribution-specific tools found, no special handling required
+
+6. **Red Hat Mandrel** - Investigation completed:
+   - Successfully installed and analyzed version 21.3.6
+   - Mandrel is a GraalVM derivative optimized for Quarkus applications
+   - Contains only `native-image` from GraalVM tools (no `gu`, `js`, or other native-image utilities)
+   - Includes several deprecated/legacy tools (jaotc, jjs, pack200/unpack200, rmic/rmid) from older JDK versions
+   - No special handling required - existing GraalVM native-image handling is sufficient
 
 The implementation now correctly handles all known distribution-specific tools (GraalVM, IBM Semeru, and SAP Machine) and includes a comprehensive registry of standard JDK tools.
