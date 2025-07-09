@@ -1,7 +1,7 @@
 # Distribution-Specific Tools Investigation Report
 
 ## Investigation Date
-2025-07-08 (Updated: 2025-07-09)
+2025-07-08 (Updated: 2025-07-09 - Additional BellSoft Liberica attempts)
 
 ## Purpose
 To verify whether the current implementation of `discover_distribution_tools` in `/src/shim/discovery.rs` correctly handles distribution-specific tools, and to identify any additional distributions that may require special handling.
@@ -23,9 +23,8 @@ To verify whether the current implementation of `discover_distribution_tools` in
 - **IBM Semeru** 21.0.7
 - **GraalVM** 21.0.7 (re-attempted successfully on 2025-07-09)
 - **SAP Machine** 21.0.7 (installed on 2025-07-09)
+- **BellSoft Liberica** 21.0.7+9 (installed on 2025-07-09 after checksum fix)
 
-### Installation Attempted but Failed  
-- **BellSoft Liberica** 21, 21.0.7+9, 21+37 (checksum mismatch error - metadata may be outdated)
 
 ## Findings
 
@@ -110,6 +109,28 @@ Based on the investigation findings, the following changes have been implemented
    - Applied appropriate version constraints (e.g., `jwebserver` min_version: 18)
    - Categorized tools appropriately
 
+## BellSoft Liberica Investigation (Completed 2025-07-09)
+
+### Checksum Verification Fix
+The checksum mismatch issue has been resolved. The `security` module now supports multiple checksum algorithms (SHA1, SHA256, SHA512, MD5) as implemented in commit 8ca70e7 "チェックサムをバリデーションするアルゴリズムを選択可能にした。"
+
+### Investigation Results
+**BellSoft Liberica** 21.0.7+9 was successfully installed and analyzed:
+- Contains ONLY standard JDK tools
+- No distribution-specific tools found
+- No NIK (Native Image Kit) found in the standard distribution
+- No enhanced diagnostic tools detected
+
+The complete list of tools in Liberica 21.0.7+9 matches the standard JDK toolset exactly:
+- jar, jarsigner, java, javac, javadoc, javap, jcmd, jconsole, jdb
+- jdeprscan, jdeps, jfr, jhsdb, jimage, jinfo, jlink, jmap, jmod
+- jpackage, jps, jrunscript, jshell, jstack, jstat, jstatd, jwebserver
+- keytool, rmiregistry, serialver
+
+### Notes
+- The NIK (Native Image Kit) may be available in special Liberica distributions, but not in the standard releases available through foojay.io
+- No additional configuration is needed for `discover_distribution_tools` as Liberica contains no unique tools
+
 ## Future Recommendations
 
 1. **Distribution Investigations Still Needed**: 
@@ -117,11 +138,13 @@ Based on the investigation findings, the following changes have been implemented
    - OpenJDK
    - Trava OpenJDK
    - Tencent Kona
-   - BellSoft Liberica (checksum mismatch error prevents installation - needs metadata refresh or fix)
 
 2. **Implementation Tasks**:
    - ✅ COMPLETED: Added SAP Machine support to `discover_distribution_tools` for the `asprof` tool
-   - Investigate and fix BellSoft Liberica checksum issues
+   - ✅ COMPLETED: Fixed checksum verification to support multiple algorithms (SHA1, SHA256, SHA512, MD5)
+     - Updated `src/security/mod.rs` to handle different checksum types
+     - Now uses the `checksum_type` field from JdkMetadata when verifying downloads
+     - Successfully unblocked BellSoft Liberica installation and investigation
 
 3. **Potential Enhancements**: 
    - Dynamic discovery of non-standard tools
@@ -135,7 +158,9 @@ Based on the investigation findings, the following changes have been implemented
 - GraalVM 21.0.7 was successfully installed after initial failures (2025-07-09)
 - The absence of `gu` in GraalVM 21.0.7 suggests Oracle has changed the GraalVM distribution model
 - SAP Machine 21.0.7 includes `asprof`, a distribution-specific profiler tool based on async-profiler
-- BellSoft Liberica installation failed due to checksum mismatch errors in the metadata
+- BellSoft Liberica 21.0.7+9 was successfully installed after checksum verification fix (2025-07-09)
+- Investigation revealed foojay.io provides SHA1 checksums for Liberica, which is now properly handled
+- Liberica contains only standard JDK tools with no distribution-specific additions
 
 ## Conclusion
 
@@ -159,8 +184,11 @@ The investigation successfully identified distribution-specific tools and missin
    - All tools categorized and versioned appropriately
    - Version constraints applied where necessary (e.g., `jwebserver` for Java 18+)
 
-5. **BellSoft Liberica** - Investigation pending:
-   - Installation blocked by checksum mismatch errors
-   - Requires metadata fix or manual investigation
+5. **BellSoft Liberica** - Investigation completed:
+   - Successfully installed and analyzed version 21.0.7+9
+   - Root cause of initial failure: BellSoft Liberica provides SHA1 checksums via foojay.io API
+   - Fixed: kopi now supports multiple checksum algorithms (SHA1, SHA256, SHA512, MD5)
+   - Investigation result: Liberica contains only standard JDK tools
+   - No distribution-specific tools found, no special handling required
 
 The implementation now correctly handles all known distribution-specific tools (GraalVM, IBM Semeru, and SAP Machine) and includes a comprehensive registry of standard JDK tools.
