@@ -1,4 +1,3 @@
-mod checksum;
 mod client;
 mod http_file_downloader;
 mod options;

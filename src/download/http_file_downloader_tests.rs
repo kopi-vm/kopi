@@ -173,7 +173,9 @@ mod tests {
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            KopiError::ValidationError(msg) => assert!(msg.contains("Checksum mismatch")),
+            KopiError::ValidationError(msg) => {
+                assert!(msg.contains("Checksum verification failed"))
+            }
             _ => panic!("Expected ValidationError"),
         }
     }

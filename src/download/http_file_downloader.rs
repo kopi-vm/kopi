@@ -1,8 +1,8 @@
-use crate::download::checksum::verify_checksum;
 use crate::download::client::{AttohttpcClient, HttpClient, HttpResponse};
 use crate::download::options::DownloadOptions;
 use crate::error::{KopiError, Result};
 use crate::platform;
+use crate::security::verify_checksum;
 use std::fs::{self, File};
 use std::io::{BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
