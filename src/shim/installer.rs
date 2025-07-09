@@ -210,7 +210,6 @@ impl ShimInstaller {
 
         Ok(shim_path)
     }
-
 }
 
 #[cfg(test)]

@@ -4,17 +4,16 @@ use crate::models::version::VersionRequest;
 use log::{debug, info, warn};
 use std::io::{self, Write};
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Duration;
 
 /// Handles automatic JDK installation when a requested version is not found
-pub struct AutoInstaller {
-    config: Arc<KopiConfig>,
+pub struct AutoInstaller<'a> {
+    config: &'a KopiConfig,
 }
 
-impl AutoInstaller {
+impl<'a> AutoInstaller<'a> {
     /// Create a new AutoInstaller with the given configuration
-    pub fn new(config: Arc<KopiConfig>) -> Self {
+    pub fn new(config: &'a KopiConfig) -> Self {
         Self { config }
     }
 
@@ -179,32 +178,32 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    fn create_test_config() -> Arc<KopiConfig> {
+    fn create_test_config() -> KopiConfig {
         let temp_dir = TempDir::new().unwrap();
         let mut config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         config.auto_install.enabled = true;
         config.auto_install.prompt = false;
         config.auto_install.timeout_secs = 30;
-        Arc::new(config)
+        config
     }
 
     #[test]
     fn test_should_auto_install() {
         let config = create_test_config();
-        let installer = AutoInstaller::new(config.clone());
+        let installer = AutoInstaller::new(&config);
         assert!(installer.should_auto_install());
 
         // Test with disabled auto-install
-        let mut config2 = (*config).clone();
+        let mut config2 = config.clone();
         config2.auto_install.enabled = false;
-        let installer2 = AutoInstaller::new(Arc::new(config2));
+        let installer2 = AutoInstaller::new(&config2);
         assert!(!installer2.should_auto_install());
     }
 
     #[test]
     fn test_prompt_user_no_prompt() {
         let config = create_test_config();
-        let installer = AutoInstaller::new(config);
+        let installer = AutoInstaller::new(&config);
         // When prompt is false, should return true without prompting
         assert!(installer.prompt_user("temurin@21").unwrap());
     }
@@ -212,7 +211,7 @@ mod tests {
     #[test]
     fn test_find_kopi_binary_not_found() {
         let config = create_test_config();
-        let installer = AutoInstaller::new(config);
+        let installer = AutoInstaller::new(&config);
 
         // Mock scenario where kopi is not found
         // This test documents expected behavior when kopi binary is not available
@@ -234,7 +233,7 @@ mod tests {
     #[test]
     fn test_execute_with_timeout() {
         let config = create_test_config();
-        let installer = AutoInstaller::new(config);
+        let installer = AutoInstaller::new(&config);
 
         // Test successful command
         #[cfg(unix)]
@@ -256,7 +255,7 @@ mod tests {
     #[cfg(unix)]
     fn test_execute_with_timeout_exceeds() {
         let config = create_test_config();
-        let installer = AutoInstaller::new(config);
+        let installer = AutoInstaller::new(&config);
 
         // Test command that exceeds timeout
         let mut cmd = std::process::Command::new("sleep");

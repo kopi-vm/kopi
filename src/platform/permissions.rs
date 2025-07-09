@@ -76,9 +76,7 @@ fn check_file_permissions_windows(path: &Path) -> Result<bool> {
         log::debug!("File {path:?} is read-only (secure)");
         Ok(true)
     } else {
-        log::warn!(
-            "File {path:?} is writable - consider setting read-only for security"
-        );
+        log::warn!("File {path:?} is writable - consider setting read-only for security");
         Ok(true) // Still return true as writable files are not inherently insecure on Windows
     }
 }
@@ -113,7 +111,7 @@ fn set_secure_permissions_windows(path: &Path) -> Result<()> {
 #[cfg(unix)]
 fn check_executable_permissions_unix(path: &Path) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
-    
+
     let metadata = std::fs::metadata(path)?;
 
     if !metadata.is_file() {

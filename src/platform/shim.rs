@@ -6,7 +6,7 @@ use std::path::Path;
 #[cfg(unix)]
 pub fn verify_shim(shim_path: &Path) -> Result<()> {
     use crate::platform::symlink;
-    
+
     // Check if it's a symlink
     if !symlink::is_symlink(shim_path)? {
         return Err(KopiError::SystemError("Not a symlink".to_string()));
@@ -60,12 +60,11 @@ pub fn verify_shim(shim_path: &Path) -> Result<()> {
     let mut file = fs::File::open(shim_path)?;
     let mut header = [0u8; 2];
     use std::io::Read;
-    if file.read_exact(&mut header).is_ok()
-        && header != [0x4D, 0x5A] {
-            return Err(KopiError::SystemError(
-                "Invalid executable format - not a PE file".to_string(),
-            ));
-        }
+    if file.read_exact(&mut header).is_ok() && header != [0x4D, 0x5A] {
+        return Err(KopiError::SystemError(
+            "Invalid executable format - not a PE file".to_string(),
+        ));
+    }
 
     Ok(())
 }
