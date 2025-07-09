@@ -830,3 +830,87 @@ fn test_simple_install_debug() {
 
     assert!(output.status.success(), "Installation should succeed");
 }
+
+/// Test GraalVM installation to verify nested archive extraction works correctly
+/// This specifically tests the fix for extracting files in subdirectories within tar.gz archives
+#[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
+fn test_install_graalvm() {
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
+
+    // First refresh cache
+    let mut cmd = get_test_command(&kopi_home);
+    cmd.arg("cache").arg("refresh").assert().success();
+
+    // Install GraalVM 21
+    let mut cmd = get_test_command(&kopi_home);
+    let output = cmd
+        .arg("install")
+        .arg("graalvm@21")
+        .arg("--timeout")
+        .arg("300")
+        .timeout(std::time::Duration::from_secs(600))
+        .output()
+        .unwrap();
+
+    // Debug output
+    eprintln!(
+        "GraalVM install stdout: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    eprintln!(
+        "GraalVM install stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    eprintln!("GraalVM install status: {:?}", output.status);
+
+    assert!(
+        output.status.success(),
+        "GraalVM installation should succeed"
+    );
+
+    // Extract the installed version from output
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let version_pattern =
+        Regex::new(r"Successfully installed .* to .*[/\\]\.kopi[/\\]jdks[/\\](\S+)").unwrap();
+    let installed_version = version_pattern
+        .captures(&stdout)
+        .and_then(|caps| caps.get(1))
+        .map(|m| m.as_str())
+        .expect("Should find installed version in output");
+
+    // Verify the problematic file was extracted correctly
+    let jdk_dir = kopi_home.join("jdks").join(installed_version);
+    assert!(jdk_dir.exists(), "JDK directory should exist");
+
+    // Check for the license-information-user-manual.zip file that was failing before the fix
+    let license_file = jdk_dir.join("license-information-user-manual.zip");
+    assert!(
+        license_file.exists(),
+        "license-information-user-manual.zip should be extracted at {license_file:?}"
+    );
+
+    // Verify it's a valid zip file by checking its size
+    let metadata = fs::metadata(&license_file).unwrap();
+    assert!(
+        metadata.len() > 0,
+        "license-information-user-manual.zip should not be empty"
+    );
+
+    // Verify other standard JDK files exist
+    let bin_dir = jdk_dir.join("bin");
+    assert!(bin_dir.exists(), "bin directory should exist");
+
+    let exe_ext = if cfg!(windows) { ".exe" } else { "" };
+    let java_exe = bin_dir.join(format!("java{exe_ext}"));
+    assert!(java_exe.exists(), "java executable should exist");
+
+    // GraalVM includes native-image tool
+    let native_image = bin_dir.join(format!("native-image{exe_ext}"));
+    assert!(
+        native_image.exists(),
+        "native-image tool should exist in GraalVM"
+    );
+}
