@@ -163,7 +163,7 @@ impl<'a> PackageSearcher<'a> {
             .packages
             .iter()
             .find(|pkg| {
-                pkg.version.matches_version_string(version)
+                pkg.version.matches_pattern(version)
                     && pkg.architecture.to_string() == architecture
                     && pkg.operating_system.to_string() == operating_system
             })
@@ -188,7 +188,7 @@ impl<'a> PackageSearcher<'a> {
             .packages
             .iter()
             .filter(|pkg| {
-                pkg.version.matches_version_string(version)
+                pkg.version.matches_pattern(version)
                     && pkg.architecture.to_string() == architecture
                     && pkg.operating_system.to_string() == operating_system
             })

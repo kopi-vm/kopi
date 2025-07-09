@@ -174,18 +174,20 @@ impl<'a> VersionParser<'a> {
             )));
         }
 
-        if version.minor > 99 {
-            return Err(KopiError::InvalidVersionFormat(format!(
-                "Invalid minor version: {}. Minor versions typically range from 0 to 99.",
-                version.minor
-            )));
+        if let Some(minor) = version.minor {
+            if minor > 99 {
+                return Err(KopiError::InvalidVersionFormat(format!(
+                    "Invalid minor version: {minor}. Minor versions typically range from 0 to 99."
+                )));
+            }
         }
 
-        if version.patch > 999 {
-            return Err(KopiError::InvalidVersionFormat(format!(
-                "Invalid patch version: {}. Patch versions typically range from 0 to 999.",
-                version.patch
-            )));
+        if let Some(patch) = version.patch {
+            if patch > 999 {
+                return Err(KopiError::InvalidVersionFormat(format!(
+                    "Invalid patch version: {patch}. Patch versions typically range from 0 to 999."
+                )));
+            }
         }
 
         Ok(())
@@ -282,8 +284,8 @@ mod tests {
         assert!(result.version.is_some());
         let version = result.version.unwrap();
         assert_eq!(version.major, 21);
-        assert_eq!(version.minor, 0);
-        assert_eq!(version.patch, 0);
+        assert_eq!(version.minor, None);
+        assert_eq!(version.patch, None);
         assert!(!result.latest);
     }
 
@@ -296,8 +298,8 @@ mod tests {
         assert!(result.version.is_some());
         let version = result.version.unwrap();
         assert_eq!(version.major, 17);
-        assert_eq!(version.minor, 0);
-        assert_eq!(version.patch, 9);
+        assert_eq!(version.minor, Some(0));
+        assert_eq!(version.patch, Some(9));
         assert!(!result.latest);
     }
 
@@ -321,8 +323,8 @@ mod tests {
         assert!(result.version.is_some());
         let version = result.version.unwrap();
         assert_eq!(version.major, 17);
-        assert_eq!(version.minor, 0);
-        assert_eq!(version.patch, 9);
+        assert_eq!(version.minor, Some(0));
+        assert_eq!(version.patch, Some(9));
         assert!(!result.latest);
     }
 
@@ -458,31 +460,46 @@ mod tests {
         let parser = VersionParser::new(&config);
         // Test JRE prefix
         let parsed = parser.parse("jre@21").unwrap();
-        assert_eq!(parsed.version, Some(Version::new(21, 0, 0)));
+        assert_eq!(
+            parsed.version,
+            Some(Version::from_components(21, None, None))
+        );
         assert_eq!(parsed.distribution, None);
         assert_eq!(parsed.package_type, Some(PackageType::Jre));
 
         // Test JDK prefix (explicit)
         let parsed = parser.parse("jdk@21").unwrap();
-        assert_eq!(parsed.version, Some(Version::new(21, 0, 0)));
+        assert_eq!(
+            parsed.version,
+            Some(Version::from_components(21, None, None))
+        );
         assert_eq!(parsed.distribution, None);
         assert_eq!(parsed.package_type, Some(PackageType::Jdk));
 
         // Test JRE with distribution
         let parsed = parser.parse("jre@temurin@21").unwrap();
-        assert_eq!(parsed.version, Some(Version::new(21, 0, 0)));
+        assert_eq!(
+            parsed.version,
+            Some(Version::from_components(21, None, None))
+        );
         assert_eq!(parsed.distribution, Some(Distribution::Temurin));
         assert_eq!(parsed.package_type, Some(PackageType::Jre));
 
         // Test JDK with distribution (explicit)
         let parsed = parser.parse("jdk@temurin@21").unwrap();
-        assert_eq!(parsed.version, Some(Version::new(21, 0, 0)));
+        assert_eq!(
+            parsed.version,
+            Some(Version::from_components(21, None, None))
+        );
         assert_eq!(parsed.distribution, Some(Distribution::Temurin));
         assert_eq!(parsed.package_type, Some(PackageType::Jdk));
 
         // Test no prefix (defaults to JDK)
         let parsed = parser.parse("21").unwrap();
-        assert_eq!(parsed.version, Some(Version::new(21, 0, 0)));
+        assert_eq!(
+            parsed.version,
+            Some(Version::from_components(21, None, None))
+        );
         assert_eq!(parsed.distribution, None);
         assert_eq!(parsed.package_type, None); // None means JDK by default
 
@@ -518,8 +535,8 @@ mod tests {
         assert!(result.version.is_some());
         let version = result.version.unwrap();
         assert_eq!(version.major, 17);
-        assert_eq!(version.minor, 0);
-        assert_eq!(version.patch, 9);
+        assert_eq!(version.minor, Some(0));
+        assert_eq!(version.patch, Some(9));
         assert_eq!(version.build, Some("7".to_string()));
     }
 
@@ -532,8 +549,8 @@ mod tests {
         assert!(result.version.is_some());
         let version = result.version.unwrap();
         assert_eq!(version.major, 21);
-        assert_eq!(version.minor, 0);
-        assert_eq!(version.patch, 1);
+        assert_eq!(version.minor, Some(0));
+        assert_eq!(version.patch, Some(1));
         assert_eq!(version.build, Some("ea".to_string()));
     }
 
@@ -546,8 +563,8 @@ mod tests {
         assert!(result.version.is_some());
         let version = result.version.unwrap();
         assert_eq!(version.major, 17);
-        assert_eq!(version.minor, 0);
-        assert_eq!(version.patch, 2);
+        assert_eq!(version.minor, Some(0));
+        assert_eq!(version.patch, Some(2));
         assert_eq!(version.build, Some("8-LTS".to_string()));
     }
 
@@ -560,8 +577,8 @@ mod tests {
         assert!(result.version.is_some());
         let version = result.version.unwrap();
         assert_eq!(version.major, 21);
-        assert_eq!(version.minor, 0);
-        assert_eq!(version.patch, 1);
+        assert_eq!(version.minor, Some(0));
+        assert_eq!(version.patch, Some(1));
         assert_eq!(version.build, Some("amzn".to_string()));
     }
 
@@ -574,8 +591,8 @@ mod tests {
         assert!(result.version.is_some());
         let version = result.version.unwrap();
         assert_eq!(version.major, 11);
-        assert_eq!(version.minor, 0);
-        assert_eq!(version.patch, 21);
+        assert_eq!(version.minor, Some(0));
+        assert_eq!(version.patch, Some(21));
         assert_eq!(version.build, Some("9-LTS-3299655".to_string()));
     }
 

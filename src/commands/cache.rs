@@ -453,13 +453,19 @@ fn search_cache(
                 if show_package {
                     let display_version = if package.version.build.is_some() {
                         format!("{} ({})", package.version.major, package.version)
-                    } else if package.version.patch > 0 {
+                    } else if package.version.patch.map(|p| p > 0).unwrap_or(false) {
                         format!(
                             "{}.{}.{}",
-                            package.version.major, package.version.minor, package.version.patch
+                            package.version.major,
+                            package.version.minor.unwrap_or(0),
+                            package.version.patch.unwrap_or(0)
                         )
-                    } else if package.version.minor > 0 {
-                        format!("{}.{}", package.version.major, package.version.minor)
+                    } else if package.version.minor.map(|m| m > 0).unwrap_or(false) {
+                        format!(
+                            "{}.{}",
+                            package.version.major,
+                            package.version.minor.unwrap_or(0)
+                        )
                     } else {
                         format!("{}", package.version.major)
                     };
