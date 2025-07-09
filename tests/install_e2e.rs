@@ -839,6 +839,139 @@ fn test_simple_install_debug() {
     assert!(output.status.success(), "Installation should succeed");
 }
 
+/// Test JRE installation to verify it downloads JRE instead of JDK
+/// This test ensures that JRE packages contain java but not javac
+#[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
+fn test_install_jre_package() {
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home();
+
+    // First refresh cache
+    let mut cmd = get_test_command(&kopi_home);
+    cmd.arg("cache").arg("refresh").assert().success();
+
+    // Install JRE 11 (LTS version with reliable JRE packages)
+    let mut cmd = get_test_command(&kopi_home);
+    let output = cmd
+        .arg("install")
+        .arg("jre@11")
+        .arg("--timeout")
+        .arg("300")
+        .timeout(std::time::Duration::from_secs(600))
+        .output()
+        .unwrap();
+
+    // Debug output
+    eprintln!(
+        "JRE install stdout: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    eprintln!(
+        "JRE install stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    eprintln!("JRE install status: {:?}", output.status);
+
+    assert!(
+        output.status.success(),
+        "JRE installation should succeed"
+    );
+
+    // Extract the installed version from output
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let version_pattern =
+        Regex::new(r"Successfully installed .* to .*[/\\]\.kopi[/\\]jdks[/\\](\S+)").unwrap();
+    let installed_version = version_pattern
+        .captures(&stdout)
+        .and_then(|caps| caps.get(1))
+        .map(|m| m.as_str())
+        .expect("Should find installed version in output");
+
+    // Verify JDK directory structure
+    let jdk_dir = kopi_home.join("jdks").join(installed_version);
+    assert!(
+        jdk_dir.exists(),
+        "JRE directory should exist at {jdk_dir:?}"
+    );
+
+    // Verify bin directory exists
+    let bin_dir = jdk_dir.join("bin");
+    assert!(bin_dir.exists(), "bin directory should exist");
+
+    // Debug: List all files in bin directory
+    eprintln!("Files in JRE bin directory:");
+    if let Ok(entries) = fs::read_dir(&bin_dir) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            eprintln!("  - {:?}", entry.file_name());
+        }
+    }
+
+    // Verify JRE-specific executables
+    let exe_ext = if cfg!(windows) { ".exe" } else { "" };
+    
+    // JRE should contain java
+    let java_path = bin_dir.join(format!("java{exe_ext}"));
+    assert!(
+        java_path.exists(),
+        "JRE should contain java executable at {java_path:?}"
+    );
+
+    // JRE should NOT contain javac (compiler)
+    let javac_path = bin_dir.join(format!("javac{exe_ext}"));
+    assert!(
+        !javac_path.exists(),
+        "JRE should NOT contain javac compiler at {javac_path:?}"
+    );
+
+    // JRE should NOT contain jar tool
+    let jar_path = bin_dir.join(format!("jar{exe_ext}"));
+    assert!(
+        !jar_path.exists(),
+        "JRE should NOT contain jar tool at {jar_path:?}"
+    );
+
+    // JRE should NOT contain javadoc
+    let javadoc_path = bin_dir.join(format!("javadoc{exe_ext}"));
+    assert!(
+        !javadoc_path.exists(),
+        "JRE should NOT contain javadoc tool at {javadoc_path:?}"
+    );
+
+    // But JRE should contain keytool
+    let keytool_path = bin_dir.join(format!("keytool{exe_ext}"));
+    assert!(
+        keytool_path.exists(),
+        "JRE should contain keytool at {keytool_path:?}"
+    );
+
+    // Verify lib directory exists
+    let lib_dir = jdk_dir.join("lib");
+    assert!(lib_dir.exists(), "lib directory should exist");
+
+    // Verify release file exists
+    let release_file = jdk_dir.join("release");
+    assert!(release_file.exists(), "release file should exist");
+
+    // Verify shims were created
+    let shims_dir = kopi_home.join("bin");
+    if shims_dir.exists() {
+        let java_shim = shims_dir.join("java");
+        assert!(
+            java_shim.exists(),
+            "java shim should be created for JRE"
+        );
+
+        // javac shim should NOT be created for JRE
+        let javac_shim = shims_dir.join("javac");
+        assert!(
+            !javac_shim.exists(),
+            "javac shim should NOT be created for JRE"
+        );
+    }
+}
+
 /// Test GraalVM installation to verify nested archive extraction works correctly
 /// This specifically tests the fix for extracting files in subdirectories within tar.gz archives
 #[test]
