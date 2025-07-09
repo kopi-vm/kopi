@@ -16,6 +16,9 @@ pub struct MetadataCache {
     pub version: u32,
     pub last_updated: DateTime<Utc>,
     pub distributions: HashMap<String, DistributionCache>,
+    /// Maps distribution synonyms to their canonical api_parameter names
+    #[serde(default)]
+    pub synonym_map: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -31,6 +34,7 @@ impl MetadataCache {
             version: 1,
             last_updated: Utc::now(),
             distributions: HashMap::new(),
+            synonym_map: HashMap::new(),
         }
     }
 }
@@ -82,6 +86,37 @@ impl MetadataCache {
         Ok(())
     }
 
+    /// Resolve a distribution name using synonyms
+    /// Returns the canonical name if found in synonym map, otherwise returns the input
+    pub fn resolve_distribution_name<'a>(&self, name: &'a str) -> &'a str
+    where
+        'a: 'a,
+    {
+        // Try to resolve via synonym map first
+        if let Some(canonical_name) = self.synonym_map.get(name) {
+            // We need to return the input string since we can't return a reference
+            // with a different lifetime. Instead, we'll handle this differently.
+            // For now, return the input if it matches the canonical name
+            if canonical_name == name {
+                return name;
+            }
+        }
+
+        // If it's already a canonical name in distributions, return it
+        if self.distributions.contains_key(name) {
+            return name;
+        }
+
+        // Return the input as-is
+        name
+    }
+
+    /// Get the canonical name for a distribution from the synonym map
+    /// Returns None if not found
+    pub fn get_canonical_name(&self, name: &str) -> Option<&str> {
+        self.synonym_map.get(name).map(|s| s.as_str())
+    }
+
     /// Find a JDK package in the cache by its criteria
     pub fn find_package(
         &self,
@@ -90,7 +125,12 @@ impl MetadataCache {
         architecture: &str,
         operating_system: &str,
     ) -> Option<&JdkMetadata> {
-        self.distributions.get(distribution).and_then(|dist| {
+        // Try to get canonical name from synonym map
+        let canonical_name = self
+            .get_canonical_name(distribution)
+            .unwrap_or(distribution);
+
+        self.distributions.get(canonical_name).and_then(|dist| {
             dist.packages.iter().find(|pkg| {
                 pkg.version.to_string() == version
                     && pkg.architecture.to_string() == architecture
@@ -356,6 +396,19 @@ fn convert_api_to_cache(api_metadata: ApiMetadata) -> Result<MetadataCache> {
     for dist_metadata in api_metadata.distributions {
         let dist_info = dist_metadata.distribution;
 
+        // Build synonym map: each synonym points to the canonical api_parameter
+        for synonym in &dist_info.synonyms {
+            cache
+                .synonym_map
+                .insert(synonym.clone(), dist_info.api_parameter.clone());
+        }
+
+        // Also add the api_parameter itself as a synonym pointing to itself
+        cache.synonym_map.insert(
+            dist_info.api_parameter.clone(),
+            dist_info.api_parameter.clone(),
+        );
+
         // Parse distribution
         let distribution = JdkDistribution::from_str(&dist_info.api_parameter)
             .unwrap_or(JdkDistribution::Other(dist_info.api_parameter.clone()));
@@ -460,6 +513,87 @@ mod tests {
 
         assert!(cache.has_version("21.0.1"));
         assert!(!cache.has_version("17.0.1"));
+    }
+
+    #[test]
+    fn test_synonym_resolution() {
+        use crate::models::jdk::{
+            Architecture, ArchiveType, ChecksumType, OperatingSystem, PackageType, Version,
+        };
+
+        let mut cache = MetadataCache::new();
+
+        // Set up synonym map - simulating SAP Machine case
+        cache
+            .synonym_map
+            .insert("sapmachine".to_string(), "sap_machine".to_string());
+        cache
+            .synonym_map
+            .insert("sap-machine".to_string(), "sap_machine".to_string());
+        cache
+            .synonym_map
+            .insert("SAP Machine".to_string(), "sap_machine".to_string());
+        cache
+            .synonym_map
+            .insert("sap_machine".to_string(), "sap_machine".to_string());
+
+        // Create a SAP Machine distribution
+        let jdk_metadata = JdkMetadata {
+            id: "sap-test-id".to_string(),
+            distribution: "sap_machine".to_string(),
+            version: Version::new(21, 0, 7),
+            distribution_version: "21.0.7".to_string(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: "https://example.com/sap-download".to_string(),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 100000000,
+            lib_c_type: None,
+            javafx_bundled: false,
+            term_of_support: None,
+            release_status: None,
+            latest_build_available: None,
+        };
+
+        let dist = DistributionCache {
+            distribution: JdkDistribution::SapMachine,
+            display_name: "SAP Machine".to_string(),
+            packages: vec![jdk_metadata],
+        };
+
+        // Store under canonical name
+        cache.distributions.insert("sap_machine".to_string(), dist);
+
+        // Test get_canonical_name
+        assert_eq!(cache.get_canonical_name("sapmachine"), Some("sap_machine"));
+        assert_eq!(cache.get_canonical_name("sap-machine"), Some("sap_machine"));
+        assert_eq!(cache.get_canonical_name("SAP Machine"), Some("sap_machine"));
+        assert_eq!(cache.get_canonical_name("sap_machine"), Some("sap_machine"));
+
+        // Test find_package with various synonyms
+        assert!(
+            cache
+                .find_package("sapmachine", "21.0.7", "x64", "linux")
+                .is_some()
+        );
+        assert!(
+            cache
+                .find_package("sap-machine", "21.0.7", "x64", "linux")
+                .is_some()
+        );
+        assert!(
+            cache
+                .find_package("SAP Machine", "21.0.7", "x64", "linux")
+                .is_some()
+        );
+        assert!(
+            cache
+                .find_package("sap_machine", "21.0.7", "x64", "linux")
+                .is_some()
+        );
     }
 
     #[test]

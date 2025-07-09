@@ -155,8 +155,11 @@ impl<'a> PackageSearcher<'a> {
     ) -> Option<JdkMetadata> {
         let cache = self.cache;
 
-        // Look up distribution by its API name
-        let dist_cache = cache.distributions.get(distribution.id())?;
+        // Look up distribution by its API name, resolving synonyms
+        let canonical_name = cache
+            .get_canonical_name(distribution.id())
+            .unwrap_or(distribution.id());
+        let dist_cache = cache.distributions.get(canonical_name)?;
 
         // Find exact match
         dist_cache
@@ -180,8 +183,11 @@ impl<'a> PackageSearcher<'a> {
     ) -> Option<JdkMetadata> {
         let cache = self.cache;
 
-        // Look up distribution by its API name
-        let dist_cache = cache.distributions.get(distribution.id())?;
+        // Look up distribution by its API name, resolving synonyms
+        let canonical_name = cache
+            .get_canonical_name(distribution.id())
+            .unwrap_or(distribution.id());
+        let dist_cache = cache.distributions.get(canonical_name)?;
 
         // Find packages matching version, arch, and OS
         let matching_packages: Vec<&JdkMetadata> = dist_cache

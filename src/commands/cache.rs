@@ -208,13 +208,15 @@ fn search_cache(
     // Check if a specific distribution was requested and if it's in cache
     if let Some(ref dist) = parsed_request.distribution {
         let dist_id = dist.id();
-        if !cache.distributions.contains_key(dist_id) {
-            // Distribution not in cache, fetch it
+        // Resolve synonym to canonical name
+        let canonical_name = cache.get_canonical_name(dist_id).unwrap_or(dist_id);
+        if !cache.distributions.contains_key(canonical_name) {
+            // Distribution not in cache, fetch it using the canonical name
             if !json {
                 println!("Distribution '{dist_id}' not found in cache. Fetching from foojay.io...");
             }
 
-            match cache::fetch_and_cache_distribution(dist_id, javafx_bundled, &config) {
+            match cache::fetch_and_cache_distribution(canonical_name, javafx_bundled, &config) {
                 Ok(updated_cache) => {
                     cache = updated_cache;
                     if !json {
@@ -810,5 +812,85 @@ mod tests {
         let parsed = parser.parse("21").unwrap();
         assert!(parsed.version.is_some());
         assert_eq!(parsed.distribution, None); // Should not default to any distribution
+    }
+
+    #[test]
+    #[serial]
+    fn test_search_cache_with_synonym_resolution() {
+        use crate::cache::{DistributionCache, MetadataCache};
+        use crate::models::jdk::{
+            Architecture, ArchiveType, ChecksumType, Distribution as JdkDistribution, JdkMetadata,
+            OperatingSystem, PackageType, Version,
+        };
+        use tempfile::TempDir;
+
+        // Create a temporary directory for the test
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("KOPI_HOME", temp_dir.path());
+        }
+
+        // Create a cache with SAP Machine distribution
+        let mut cache = MetadataCache::new();
+
+        // Set up synonym map - simulating SAP Machine case
+        cache
+            .synonym_map
+            .insert("sapmachine".to_string(), "sap_machine".to_string());
+        cache
+            .synonym_map
+            .insert("sap-machine".to_string(), "sap_machine".to_string());
+        cache
+            .synonym_map
+            .insert("sap_machine".to_string(), "sap_machine".to_string());
+
+        // Create a SAP Machine package
+        let jdk_metadata = JdkMetadata {
+            id: "sap-test-id".to_string(),
+            distribution: "sap_machine".to_string(),
+            version: Version::new(21, 0, 7),
+            distribution_version: "21.0.7".to_string(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: "https://example.com/sap-download".to_string(),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 100000000,
+            lib_c_type: None,
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: None,
+        };
+
+        let dist = DistributionCache {
+            distribution: JdkDistribution::SapMachine,
+            display_name: "SAP Machine".to_string(),
+            packages: vec![jdk_metadata],
+        };
+
+        // Store under canonical name
+        cache.distributions.insert("sap_machine".to_string(), dist);
+
+        // Save the cache
+        let cache_path = temp_dir.path().join("cache").join("metadata.json");
+        cache.save(&cache_path).unwrap();
+
+        // Test searching with the synonym "sapmachine"
+        let result = search_cache(
+            "sapmachine@21".to_string(),
+            false,
+            false,
+            true,
+            false,
+            false,
+        );
+        assert!(result.is_ok(), "Search should succeed with synonym");
+
+        unsafe {
+            env::remove_var("KOPI_HOME");
+        }
     }
 }
