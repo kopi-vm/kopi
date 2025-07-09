@@ -31,9 +31,7 @@ impl AutoInstaller {
             return Ok(true);
         }
 
-        print!(
-            "JDK {version_spec} is not installed. Would you like to install it now? [Y/n] "
-        );
+        print!("JDK {version_spec} is not installed. Would you like to install it now? [Y/n] ");
         io::stdout()
             .flush()
             .map_err(|e| KopiError::SystemError(e.to_string()))?;

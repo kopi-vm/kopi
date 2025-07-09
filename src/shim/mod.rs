@@ -11,10 +11,12 @@ use std::str::FromStr;
 pub mod auto_install;
 pub mod discovery;
 pub mod installer;
+pub mod security;
 pub mod tools;
 pub mod version_resolver;
 use crate::error::format_error_with_color;
 use auto_install::AutoInstaller;
+use security::SecurityValidator;
 use version_resolver::VersionResolver;
 
 /// Run the shim with the provided arguments
@@ -28,9 +30,16 @@ pub fn run(_args: Vec<String>) -> Result<i32> {
 pub fn run_shim() -> Result<()> {
     let start = std::time::Instant::now();
 
+    // Load configuration once
+    let config = new_kopi_config()?;
+    let security_validator = SecurityValidator::new(&config);
+
     // Get tool name from argv[0]
     let tool_name = get_tool_name()?;
     log::debug!("Shim invoked as: {tool_name}");
+
+    // Validate tool name
+    security_validator.validate_tool(&tool_name)?;
 
     // Resolve JDK version
     let resolver = VersionResolver::new();
@@ -47,8 +56,13 @@ pub fn run_shim() -> Result<()> {
     };
     log::debug!("Resolved version: {version_request:?}");
 
+    // Validate version string
+    security_validator.validate_version(&version_request.version_pattern)?;
+    if let Some(dist) = &version_request.distribution {
+        security_validator.validate_version(dist)?;
+    }
+
     // Find JDK installation
-    let config = new_kopi_config()?;
     let repository = JdkRepository::new(&config);
     let jdk_path = match find_jdk_installation(&repository, &version_request) {
         Ok(path) => path,
@@ -185,6 +199,10 @@ pub fn run_shim() -> Result<()> {
 
     // Collect arguments (skip argv[0])
     let args: Vec<OsString> = env::args_os().skip(1).collect();
+
+    // Validate tool path and permissions before execution
+    security_validator.validate_path(&tool_path)?;
+    security_validator.check_permissions(&tool_path)?;
 
     // Log performance
     let elapsed = start.elapsed();

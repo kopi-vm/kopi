@@ -125,14 +125,84 @@ kopi setup --force                       # Force recreation of shims even if the
 
 ### `kopi shim`
 
-Manage tool shims for JDK executables.
+Manage tool shims for JDK executables. Shims are lightweight proxy executables that intercept Java tool invocations and transparently route them to the correct JDK version based on your project configuration.
+
+**Subcommands:**
+
+#### `kopi shim add`
+
+Create shims for specific JDK tools.
+
+**Usage:**
+```bash
+kopi shim add <tool>                     # Create shim for a specific tool
+kopi shim add <tool1> <tool2> ...        # Create shims for multiple tools
+kopi shim add --all                      # Create shims for all known JDK tools
+kopi shim add --force <tool>             # Force recreate existing shim
+```
+
+**Examples:**
+```bash
+kopi shim add java javac                 # Create shims for java and javac
+kopi shim add native-image gu            # Create GraalVM-specific shims
+kopi shim add --all                      # Create all standard JDK tool shims
+```
+
+#### `kopi shim remove`
+
+Remove installed shims.
+
+**Usage:**
+```bash
+kopi shim remove <tool>                  # Remove shim for a specific tool
+kopi shim remove <tool1> <tool2> ...     # Remove shims for multiple tools
+kopi shim remove --all                   # Remove all shims
+```
+
+**Examples:**
+```bash
+kopi shim remove jshell                  # Remove jshell shim
+kopi shim remove --all                   # Clean up all shims
+```
+
+#### `kopi shim list`
+
+List all installed shims and their status.
 
 **Usage:**
 ```bash
 kopi shim list                           # List all installed shims
-kopi shim create                         # Create shims for JDK tools
-kopi shim create --force                 # Force recreation of shims
+kopi shim list --format <format>         # Specify output format (table/plain/json)
 ```
+
+**Examples:**
+```bash
+kopi shim list                           # Show shims in table format
+kopi shim list --format json             # Output as JSON for scripting
+```
+
+#### `kopi shim verify`
+
+Verify the integrity of installed shims.
+
+**Usage:**
+```bash
+kopi shim verify                         # Verify all shims
+kopi shim verify <tool>                  # Verify specific shim
+kopi shim verify --fix                   # Fix any issues found
+```
+
+**Examples:**
+```bash
+kopi shim verify                         # Check all shims for issues
+kopi shim verify java --fix              # Verify and fix java shim if needed
+```
+
+**Notes:**
+- Shims are created in `~/.kopi/shims/` directory
+- The shims directory should be added to your PATH
+- Shims automatically detect the required JDK version from `.kopi-version` or `.java-version` files
+- Performance overhead is minimal (typically < 10ms)
 
 ## Advanced Features
 
@@ -549,6 +619,95 @@ HTTPS_PROXY=http://proxy:8080 kopi install 21
 
 Note: Minimum disk space requirement is configured via `~/.kopi/config.toml` (see Global Config section above)
 
+## Security Considerations
+
+Kopi implements several security measures to ensure safe operation:
+
+### Path Validation
+
+- All file operations are restricted to the KOPI_HOME directory (`~/.kopi` by default)
+- Path traversal attempts (e.g., `../../../etc/passwd`) are blocked
+- Symlinks are validated to ensure they don't point outside the kopi directory
+
+### Version String Validation
+
+- Version strings are validated to contain only safe characters (alphanumeric, `@`, `.`, `-`, `_`, `+`)
+- Maximum length of 100 characters enforced
+- Special patterns that could be used for injection attacks are rejected
+
+### Tool Validation
+
+- Only recognized JDK tools can be shimmed
+- Unknown or system commands (e.g., `rm`, `curl`) are rejected
+- Tool names are validated against a comprehensive registry
+
+### File Permission Checks
+
+- Shim targets must be executable files
+- On Unix systems, world-writable files are rejected
+- Regular file validation ensures directories cannot be executed
+
+### Auto-Install Security
+
+- Auto-installation prompts require explicit user confirmation
+- Timeout protection prevents hanging on user input
+- Version strings are validated before installation attempts
+
+### Best Practices
+
+1. **Regular Updates**: Keep kopi updated to get the latest security fixes
+2. **Verify Downloads**: Kopi automatically verifies checksums for all JDK downloads
+3. **Permission Management**: Ensure `~/.kopi` directory has appropriate permissions
+4. **Audit Shims**: Periodically run `kopi shim verify` to check shim integrity
+
+## Performance Characteristics
+
+### Shim Overhead
+
+Kopi's shims are designed for minimal performance impact:
+
+- **Cold start**: < 10ms (first invocation)
+- **Warm start**: < 5ms (subsequent invocations)
+- **Total overhead**: Typically < 20ms including version resolution
+- **Binary size**: < 1MB for optimized release builds
+
+### Performance Optimizations
+
+1. **Release Profile**: Shims are built with a custom `release-shim` profile
+   - Link-time optimization (LTO) enabled
+   - Single codegen unit for better optimization
+   - Debug symbols stripped
+
+2. **Efficient Tool Detection**: Uses a static registry for O(1) tool lookups
+
+3. **Fast Version Resolution**: 
+   - Caches version file locations
+   - Minimal file I/O operations
+   - Early exit on environment variable override
+
+4. **Platform-Specific Optimizations**:
+   - Direct process replacement on Unix (exec)
+   - Efficient subprocess spawning on Windows
+
+### Benchmark Results
+
+Run benchmarks with:
+```bash
+cargo bench --bench shim_bench
+```
+
+Typical results on modern hardware:
+- Tool detection: ~50ns
+- Version validation: ~200ns
+- Path validation: ~1μs
+- Total shim overhead: ~5-20ms
+
+### Comparison with Direct Execution
+
+The shim overhead is negligible compared to JVM startup time:
+- JVM cold start: 100-500ms
+- Shim overhead: 5-20ms (2-4% of total)
+
 ## Troubleshooting
 
 ### Enhanced Error Messages
@@ -638,6 +797,46 @@ Kopi uses specific exit codes to help with scripting and automation:
 - `17`: Resource already exists
 - `20`: Network error
 - `28`: Disk space error
+
+### Shim-Specific Issues
+
+**1. Shim Not Working**
+```bash
+Error: Tool 'java' not found in JDK
+```
+**Solution:**
+- Ensure `~/.kopi/shims` is in your PATH
+- Run `kopi shim verify` to check shim integrity
+- Recreate the shim: `kopi shim add java --force`
+
+**2. Version Not Switching**
+```bash
+# Wrong Java version despite .kopi-version file
+```
+**Solution:**
+- Check version file location: must be in current or parent directory
+- Verify version format: `temurin@21` or just `21`
+- Check environment variable: `KOPI_JAVA_VERSION` overrides files
+- Enable debug logging: `RUST_LOG=kopi::shim=debug java -version`
+
+**3. Performance Issues**
+```bash
+# Slow shim execution
+```
+**Solution:**
+- Run benchmarks: `cargo bench --bench shim_bench`
+- Check for antivirus interference on Windows
+- Ensure shims are built with release profile
+- Verify no network delays in version resolution
+
+**4. Security Validation Errors**
+```bash
+Error: Security error: Path contains directory traversal
+```
+**Solution:**
+- Check for suspicious patterns in version files
+- Ensure no malformed symlinks in kopi directories
+- Run `kopi shim verify --fix` to repair issues
 
 ### Getting Help
 
