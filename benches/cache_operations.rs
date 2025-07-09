@@ -1,8 +1,11 @@
 use criterion::{BenchmarkId, Criterion, black_box};
 use kopi::cache::{DistributionCache, MetadataCache};
-use kopi::models::jdk::{
-    Architecture, ArchiveType, ChecksumType, Distribution as JdkDistribution, JdkMetadata,
-    OperatingSystem, PackageType, Version,
+use kopi::models::{
+    distribution::Distribution as JdkDistribution,
+    metadata::JdkMetadata,
+    package::{ArchiveType, ChecksumType, PackageType},
+    platform::{Architecture, OperatingSystem},
+    version::Version,
 };
 
 fn create_test_metadata(id: &str, major: u32, minor: u32, patch: u32) -> JdkMetadata {

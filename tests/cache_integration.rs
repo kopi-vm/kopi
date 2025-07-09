@@ -65,10 +65,11 @@ fn test_fetch_and_cache_metadata() {
 #[serial]
 fn test_cache_offline_mode() {
     use kopi::cache::DistributionCache;
-    use kopi::models::jdk::{
-        Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
-        PackageType, Version,
-    };
+    use kopi::models::distribution::Distribution;
+    use kopi::models::metadata::JdkMetadata;
+    use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
+    use kopi::models::platform::{Architecture, OperatingSystem};
+    use kopi::models::version::Version;
 
     let test_home = TestHomeGuard::new();
     let test_home = test_home.setup_kopi_structure();
@@ -134,10 +135,11 @@ fn test_cache_offline_mode() {
 #[serial]
 fn test_find_package_in_cache() {
     use kopi::cache::DistributionCache;
-    use kopi::models::jdk::{
-        Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
-        PackageType, Version,
-    };
+    use kopi::models::distribution::Distribution;
+    use kopi::models::metadata::JdkMetadata;
+    use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
+    use kopi::models::platform::{Architecture, OperatingSystem};
+    use kopi::models::version::Version;
 
     let mut cache = MetadataCache::new();
 
@@ -211,10 +213,11 @@ fn test_cache_corruption_recovery() {
 fn test_cache_with_install_command() {
     use kopi::cache::DistributionCache;
     use kopi::commands::install::InstallCommand;
-    use kopi::models::jdk::{
-        Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
-        PackageType, Version,
-    };
+    use kopi::models::distribution::Distribution;
+    use kopi::models::metadata::JdkMetadata;
+    use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
+    use kopi::models::platform::{Architecture, OperatingSystem};
+    use kopi::models::version::Version;
 
     let test_home = TestHomeGuard::new();
     let test_home = test_home.setup_kopi_structure();

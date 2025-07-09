@@ -1,6 +1,6 @@
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
-use crate::models::jdk::VersionRequest;
+use crate::models::version::VersionRequest;
 use log::{debug, info, warn};
 use std::io::{self, Write};
 use std::path::PathBuf;

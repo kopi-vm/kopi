@@ -121,7 +121,8 @@ mod mock_tests {
             }
         ]"#;
 
-        let distributions: Vec<kopi::api::Distribution> = serde_json::from_str(mock_data).unwrap();
+        let distributions: Vec<kopi::models::api::Distribution> =
+            serde_json::from_str(mock_data).unwrap();
         assert_eq!(distributions.len(), 2);
         assert_eq!(distributions[0].api_parameter, "temurin");
         assert_eq!(distributions[1].api_parameter, "corretto");
@@ -146,7 +147,8 @@ mod mock_tests {
             }
         ]"#;
 
-        let versions: Vec<kopi::api::MajorVersion> = serde_json::from_str(mock_data).unwrap();
+        let versions: Vec<kopi::models::api::MajorVersion> =
+            serde_json::from_str(mock_data).unwrap();
         assert_eq!(versions.len(), 2);
         assert_eq!(versions[0].major_version, 21);
         assert_eq!(versions[0].term_of_support, "lts");
@@ -176,7 +178,7 @@ mod mock_tests {
             "javafx_bundled": false
         }"#;
 
-        let package: kopi::api::Package = serde_json::from_str(mock_data).unwrap();
+        let package: kopi::models::api::Package = serde_json::from_str(mock_data).unwrap();
         assert_eq!(package.distribution, "temurin");
         assert_eq!(package.major_version, 21);
         assert_eq!(package.java_version, "21.0.1+12");
@@ -187,7 +189,7 @@ mod mock_tests {
     #[test]
     fn test_empty_response_handling() {
         let empty_array = "[]";
-        let distributions: Vec<kopi::api::Distribution> =
+        let distributions: Vec<kopi::models::api::Distribution> =
             serde_json::from_str(empty_array).unwrap();
         assert!(distributions.is_empty());
     }
@@ -195,7 +197,7 @@ mod mock_tests {
     #[test]
     fn test_invalid_json_handling() {
         let invalid_json = "{ invalid json }";
-        let result = serde_json::from_str::<Vec<kopi::api::Distribution>>(invalid_json);
+        let result = serde_json::from_str::<Vec<kopi::models::api::Distribution>>(invalid_json);
         assert!(result.is_err());
     }
 }

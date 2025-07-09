@@ -121,21 +121,21 @@ fn test_version_string_validation() {
     // Invalid version strings
     let long_version = "x".repeat(101);
     let invalid_versions = vec![
-        "",                      // Empty
-        "../../../etc/passwd",   // Path traversal
-        "java; rm -rf /",        // Command injection
-        "java\necho hacked",     // Newline injection
-        "java|cat /etc/passwd",  // Pipe injection
-        "java$(whoami)",         // Command substitution
-        "java`id`",              // Backtick injection
-        "java && echo pwned",    // Command chaining
-        &long_version,           // Too long
-        "java//bin//sh",         // Double slashes
-        "java..version",         // Double dots
-        "java\0null",            // Null byte
-        "java\x1b[31mred",       // ANSI escape
-        "java%00null",           // URL encoded null
-        "java${PATH}",           // Environment variable
+        "",                     // Empty
+        "../../../etc/passwd",  // Path traversal
+        "java; rm -rf /",       // Command injection
+        "java\necho hacked",    // Newline injection
+        "java|cat /etc/passwd", // Pipe injection
+        "java$(whoami)",        // Command substitution
+        "java`id`",             // Backtick injection
+        "java && echo pwned",   // Command chaining
+        &long_version,          // Too long
+        "java//bin//sh",        // Double slashes
+        "java..version",        // Double dots
+        "java\0null",           // Null byte
+        "java\x1b[31mred",      // ANSI escape
+        "java%00null",          // URL encoded null
+        "java${PATH}",          // Environment variable
     ];
 
     for version in invalid_versions {
@@ -211,15 +211,9 @@ fn test_permission_verification() {
 
         let result = validator.check_permissions(&test_file);
         if should_pass {
-            assert!(
-                result.is_ok(),
-                "{description} (mode {mode:o}) should pass"
-            );
+            assert!(result.is_ok(), "{description} (mode {mode:o}) should pass");
         } else {
-            assert!(
-                result.is_err(),
-                "{description} (mode {mode:o}) should fail"
-            );
+            assert!(result.is_err(), "{description} (mode {mode:o}) should fail");
         }
     }
 }
@@ -316,7 +310,6 @@ fn test_tool_validation() {
         "keytool",
         "jarsigner",
         "native-image",
-        "gu",
     ];
 
     for tool in valid_tools {

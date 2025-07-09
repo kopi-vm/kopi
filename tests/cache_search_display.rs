@@ -2,10 +2,11 @@ mod common;
 use common::TestHomeGuard;
 use kopi::cache::DistributionCache;
 use kopi::cache::MetadataCache;
-use kopi::models::jdk::{
-    Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
-    PackageType, Version,
-};
+use kopi::models::distribution::Distribution;
+use kopi::models::metadata::JdkMetadata;
+use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
+use kopi::models::platform::{Architecture, OperatingSystem};
+use kopi::models::version::Version;
 
 fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
     let test_home = TestHomeGuard::new();

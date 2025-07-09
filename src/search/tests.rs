@@ -1,11 +1,12 @@
 use super::*;
 use crate::cache::{DistributionCache, MetadataCache};
 use crate::config::KopiConfig;
-use crate::models::jdk::{
-    Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
-    PackageType, Version,
-};
-use crate::version::parser::ParsedVersionRequest;
+use crate::models::distribution::Distribution;
+use crate::models::metadata::JdkMetadata;
+use crate::models::package::{ArchiveType, ChecksumType, PackageType};
+use crate::models::parser::ParsedVersionRequest;
+use crate::models::platform::{Architecture, OperatingSystem};
+use crate::models::version::Version;
 use std::str::FromStr;
 
 fn create_test_config() -> KopiConfig {

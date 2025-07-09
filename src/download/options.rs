@@ -1,4 +1,4 @@
-use crate::models::jdk::ChecksumType;
+use crate::models::package::ChecksumType;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 

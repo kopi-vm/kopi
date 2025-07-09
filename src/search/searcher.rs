@@ -1,9 +1,10 @@
 use crate::cache::{DistributionCache, MetadataCache};
 use crate::config::KopiConfig;
 use crate::error::Result;
-use crate::models::jdk::{Distribution, JdkMetadata};
+use crate::models::distribution::Distribution;
+use crate::models::metadata::JdkMetadata;
+use crate::models::parser::{ParsedVersionRequest, VersionParser};
 use crate::platform::matches_foojay_libc_type;
-use crate::version::parser::{ParsedVersionRequest, VersionParser};
 
 use super::models::{PlatformFilter, SearchResult, SearchResultRef};
 
@@ -179,7 +180,7 @@ impl<'a> PackageSearcher<'a> {
         version: &str,
         architecture: &str,
         operating_system: &str,
-        requested_package_type: Option<crate::models::jdk::PackageType>,
+        requested_package_type: Option<crate::models::package::PackageType>,
     ) -> Option<JdkMetadata> {
         let cache = self.cache;
 
@@ -224,7 +225,7 @@ impl<'a> PackageSearcher<'a> {
             // No specific package type requested, prefer JDK over JRE
             let jdk_packages: Vec<&JdkMetadata> = matching_packages
                 .iter()
-                .filter(|pkg| pkg.package_type == crate::models::jdk::PackageType::Jdk)
+                .filter(|pkg| pkg.package_type == crate::models::package::PackageType::Jdk)
                 .cloned()
                 .collect();
 

@@ -13,7 +13,7 @@ use crate::error::Result;
 use std::time::Duration;
 
 pub fn download_jdk(
-    package: &crate::models::jdk::JdkMetadata,
+    package: &crate::models::metadata::JdkMetadata,
     no_progress: bool,
     timeout_secs: Option<u64>,
 ) -> Result<DownloadResult> {

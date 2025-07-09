@@ -1,12 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ApiErrorResponse {
-    pub result: Vec<serde_json::Value>,
-    pub message: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Package {
     pub id: String,
     pub archive_type: String,

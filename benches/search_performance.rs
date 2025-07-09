@@ -1,9 +1,12 @@
 use criterion::{Criterion, black_box};
 use kopi::cache::{DistributionCache, MetadataCache};
 use kopi::config::KopiConfig;
-use kopi::models::jdk::{
-    Architecture, ArchiveType, ChecksumType, Distribution, JdkMetadata, OperatingSystem,
-    PackageType, Version,
+use kopi::models::{
+    distribution::Distribution,
+    metadata::JdkMetadata,
+    package::{ArchiveType, ChecksumType, PackageType},
+    platform::{Architecture, OperatingSystem},
+    version::Version,
 };
 use kopi::search::{PackageSearcher, PlatformFilter};
 use std::str::FromStr;

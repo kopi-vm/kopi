@@ -1,5 +1,5 @@
 use kopi::config::KopiConfig;
-use kopi::models::jdk::VersionRequest;
+use kopi::models::version::VersionRequest;
 use std::fs;
 use tempfile::TempDir;
 

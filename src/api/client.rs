@@ -1,6 +1,6 @@
-use crate::api::models::*;
 use crate::api::query::PackageQuery;
 use crate::error::{KopiError, Result};
+use crate::models::api::*;
 use crate::platform::get_foojay_libc_type;
 use attohttpc::{RequestBuilder, Session};
 use log::{debug, trace};
@@ -338,9 +338,7 @@ impl ApiClient {
                         match response.text() {
                             Ok(body) => {
                                 // Try to parse as API error response
-                                match serde_json::from_str::<crate::api::models::ApiErrorResponse>(
-                                    &body,
-                                ) {
+                                match serde_json::from_str::<crate::api::ApiErrorResponse>(&body) {
                                     Ok(error_response) => {
                                         // Check if the message indicates version not found
                                         if error_response.message.contains("not released yet") {

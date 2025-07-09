@@ -1,4 +1,4 @@
-use crate::models::jdk::Distribution;
+use crate::models::distribution::Distribution;
 use std::collections::HashMap;
 
 /// Categories of JDK tools

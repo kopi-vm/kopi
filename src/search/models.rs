@@ -1,4 +1,4 @@
-use crate::models::jdk::JdkMetadata;
+use crate::models::metadata::JdkMetadata;
 
 #[derive(Debug, Clone, Default)]
 pub struct PlatformFilter {

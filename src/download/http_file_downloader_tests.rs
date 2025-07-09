@@ -143,7 +143,7 @@ mod tests {
 
         let options = DownloadOptions {
             checksum: Some(expected_checksum),
-            checksum_type: Some(crate::models::jdk::ChecksumType::Sha256),
+            checksum_type: Some(crate::models::package::ChecksumType::Sha256),
             ..Default::default()
         };
 
@@ -167,7 +167,7 @@ mod tests {
 
         let options = DownloadOptions {
             checksum: Some("invalid_checksum".to_string()),
-            checksum_type: Some(crate::models::jdk::ChecksumType::Sha256),
+            checksum_type: Some(crate::models::package::ChecksumType::Sha256),
             ..Default::default()
         };
 

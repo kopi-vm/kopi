@@ -1,6 +1,7 @@
 use kopi::archive::extract_archive;
 use kopi::config::KopiConfig;
 use kopi::download::{DownloadOptions, HttpFileDownloader};
+use kopi::models::package::ChecksumType;
 use kopi::security::{is_trusted_domain, verify_https_security};
 use kopi::storage::JdkRepository;
 use mockito::Server;
@@ -168,7 +169,7 @@ fn test_archive_extraction_workflow() {
 
 #[test]
 fn test_storage_installation_workflow() {
-    use kopi::models::jdk::Distribution;
+    use kopi::models::distribution::Distribution;
 
     let temp_home = tempdir().unwrap();
     let config = KopiConfig::new(temp_home.path().to_path_buf()).unwrap();
@@ -264,7 +265,7 @@ fn test_download_progress_reporting() {
 
 #[test]
 fn test_concurrent_installation_safety() {
-    use kopi::models::jdk::Distribution;
+    use kopi::models::distribution::Distribution;
     use std::sync::Arc;
     use std::thread;
 
@@ -316,7 +317,7 @@ fn test_concurrent_installation_safety() {
 
 #[test]
 fn test_disk_space_simulation() {
-    use kopi::models::jdk::Distribution;
+    use kopi::models::distribution::Distribution;
 
     // This test is more of a unit test for the disk space check logic
     // In a real integration test, we'd need to mock the filesystem
@@ -556,6 +557,7 @@ fn test_download_checksum_mismatch() {
     let mut downloader = HttpFileDownloader::new();
     let options = DownloadOptions {
         checksum: Some(wrong_checksum.to_string()),
+        checksum_type: Some(ChecksumType::Sha256),
         ..Default::default()
     };
 

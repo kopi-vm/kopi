@@ -1,6 +1,6 @@
-use kopi::api::{Links, Package};
 use kopi::config::KopiConfig;
-use kopi::models::jdk::Distribution;
+use kopi::models::api::{Links, Package};
+use kopi::models::distribution::Distribution;
 use kopi::storage::JdkRepository;
 use std::fs;
 use tempfile::TempDir;

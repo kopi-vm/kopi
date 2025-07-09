@@ -3,7 +3,9 @@ use crate::archive::extract_archive;
 use crate::config::new_kopi_config;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
-use crate::models::jdk::{Distribution, JdkMetadata};
+use crate::models::distribution::Distribution;
+use crate::models::metadata::JdkMetadata;
+use crate::models::parser::VersionParser;
 use crate::platform::{
     get_current_architecture, get_current_os, get_foojay_libc_type, get_platform_description,
     matches_foojay_libc_type,
@@ -13,7 +15,6 @@ use crate::security::verify_checksum;
 use crate::shim::discovery::{discover_distribution_tools, discover_jdk_tools};
 use crate::shim::installer::ShimInstaller;
 use crate::storage::JdkRepository;
-use crate::version::parser::VersionParser;
 use log::{debug, info, trace, warn};
 use std::str::FromStr;
 
@@ -246,10 +247,10 @@ impl InstallCommand {
     fn find_matching_package(
         &self,
         distribution: &Distribution,
-        version: &crate::models::jdk::Version,
-        version_request: &crate::version::parser::ParsedVersionRequest,
+        version: &crate::models::version::Version,
+        version_request: &crate::models::parser::ParsedVersionRequest,
         javafx_bundled: bool,
-    ) -> Result<crate::api::Package> {
+    ) -> Result<crate::models::api::Package> {
         // Build query parameters
         let arch = get_current_architecture();
         let os = get_current_os();
@@ -387,7 +388,10 @@ impl InstallCommand {
         Ok(package)
     }
 
-    fn convert_package_to_metadata(&self, package: crate::api::Package) -> Result<JdkMetadata> {
+    fn convert_package_to_metadata(
+        &self,
+        package: crate::models::api::Package,
+    ) -> Result<JdkMetadata> {
         let arch = get_current_architecture();
         let os = get_current_os();
 
@@ -405,12 +409,12 @@ impl InstallCommand {
         Ok(JdkMetadata {
             id: package.id,
             distribution: package.distribution.clone(),
-            version: crate::models::jdk::Version::from_str(&package.java_version)?,
+            version: crate::models::version::Version::from_str(&package.java_version)?,
             distribution_version: package.distribution_version,
-            architecture: crate::models::jdk::Architecture::from_str(&arch)?,
-            operating_system: crate::models::jdk::OperatingSystem::from_str(&os)?,
-            package_type: crate::models::jdk::PackageType::Jdk,
-            archive_type: crate::models::jdk::ArchiveType::from_str(&package.archive_type)?,
+            architecture: crate::models::platform::Architecture::from_str(&arch)?,
+            operating_system: crate::models::platform::OperatingSystem::from_str(&os)?,
+            package_type: crate::models::package::PackageType::Jdk,
+            archive_type: crate::models::package::ArchiveType::from_str(&package.archive_type)?,
             download_url: package.links.pkg_download_redirect,
             checksum: None, // Foojay API doesn't provide checksums directly
             checksum_type: None,
@@ -422,11 +426,11 @@ impl InstallCommand {
             latest_build_available: package.latest_build_available,
         })
     }
-    fn convert_metadata_to_package(&self, metadata: &JdkMetadata) -> crate::api::Package {
+    fn convert_metadata_to_package(&self, metadata: &JdkMetadata) -> crate::models::api::Package {
         // Convert JdkMetadata to API Package format
         let pkg_info_uri = format!("https://api.foojay.io/disco/v3.0/packages/{}", metadata.id);
 
-        crate::api::Package {
+        crate::models::api::Package {
             id: metadata.id.clone(),
             archive_type: metadata.archive_type.to_string(),
             distribution: metadata.distribution.clone(),
@@ -443,7 +447,7 @@ impl InstallCommand {
                 metadata.architecture,
                 metadata.archive_type.extension()
             ),
-            links: crate::api::Links {
+            links: crate::models::api::Links {
                 pkg_download_redirect: metadata.download_url.clone(),
                 pkg_info_uri: Some(pkg_info_uri),
             },
@@ -517,9 +521,9 @@ mod tests {
 
     #[test]
     fn test_convert_metadata_to_package() {
-        use crate::models::jdk::{
-            Architecture, ArchiveType, ChecksumType, OperatingSystem, PackageType, Version,
-        };
+        use crate::models::package::{ArchiveType, ChecksumType, PackageType};
+        use crate::models::platform::{Architecture, OperatingSystem};
+        use crate::models::version::Version;
 
         let cmd = InstallCommand::new().unwrap();
 

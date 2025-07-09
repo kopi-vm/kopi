@@ -1,8 +1,8 @@
 use crate::cache;
 use crate::config::new_kopi_config;
 use crate::error::Result;
+use crate::models::parser::VersionParser;
 use crate::search::{PackageSearcher, get_current_platform};
-use crate::version::parser::VersionParser;
 use chrono::Local;
 use clap::Subcommand;
 use colored::*;
@@ -405,7 +405,7 @@ fn search_cache(
             // Sort results
             let mut sorted_results = results.clone();
             sorted_results.sort_by(|a, b| {
-                use crate::models::jdk::PackageType;
+                use crate::models::package::PackageType;
 
                 // In detailed mode, sort by size first (ascending) for deduplication
                 if detailed {
@@ -804,7 +804,7 @@ mod tests {
     #[test]
     fn test_search_cache_version_only_no_default_distribution() {
         use crate::config::KopiConfig;
-        use crate::version::parser::VersionParser;
+        use crate::models::parser::VersionParser;
 
         // Test that version-only searches don't default to Temurin
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
@@ -818,10 +818,11 @@ mod tests {
     #[serial]
     fn test_search_cache_with_synonym_resolution() {
         use crate::cache::{DistributionCache, MetadataCache};
-        use crate::models::jdk::{
-            Architecture, ArchiveType, ChecksumType, Distribution as JdkDistribution, JdkMetadata,
-            OperatingSystem, PackageType, Version,
-        };
+        use crate::models::distribution::Distribution as JdkDistribution;
+        use crate::models::metadata::JdkMetadata;
+        use crate::models::package::{ArchiveType, ChecksumType, PackageType};
+        use crate::models::platform::{Architecture, OperatingSystem};
+        use crate::models::version::Version;
         use tempfile::TempDir;
 
         // Create a temporary directory for the test

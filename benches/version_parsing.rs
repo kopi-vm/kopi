@@ -1,7 +1,7 @@
 use criterion::{BenchmarkId, Criterion, black_box};
 use kopi::config::KopiConfig;
-use kopi::models::jdk::Version;
-use kopi::version::parser::VersionParser;
+use kopi::models::parser::VersionParser;
+use kopi::models::version::Version;
 use std::env;
 use std::str::FromStr;
 

@@ -5,10 +5,13 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use crate::api::{ApiClient, ApiMetadata};
+use crate::api::ApiClient;
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
-use crate::models::jdk::{ChecksumType, Distribution as JdkDistribution, JdkMetadata};
+use crate::models::api::ApiMetadata;
+use crate::models::distribution::Distribution as JdkDistribution;
+use crate::models::metadata::JdkMetadata;
+use crate::models::package::ChecksumType;
 use crate::platform;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -316,8 +319,10 @@ pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)
     Ok((package_info.checksum, checksum_type))
 }
 
-fn parse_architecture_from_filename(filename: &str) -> Option<crate::models::jdk::Architecture> {
-    use crate::models::jdk::Architecture;
+fn parse_architecture_from_filename(
+    filename: &str,
+) -> Option<crate::models::platform::Architecture> {
+    use crate::models::platform::Architecture;
     use std::str::FromStr;
 
     // Common architecture patterns in filenames
@@ -346,10 +351,12 @@ fn parse_architecture_from_filename(filename: &str) -> Option<crate::models::jdk
     None
 }
 
-fn convert_package_to_jdk_metadata(api_package: crate::api::Package) -> Result<JdkMetadata> {
-    use crate::models::jdk::{
-        Architecture, ArchiveType, ChecksumType, OperatingSystem, PackageType, Version,
-    };
+fn convert_package_to_jdk_metadata(
+    api_package: crate::models::api::Package,
+) -> Result<JdkMetadata> {
+    use crate::models::package::{ArchiveType, ChecksumType, PackageType};
+    use crate::models::platform::{Architecture, OperatingSystem};
+    use crate::models::version::Version;
     use std::str::FromStr;
 
     // Parse version
@@ -484,9 +491,9 @@ mod tests {
 
     #[test]
     fn test_has_version() {
-        use crate::models::jdk::{
-            Architecture, ArchiveType, ChecksumType, OperatingSystem, PackageType, Version,
-        };
+        use crate::models::package::{ArchiveType, ChecksumType, PackageType};
+        use crate::models::platform::{Architecture, OperatingSystem};
+        use crate::models::version::Version;
 
         let mut cache = MetadataCache::new();
 
@@ -523,9 +530,9 @@ mod tests {
 
     #[test]
     fn test_synonym_resolution() {
-        use crate::models::jdk::{
-            Architecture, ArchiveType, ChecksumType, OperatingSystem, PackageType, Version,
-        };
+        use crate::models::package::{ArchiveType, ChecksumType, PackageType};
+        use crate::models::platform::{Architecture, OperatingSystem};
+        use crate::models::version::Version;
 
         let mut cache = MetadataCache::new();
 
@@ -604,7 +611,7 @@ mod tests {
 
     #[test]
     fn test_parse_architecture_from_filename() {
-        use crate::models::jdk::Architecture;
+        use crate::models::platform::Architecture;
         assert_eq!(
             parse_architecture_from_filename("OpenJDK21U-jdk_x64_linux_hotspot_21.0.1_12.tar.gz"),
             Some(Architecture::X64)
@@ -627,9 +634,9 @@ mod tests {
 
     #[test]
     fn test_find_package() {
-        use crate::models::jdk::{
-            Architecture, ArchiveType, ChecksumType, OperatingSystem, PackageType, Version,
-        };
+        use crate::models::package::{ArchiveType, ChecksumType, PackageType};
+        use crate::models::platform::{Architecture, OperatingSystem};
+        use crate::models::version::Version;
 
         let mut cache = MetadataCache::new();
 
@@ -672,7 +679,7 @@ mod tests {
 
     #[test]
     fn test_convert_package_to_jdk_metadata() {
-        use crate::api::{Links, Package};
+        use crate::models::api::{Links, Package};
 
         let api_package = Package {
             id: "test123".to_string(),

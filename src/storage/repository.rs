@@ -1,7 +1,7 @@
-use crate::api::Package;
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
-use crate::models::jdk::Distribution;
+use crate::models::api::Package;
+use crate::models::distribution::Distribution;
 use crate::storage::disk_space::DiskSpaceChecker;
 use crate::storage::installation::{InstallationContext, JdkInstaller};
 use crate::storage::listing::{InstalledJdk, JdkLister};

@@ -12,4 +12,3 @@ pub mod search;
 pub mod security;
 pub mod shim;
 pub mod storage;
-pub mod version;

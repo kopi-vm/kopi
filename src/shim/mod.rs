@@ -1,6 +1,7 @@
 use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
-use crate::models::jdk::{Distribution, VersionRequest};
+use crate::models::distribution::Distribution;
+use crate::models::version::VersionRequest;
 use crate::storage::JdkRepository;
 use std::env;
 use std::ffi::OsString;
@@ -270,8 +271,8 @@ fn find_jdk_installation(
 fn version_matches(installed_version: &str, pattern: &str) -> bool {
     // Parse both versions
     if let (Ok(installed), Ok(_requested)) = (
-        crate::models::jdk::Version::from_str(installed_version),
-        crate::models::jdk::Version::from_str(pattern),
+        crate::models::version::Version::from_str(installed_version),
+        crate::models::version::Version::from_str(pattern),
     ) {
         installed.matches_pattern(pattern)
     } else {

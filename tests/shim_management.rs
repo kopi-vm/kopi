@@ -1,4 +1,4 @@
-use kopi::models::jdk::Distribution;
+use kopi::models::distribution::Distribution;
 use kopi::platform::shell::{self as shim_platform};
 use kopi::shim::installer::ShimInstaller;
 use kopi::shim::tools::{ToolRegistry, default_shim_tools};

@@ -1,9 +1,9 @@
 #[cfg(test)]
 use crate::api::client::ApiClient;
 #[cfg(test)]
-use crate::api::models::*;
-#[cfg(test)]
 use crate::api::query::PackageQuery;
+#[cfg(test)]
+use crate::models::api::*;
 
 #[test]
 fn test_api_client_creation() {

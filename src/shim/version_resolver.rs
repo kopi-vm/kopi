@@ -1,5 +1,5 @@
 use crate::error::{KopiError, Result};
-use crate::models::jdk::VersionRequest;
+use crate::models::version::VersionRequest;
 use dirs::home_dir;
 use std::env;
 use std::fs;

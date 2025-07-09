@@ -1,5 +1,5 @@
 use crate::error::{KopiError, Result};
-use crate::models::jdk::ChecksumType;
+use crate::models::package::ChecksumType;
 use crate::platform::permissions;
 use digest::{Digest, DynDigest};
 use sha1::Sha1;

@@ -3,9 +3,9 @@ mod installation;
 mod listing;
 mod repository;
 
-use crate::api::Package;
 use crate::error::Result;
-use crate::models::jdk::Distribution;
+use crate::models::api::Package;
+use crate::models::distribution::Distribution;
 use std::fs;
 use std::path::Path;
 
@@ -36,7 +36,7 @@ pub fn save_jdk_metadata(
 #[cfg(test)]
 mod metadata_tests {
     use super::*;
-    use crate::api::Links;
+    use crate::models::api::Links;
     use tempfile::TempDir;
 
     #[test]
