@@ -1,7 +1,7 @@
 # Distribution-Specific Tools Investigation Report
 
 ## Investigation Date
-2025-07-08 (Updated: 2025-07-09 - BellSoft Liberica and Red Hat Mandrel investigations)
+2025-07-08 (Updated: 2025-07-09 - Completed all remaining distributions)
 
 ## Purpose
 To verify whether the current implementation of `discover_distribution_tools` in `/src/shim/discovery.rs` correctly handles distribution-specific tools, and to identify any additional distributions that may require special handling.
@@ -25,6 +25,9 @@ To verify whether the current implementation of `discover_distribution_tools` in
 - **SAP Machine** 21.0.7 (installed on 2025-07-09)
 - **BellSoft Liberica** 21.0.7+9 (installed on 2025-07-09 after checksum fix)
 - **Red Hat Mandrel** 21.3.6 (installed on 2025-07-09)
+- **OpenJDK** 21.0.2 (installed on 2025-07-09)
+- **Trava OpenJDK** 11.0.15+1 (installed on 2025-07-09, JDK 21 not available)
+- **Tencent Kona** 21.0.7+1 (installed on 2025-07-09)
 
 
 ## Findings
@@ -86,6 +89,11 @@ This tool is specific to SAP Machine distribution and provides advanced profilin
 
 - **Alibaba Dragonwell**: No distribution-specific tools found (contains only standard JDK tools)
 - **Temurin, Corretto, Zulu**: No vendor-specific tools discovered beyond the standard JDK toolset
+- **BellSoft Liberica**: No distribution-specific tools found (contains only standard JDK tools)
+- **Red Hat Mandrel**: No distribution-specific tools beyond `native-image` (includes deprecated tools from older JDK)
+- **OpenJDK**: Reference implementation with only standard JDK tools
+- **Trava OpenJDK**: Standard OpenJDK build without modifications
+- **Tencent Kona**: Standard OpenJDK build without distribution-specific tools
 
 ## Implementation Status
 
@@ -162,12 +170,60 @@ Mandrel 21.3.6 includes the following tools:
 - The deprecated tools (`jaotc`, `jjs`, `pack200`, `unpack200`, `rmic`, `rmid`) should NOT be added to the standard tools registry as they are obsolete
 - The existing GraalVM handling for `native-image` is sufficient for Mandrel
 
+## OpenJDK Investigation (Completed 2025-07-09)
+
+### Installation and Analysis
+**OpenJDK** 21.0.2 was successfully installed and analyzed. This is the reference implementation of Java SE.
+
+### Investigation Results
+OpenJDK 21.0.2 includes:
+- All standard JDK tools expected for JDK 21
+- No distribution-specific tools
+- No deprecated tools (as expected for JDK 21)
+
+### Recommendations
+- No special handling needed in `discover_distribution_tools` for OpenJDK
+- OpenJDK serves as the baseline for standard JDK tools
+
+## Trava OpenJDK Investigation (Completed 2025-07-09)
+
+### Installation and Analysis
+**Trava OpenJDK** 11.0.15+1 was successfully installed and analyzed. Note: Trava only provides LTS versions (8, 11) and version 21 is not available through foojay.io.
+
+### Investigation Results
+Trava OpenJDK 11.0.15 includes:
+- All standard JDK 11 tools
+- Deprecated/legacy tools expected in JDK 11:
+  - `jaotc` - Java Ahead-of-Time compiler (removed in JDK 17+)
+  - `jjs` - Nashorn JavaScript shell (removed in JDK 15+)
+  - `pack200`/`unpack200` - JAR compression tools (removed in JDK 14+)
+  - `rmic`/`rmid` - RMI tools (removed in JDK 15+)
+- No Trava-specific tools found
+
+### Recommendations
+- No special handling needed in `discover_distribution_tools` for Trava OpenJDK
+- Trava appears to be a standard OpenJDK build without modifications
+
+## Tencent Kona Investigation (Completed 2025-07-09)
+
+### Installation and Analysis
+**Tencent Kona** 21.0.7+1 was successfully installed and analyzed. Tencent Kona is Tencent's OpenJDK distribution optimized for cloud applications.
+
+### Investigation Results
+Tencent Kona 21.0.7 includes:
+- All standard JDK 21 tools
+- No distribution-specific tools
+- No deprecated tools (as expected for JDK 21)
+
+### Recommendations
+- No special handling needed in `discover_distribution_tools` for Tencent Kona
+- Tencent Kona appears to be a standard OpenJDK build without distribution-specific modifications
+
 ## Future Recommendations
 
-1. **Distribution Investigations Still Needed**: 
-   - OpenJDK
-   - Trava OpenJDK
-   - Tencent Kona
+1. **All Major Distributions Investigated**: 
+   - All distributions available through foojay.io have been analyzed
+   - No additional distribution-specific tools discovered beyond GraalVM, IBM Semeru, and SAP Machine
 
 2. **Implementation Tasks**:
    - ✅ COMPLETED: Added SAP Machine support to `discover_distribution_tools` for the `asprof` tool
@@ -194,6 +250,13 @@ Mandrel 21.3.6 includes the following tools:
 - Red Hat Mandrel 21.3.6 was successfully installed and analyzed (2025-07-09)
 - Mandrel includes deprecated tools (jaotc, jjs, pack200/unpack200, rmic/rmid) that are not present in modern JDKs
 - Mandrel is a GraalVM derivative focused on Quarkus, containing only native-image from GraalVM tools
+- OpenJDK 21.0.2 was successfully installed and analyzed (2025-07-09)
+- OpenJDK serves as the baseline reference implementation with only standard JDK tools
+- Trava OpenJDK 11.0.15+1 was successfully installed and analyzed (2025-07-09)
+- Trava only provides LTS versions (8, 11) through foojay.io; version 21 is not available
+- Trava appears to be a standard OpenJDK build without distribution-specific modifications
+- Tencent Kona 21.0.7+1 was successfully installed and analyzed (2025-07-09)
+- Kona is optimized for cloud applications but contains only standard JDK tools
 
 ## Conclusion
 
@@ -230,5 +293,22 @@ The investigation successfully identified distribution-specific tools and missin
    - Contains only `native-image` from GraalVM tools (no `gu`, `js`, or other native-image utilities)
    - Includes several deprecated/legacy tools (jaotc, jjs, pack200/unpack200, rmic/rmid) from older JDK versions
    - No special handling required - existing GraalVM native-image handling is sufficient
+
+7. **OpenJDK** - Investigation completed:
+   - Successfully installed and analyzed version 21.0.2
+   - Reference implementation with only standard JDK tools
+   - No distribution-specific tools found, no special handling required
+
+8. **Trava OpenJDK** - Investigation completed:
+   - Successfully installed and analyzed version 11.0.15+1 (JDK 21 not available)
+   - Standard OpenJDK build without modifications
+   - Contains deprecated tools expected in JDK 11
+   - No distribution-specific tools found, no special handling required
+
+9. **Tencent Kona** - Investigation completed:
+   - Successfully installed and analyzed version 21.0.7+1
+   - Cloud-optimized OpenJDK distribution from Tencent
+   - Contains only standard JDK 21 tools
+   - No distribution-specific tools found, no special handling required
 
 The implementation now correctly handles all known distribution-specific tools (GraalVM, IBM Semeru, and SAP Machine) and includes a comprehensive registry of standard JDK tools.
