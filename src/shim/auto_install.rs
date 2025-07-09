@@ -237,7 +237,16 @@ mod tests {
         let installer = AutoInstaller::new(config);
 
         // Test successful command
-        let cmd = std::process::Command::new("echo");
+        #[cfg(unix)]
+        let cmd = std::process::Command::new("true");
+
+        #[cfg(windows)]
+        let mut cmd = {
+            let mut c = std::process::Command::new("cmd");
+            c.args(&["/c", "exit 0"]);
+            c
+        };
+
         let result = installer.execute_with_timeout(cmd, Duration::from_secs(5));
         assert!(result.is_ok());
         assert!(result.unwrap().success());
