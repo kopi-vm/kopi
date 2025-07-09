@@ -1,7 +1,7 @@
 # Distribution-Specific Tools Investigation Report
 
 ## Investigation Date
-2025-07-08
+2025-07-08 (Updated: 2025-07-09)
 
 ## Purpose
 To verify whether the current implementation of `discover_distribution_tools` in `/src/shim/discovery.rs` correctly handles distribution-specific tools, and to identify any additional distributions that may require special handling.
@@ -29,40 +29,39 @@ To verify whether the current implementation of `discover_distribution_tools` in
 
 ## Findings
 
-### 1. GraalVM Special Handling Needs Update
+### 1. GraalVM Special Handling (Updated)
 
-The current implementation in `discover_distribution_tools` checks for:
-- `gu` (GraalVM Updater)
-- `native-image` (Native Image compiler)
-
-However, investigation of GraalVM 21.0.7 revealed:
+Investigation of GraalVM 21.0.7 revealed:
 - `native-image` is present ✓
 - `gu` is NOT present in GraalVM 21.0.7 (likely removed in recent versions)
 - `js` is NOT present in GraalVM 21.0.7 (consistent with tools.rs which notes it was removed in version 23+)
 
-Additionally, GraalVM 21.0.7 includes these tools not currently in the registry:
+GraalVM 21.0.7 includes three native-image related tools:
+- `native-image` - Native Image compiler
 - `native-image-configure` - Configuration tool for native image builds
 - `native-image-inspect` - Inspection tool for native images
 
-These additional native-image related tools should be considered for inclusion.
+**Status**: ✅ The implementation has been updated:
+- Removed `gu` from the GraalVM tool check
+- Added all three native-image tools to both `discover_distribution_tools` and the tool registry
 
-### 2. Missing Standard JDK Tools in Registry
+### 2. Missing Standard JDK Tools (Added)
 
-The following tools were found in ALL investigated distributions but are NOT listed in `/src/shim/tools.rs`:
+The following tools were found in ALL investigated distributions but were NOT initially listed in `/src/shim/tools.rs`:
 
 ```
-jdeprscan    - Deprecated API scanner
-jhsdb        - HotSpot Debugger
-jimage       - JDK module image tool
+jdeprscan    - Deprecated API scanner (min_version: 9)
+jhsdb        - HotSpot Debugger (min_version: 9)
+jimage       - JDK module image tool (min_version: 9)
 jrunscript   - Script execution tool
 jstatd       - JSTAT daemon
-jwebserver   - Simple web server (Java 18+)
+jwebserver   - Simple web server (min_version: 18)
 rmiregistry  - RMI registry
 ```
 
-These appear to be standard JDK tools that should be added to the tool registry.
+**Status**: ✅ All seven tools have been added to the tool registry with appropriate version constraints and categories.
 
-### 3. IBM Semeru Contains OpenJ9-Specific Tools
+### 3. IBM Semeru Contains OpenJ9-Specific Tools (Implemented)
 
 **IBM Semeru** includes four distribution-specific tools not found in HotSpot-based JDKs:
 - **jdmpview** - Java dump viewer for analyzing system dumps
@@ -72,47 +71,41 @@ These appear to be standard JDK tools that should be added to the tool registry.
 
 These tools are specific to the OpenJ9 VM that Semeru uses.
 
-### 4. GraalVM Contains Additional Native Image Tools
+**Status**: ✅ The implementation has been updated to handle Semeru/OpenJ9 distributions and discover these four specific tools.
 
-**GraalVM 21.0.7** investigation revealed:
-- Standard JDK tools plus three native-image related tools:
-  - **native-image** - Already tracked in tools.rs
-  - **native-image-configure** - NOT in tools.rs, helps configure native image builds
-  - **native-image-inspect** - NOT in tools.rs, inspects native image binaries
-- Missing tools that are defined in tools.rs:
-  - **gu** - GraalVM Updater (not present in 21.0.7)
-  - **js** - JavaScript interpreter (consistent with removal in 23+)
-
-### 5. Other Distributions
+### 4. Other Distributions
 
 - **Alibaba Dragonwell**: No distribution-specific tools found (contains only standard JDK tools)
 - **Temurin, Corretto, Zulu**: No vendor-specific tools discovered beyond the standard JDK toolset
 
-## Recommendations
+## Implementation Status
 
-1. **Update GraalVM Special Handling**: 
-   - Remove `gu` from the GraalVM tool check (no longer present in recent versions)
-   - Keep `native-image` as the primary GraalVM identifier
-   - Consider adding `native-image-configure` and `native-image-inspect` to the tool registry
+Based on the investigation findings, the following changes have been implemented:
 
-2. **Add IBM Semeru/OpenJ9 Special Handling**: Update `discover_distribution_tools` to recognize Semeru's four specific tools:
-   - jdmpview
-   - jitserver
-   - jpackcore
-   - traceformat
+1. **✅ Updated GraalVM Special Handling**: 
+   - Removed `gu` from the GraalVM tool check
+   - Added `native-image`, `native-image-configure`, and `native-image-inspect` to discovery
+   - All three tools added to the tool registry
 
-3. **Update Standard Tools Registry**: Add the seven missing standard tools to `/src/shim/tools.rs`:
-   - Consider version constraints (e.g., `jwebserver` requires Java 18+)
-   - These tools should be categorized appropriately (Debug, Utility, etc.)
+2. **✅ Added IBM Semeru/OpenJ9 Special Handling**: 
+   - `discover_distribution_tools` now recognizes Semeru's four specific tools
+   - Handles both "semeru" and "openj9" distribution names
 
-4. **Future Distribution Investigations**: 
+3. **✅ Updated Standard Tools Registry**: 
+   - Added all seven missing standard tools to `/src/shim/tools.rs`
+   - Applied appropriate version constraints (e.g., `jwebserver` min_version: 18)
+   - Categorized tools appropriately
+
+## Future Recommendations
+
+1. **Distribution Investigations Still Needed**: 
    - Red Hat Mandrel (GraalVM derivative, may have unique tools)
    - OpenJDK
    - Trava OpenJDK
    - Tencent Kona
    - BellSoft Liberica (once version format issues are resolved)
 
-5. **Consider Tool Discovery Enhancement**: The current approach of hardcoding distribution-specific tools works for known cases but could be enhanced with:
+2. **Potential Enhancements**: 
    - Dynamic discovery of non-standard tools
    - Metadata about tool availability per distribution version
    - Caching of discovered tools per installation
@@ -126,13 +119,19 @@ These tools are specific to the OpenJ9 VM that Semeru uses.
 
 ## Conclusion
 
-The investigation revealed that two distributions require special handling in `discover_distribution_tools`:
+The investigation successfully identified distribution-specific tools and missing standard JDK tools. All findings have been implemented:
 
-1. **GraalVM** - Current implementation needs updating:
-   - Remove check for `gu` (no longer present in GraalVM 21.0.7)
-   - Continue checking for `native-image` as the primary identifier
-   - Consider adding `native-image-configure` and `native-image-inspect` to the registry
+1. **GraalVM** - Implementation updated:
+   - Removed check for `gu` (confirmed absent in GraalVM 21.0.7)
+   - Now checks for three native-image tools: `native-image`, `native-image-configure`, and `native-image-inspect`
+   - All tools properly added to the registry with distribution exclusions
    
-2. **IBM Semeru** - Newly discovered to include four OpenJ9-specific tools that need to be added
+2. **IBM Semeru** - OpenJ9-specific tools implemented:
+   - Four tools are now discovered: `jdmpview`, `jitserver`, `jpackcore`, `traceformat`
+   - Handles both "semeru" and "openj9" distribution identifiers
 
-The implementation should be updated to reflect these findings. Additionally, seven standard JDK tools were found to be missing from the tool registry and should be added.
+3. **Standard JDK Tools** - Seven missing tools added to the registry:
+   - All tools categorized and versioned appropriately
+   - Version constraints applied where necessary (e.g., `jwebserver` for Java 18+)
+
+The implementation now correctly handles all known distribution-specific tools and includes a comprehensive registry of standard JDK tools.
