@@ -19,11 +19,9 @@ pub fn create_symlink(target: &Path, link: &Path) -> std::io::Result<()> {
     // Verify the file sizes match
     let source_size = fs::metadata(target)?.len();
     if bytes_copied != source_size {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        return Err(std::io::Error::other(
             format!(
-                "Copy size mismatch: expected {} bytes, copied {} bytes",
-                source_size, bytes_copied
+                "Copy size mismatch: expected {source_size} bytes, copied {bytes_copied} bytes"
             ),
         ));
     }

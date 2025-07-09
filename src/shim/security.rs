@@ -2,9 +2,6 @@ use crate::error::KopiError;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
-
 use super::tools::ToolRegistry;
 use crate::config::KopiConfig;
 
@@ -94,52 +91,7 @@ impl SecurityValidator {
     }
 
     pub fn check_permissions(&self, path: &Path) -> Result<(), KopiError> {
-        let metadata = fs::metadata(path).map_err(|e| {
-            KopiError::SystemError(format!(
-                "Failed to get file metadata for '{}': {}",
-                path.display(),
-                e
-            ))
-        })?;
-
-        if !metadata.is_file() {
-            return Err(KopiError::SecurityError(format!(
-                "Path '{}' is not a regular file",
-                path.display()
-            )));
-        }
-
-        #[cfg(unix)]
-        {
-            let permissions = metadata.permissions();
-            let mode = permissions.mode();
-
-            if mode & 0o111 == 0 {
-                return Err(KopiError::SecurityError(format!(
-                    "File '{}' is not executable",
-                    path.display()
-                )));
-            }
-
-            if mode & 0o002 != 0 {
-                return Err(KopiError::SecurityError(format!(
-                    "File '{}' is world-writable, which is a security risk",
-                    path.display()
-                )));
-            }
-        }
-
-        #[cfg(windows)]
-        {
-            if !path.extension().map_or(false, |ext| ext == "exe") {
-                return Err(KopiError::SecurityError(format!(
-                    "File '{}' does not have .exe extension",
-                    path.display()
-                )));
-            }
-        }
-
-        Ok(())
+        crate::platform::permissions::check_executable_permissions(path)
     }
 
     pub fn validate_symlink(&self, symlink_path: &Path) -> Result<(), KopiError> {
@@ -257,6 +209,7 @@ mod tests {
     #[cfg(unix)]
     fn test_check_permissions_unix() {
         use std::fs::Permissions;
+        use std::os::unix::fs::PermissionsExt;
 
         let (validator, temp_dir) = create_test_validator();
         let exec_file = temp_dir.path().join("executable");

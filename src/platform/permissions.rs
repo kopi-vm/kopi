@@ -1,6 +1,4 @@
-#[cfg(windows)]
-use crate::error::KopiError;
-use crate::error::Result;
+use crate::error::{KopiError, Result};
 use std::path::Path;
 
 /// Check if a file has secure permissions
@@ -29,6 +27,19 @@ pub fn set_secure_permissions(path: &Path) -> Result<()> {
     }
 }
 
+/// Check if a file has valid executable permissions
+pub fn check_executable_permissions(path: &Path) -> Result<()> {
+    #[cfg(unix)]
+    {
+        check_executable_permissions_unix(path)
+    }
+
+    #[cfg(windows)]
+    {
+        check_executable_permissions_windows(path)
+    }
+}
+
 #[cfg(unix)]
 fn check_file_permissions_unix(path: &Path) -> Result<bool> {
     use std::os::unix::fs::PermissionsExt;
@@ -54,8 +65,7 @@ fn check_file_permissions_windows(path: &Path) -> Result<bool> {
     // On Windows, check if the file is read-only and exists
     if !metadata.is_file() {
         return Err(KopiError::SecurityError(format!(
-            "Path {:?} is not a regular file",
-            path
+            "Path {path:?} is not a regular file"
         )));
     }
 
@@ -63,12 +73,11 @@ fn check_file_permissions_windows(path: &Path) -> Result<bool> {
     // In Windows, files without read-only attribute are writable by the owner
     // For JDK files, we generally want them to be read-only after installation
     if metadata.permissions().readonly() {
-        log::debug!("File {:?} is read-only (secure)", path);
+        log::debug!("File {path:?} is read-only (secure)");
         Ok(true)
     } else {
         log::warn!(
-            "File {:?} is writable - consider setting read-only for security",
-            path
+            "File {path:?} is writable - consider setting read-only for security"
         );
         Ok(true) // Still return true as writable files are not inherently insecure on Windows
     }
@@ -98,6 +107,63 @@ fn set_secure_permissions_windows(path: &Path) -> Result<()> {
     permissions.set_readonly(true);
 
     std::fs::set_permissions(path, permissions)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+fn check_executable_permissions_unix(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    
+    let metadata = std::fs::metadata(path)?;
+
+    if !metadata.is_file() {
+        return Err(KopiError::SecurityError(format!(
+            "Path '{}' is not a regular file",
+            path.display()
+        )));
+    }
+
+    let permissions = metadata.permissions();
+    let mode = permissions.mode();
+
+    // Check if file is executable
+    if mode & 0o111 == 0 {
+        return Err(KopiError::SecurityError(format!(
+            "File '{}' is not executable",
+            path.display()
+        )));
+    }
+
+    // Check if file is world-writable (security risk)
+    if mode & 0o002 != 0 {
+        return Err(KopiError::SecurityError(format!(
+            "File '{}' is world-writable, which is a security risk",
+            path.display()
+        )));
+    }
+
+    Ok(())
+}
+
+#[cfg(windows)]
+fn check_executable_permissions_windows(path: &Path) -> Result<()> {
+    let metadata = std::fs::metadata(path)?;
+
+    if !metadata.is_file() {
+        return Err(KopiError::SecurityError(format!(
+            "Path '{}' is not a regular file",
+            path.display()
+        )));
+    }
+
+    // On Windows, check for .exe extension
+    if !path.extension().is_some_and(|ext| ext == "exe") {
+        return Err(KopiError::SecurityError(format!(
+            "File '{}' does not have .exe extension",
+            path.display()
+        )));
+    }
+
     Ok(())
 }
 

@@ -141,7 +141,7 @@ impl AutoInstaller {
                         if parent == shims_dir {
                             // Look for kopi in the bin directory
                             if let Ok(bin_dir) = self.config.bin_dir() {
-                                let kopi_bin_path = bin_dir.join(&kopi_name);
+                                let kopi_bin_path = bin_dir.join(kopi_name);
                                 searched_paths.push(kopi_bin_path.display().to_string());
                                 if kopi_bin_path.exists() {
                                     return Ok(kopi_bin_path);
