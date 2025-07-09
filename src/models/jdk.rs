@@ -346,6 +346,7 @@ pub enum ChecksumType {
 pub struct VersionRequest {
     pub version_pattern: String,
     pub distribution: Option<String>,
+    pub package_type: Option<PackageType>,
 }
 
 impl VersionRequest {
@@ -353,11 +354,17 @@ impl VersionRequest {
         Self {
             version_pattern,
             distribution: None,
+            package_type: None,
         }
     }
 
     pub fn with_distribution(mut self, distribution: String) -> Self {
         self.distribution = Some(distribution);
+        self
+    }
+
+    pub fn with_package_type(mut self, package_type: PackageType) -> Self {
+        self.package_type = Some(package_type);
         self
     }
 }

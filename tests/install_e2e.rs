@@ -387,7 +387,7 @@ fn test_actual_download() {
     // This test might take a while and requires internet
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("install")
-        .arg("8") // Older versions might be smaller
+        .arg("11") // LTS version with reliable JDK packages
         .arg("--timeout")
         .arg("300")
         .timeout(std::time::Duration::from_secs(600))
@@ -407,11 +407,11 @@ fn test_install_and_verify_files() {
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("cache").arg("refresh").assert().success();
 
-    // Install JDK 8 (typically smaller than newer versions)
+    // Install JDK 11 (LTS version with reliable JDK packages)
     let mut cmd = get_test_command(&kopi_home);
     let output = cmd
         .arg("install")
-        .arg("8")
+        .arg("11")
         .arg("--timeout")
         .arg("300")
         .timeout(std::time::Duration::from_secs(600))
@@ -488,6 +488,14 @@ fn test_install_and_verify_files() {
     let bin_dir = jdk_dir.join("bin");
     assert!(bin_dir.exists(), "bin directory should exist");
     assert!(bin_dir.is_dir(), "bin should be a directory");
+
+    // Debug: List all files in bin directory
+    eprintln!("Files in bin directory:");
+    if let Ok(entries) = fs::read_dir(&bin_dir) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            eprintln!("  - {:?}", entry.file_name());
+        }
+    }
 
     // Verify core executables exist
     let exe_ext = if cfg!(windows) { ".exe" } else { "" };
