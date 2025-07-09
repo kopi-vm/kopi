@@ -130,6 +130,12 @@ fn extract_tar_gz(archive_path: &Path, destination: &Path) -> Result<()> {
 
         // Extract entry
         let dest_path = destination.join(&path);
+
+        // Create parent directories if needed (same as zip extraction)
+        if let Some(parent) = dest_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
         entry.unpack(&dest_path)?;
         extracted_count += 1;
 
@@ -443,6 +449,73 @@ mod tests {
         assert!(matches!(zip_info.archive_type, ArchiveType::Zip));
         assert_eq!(zip_info.file_count, 1);
         assert_eq!(zip_info.uncompressed_size, 11);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_tar_gz_with_nested_directories() -> Result<()> {
+        // This test verifies that tar.gz files with nested directories
+        // are extracted correctly (with the fix that creates parent directories)
+
+        // Create a tar.gz with files in nested directories
+        let temp_dir = tempdir()?;
+        let tar_path = temp_dir.path().join("nested.tar.gz");
+
+        let file = File::create(&tar_path)?;
+        let gz = flate2::write::GzEncoder::new(file, flate2::Compression::default());
+        let mut builder = tar::Builder::new(gz);
+
+        // Add a file in root directory
+        let mut header1 = tar::Header::new_gnu();
+        header1.set_path("root.txt")?;
+        header1.set_size(4);
+        header1.set_mode(0o644);
+        header1.set_cksum();
+        builder.append(&header1, &b"root"[..])?;
+
+        // Add a file in a subdirectory (like graalvm-jdk-21.0.7+8.1/license-information-user-manual.zip)
+        let mut header2 = tar::Header::new_gnu();
+        header2.set_path("graalvm-jdk-21.0.7+8.1/license-information-user-manual.zip")?;
+        header2.set_size(6);
+        header2.set_mode(0o644);
+        header2.set_cksum();
+        builder.append(&header2, &b"nested"[..])?;
+
+        // Add a file in a deeper nested directory
+        let mut header3 = tar::Header::new_gnu();
+        header3.set_path("jdk/bin/java")?;
+        header3.set_size(4);
+        header3.set_mode(0o755);
+        header3.set_cksum();
+        builder.append(&header3, &b"java"[..])?;
+
+        builder.finish()?;
+        drop(builder);
+
+        // Extract the archive
+        let dest_dir = tempdir()?;
+        extract_archive(&tar_path, dest_dir.path())?;
+
+        // Verify all files were extracted correctly
+        let root_file = dest_dir.path().join("root.txt");
+        assert!(root_file.exists());
+        assert_eq!(fs::read_to_string(&root_file)?, "root");
+
+        let license_file = dest_dir
+            .path()
+            .join("graalvm-jdk-21.0.7+8.1/license-information-user-manual.zip");
+        assert!(license_file.exists());
+        assert_eq!(fs::read_to_string(&license_file)?, "nested");
+
+        let java_file = dest_dir.path().join("jdk/bin/java");
+        assert!(java_file.exists());
+        assert_eq!(fs::read_to_string(&java_file)?, "java");
+
+        // Verify directory structure
+        assert!(dest_dir.path().join("graalvm-jdk-21.0.7+8.1").is_dir());
+        assert!(dest_dir.path().join("jdk").is_dir());
+        assert!(dest_dir.path().join("jdk/bin").is_dir());
 
         Ok(())
     }
