@@ -445,7 +445,6 @@ fn test_graalvm_specific_tools() {
     let graalvm_names: Vec<&str> = graalvm_tools.iter().map(|t| t.name).collect();
 
     assert!(graalvm_names.contains(&"native-image"));
-    assert!(graalvm_names.contains(&"gu"));
     assert!(graalvm_names.contains(&"js")); // Still available in GraalVM 21
 
     // Test GraalVM 23 - js should be removed
@@ -453,7 +452,6 @@ fn test_graalvm_specific_tools() {
     let graalvm23_names: Vec<&str> = graalvm23_tools.iter().map(|t| t.name).collect();
 
     assert!(graalvm23_names.contains(&"native-image"));
-    assert!(graalvm23_names.contains(&"gu"));
     assert!(!graalvm23_names.contains(&"js")); // Removed in GraalVM 23
 
     // Test non-GraalVM distribution - should not have GraalVM tools

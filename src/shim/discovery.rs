@@ -75,7 +75,7 @@ pub fn discover_jdk_tools(jdk_path: &Path) -> Result<Vec<String>> {
 /// Discovers distribution-specific tools that may not be in the standard JDK.
 ///
 /// Some distributions include additional tools:
-/// - GraalVM: gu (GraalVM updater), native-image
+/// - GraalVM: native-image
 /// - IBM Semeru/OpenJ9: jdmpview, jitserver, jpackcore, traceformat
 pub fn discover_distribution_tools(
     jdk_path: &Path,
@@ -89,7 +89,11 @@ pub fn discover_distribution_tools(
                 // Check for GraalVM-specific tools
                 let bin_dir = jdk_path.join("bin");
 
-                for tool in &["gu", "native-image"] {
+                for tool in &[
+                    "native-image",
+                    "native-image-configure",
+                    "native-image-inspect",
+                ] {
                     let tool_name = if cfg!(windows) {
                         format!("{tool}.exe")
                     } else {
@@ -221,7 +225,11 @@ mod tests {
         {
             use std::os::unix::fs::PermissionsExt;
 
-            for tool in &["gu", "native-image"] {
+            for tool in &[
+                "native-image",
+                "native-image-configure",
+                "native-image-inspect",
+            ] {
                 let tool_path = bin_dir.join(tool);
                 fs::write(&tool_path, "#!/bin/sh\necho test").unwrap();
                 fs::set_permissions(&tool_path, fs::Permissions::from_mode(0o755)).unwrap();
@@ -230,7 +238,11 @@ mod tests {
 
         #[cfg(windows)]
         {
-            for tool in &["gu.exe", "native-image.exe"] {
+            for tool in &[
+                "native-image.exe",
+                "native-image-configure.exe",
+                "native-image-inspect.exe",
+            ] {
                 let tool_path = bin_dir.join(tool);
                 fs::write(&tool_path, "test").unwrap();
             }
@@ -238,9 +250,10 @@ mod tests {
 
         let tools = discover_distribution_tools(jdk_path, Some("graalvm")).unwrap();
 
-        assert_eq!(tools.len(), 2);
-        assert!(tools.contains(&"gu".to_string()));
+        assert_eq!(tools.len(), 3);
         assert!(tools.contains(&"native-image".to_string()));
+        assert!(tools.contains(&"native-image-configure".to_string()));
+        assert!(tools.contains(&"native-image-inspect".to_string()));
     }
 
     #[test]

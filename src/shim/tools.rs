@@ -380,9 +380,16 @@ impl ToolRegistry {
                 max_version: None,
             },
             ToolInfo {
-                name: "gu",
+                name: "native-image-configure",
                 category: ToolCategory::Utility,
-                description: "GraalVM component updater",
+                description: "GraalVM native image configuration tool",
+                min_version: None,
+                max_version: None,
+            },
+            ToolInfo {
+                name: "native-image-inspect",
+                category: ToolCategory::Utility,
+                description: "GraalVM native image inspection tool",
                 min_version: None,
                 max_version: None,
             },
@@ -399,7 +406,12 @@ impl ToolRegistry {
     /// Initialize distribution-specific tool exclusions
     fn init_distribution_exclusions(&mut self) {
         // GraalVM-specific tools (only available in GraalVM)
-        let graalvm_only_tools = vec!["native-image", "gu", "js"];
+        let graalvm_only_tools = vec![
+            "native-image",
+            "native-image-configure",
+            "native-image-inspect",
+            "js",
+        ];
 
         // Add exclusions for non-GraalVM distributions
         for dist in &[
