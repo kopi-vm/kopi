@@ -75,8 +75,9 @@ pub fn discover_jdk_tools(jdk_path: &Path) -> Result<Vec<String>> {
 /// Discovers distribution-specific tools that may not be in the standard JDK.
 ///
 /// Some distributions include additional tools:
-/// - GraalVM: native-image
+/// - GraalVM: native-image, native-image-configure, native-image-inspect
 /// - IBM Semeru/OpenJ9: jdmpview, jitserver, jpackcore, traceformat
+/// - SAP Machine: asprof
 pub fn discover_distribution_tools(
     jdk_path: &Path,
     distribution: Option<&str>,
@@ -119,6 +120,23 @@ pub fn discover_distribution_tools(
                     let tool_path = bin_dir.join(&tool_name);
                     if tool_path.exists() && is_executable(&tool_path)? {
                         debug!("Discovered Semeru/OpenJ9 tool: {tool}");
+                        extra_tools.push(tool.to_string());
+                    }
+                }
+            }
+            "sap_machine" | "sapmachine" => {
+                // Check for SAP Machine-specific tools
+                let bin_dir = jdk_path.join("bin");
+
+                for tool in &["asprof"] {
+                    let tool_name = if cfg!(windows) {
+                        format!("{tool}.exe")
+                    } else {
+                        tool.to_string()
+                    };
+                    let tool_path = bin_dir.join(&tool_name);
+                    if tool_path.exists() && is_executable(&tool_path)? {
+                        debug!("Discovered SAP Machine tool: {tool}");
                         extra_tools.push(tool.to_string());
                     }
                 }
@@ -311,6 +329,40 @@ mod tests {
         assert!(tools.contains(&"jitserver".to_string()));
         assert!(tools.contains(&"jpackcore".to_string()));
         assert!(tools.contains(&"traceformat".to_string()));
+    }
+
+    #[test]
+    fn test_discover_distribution_tools_sap_machine() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path();
+        let bin_dir = jdk_path.join("bin");
+        fs::create_dir(&bin_dir).unwrap();
+
+        // Create dummy SAP Machine tool
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            let tool_path = bin_dir.join("asprof");
+            fs::write(&tool_path, "#!/bin/sh\necho test").unwrap();
+            fs::set_permissions(&tool_path, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        #[cfg(windows)]
+        {
+            let tool_path = bin_dir.join("asprof.exe");
+            fs::write(&tool_path, "test").unwrap();
+        }
+
+        // Test with "sap_machine" distribution name
+        let tools = discover_distribution_tools(jdk_path, Some("sap_machine")).unwrap();
+        assert_eq!(tools.len(), 1);
+        assert!(tools.contains(&"asprof".to_string()));
+
+        // Test with "sapmachine" distribution name
+        let tools = discover_distribution_tools(jdk_path, Some("sapmachine")).unwrap();
+        assert_eq!(tools.len(), 1);
+        assert!(tools.contains(&"asprof".to_string()));
     }
 
     #[test]

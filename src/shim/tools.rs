@@ -400,6 +400,13 @@ impl ToolRegistry {
                 min_version: None,
                 max_version: Some(22), // Removed in GraalVM 23+
             },
+            ToolInfo {
+                name: "asprof",
+                category: ToolCategory::Monitoring,
+                description: "SAP Machine async profiler",
+                min_version: None,
+                max_version: None,
+            },
         ]
     }
 
@@ -440,6 +447,39 @@ impl ToolRegistry {
         graalvm_exclusions.insert("js", (Some(23), None));
         self.distribution_exclusions
             .insert(Distribution::GraalVm.id(), graalvm_exclusions);
+
+        // SAP Machine-specific tools (only available in SAP Machine)
+        let sapmachine_only_tools = vec!["asprof"];
+
+        // Add exclusions for non-SAP Machine distributions
+        for dist in &[
+            Distribution::Temurin,
+            Distribution::Corretto,
+            Distribution::Zulu,
+            Distribution::Liberica,
+            Distribution::Semeru,
+            Distribution::Dragonwell,
+            Distribution::GraalVm,
+            Distribution::OpenJdk,
+            Distribution::Mandrel,
+            Distribution::Kona,
+            Distribution::Trava,
+        ] {
+            // Check if the distribution already has exclusions
+            if let Some(exclusions) = self.distribution_exclusions.get_mut(dist.id()) {
+                // Add SAP Machine-only tools to existing exclusions
+                for tool in &sapmachine_only_tools {
+                    exclusions.insert(*tool, (Some(999), Some(999)));
+                }
+            } else {
+                // Create new exclusions for this distribution
+                let mut exclusions = HashMap::new();
+                for tool in &sapmachine_only_tools {
+                    exclusions.insert(*tool, (Some(999), Some(999)));
+                }
+                self.distribution_exclusions.insert(dist.id(), exclusions);
+            }
+        }
     }
 }
 
@@ -507,6 +547,12 @@ mod tests {
         assert!(registry.is_tool_available("js", &Distribution::GraalVm, 22));
         assert!(!registry.is_tool_available("js", &Distribution::GraalVm, 23));
         assert!(!registry.is_tool_available("js", &Distribution::Temurin, 21));
+
+        // asprof is only available in SAP Machine
+        assert!(registry.is_tool_available("asprof", &Distribution::SapMachine, 21));
+        assert!(!registry.is_tool_available("asprof", &Distribution::Temurin, 21));
+        assert!(!registry.is_tool_available("asprof", &Distribution::GraalVm, 21));
+        assert!(!registry.is_tool_available("asprof", &Distribution::Corretto, 21));
     }
 
     #[test]

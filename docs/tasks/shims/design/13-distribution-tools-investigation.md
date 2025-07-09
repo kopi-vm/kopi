@@ -73,14 +73,14 @@ These tools are specific to the OpenJ9 VM that Semeru uses.
 
 **Status**: ✅ The implementation has been updated to handle Semeru/OpenJ9 distributions and discover these four specific tools.
 
-### 4. SAP Machine Contains SAP-Specific Tools (New Finding)
+### 4. SAP Machine Contains SAP-Specific Tools (Implemented)
 
 **SAP Machine** 21.0.7 includes one distribution-specific tool:
 - **asprof** - SAP's profiler tool (async-profiler based)
 
 This tool is specific to SAP Machine distribution and provides advanced profiling capabilities.
 
-**Status**: ⚠️ Not yet implemented. The `discover_distribution_tools` function should be updated to handle SAP Machine specific tools.
+**Status**: ✅ The implementation has been updated to handle SAP Machine distributions and discover the `asprof` tool.
 
 ### 5. Other Distributions
 
@@ -100,7 +100,12 @@ Based on the investigation findings, the following changes have been implemented
    - `discover_distribution_tools` now recognizes Semeru's four specific tools
    - Handles both "semeru" and "openj9" distribution names
 
-3. **✅ Updated Standard Tools Registry**: 
+3. **✅ Added SAP Machine Special Handling**: 
+   - `discover_distribution_tools` now recognizes SAP Machine's specific tool
+   - Added `asprof` to the tool registry with proper distribution exclusions
+   - Handles both "sap_machine" and "sapmachine" distribution names
+
+4. **✅ Updated Standard Tools Registry**: 
    - Added all seven missing standard tools to `/src/shim/tools.rs`
    - Applied appropriate version constraints (e.g., `jwebserver` min_version: 18)
    - Categorized tools appropriately
@@ -115,7 +120,7 @@ Based on the investigation findings, the following changes have been implemented
    - BellSoft Liberica (checksum mismatch error prevents installation - needs metadata refresh or fix)
 
 2. **Implementation Tasks**:
-   - Add SAP Machine support to `discover_distribution_tools` for the `asprof` tool
+   - ✅ COMPLETED: Added SAP Machine support to `discover_distribution_tools` for the `asprof` tool
    - Investigate and fix BellSoft Liberica checksum issues
 
 3. **Potential Enhancements**: 
@@ -134,7 +139,7 @@ Based on the investigation findings, the following changes have been implemented
 
 ## Conclusion
 
-The investigation successfully identified distribution-specific tools and missing standard JDK tools. Most findings have been implemented:
+The investigation successfully identified distribution-specific tools and missing standard JDK tools. All findings have been implemented:
 
 1. **GraalVM** - Implementation updated:
    - Removed check for `gu` (confirmed absent in GraalVM 21.0.7)
@@ -145,9 +150,10 @@ The investigation successfully identified distribution-specific tools and missin
    - Four tools are now discovered: `jdmpview`, `jitserver`, `jpackcore`, `traceformat`
    - Handles both "semeru" and "openj9" distribution identifiers
 
-3. **SAP Machine** - Distribution-specific tool identified:
+3. **SAP Machine** - Distribution-specific tool implemented:
    - Contains `asprof` profiler tool
-   - ⚠️ Not yet implemented in `discover_distribution_tools`
+   - ✅ Now properly discovered by `discover_distribution_tools`
+   - Handles both "sap_machine" and "sapmachine" distribution identifiers
 
 4. **Standard JDK Tools** - Seven missing tools added to the registry:
    - All tools categorized and versioned appropriately
@@ -157,4 +163,4 @@ The investigation successfully identified distribution-specific tools and missin
    - Installation blocked by checksum mismatch errors
    - Requires metadata fix or manual investigation
 
-The implementation correctly handles GraalVM and IBM Semeru distribution-specific tools and includes a comprehensive registry of standard JDK tools. SAP Machine support should be added in a future update.
+The implementation now correctly handles all known distribution-specific tools (GraalVM, IBM Semeru, and SAP Machine) and includes a comprehensive registry of standard JDK tools.
