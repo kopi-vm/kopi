@@ -139,10 +139,11 @@ mod tests {
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(test_content);
-        let expected_checksum = format!("{:x}", hasher.finalize());
+        let expected_checksum = hex::encode(hasher.finalize());
 
         let options = DownloadOptions {
             checksum: Some(expected_checksum),
+            checksum_type: Some(crate::models::jdk::ChecksumType::Sha256),
             ..Default::default()
         };
 
@@ -166,6 +167,7 @@ mod tests {
 
         let options = DownloadOptions {
             checksum: Some("invalid_checksum".to_string()),
+            checksum_type: Some(crate::models::jdk::ChecksumType::Sha256),
             ..Default::default()
         };
 

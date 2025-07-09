@@ -1,14 +1,21 @@
 use crate::error::{KopiError, Result};
+use crate::models::jdk::ChecksumType;
 use crate::platform::permissions;
-use sha2::{Digest, Sha256};
+use digest::{Digest, DynDigest};
+use sha1::Sha1;
+use sha2::{Sha256, Sha512};
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
 const CHUNK_SIZE: usize = 8192;
 
-pub fn verify_checksum(file_path: &Path, expected_checksum: &str) -> Result<()> {
-    let actual = calculate_sha256(file_path)?;
+pub fn verify_checksum(
+    file_path: &Path,
+    expected_checksum: &str,
+    checksum_type: ChecksumType,
+) -> Result<()> {
+    let actual = calculate_checksum(file_path, checksum_type)?;
 
     if actual != expected_checksum {
         return Err(KopiError::ValidationError(format!(
@@ -16,25 +23,41 @@ pub fn verify_checksum(file_path: &Path, expected_checksum: &str) -> Result<()> 
         )));
     }
 
-    log::debug!("Checksum verified successfully for {file_path:?}");
+    log::debug!("Checksum verified successfully for {file_path:?} using {checksum_type:?}");
     Ok(())
 }
 
-pub fn calculate_sha256(file_path: &Path) -> Result<String> {
+pub fn calculate_checksum(file_path: &Path, checksum_type: ChecksumType) -> Result<String> {
     let mut file = File::open(file_path)?;
-    let mut hasher = Sha256::new();
     let mut buffer = vec![0; CHUNK_SIZE];
 
+    // Create appropriate hasher based on checksum type
+    let mut hasher: Box<dyn DynDigest> = match checksum_type {
+        ChecksumType::Sha1 => Box::new(Sha1::new()),
+        ChecksumType::Sha256 => Box::new(Sha256::new()),
+        ChecksumType::Sha512 => Box::new(Sha512::new()),
+        ChecksumType::Md5 => {
+            // MD5 requires special handling because md5 crate doesn't implement DynDigest
+            let mut file_contents = Vec::new();
+            file.read_to_end(&mut file_contents)?;
+            let digest = md5::compute(&file_contents);
+            return Ok(hex::encode(digest.0));
+        }
+    };
+
+    // Process file in chunks
     loop {
         match file.read(&mut buffer) {
             Ok(0) => break,
-            Ok(n) => hasher.update(&buffer[..n]),
+            Ok(n) => DynDigest::update(&mut *hasher, &buffer[..n]),
             Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
             Err(e) => return Err(e.into()),
         }
     }
 
-    Ok(format!("{:x}", hasher.finalize()))
+    // Finalize and format the digest
+    let result = hasher.finalize();
+    Ok(hex::encode(result))
 }
 
 pub fn verify_https_security(url: &str) -> Result<()> {
@@ -158,19 +181,33 @@ mod tests {
     use tempfile::NamedTempFile;
 
     #[test]
-    fn test_calculate_sha256() {
+    fn test_calculate_checksum_with_different_types() {
         // Create a temporary file with known content
         let mut temp_file = NamedTempFile::new().unwrap();
         temp_file.write_all(b"Hello, World!").unwrap();
         temp_file.flush().unwrap();
 
-        let checksum = calculate_sha256(temp_file.path()).unwrap();
+        // Test SHA1
+        let sha1_checksum = calculate_checksum(temp_file.path(), ChecksumType::Sha1).unwrap();
+        assert_eq!(sha1_checksum, "0a0a9f2a6772942557ab5355d76af442f8f65e01");
 
-        // Known SHA256 of "Hello, World!"
+        // Test SHA256
+        let sha256_checksum = calculate_checksum(temp_file.path(), ChecksumType::Sha256).unwrap();
         assert_eq!(
-            checksum,
+            sha256_checksum,
             "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f"
         );
+
+        // Test SHA512
+        let sha512_checksum = calculate_checksum(temp_file.path(), ChecksumType::Sha512).unwrap();
+        assert_eq!(
+            sha512_checksum,
+            "374d794a95cdcfd8b35993185fef9ba368f160d8daf432d08ba9f1ed1e5abe6cc69291e0fa2fe0006a52570ef18c19def4e617c33ce52ef0a6e5fbe318cb0387"
+        );
+
+        // Test MD5
+        let md5_checksum = calculate_checksum(temp_file.path(), ChecksumType::Md5).unwrap();
+        assert_eq!(md5_checksum, "65a8e27d8879283831b664bd8b7f0ad4");
     }
 
     #[test]
@@ -181,7 +218,7 @@ mod tests {
 
         let expected = "9d9595c5d94fb65b824f56e9999527dba9542481580d69feb89056aabaa0aa87";
 
-        assert!(verify_checksum(temp_file.path(), expected).is_ok());
+        assert!(verify_checksum(temp_file.path(), expected, ChecksumType::Sha256).is_ok());
     }
 
     #[test]
@@ -192,7 +229,52 @@ mod tests {
 
         let wrong_checksum = "0000000000000000000000000000000000000000000000000000000000000000";
 
-        assert!(verify_checksum(temp_file.path(), wrong_checksum).is_err());
+        assert!(verify_checksum(temp_file.path(), wrong_checksum, ChecksumType::Sha256).is_err());
+    }
+
+    #[test]
+    fn test_verify_checksum_with_different_algorithms() {
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(b"Test content").unwrap();
+        temp_file.flush().unwrap();
+
+        // Test with SHA1
+        assert!(
+            verify_checksum(
+                temp_file.path(),
+                "bca20547e94049e1ffea27223581c567022a5774",
+                ChecksumType::Sha1
+            )
+            .is_ok()
+        );
+
+        // Test with SHA256
+        assert!(
+            verify_checksum(
+                temp_file.path(),
+                "9d9595c5d94fb65b824f56e9999527dba9542481580d69feb89056aabaa0aa87",
+                ChecksumType::Sha256
+            )
+            .is_ok()
+        );
+
+        // Test with SHA512
+        assert!(verify_checksum(
+            temp_file.path(),
+            "8ac28e9332997358babeb15653920d584d3e1ba14977c137dae6cad5e67ca41accd58ef4fcdcbeff396ff1c720b811445b51a5656f33aada0ed1d7317081caaa",
+            ChecksumType::Sha512
+        )
+        .is_ok());
+
+        // Test with MD5
+        assert!(
+            verify_checksum(
+                temp_file.path(),
+                "8bfa8e0684108f419933a5995264d150",
+                ChecksumType::Md5
+            )
+            .is_ok()
+        );
     }
 
     #[test]

@@ -1068,6 +1068,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
 
 [[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+
+[[package]]
 name = "hmac"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1437,6 +1443,7 @@ dependencies = [
  "comfy-table",
  "config",
  "criterion",
+ "digest",
  "dirs",
  "dunce",
  "env_logger",
@@ -1444,12 +1451,14 @@ dependencies = [
  "flate2",
  "fs2",
  "headers",
+ "hex",
  "httpdate",
  "indexmap",
  "indicatif",
  "junction",
  "libc",
  "log",
+ "md5",
  "mockall",
  "mockito",
  "once_cell",
@@ -1462,6 +1471,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "sha1",
  "sha2",
  "tar",
  "tempfile",
@@ -1576,6 +1586,12 @@ name = "log"
 version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
+
+[[package]]
+name = "md5"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
 
 [[package]]
 name = "memchr"

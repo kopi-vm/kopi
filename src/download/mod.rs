@@ -38,6 +38,7 @@ pub fn download_jdk(
     // Prepare download options
     let options = DownloadOptions {
         checksum: package.checksum.clone(),
+        checksum_type: package.checksum_type,
         resume: true,
         timeout: timeout_secs
             .map(Duration::from_secs)

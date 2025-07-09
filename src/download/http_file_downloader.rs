@@ -98,7 +98,9 @@ impl HttpFileDownloader {
 
         // Verify checksum if provided
         if let Some(expected_checksum) = &options.checksum {
-            verify_checksum(&downloaded_path, expected_checksum)?;
+            if let Some(checksum_type) = options.checksum_type {
+                verify_checksum(&downloaded_path, expected_checksum, checksum_type)?;
+            }
         }
 
         // Move temp file to final destination if we used a temp file

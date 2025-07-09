@@ -1,3 +1,4 @@
+use crate::models::jdk::ChecksumType;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -8,6 +9,8 @@ pub const MAX_DOWNLOAD_SIZE: u64 = 1_073_741_824;
 #[derive(Debug, Clone)]
 pub struct DownloadOptions {
     pub checksum: Option<String>,
+
+    pub checksum_type: Option<ChecksumType>,
 
     pub resume: bool,
 
@@ -20,6 +23,7 @@ impl Default for DownloadOptions {
     fn default() -> Self {
         Self {
             checksum: None,
+            checksum_type: None,
             resume: true,
             timeout: DEFAULT_TIMEOUT,
             max_size: MAX_DOWNLOAD_SIZE,
@@ -54,6 +58,7 @@ mod tests {
     fn test_download_options_default() {
         let options = DownloadOptions::default();
         assert_eq!(options.checksum, None);
+        assert_eq!(options.checksum_type, None);
         assert!(options.resume);
         assert_eq!(options.timeout, DEFAULT_TIMEOUT);
         assert_eq!(options.max_size, MAX_DOWNLOAD_SIZE);

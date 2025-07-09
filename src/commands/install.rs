@@ -148,8 +148,10 @@ impl InstallCommand {
 
         // Verify checksum
         if let Some(checksum) = &jdk_metadata_with_checksum.checksum {
-            println!("Verifying checksum...");
-            verify_checksum(download_path, checksum)?;
+            if let Some(checksum_type) = jdk_metadata_with_checksum.checksum_type {
+                println!("Verifying checksum...");
+                verify_checksum(download_path, checksum, checksum_type)?;
+            }
         }
 
         // Prepare installation context
