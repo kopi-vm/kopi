@@ -157,7 +157,7 @@ fn check_executable_permissions_windows(path: &Path) -> Result<()> {
     }
 
     // On Windows, check for .exe extension
-    if !path.extension().is_some_and(|ext| ext == "exe") {
+    if path.extension().is_none_or(|ext| ext != "exe") {
         return Err(KopiError::SecurityError(format!(
             "File '{}' does not have .exe extension",
             path.display()
