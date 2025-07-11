@@ -320,7 +320,7 @@ Based on our analysis, we recommend implementing a **shim-based approach** simil
    - Check `.kopi-version` in current directory
    - Walk up directory tree looking for `.kopi-version` or `.java-version`
    - Fall back to global default version
-   - Use system JDK if no Kopi-managed version found
+   - Error if no Kopi-managed version is found
 
 3. **Platform-Specific Implementation**:
    - **Unix (Linux/macOS)**: Single Rust binary with symlinks
