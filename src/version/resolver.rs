@@ -113,6 +113,8 @@ impl VersionResolver {
         // For now, we'll check for a global config file
         // This will be enhanced when config system is fully implemented
         if let Some(home) = home_dir() {
+            // TODO: Change from "default-version" to "version" to match design spec
+            // and align with other tools (rbenv, pyenv)
             let global_version_path = home.join(".kopi").join("default-version");
 
             if global_version_path.exists() {
