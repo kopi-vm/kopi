@@ -104,3 +104,8 @@ path = "src/bin/kopi-shim.rs"
 
 [lints.rust]
 unused_variables = "deny"
+
+[lints.clippy]
+uninlined_format_args = "deny"
+needless_borrow = "deny"
+bool_assert_comparison = "deny"

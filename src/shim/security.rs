@@ -158,7 +158,7 @@ mod tests {
         let (validator, _temp_dir) = create_test_validator();
         let invalid_path = Path::new("/etc/passwd");
 
-        let result = validator.validate_path(&invalid_path);
+        let result = validator.validate_path(invalid_path);
         assert!(result.is_err());
         assert!(matches!(
             result,

@@ -205,7 +205,7 @@ fn test_permission_verification() {
     ];
 
     for (mode, should_pass, description) in test_cases {
-        let test_file = temp_dir.path().join(format!("test_{:o}", mode));
+        let test_file = temp_dir.path().join(format!("test_{mode:o}"));
         File::create(&test_file).unwrap();
         fs::set_permissions(&test_file, Permissions::from_mode(mode)).unwrap();
 
