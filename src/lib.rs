@@ -5,6 +5,7 @@ pub mod commands;
 pub mod config;
 pub mod download;
 pub mod error;
+pub mod installation;
 pub mod logging;
 pub mod models;
 pub mod platform;

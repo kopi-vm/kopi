@@ -9,13 +9,12 @@ use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-pub mod auto_install;
 pub mod discovery;
 pub mod installer;
 pub mod security;
 pub mod tools;
 use crate::error::format_error_with_color;
-use auto_install::AutoInstaller;
+use crate::installation::AutoInstaller;
 use security::SecurityValidator;
 use crate::version::resolver::VersionResolver;
 
