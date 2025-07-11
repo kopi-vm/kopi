@@ -240,7 +240,7 @@ mod tests {
         let cmd = std::process::Command::new("true");
 
         #[cfg(windows)]
-        let mut cmd = {
+        let cmd = {
             let mut c = std::process::Command::new("cmd");
             c.args(&["/c", "exit 0"]);
             c

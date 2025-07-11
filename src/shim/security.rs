@@ -130,6 +130,7 @@ impl SecurityValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
     use std::fs::File;
     #[cfg(unix)]
     use std::os::unix::fs::symlink;

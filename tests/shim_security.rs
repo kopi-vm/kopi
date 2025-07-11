@@ -2,11 +2,12 @@ use kopi::config::KopiConfig;
 use kopi::error::KopiError;
 use kopi::shim::security::SecurityValidator;
 use std::fs::{self, File};
-use std::path::Path;
 use tempfile::TempDir;
 
 #[cfg(unix)]
 use std::os::unix::fs::{PermissionsExt, symlink};
+#[cfg(unix)]
+use std::path::Path;
 
 fn create_test_validator_with_dir(temp_dir: &TempDir) -> SecurityValidator {
     std::fs::create_dir_all(temp_dir.path()).unwrap();
