@@ -215,7 +215,6 @@ kopi prune --older-than 90d
 
 ### Windows
 - Handle files in use (may need reboot)
-- Deal with junction points
 - Consider antivirus interference
 
 ## Summary
