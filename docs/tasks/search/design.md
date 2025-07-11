@@ -144,3 +144,81 @@ These improvements provide the following value:
 4. **Programmable**: JSON output enables easy automation and scripting
 
 These improvements deliver a more efficient and user-friendly interface for the fundamental user need of finding JDKs.
+
+## Enhanced Version Search Capabilities
+
+### Version Field Selection
+
+The foojay.io API provides two distinct version fields for each JDK package:
+- **`java_version`**: Standard OpenJDK format (e.g., `21.0.7+6`)
+- **`distribution_version`**: Distribution-specific format (e.g., `21.0.7.6.1` for Corretto)
+
+### Automatic Version Type Detection
+
+Kopi can automatically detect which version field to search based on the format:
+
+```bash
+# Auto-detects as java_version (has build number +6)
+kopi cache search temurin@21.0.7+6
+
+# Auto-detects as distribution_version (4+ components)
+kopi cache search corretto@21.0.7.6.1
+
+# Auto-detects as distribution_version (6 components)
+kopi cache search dragonwell@21.0.7.0.7.6
+```
+
+#### Detection Rules
+1. **Contains `+` (build number)** → Search by `java_version`
+2. **4 or more version components** → Search by `distribution_version`
+3. **3 or fewer components** → Search both fields (fallback)
+
+### Manual Version Field Override
+
+For cases where automatic detection might be ambiguous:
+
+```bash
+# Force search by java_version
+kopi cache search corretto@21.0.7 --java-version
+
+# Force search by distribution_version
+kopi cache search corretto@21.0.7 --distribution-version
+```
+
+### Use Cases
+
+#### Finding Specific Corretto Patch Versions
+```bash
+# Search for exact Corretto patch version
+kopi cache search corretto@21.0.7.6.1
+
+# Install the specific version found
+kopi install corretto@21.0.7.6.1
+```
+
+#### Handling Multiple Versions with Same java_version
+When multiple distribution versions share the same java_version:
+```bash
+# Shows all Corretto packages with java_version 21.0.7
+kopi cache search corretto@21.0.7 --java-version
+
+# Shows specific distribution version
+kopi cache search corretto@21.0.7.6.1
+```
+
+### Distribution Examples
+
+| Distribution | Example java_version | Example distribution_version |
+|--------------|---------------------|----------------------------|
+| Temurin | 21.0.7+6 | 21.0.7 |
+| Corretto | 21.0.7+6 | 21.0.7.6.1 |
+| Dragonwell | 21.0.7 | 21.0.7.0.7.6 |
+| JetBrains | 21.0.7+895130 | 21.0.7 |
+| GraalVM CE | 21.3.3.1 | 21.3.3.1 |
+
+### Implementation Notes
+
+1. **Backward Compatibility**: All existing search queries continue to work
+2. **Performance**: Version type detection adds minimal overhead
+3. **Error Handling**: Clear messages when no matches found in either field
+4. **Display**: Both version fields shown in detailed output mode

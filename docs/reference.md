@@ -498,7 +498,9 @@ Note: The `kopi shell` command is planned but not yet implemented. When availabl
 
 ## Version Specification Format
 
-Kopi supports exact version specifications only:
+Kopi supports exact version specifications with flexible formats to accommodate different JDK distributions:
+
+### Standard Version Formats
 
 - `21` - Latest Java 21 (uses default distribution)
 - `21.0.1` - Specific version (uses default distribution)
@@ -506,6 +508,40 @@ Kopi supports exact version specifications only:
 - `corretto@21` - Latest Java 21 from Amazon Corretto
 - `latest` - Latest available version
 - `latest --lts` - Latest LTS version
+
+### Extended Version Formats
+
+Many JDK distributions use extended version formats with more than 3 components:
+
+- **Amazon Corretto**: 4-5 components (e.g., `corretto@21.0.7.6.1`)
+- **Alibaba Dragonwell**: 6 components (e.g., `dragonwell@21.0.7.0.7.6`)
+- **Standard with build**: `temurin@21.0.7+6`
+- **Pre-release versions**: `graalvm-ce@21.0.1-rc.1`
+
+### Version Search Behavior
+
+Kopi can search by both `java_version` and `distribution_version`:
+
+```bash
+# Searches by java_version (standard format)
+kopi install temurin@21.0.7+6
+
+# Searches by distribution_version (4+ components auto-detected)
+kopi install corretto@21.0.7.6.1
+
+# For ambiguous cases, specify explicitly
+kopi install corretto@21.0.7 --java-version
+kopi install corretto@21.0.7 --distribution-version
+```
+
+### Version Pattern Matching
+
+When using commands like `uninstall` or `use`, partial version patterns match installed versions:
+
+- Pattern `21` matches any version starting with `21` (e.g., `21.0.7.6.1`)
+- Pattern `21.0` matches any version starting with `21.0`
+- Pattern `21.0.7` matches any version starting with `21.0.7`
+- Pattern `21.0.7.6` matches any version starting with `21.0.7.6`
 
 **Note**: Kopi does not support version ranges or wildcards:
 - No Maven-style ranges: `[1.7,1.8)`, `(,1.8]`, `[1.5,)`

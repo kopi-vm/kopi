@@ -47,6 +47,26 @@ kopi uninstall 21
 kopi uninstall corretto@21.0.5.11.1
 ```
 
+#### Version Pattern Matching
+
+The uninstall command supports flexible version pattern matching to handle distributions with extended version formats:
+
+```bash
+# Pattern matching for standard 3-component versions
+kopi uninstall temurin@21.0.5    # Matches temurin@21.0.5+11
+
+# Pattern matching for extended formats (4+ components)
+kopi uninstall corretto@21       # Matches corretto@21.0.5.11.1
+kopi uninstall corretto@21.0     # Matches corretto@21.0.5.11.1
+kopi uninstall corretto@21.0.5   # Matches corretto@21.0.5.11.1
+kopi uninstall corretto@21.0.5.11 # Matches corretto@21.0.5.11.1
+
+# Pattern matching for 6-component versions (e.g., Dragonwell)
+kopi uninstall dragonwell@21.0.7.0.7 # Matches dragonwell@21.0.7.0.7.6
+```
+
+This flexible matching ensures that users can uninstall JDKs regardless of the version format used by different distributions.
+
 ### 2. Safety Checks
 
 #### Currently Active JDK

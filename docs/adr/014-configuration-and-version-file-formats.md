@@ -50,8 +50,11 @@ Both jenv and asdf use `-` as a separator between distribution and version, whic
      - `temurin@21`
      - `corretto@11.0.2+9`
      - `zulu@21-ea+35`
+     - `corretto@21.0.7.6.1` (extended 5-component format)
+     - `dragonwell@21.0.7.0.7.6` (extended 6-component format)
    - Clear separation without ambiguity
    - Default distribution used when only version specified
+   - **Supports extended version formats**: Handles distributions with 4+ version components
    - **No version ranges**: Does not support Maven-style (`[1.7,1.8)`, `[1.5,)`) or npm-style (`^1.2.3`, `~1.2.3`, `>=1.2.3`) version specifications
    - **Exact versions only**: Must specify precise version numbers
 
@@ -92,6 +95,8 @@ kopi migrate --recursive     # Handle monorepos
 Migration mapping examples:
 - `openjdk64-11.0.15` → `temurin@11.0.15`
 - `corretto-17.0.5.8.1` → `corretto@17.0.5.8.1`
+- `corretto-21.0.7.6.1` → `corretto@21.0.7.6.1` (5-component format preserved)
+- `dragonwell-21.0.7.0.7.6` → `dragonwell@21.0.7.0.7.6` (6-component format preserved)
 
 ### Design Principles
 
