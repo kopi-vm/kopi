@@ -3,8 +3,10 @@ use kopi::storage::JdkRepository;
 use kopi::uninstall::UninstallHandler;
 use kopi::uninstall::safety::{
     check_tool_dependencies, is_active_global_jdk, is_active_local_jdk, perform_safety_checks,
-    verify_removal_permission,
 };
+
+#[cfg(unix)]
+use kopi::uninstall::safety::verify_removal_permission;
 use std::fs;
 use std::path::PathBuf;
 use tempfile::TempDir;

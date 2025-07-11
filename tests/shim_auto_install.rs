@@ -34,6 +34,13 @@ fn test_auto_install_configuration() {
 
 #[test]
 fn test_shims_config_defaults() {
+    // Clear any environment variables that might affect shims config
+    unsafe {
+        std::env::remove_var("KOPI_SHIMS__AUTO_CREATE_SHIMS");
+        std::env::remove_var("KOPI_SHIMS__AUTO_INSTALL");
+        std::env::remove_var("KOPI_SHIMS__INSTALL_TIMEOUT");
+    }
+
     let temp_dir = TempDir::new().unwrap();
     let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
 
@@ -218,6 +225,13 @@ install_timeout = 300
 
 #[test]
 fn test_config_partial_settings() {
+    // Clear any environment variables that might affect shims config
+    unsafe {
+        std::env::remove_var("KOPI_SHIMS__AUTO_CREATE_SHIMS");
+        std::env::remove_var("KOPI_SHIMS__AUTO_INSTALL");
+        std::env::remove_var("KOPI_SHIMS__INSTALL_TIMEOUT");
+    }
+
     let test_home = TestHomeGuard::new();
     let kopi_home = test_home.kopi_home();
     fs::create_dir_all(&kopi_home).unwrap();
