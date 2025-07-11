@@ -153,6 +153,7 @@ impl<'a> PackageSearcher<'a> {
         version: &str,
         architecture: &str,
         operating_system: &str,
+        package_type: Option<&crate::models::package::PackageType>,
     ) -> Option<JdkMetadata> {
         let cache = self.cache;
 
@@ -170,6 +171,7 @@ impl<'a> PackageSearcher<'a> {
                 pkg.version.matches_pattern(version)
                     && pkg.architecture.to_string() == architecture
                     && pkg.operating_system.to_string() == operating_system
+                    && (package_type.is_none() || Some(&pkg.package_type) == package_type)
             })
             .cloned()
     }

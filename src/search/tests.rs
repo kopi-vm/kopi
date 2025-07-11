@@ -113,7 +113,8 @@ fn test_find_exact_package() {
     let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
 
-    let package = searcher.find_exact_package(&Distribution::Temurin, "21.0.1", "x64", "linux");
+    let package =
+        searcher.find_exact_package(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -388,7 +389,7 @@ fn test_empty_cache() {
     let results = searcher.search("21").unwrap();
     assert_eq!(results.len(), 0);
 
-    let exact = searcher.find_exact_package(&Distribution::Temurin, "21.0.1", "x64", "linux");
+    let exact = searcher.find_exact_package(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
     assert!(exact.is_none());
 }
 

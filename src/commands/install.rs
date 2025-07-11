@@ -262,9 +262,13 @@ impl InstallCommand {
         if cache_path.exists() {
             if let Ok(cache) = crate::cache::load_cache(&cache_path) {
                 let searcher = PackageSearcher::new(&cache, &config);
-                if let Some(jdk_metadata) =
-                    searcher.find_exact_package(distribution, &version.to_string(), &arch, &os)
-                {
+                if let Some(jdk_metadata) = searcher.find_exact_package(
+                    distribution,
+                    &version.to_string(),
+                    &arch,
+                    &os,
+                    version_request.package_type.as_ref(),
+                ) {
                     // Convert cached JdkMetadata to API Package format
                     debug!(
                         "Found package in cache: {} {}",
@@ -413,7 +417,7 @@ impl InstallCommand {
             distribution_version: package.distribution_version,
             architecture: crate::models::platform::Architecture::from_str(&arch)?,
             operating_system: crate::models::platform::OperatingSystem::from_str(&os)?,
-            package_type: crate::models::package::PackageType::Jdk,
+            package_type: crate::models::package::PackageType::from_str(&package.package_type)?,
             archive_type: crate::models::package::ArchiveType::from_str(&package.archive_type)?,
             download_url: package.links.pkg_download_redirect,
             checksum: None, // Foojay API doesn't provide checksums directly

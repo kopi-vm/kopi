@@ -952,7 +952,7 @@ fn test_install_jre_package() {
     assert!(release_file.exists(), "release file should exist");
 
     // Verify shims were created
-    let shims_dir = kopi_home.join("bin");
+    let shims_dir = kopi_home.join("shims");
     if shims_dir.exists() {
         let java_shim = shims_dir.join("java");
         assert!(java_shim.exists(), "java shim should be created for JRE");
