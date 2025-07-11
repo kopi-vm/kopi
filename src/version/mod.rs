@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 pub mod parser;
+pub mod resolver;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Version {

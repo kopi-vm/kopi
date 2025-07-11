@@ -2,7 +2,7 @@ use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_ma
 use kopi::config::KopiConfig;
 use kopi::shim::security::SecurityValidator;
 use kopi::shim::tools::ToolRegistry;
-use kopi::shim::version_resolver::VersionResolver;
+use kopi::version::resolver::VersionResolver;
 use std::fs;
 use std::time::Instant;
 use tempfile::TempDir;

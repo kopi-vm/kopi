@@ -14,11 +14,10 @@ pub mod discovery;
 pub mod installer;
 pub mod security;
 pub mod tools;
-pub mod version_resolver;
 use crate::error::format_error_with_color;
 use auto_install::AutoInstaller;
 use security::SecurityValidator;
-use version_resolver::VersionResolver;
+use crate::version::resolver::VersionResolver;
 
 /// Run the shim with the provided arguments
 /// Returns the exit code

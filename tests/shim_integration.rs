@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod shim_integration_tests {
     use kopi::error::{ErrorContext, KopiError, format_error_with_color};
-    use kopi::shim::version_resolver::VersionResolver;
+    use kopi::version::resolver::VersionResolver;
     use std::fs;
     use tempfile::TempDir;
 
