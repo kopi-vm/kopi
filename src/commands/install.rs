@@ -5,7 +5,6 @@ use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
 use crate::models::metadata::JdkMetadata;
-use crate::models::parser::VersionParser;
 use crate::platform::{
     get_current_architecture, get_current_os, get_foojay_libc_type, get_platform_description,
     matches_foojay_libc_type,
@@ -15,6 +14,7 @@ use crate::security::verify_checksum;
 use crate::shim::discovery::{discover_distribution_tools, discover_jdk_tools};
 use crate::shim::installer::ShimInstaller;
 use crate::storage::JdkRepository;
+use crate::version::parser::VersionParser;
 use log::{debug, info, trace, warn};
 use std::str::FromStr;
 
@@ -248,7 +248,7 @@ impl InstallCommand {
         &self,
         distribution: &Distribution,
         version: &crate::version::Version,
-        version_request: &crate::models::parser::ParsedVersionRequest,
+        version_request: &crate::version::parser::ParsedVersionRequest,
         javafx_bundled: bool,
     ) -> Result<crate::models::api::Package> {
         // Build query parameters

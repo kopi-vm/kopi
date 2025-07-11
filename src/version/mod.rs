@@ -2,6 +2,8 @@ use crate::error::{KopiError, Result};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+pub mod parser;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Version {
     pub major: u32,

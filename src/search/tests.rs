@@ -4,9 +4,9 @@ use crate::config::KopiConfig;
 use crate::models::distribution::Distribution;
 use crate::models::metadata::JdkMetadata;
 use crate::models::package::{ArchiveType, ChecksumType, PackageType};
-use crate::models::parser::ParsedVersionRequest;
 use crate::models::platform::{Architecture, OperatingSystem};
 use crate::version::Version;
+use crate::version::parser::ParsedVersionRequest;
 use std::str::FromStr;
 
 fn create_test_config() -> KopiConfig {

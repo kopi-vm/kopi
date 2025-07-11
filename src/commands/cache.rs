@@ -1,8 +1,8 @@
 use crate::cache;
 use crate::config::new_kopi_config;
 use crate::error::Result;
-use crate::models::parser::VersionParser;
 use crate::search::{PackageSearcher, get_current_platform};
+use crate::version::parser::VersionParser;
 use chrono::Local;
 use clap::Subcommand;
 use colored::*;
@@ -804,7 +804,7 @@ mod tests {
     #[test]
     fn test_search_cache_version_only_no_default_distribution() {
         use crate::config::KopiConfig;
-        use crate::models::parser::VersionParser;
+        use crate::version::parser::VersionParser;
 
         // Test that version-only searches don't default to Temurin
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();

@@ -3,8 +3,8 @@ use crate::config::KopiConfig;
 use crate::error::Result;
 use crate::models::distribution::Distribution;
 use crate::models::metadata::JdkMetadata;
-use crate::models::parser::{ParsedVersionRequest, VersionParser};
 use crate::platform::matches_foojay_libc_type;
+use crate::version::parser::{ParsedVersionRequest, VersionParser};
 
 use super::models::{PlatformFilter, SearchResult, SearchResultRef};
 
