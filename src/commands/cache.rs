@@ -822,7 +822,7 @@ mod tests {
         use crate::models::metadata::JdkMetadata;
         use crate::models::package::{ArchiveType, ChecksumType, PackageType};
         use crate::models::platform::{Architecture, OperatingSystem};
-        use crate::models::version::Version;
+        use crate::version::Version;
         use tempfile::TempDir;
 
         // Create a temporary directory for the test

@@ -4,7 +4,7 @@ use kopi::models::distribution::Distribution;
 use kopi::models::metadata::JdkMetadata;
 use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
 use kopi::models::platform::{Architecture, OperatingSystem};
-use kopi::models::version::Version;
+use kopi::version::Version;
 use kopi::search::{PackageSearcher, PlatformFilter};
 use std::time::Instant;
 

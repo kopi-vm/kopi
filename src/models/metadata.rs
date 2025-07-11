@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::package::{ArchiveType, ChecksumType, PackageType};
 use crate::models::platform::{Architecture, OperatingSystem};
-use crate::models::version::Version;
+use crate::version::Version;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JdkMetadata {

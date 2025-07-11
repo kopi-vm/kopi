@@ -69,7 +69,7 @@ fn test_cache_offline_mode() {
     use kopi::models::metadata::JdkMetadata;
     use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
     use kopi::models::platform::{Architecture, OperatingSystem};
-    use kopi::models::version::Version;
+    use kopi::version::Version;
 
     let test_home = TestHomeGuard::new();
     let test_home = test_home.setup_kopi_structure();
@@ -139,7 +139,7 @@ fn test_find_package_in_cache() {
     use kopi::models::metadata::JdkMetadata;
     use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
     use kopi::models::platform::{Architecture, OperatingSystem};
-    use kopi::models::version::Version;
+    use kopi::version::Version;
 
     let mut cache = MetadataCache::new();
 
@@ -217,7 +217,7 @@ fn test_cache_with_install_command() {
     use kopi::models::metadata::JdkMetadata;
     use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
     use kopi::models::platform::{Architecture, OperatingSystem};
-    use kopi::models::version::Version;
+    use kopi::version::Version;
 
     let test_home = TestHomeGuard::new();
     let test_home = test_home.setup_kopi_structure();

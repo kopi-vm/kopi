@@ -247,7 +247,7 @@ impl InstallCommand {
     fn find_matching_package(
         &self,
         distribution: &Distribution,
-        version: &crate::models::version::Version,
+        version: &crate::version::Version,
         version_request: &crate::models::parser::ParsedVersionRequest,
         javafx_bundled: bool,
     ) -> Result<crate::models::api::Package> {
@@ -413,7 +413,7 @@ impl InstallCommand {
         Ok(JdkMetadata {
             id: package.id,
             distribution: package.distribution.clone(),
-            version: crate::models::version::Version::from_str(&package.java_version)?,
+            version: crate::version::Version::from_str(&package.java_version)?,
             distribution_version: package.distribution_version,
             architecture: crate::models::platform::Architecture::from_str(&arch)?,
             operating_system: crate::models::platform::OperatingSystem::from_str(&os)?,
@@ -527,7 +527,7 @@ mod tests {
     fn test_convert_metadata_to_package() {
         use crate::models::package::{ArchiveType, ChecksumType, PackageType};
         use crate::models::platform::{Architecture, OperatingSystem};
-        use crate::models::version::Version;
+        use crate::version::Version;
 
         let cmd = InstallCommand::new().unwrap();
 

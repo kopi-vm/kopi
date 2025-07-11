@@ -2,7 +2,7 @@ use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
 use crate::models::package::PackageType;
-use crate::models::version::Version;
+use crate::version::Version;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq)]

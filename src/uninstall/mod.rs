@@ -1,6 +1,6 @@
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
-use crate::models::version::Version;
+use crate::version::Version;
 use crate::storage::{InstalledJdk, JdkRepository};
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, info};

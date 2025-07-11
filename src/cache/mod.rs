@@ -356,7 +356,7 @@ fn convert_package_to_jdk_metadata(
 ) -> Result<JdkMetadata> {
     use crate::models::package::{ArchiveType, ChecksumType, PackageType};
     use crate::models::platform::{Architecture, OperatingSystem};
-    use crate::models::version::Version;
+    use crate::version::Version;
     use std::str::FromStr;
 
     // Parse version
@@ -493,7 +493,7 @@ mod tests {
     fn test_has_version() {
         use crate::models::package::{ArchiveType, ChecksumType, PackageType};
         use crate::models::platform::{Architecture, OperatingSystem};
-        use crate::models::version::Version;
+        use crate::version::Version;
 
         let mut cache = MetadataCache::new();
 
@@ -532,7 +532,7 @@ mod tests {
     fn test_synonym_resolution() {
         use crate::models::package::{ArchiveType, ChecksumType, PackageType};
         use crate::models::platform::{Architecture, OperatingSystem};
-        use crate::models::version::Version;
+        use crate::version::Version;
 
         let mut cache = MetadataCache::new();
 
@@ -636,7 +636,7 @@ mod tests {
     fn test_find_package() {
         use crate::models::package::{ArchiveType, ChecksumType, PackageType};
         use crate::models::platform::{Architecture, OperatingSystem};
-        use crate::models::version::Version;
+        use crate::version::Version;
 
         let mut cache = MetadataCache::new();
 
