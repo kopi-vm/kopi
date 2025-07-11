@@ -1,5 +1,6 @@
 use kopi::config::KopiConfig;
 use kopi::version::VersionRequest;
+use serial_test::serial;
 use std::fs;
 use tempfile::TempDir;
 
@@ -33,6 +34,7 @@ fn test_auto_install_configuration() {
 }
 
 #[test]
+#[serial]
 fn test_shims_config_defaults() {
     // Clear any environment variables that might affect shims config
     unsafe {
@@ -160,6 +162,7 @@ install_timeout = 120
 }
 
 #[test]
+#[serial]
 fn test_environment_variable_overrides() {
     // Set environment variables
     unsafe {
@@ -224,6 +227,7 @@ install_timeout = 300
 }
 
 #[test]
+#[serial]
 fn test_config_partial_settings() {
     // Clear any environment variables that might affect shims config
     unsafe {

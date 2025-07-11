@@ -1,7 +1,7 @@
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
-use crate::version::Version;
 use crate::storage::{InstalledJdk, JdkRepository};
+use crate::version::Version;
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, info};
 use std::path::{Path, PathBuf};

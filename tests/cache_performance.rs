@@ -4,8 +4,8 @@ use kopi::models::distribution::Distribution;
 use kopi::models::metadata::JdkMetadata;
 use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
 use kopi::models::platform::{Architecture, OperatingSystem};
-use kopi::version::Version;
 use kopi::search::{PackageSearcher, PlatformFilter};
+use kopi::version::Version;
 use std::time::Instant;
 
 fn create_test_config() -> KopiConfig {

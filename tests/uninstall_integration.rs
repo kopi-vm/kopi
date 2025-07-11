@@ -60,12 +60,12 @@ fn test_real_jdk_removal() {
     let handler = UninstallHandler::new(&repository);
 
     // Create a mock JDK
-    let jdk_path = env.create_real_jdk("temurin", "21.0.5+11");
+    let jdk_path = env.create_real_jdk("temurin", "21.0.5-11");
     assert!(jdk_path.exists());
     assert!(jdk_path.join("bin/java").exists());
 
     // Uninstall the JDK
-    let result = handler.uninstall_jdk("temurin@21.0.5+11", false);
+    let result = handler.uninstall_jdk("temurin@21.0.5-11", false);
     assert!(result.is_ok());
 
     // Verify removal
@@ -79,12 +79,12 @@ fn test_uninstall_nonexistent_jdk() {
     let handler = UninstallHandler::new(&repository);
 
     // Try to uninstall non-existent JDK
-    let result = handler.uninstall_jdk("temurin@21.0.5+11", false);
+    let result = handler.uninstall_jdk("temurin@21.0.5-11", false);
     assert!(result.is_err());
 
     match result {
         Err(kopi::error::KopiError::JdkNotInstalled { jdk_spec, .. }) => {
-            assert_eq!(jdk_spec, "temurin@21.0.5+11");
+            assert_eq!(jdk_spec, "temurin@21.0.5-11");
         }
         _ => panic!("Expected JdkNotInstalled error"),
     }
@@ -97,9 +97,11 @@ fn test_uninstall_with_version_pattern() {
     let handler = UninstallHandler::new(&repository);
 
     // Create multiple JDKs
-    env.create_real_jdk("temurin", "21.0.5+11");
-    env.create_real_jdk("temurin", "17.0.9+9");
-    env.create_real_jdk("corretto", "21.0.5.11.1");
+    // Note: Using "-" as build separator instead of "+" for cross-platform compatibility
+    // Also using valid version formats (max 3 version components) that can be parsed
+    env.create_real_jdk("temurin", "21.0.5-11");
+    env.create_real_jdk("temurin", "17.0.9-9");
+    env.create_real_jdk("zulu", "21.0.1-12"); // Two JDKs with version 21
 
     // Try to uninstall with just version - should fail due to multiple matches
     let result = handler.uninstall_jdk("21", false);
@@ -119,11 +121,11 @@ fn test_uninstall_dry_run() {
     let handler = UninstallHandler::new(&repository);
 
     // Create a mock JDK
-    let jdk_path = env.create_real_jdk("temurin", "21.0.5+11");
+    let jdk_path = env.create_real_jdk("temurin", "21.0.5-11");
     assert!(jdk_path.exists());
 
     // Dry run should not remove anything
-    let result = handler.uninstall_jdk("temurin@21.0.5+11", true);
+    let result = handler.uninstall_jdk("temurin@21.0.5-11", true);
     assert!(result.is_ok());
 
     // JDK should still exist
@@ -133,8 +135,8 @@ fn test_uninstall_dry_run() {
 #[test]
 fn test_active_jdk_detection_stubs() {
     // Test that stub functions always return false in Phase 1
-    assert!(!is_active_global_jdk("temurin", "21.0.5+11").unwrap());
-    assert!(!is_active_local_jdk("temurin", "21.0.5+11").unwrap());
+    assert!(!is_active_global_jdk("temurin", "21.0.5-11").unwrap());
+    assert!(!is_active_local_jdk("temurin", "21.0.5-11").unwrap());
     assert!(!is_active_global_jdk("corretto", "17.0.9").unwrap());
     assert!(!is_active_local_jdk("corretto", "17.0.9").unwrap());
 }
@@ -142,7 +144,7 @@ fn test_active_jdk_detection_stubs() {
 #[test]
 fn test_safety_checks_pass() {
     // With active JDK stubs returning false, safety checks should pass
-    assert!(perform_safety_checks("temurin", "21.0.5+11").is_ok());
+    assert!(perform_safety_checks("temurin", "21.0.5-11").is_ok());
     assert!(perform_safety_checks("corretto", "17.0.9").is_ok());
 }
 
@@ -155,7 +157,7 @@ fn test_permission_error_handling() {
     let _repository = JdkRepository::new(&env.config);
 
     // Create a JDK
-    let jdk_path = env.create_real_jdk("temurin", "21.0.5+11");
+    let jdk_path = env.create_real_jdk("temurin", "21.0.5-11");
 
     // Make the parent directory read-only
     let jdks_dir = env.config.jdks_dir().unwrap();
@@ -181,7 +183,7 @@ fn test_atomic_removal_with_recovery() {
     let handler = UninstallHandler::new(&repository);
 
     // Create a mock JDK
-    let jdk_path = env.create_real_jdk("temurin", "21.0.5+11");
+    let jdk_path = env.create_real_jdk("temurin", "21.0.5-11");
     let original_files = vec![
         jdk_path.join("release"),
         jdk_path.join("bin/java"),
@@ -194,7 +196,7 @@ fn test_atomic_removal_with_recovery() {
     }
 
     // Uninstall should be atomic
-    let result = handler.uninstall_jdk("temurin@21.0.5+11", false);
+    let result = handler.uninstall_jdk("temurin@21.0.5-11", false);
     assert!(result.is_ok());
 
     // Verify complete removal
@@ -209,7 +211,7 @@ fn test_tool_dependency_check() {
     let env = TestEnvironment::new();
 
     // Create a mock JDK with tools
-    let jdk_path = env.create_real_jdk("temurin", "21.0.5+11");
+    let jdk_path = env.create_real_jdk("temurin", "21.0.5-11");
 
     // Should succeed (just warns about potential dependencies)
     assert!(check_tool_dependencies(&jdk_path).is_ok());
@@ -222,12 +224,12 @@ fn test_multiple_jdk_versions() {
     let handler = UninstallHandler::new(&repository);
 
     // Create multiple versions of the same distribution
-    let jdk1 = env.create_real_jdk("temurin", "21.0.5+11");
-    let jdk2 = env.create_real_jdk("temurin", "17.0.9+9");
-    let jdk3 = env.create_real_jdk("temurin", "11.0.21+9");
+    let jdk1 = env.create_real_jdk("temurin", "21.0.5-11");
+    let jdk2 = env.create_real_jdk("temurin", "17.0.9-9");
+    let jdk3 = env.create_real_jdk("temurin", "11.0.21-9");
 
     // Uninstall specific version
-    let result = handler.uninstall_jdk("temurin@17.0.9+9", false);
+    let result = handler.uninstall_jdk("temurin@17.0.9-9", false);
     assert!(result.is_ok());
 
     // Verify only the specified version was removed
@@ -243,7 +245,7 @@ fn test_partial_version_matching() {
     let handler = UninstallHandler::new(&repository);
 
     // Create JDK with full version
-    env.create_real_jdk("temurin", "21.0.5+11");
+    env.create_real_jdk("temurin", "21.0.5-11");
 
     // Should match with partial version
     let result = handler.uninstall_jdk("temurin@21", false);
@@ -256,7 +258,7 @@ fn test_disk_space_calculation() {
     let repository = JdkRepository::new(&env.config);
 
     // Create a JDK with known content
-    let jdk_path = env.create_real_jdk("temurin", "21.0.5+11");
+    let jdk_path = env.create_real_jdk("temurin", "21.0.5-11");
 
     // Calculate size
     let size = repository.get_jdk_size(&jdk_path).unwrap();

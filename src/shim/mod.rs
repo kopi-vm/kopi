@@ -1,8 +1,8 @@
 use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
-use crate::version::VersionRequest;
 use crate::storage::JdkRepository;
+use crate::version::VersionRequest;
 use std::env;
 use std::ffi::OsString;
 use std::io::IsTerminal;
