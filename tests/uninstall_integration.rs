@@ -283,3 +283,120 @@ fn test_security_validation() {
         _ => panic!("Expected SecurityError"),
     }
 }
+
+#[test]
+fn test_corretto_extended_version_formats() {
+    let env = TestEnvironment::new();
+    let repository = JdkRepository::new(&env.config);
+    let handler = UninstallHandler::new(&repository);
+
+    // Create Corretto JDKs with 4-5 component versions
+    let jdk1 = env.create_real_jdk("corretto", "21.0.7.6");
+    let jdk2 = env.create_real_jdk("corretto", "21.0.7.6.1");
+    let jdk3 = env.create_real_jdk("corretto", "8.452.9.1");
+    
+    assert!(jdk1.exists());
+    assert!(jdk2.exists());
+    assert!(jdk3.exists());
+
+    // Test that specifying partial version matches multiple JDKs
+    let result = handler.uninstall_jdk("corretto@21.0.7.6", false);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("Multiple JDKs match"));
+    
+    // Remove JDK2 first to avoid ambiguity
+    let result = handler.uninstall_jdk("corretto@21.0.7.6.1", false);
+    assert!(result.is_ok());
+    assert!(!jdk2.exists());
+    
+    // Now we can uninstall JDK1 without ambiguity
+    let result = handler.uninstall_jdk("corretto@21.0.7.6", false);
+    assert!(result.is_ok());
+    assert!(!jdk1.exists());
+
+    // Test partial version matching for Corretto Java 8
+    let result = handler.uninstall_jdk("corretto@8", false);
+    assert!(result.is_ok());
+    assert!(!jdk3.exists());
+}
+
+#[test]
+fn test_dragonwell_extended_version_formats() {
+    let env = TestEnvironment::new();
+    let repository = JdkRepository::new(&env.config);
+    let handler = UninstallHandler::new(&repository);
+
+    // Create Dragonwell JDKs with 6-component versions
+    let jdk1 = env.create_real_jdk("dragonwell", "21.0.7.0.7.6");
+    let jdk2 = env.create_real_jdk("dragonwell", "17.0.13.0.13.11-11");
+    
+    assert!(jdk1.exists());
+    assert!(jdk2.exists());
+
+    // Test uninstall with partial version matching
+    let result = handler.uninstall_jdk("dragonwell@21.0.7", false);
+    assert!(result.is_ok());
+    assert!(!jdk1.exists());
+
+    // Test uninstall with full version including build
+    let result = handler.uninstall_jdk("dragonwell@17.0.13.0.13.11-11", false);
+    assert!(result.is_ok());
+    assert!(!jdk2.exists());
+}
+
+#[test]
+fn test_partial_version_matching_extended() {
+    let env = TestEnvironment::new();
+    let repository = JdkRepository::new(&env.config);
+    let handler = UninstallHandler::new(&repository);
+
+    // Create various JDKs with extended versions
+    let corretto = env.create_real_jdk("corretto", "21.0.7.6.1");
+    let dragonwell = env.create_real_jdk("dragonwell", "21.0.7.0.7.6");
+    let temurin = env.create_real_jdk("temurin", "21.0.7-11");
+
+    // Try to uninstall with just "21" - should fail due to multiple matches
+    let result = handler.uninstall_jdk("21", false);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("Multiple JDKs match"));
+
+    // Uninstall with distribution and partial version
+    let result = handler.uninstall_jdk("corretto@21", false);
+    assert!(result.is_ok());
+    assert!(!corretto.exists());
+    assert!(dragonwell.exists());
+    assert!(temurin.exists());
+
+    // Test more specific partial match
+    let result = handler.uninstall_jdk("dragonwell@21.0.7.0", false);
+    assert!(result.is_ok());
+    assert!(!dragonwell.exists());
+    assert!(temurin.exists());
+}
+
+#[test]
+fn test_complex_build_identifiers() {
+    let env = TestEnvironment::new();
+    let repository = JdkRepository::new(&env.config);
+    let handler = UninstallHandler::new(&repository);
+
+    // Create JDKs with complex build identifiers
+    let jetbrains = env.create_real_jdk("jetbrains", "21.0.5-13.674.11");
+    let semeru = env.create_real_jdk("semeru", "21.0.5-11.0.572");
+    let graalvm = env.create_real_jdk("graalvm", "21.0.5-11-jvmci-24.1-b01");
+
+    // Test uninstall with full version including complex build
+    let result = handler.uninstall_jdk("jetbrains@21.0.5-13.674.11", false);
+    assert!(result.is_ok());
+    assert!(!jetbrains.exists());
+
+    // Test partial matching still works
+    let result = handler.uninstall_jdk("semeru@21", false);
+    assert!(result.is_ok());
+    assert!(!semeru.exists());
+
+    // Test with pre-release identifier
+    let result = handler.uninstall_jdk("graalvm@21.0.5-11-jvmci-24.1-b01", false);
+    assert!(result.is_ok());
+    assert!(!graalvm.exists());
+}

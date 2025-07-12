@@ -140,6 +140,11 @@ impl FromStr for Version {
                     let (before_plus, after_plus) = remaining.split_at(p);
                     remaining = before_plus;
                     let build_str = &after_plus[1..];
+                    
+                    // Check if build string is empty
+                    if build_str.is_empty() {
+                        return Err(KopiError::InvalidVersionFormat(s.to_string()));
+                    }
 
                     // Check if build string is purely numeric
                     let parts: Vec<&str> = build_str.split('.').collect();
@@ -158,7 +163,14 @@ impl FromStr for Version {
                     // '-' comes before '+', handle pre-release first
                     let (before_dash, after_dash) = remaining.split_at(d);
                     remaining = before_dash;
-                    pre_release = Some(after_dash[1..].to_string());
+                    let pre_str = &after_dash[1..];
+                    
+                    // Check if pre-release string is empty
+                    if pre_str.is_empty() {
+                        return Err(KopiError::InvalidVersionFormat(s.to_string()));
+                    }
+                    
+                    pre_release = Some(pre_str.to_string());
                 }
             }
             (Some(p), None) => {
@@ -166,6 +178,11 @@ impl FromStr for Version {
                 let (before_plus, after_plus) = remaining.split_at(p);
                 remaining = before_plus;
                 let build_str = &after_plus[1..];
+                
+                // Check if build string is empty
+                if build_str.is_empty() {
+                    return Err(KopiError::InvalidVersionFormat(s.to_string()));
+                }
 
                 // Check if build string is purely numeric
                 let parts: Vec<&str> = build_str.split('.').collect();
@@ -184,7 +201,14 @@ impl FromStr for Version {
                 // Only '-' present
                 let (before_dash, after_dash) = remaining.split_at(d);
                 remaining = before_dash;
-                pre_release = Some(after_dash[1..].to_string());
+                let pre_str = &after_dash[1..];
+                
+                // Check if pre-release string is empty
+                if pre_str.is_empty() {
+                    return Err(KopiError::InvalidVersionFormat(s.to_string()));
+                }
+                
+                pre_release = Some(pre_str.to_string());
             }
             (None, None) => {
                 // Neither '+' nor '-' present
@@ -452,5 +476,197 @@ mod tests {
         assert_eq!(req.distribution, Some("corretto".to_string()));
 
         assert!(VersionRequest::from_str("invalid@format@").is_err());
+    }
+
+    #[test]
+    fn test_corretto_version_formats() {
+        // Corretto 4-component format
+        let v = Version::from_str("21.0.7.6").unwrap();
+        assert_eq!(v.components, vec![21, 0, 7, 6]);
+        assert_eq!(v.build, None);
+        assert_eq!(v.pre_release, None);
+
+        // Corretto 5-component format
+        let v = Version::from_str("21.0.7.6.1").unwrap();
+        assert_eq!(v.components, vec![21, 0, 7, 6, 1]);
+        assert_eq!(v.build, None);
+        assert_eq!(v.pre_release, None);
+
+        // Corretto Java 8 special format (no leading zero)
+        let v = Version::from_str("8.452.9.1").unwrap();
+        assert_eq!(v.components, vec![8, 452, 9, 1]);
+        assert_eq!(v.major(), 8);
+
+        // Corretto with build number
+        let v = Version::from_str("21.0.7.6.1+13").unwrap();
+        assert_eq!(v.components, vec![21, 0, 7, 6, 1]);
+        assert_eq!(v.build, Some(vec![13]));
+    }
+
+    #[test]
+    fn test_dragonwell_version_formats() {
+        // Dragonwell 6-component format
+        let v = Version::from_str("21.0.7.0.7.6").unwrap();
+        assert_eq!(v.components, vec![21, 0, 7, 0, 7, 6]);
+        assert_eq!(v.build, None);
+        assert_eq!(v.pre_release, None);
+
+        // Dragonwell with build
+        let v = Version::from_str("17.0.13.0.13.11+11").unwrap();
+        assert_eq!(v.components, vec![17, 0, 13, 0, 13, 11]);
+        assert_eq!(v.build, Some(vec![11]));
+    }
+
+    #[test]
+    fn test_jetbrains_large_build_numbers() {
+        // JetBrains Runtime with large build numbers
+        let v = Version::from_str("21.0.5+13.674.11").unwrap();
+        assert_eq!(v.components, vec![21, 0, 5]);
+        assert_eq!(v.build, Some(vec![13, 674, 11]));
+
+        // JetBrains Runtime with b prefix (not numeric, so becomes pre-release)
+        let v = Version::from_str("21.0.5+13-b674.11").unwrap();
+        assert_eq!(v.components, vec![21, 0, 5]);
+        assert_eq!(v.build, None);
+        assert_eq!(v.pre_release, Some("13-b674.11".to_string()));
+    }
+
+    #[test]
+    fn test_graalvm_complex_identifiers() {
+        // GraalVM CE with jvmci identifier
+        let v = Version::from_str("21.0.5+11-jvmci-24.1-b01").unwrap();
+        assert_eq!(v.components, vec![21, 0, 5]);
+        assert_eq!(v.build, None);
+        assert_eq!(v.pre_release, Some("11-jvmci-24.1-b01".to_string()));
+
+        // GraalVM EE with complex pre-release
+        let v = Version::from_str("21.0.5-ea+11").unwrap();
+        assert_eq!(v.components, vec![21, 0, 5]);
+        assert_eq!(v.build, None);
+        assert_eq!(v.pre_release, Some("ea+11".to_string()));
+    }
+
+    #[test]
+    fn test_edge_cases() {
+        // Single component
+        let v = Version::from_str("8").unwrap();
+        assert_eq!(v.components, vec![8]);
+        assert_eq!(v.major(), 8);
+        assert_eq!(v.minor(), None);
+        assert_eq!(v.patch(), None);
+
+        // Many components (theoretical case)
+        let v = Version::from_str("1.2.3.4.5.6.7.8.9").unwrap();
+        assert_eq!(v.components, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+        // Zero values
+        let v = Version::from_str("0.0.0").unwrap();
+        assert_eq!(v.components, vec![0, 0, 0]);
+
+        // Mixed zeros and non-zeros
+        let v = Version::from_str("21.0.0.0.1").unwrap();
+        assert_eq!(v.components, vec![21, 0, 0, 0, 1]);
+    }
+
+    #[test]
+    fn test_invalid_formats() {
+        // Empty string
+        assert!(Version::from_str("").is_err());
+
+        // Non-numeric components
+        assert!(Version::from_str("abc").is_err());
+        assert!(Version::from_str("21.x.0").is_err());
+        assert!(Version::from_str("21.0.0.beta").is_err());
+
+        // Invalid separators
+        assert!(Version::from_str("21_0_7").is_err());
+        assert!(Version::from_str("21,0,7").is_err());
+
+        // Leading/trailing dots
+        assert!(Version::from_str(".21.0.7").is_err());
+        assert!(Version::from_str("21.0.7.").is_err());
+        assert!(Version::from_str("21..0").is_err());
+
+        // Invalid build/pre-release
+        assert!(Version::from_str("21.0.7+").is_err());
+        assert!(Version::from_str("21.0.7-").is_err());
+    }
+
+    #[test]
+    fn test_version_pattern_matching_extended() {
+        // Test Corretto 4-5 component matching
+        let v_corretto = Version::from_str("21.0.7.6.1").unwrap();
+        assert!(v_corretto.matches_pattern("21"));
+        assert!(v_corretto.matches_pattern("21.0"));
+        assert!(v_corretto.matches_pattern("21.0.7"));
+        assert!(v_corretto.matches_pattern("21.0.7.6"));
+        assert!(v_corretto.matches_pattern("21.0.7.6.1"));
+        assert!(!v_corretto.matches_pattern("21.0.7.6.2"));
+        assert!(!v_corretto.matches_pattern("21.0.7.5"));
+
+        // Test Dragonwell 6-component matching
+        let v_dragonwell = Version::from_str("21.0.7.0.7.6").unwrap();
+        assert!(v_dragonwell.matches_pattern("21"));
+        assert!(v_dragonwell.matches_pattern("21.0"));
+        assert!(v_dragonwell.matches_pattern("21.0.7"));
+        assert!(v_dragonwell.matches_pattern("21.0.7.0"));
+        assert!(v_dragonwell.matches_pattern("21.0.7.0.7"));
+        assert!(v_dragonwell.matches_pattern("21.0.7.0.7.6"));
+        assert!(!v_dragonwell.matches_pattern("21.0.7.0.7.5"));
+
+        // Test build number matching
+        let v_with_build = Version::from_str("21.0.5+13.674.11").unwrap();
+        assert!(v_with_build.matches_pattern("21"));
+        assert!(v_with_build.matches_pattern("21.0"));
+        assert!(v_with_build.matches_pattern("21.0.5"));
+        assert!(v_with_build.matches_pattern("21.0.5+13.674.11"));
+        assert!(!v_with_build.matches_pattern("21.0.5+13.674"));
+        assert!(!v_with_build.matches_pattern("21.0.5+13.674.12"));
+
+        // Test pre-release matching
+        let v_pre = Version::from_str("21.0.5-ea").unwrap();
+        assert!(v_pre.matches_pattern("21"));
+        assert!(v_pre.matches_pattern("21.0"));
+        assert!(v_pre.matches_pattern("21.0.5"));
+        assert!(v_pre.matches_pattern("21.0.5-ea"));
+        assert!(!v_pre.matches_pattern("21.0.5-beta"));
+    }
+
+    #[test]
+    fn test_version_ordering() {
+        // Basic ordering
+        assert!(Version::from_str("21").unwrap() < Version::from_str("22").unwrap());
+        assert!(Version::from_str("21.0").unwrap() < Version::from_str("21.1").unwrap());
+        assert!(Version::from_str("21.0.0").unwrap() < Version::from_str("21.0.1").unwrap());
+
+        // Extended component ordering
+        assert!(Version::from_str("21.0.7.6").unwrap() < Version::from_str("21.0.7.6.1").unwrap());
+        assert!(Version::from_str("21.0.7.5.9").unwrap() < Version::from_str("21.0.7.6.1").unwrap());
+
+        // Same version different component count
+        assert!(Version::from_str("21").unwrap() < Version::from_str("21.0").unwrap());
+        assert!(Version::from_str("21.0").unwrap() < Version::from_str("21.0.0").unwrap());
+
+        // Build number ordering
+        assert!(Version::from_str("21.0.5+9").unwrap() < Version::from_str("21.0.5+10").unwrap());
+        assert!(Version::from_str("21.0.5").unwrap() < Version::from_str("21.0.5+1").unwrap());
+    }
+
+    #[test]
+    fn test_semeru_and_other_formats() {
+        // IBM Semeru format
+        let v = Version::from_str("21.0.5+11.0.572").unwrap();
+        assert_eq!(v.components, vec![21, 0, 5]);
+        assert_eq!(v.build, Some(vec![11, 0, 572]));
+
+        // Temurin standard format
+        let v = Version::from_str("21.0.5+11").unwrap();
+        assert_eq!(v.components, vec![21, 0, 5]);
+        assert_eq!(v.build, Some(vec![11]));
+
+        // Zulu format with build
+        let v = Version::from_str("21.0.5+11.0.25").unwrap();
+        assert_eq!(v.components, vec![21, 0, 5]);
+        assert_eq!(v.build, Some(vec![11, 0, 25]));
     }
 }
