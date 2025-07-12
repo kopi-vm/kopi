@@ -15,8 +15,8 @@ pub mod security;
 pub mod tools;
 use crate::error::format_error_with_color;
 use crate::installation::AutoInstaller;
-use security::SecurityValidator;
 use crate::version::resolver::VersionResolver;
+use security::SecurityValidator;
 
 /// Run the shim with the provided arguments
 /// Returns the exit code

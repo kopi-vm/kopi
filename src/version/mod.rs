@@ -7,45 +7,62 @@ pub mod resolver;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Version {
-    pub major: u32,
-    pub minor: Option<u32>,
-    pub patch: Option<u32>,
-    pub build: Option<String>,
+    pub components: Vec<u32>,        // All numeric components
+    pub build: Option<Vec<u32>>,     // Build numbers as numeric array
+    pub pre_release: Option<String>, // Pre-release string
 }
 
 impl Version {
     pub fn new(major: u32, minor: u32, patch: u32) -> Self {
         Self {
-            major,
-            minor: Some(minor),
-            patch: Some(patch),
+            components: vec![major, minor, patch],
             build: None,
+            pre_release: None,
         }
     }
 
     pub fn from_components(major: u32, minor: Option<u32>, patch: Option<u32>) -> Self {
+        let mut components = vec![major];
+        if let Some(minor) = minor {
+            components.push(minor);
+            if let Some(patch) = patch {
+                components.push(patch);
+            }
+        }
         Self {
-            major,
-            minor,
-            patch,
+            components,
             build: None,
+            pre_release: None,
         }
     }
 
     pub fn with_build(mut self, build: String) -> Self {
-        self.build = Some(build);
+        // Parse build string into numeric components if possible
+        let build_parts: Vec<u32> = build
+            .split('.')
+            .filter_map(|s| s.parse::<u32>().ok())
+            .collect();
+
+        if !build_parts.is_empty() {
+            self.build = Some(build_parts);
+        } else {
+            // If build is not numeric, store it as pre-release
+            self.pre_release = Some(build);
+        }
         self
     }
 
-    fn matches_optional_component(
-        pattern_component: Option<u32>,
-        self_component: Option<u32>,
-    ) -> bool {
-        match (pattern_component, self_component) {
-            (Some(pattern_val), Some(self_val)) => pattern_val == self_val,
-            (Some(_), None) => false, // Pattern specifies value but self doesn't have it
-            (None, _) => true,        // Pattern doesn't specify value, matches any
-        }
+    // Helper methods for backward compatibility
+    pub fn major(&self) -> u32 {
+        self.components.first().copied().unwrap_or(0)
+    }
+
+    pub fn minor(&self) -> Option<u32> {
+        self.components.get(1).copied()
+    }
+
+    pub fn patch(&self) -> Option<u32> {
+        self.components.get(2).copied()
     }
 
     /// Matches a version string against this version.
@@ -54,23 +71,41 @@ impl Version {
     /// When the user specifies "21.0", it matches cache entries like "21.0.0" and "21.0+32".
     pub fn matches_pattern(&self, pattern: &str) -> bool {
         if let Ok(pattern_version) = Version::from_str(pattern) {
-            // Major version must always match
-            if self.major != pattern_version.major {
-                return false;
-            }
-
-            // Check minor and patch using the common logic
-            if !Self::matches_optional_component(pattern_version.minor, self.minor) {
-                return false;
-            }
-
-            if !Self::matches_optional_component(pattern_version.patch, self.patch) {
-                return false;
+            // Compare components up to the length specified in pattern
+            for (i, pattern_comp) in pattern_version.components.iter().enumerate() {
+                match self.components.get(i) {
+                    Some(self_comp) => {
+                        if pattern_comp != self_comp {
+                            return false;
+                        }
+                    }
+                    None => {
+                        // Pattern specifies more components than self has
+                        return false;
+                    }
+                }
             }
 
             // Build matching if specified
-            if pattern_version.build.is_some() && pattern_version.build != self.build {
-                return false;
+            if let Some(pattern_build) = &pattern_version.build {
+                if let Some(self_build) = &self.build {
+                    if pattern_build != self_build {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+
+            // Pre-release matching if specified
+            if let Some(pattern_pre) = &pattern_version.pre_release {
+                if let Some(self_pre) = &self.pre_release {
+                    if pattern_pre != self_pre {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
             }
 
             true
@@ -84,60 +119,127 @@ impl FromStr for Version {
     type Err = KopiError;
 
     fn from_str(s: &str) -> Result<Self> {
-        let parts: Vec<&str> = s.split('+').collect();
-        let version_part = parts[0];
-        let build_part = parts.get(1).map(|&s| s.to_string());
-
-        let components: Vec<&str> = version_part.split('.').collect();
-
-        if components.is_empty() || components.len() > 3 {
+        if s.is_empty() {
             return Err(KopiError::InvalidVersionFormat(s.to_string()));
         }
 
-        let major = components[0]
-            .parse::<u32>()
-            .map_err(|_| KopiError::InvalidVersionFormat(s.to_string()))?;
+        let mut remaining = s;
+        let mut pre_release = None;
+        let mut build = None;
 
-        let minor = components.get(1).and_then(|s| {
-            if s.is_empty() {
-                None
-            } else {
-                s.parse::<u32>().ok()
+        // Check for pre-release part (after '-')
+        // But we need to be careful not to split build metadata that contains '-'
+        // First check if there's a '+' and handle that first
+        let plus_pos = remaining.find('+');
+        let dash_pos = remaining.find('-');
+
+        match (plus_pos, dash_pos) {
+            (Some(p), Some(d)) => {
+                if p < d {
+                    // '+' comes before '-', so everything after '+' is build/pre-release
+                    let (before_plus, after_plus) = remaining.split_at(p);
+                    remaining = before_plus;
+                    let build_str = &after_plus[1..];
+
+                    // Check if build string is purely numeric
+                    let parts: Vec<&str> = build_str.split('.').collect();
+                    if parts
+                        .iter()
+                        .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()))
+                    {
+                        let build_parts: Vec<u32> =
+                            parts.iter().map(|s| s.parse().unwrap()).collect();
+                        build = Some(build_parts);
+                    } else {
+                        // Not purely numeric, treat as pre-release
+                        pre_release = Some(build_str.to_string());
+                    }
+                } else {
+                    // '-' comes before '+', handle pre-release first
+                    let (before_dash, after_dash) = remaining.split_at(d);
+                    remaining = before_dash;
+                    pre_release = Some(after_dash[1..].to_string());
+                }
             }
-        });
+            (Some(p), None) => {
+                // Only '+' present
+                let (before_plus, after_plus) = remaining.split_at(p);
+                remaining = before_plus;
+                let build_str = &after_plus[1..];
 
-        let patch = components.get(2).and_then(|s| {
-            if s.is_empty() {
-                None
-            } else {
-                s.parse::<u32>().ok()
+                // Check if build string is purely numeric
+                let parts: Vec<&str> = build_str.split('.').collect();
+                if parts
+                    .iter()
+                    .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()))
+                {
+                    let build_parts: Vec<u32> = parts.iter().map(|s| s.parse().unwrap()).collect();
+                    build = Some(build_parts);
+                } else {
+                    // Not purely numeric, treat as pre-release
+                    pre_release = Some(build_str.to_string());
+                }
             }
-        });
-
-        let mut version = Version::from_components(major, minor, patch);
-        if let Some(build) = build_part {
-            version = version.with_build(build);
+            (None, Some(d)) => {
+                // Only '-' present
+                let (before_dash, after_dash) = remaining.split_at(d);
+                remaining = before_dash;
+                pre_release = Some(after_dash[1..].to_string());
+            }
+            (None, None) => {
+                // Neither '+' nor '-' present
+            }
         }
 
-        Ok(version)
+        // Parse numeric components
+        let components: Result<Vec<u32>> = remaining
+            .split('.')
+            .map(|s| {
+                s.parse::<u32>()
+                    .map_err(|_| KopiError::InvalidVersionFormat(s.to_string()))
+            })
+            .collect();
+
+        let components = components?;
+
+        if components.is_empty() {
+            return Err(KopiError::InvalidVersionFormat(s.to_string()));
+        }
+
+        Ok(Version {
+            components,
+            build,
+            pre_release,
+        })
     }
 }
 
 impl std::fmt::Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.major)?;
+        // Write components separated by dots
+        for (i, component) in self.components.iter().enumerate() {
+            if i > 0 {
+                write!(f, ".")?;
+            }
+            write!(f, "{component}")?;
+        }
 
-        if let Some(minor) = self.minor {
-            write!(f, ".{minor}")?;
-
-            if let Some(patch) = self.patch {
-                write!(f, ".{patch}")?;
+        // Write build if present
+        if let Some(build) = &self.build {
+            write!(f, "+")?;
+            for (i, component) in build.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ".")?;
+                }
+                write!(f, "{component}")?;
             }
         }
 
-        if let Some(build) = &self.build {
-            write!(f, "+{build}")?;
+        // Write pre-release if present
+        if let Some(pre_release) = &self.pre_release {
+            write!(f, "-{pre_release}")?;
         }
+
         Ok(())
     }
 }
@@ -191,6 +293,7 @@ mod tests {
 
     #[test]
     fn test_version_parsing() {
+        // Basic versions
         assert_eq!(
             Version::from_str("21").unwrap(),
             Version::from_components(21, None, None)
@@ -200,16 +303,34 @@ mod tests {
             Version::from_components(21, Some(0), None)
         );
         assert_eq!(Version::from_str("21.0.0").unwrap(), Version::new(21, 0, 0));
-
         assert_eq!(Version::from_str("17.0.9").unwrap(), Version::new(17, 0, 9));
 
-        assert_eq!(
-            Version::from_str("11.0.2+9").unwrap(),
-            Version::new(11, 0, 2).with_build("9".to_string())
-        );
+        // Version with numeric build
+        let v = Version::from_str("11.0.2+9").unwrap();
+        assert_eq!(v.components, vec![11, 0, 2]);
+        assert_eq!(v.build, Some(vec![9]));
+
+        // Extended versions (Corretto format)
+        let v = Version::from_str("21.0.7.6.1").unwrap();
+        assert_eq!(v.components, vec![21, 0, 7, 6, 1]);
+        assert_eq!(v.build, None);
+
+        // Dragonwell 6-component format
+        let v = Version::from_str("21.0.7.0.7.6").unwrap();
+        assert_eq!(v.components, vec![21, 0, 7, 0, 7, 6]);
+
+        // Multi-component build
+        let v = Version::from_str("21.0.7+9.1").unwrap();
+        assert_eq!(v.components, vec![21, 0, 7]);
+        assert_eq!(v.build, Some(vec![9, 1]));
+
+        // Pre-release version
+        let v = Version::from_str("21.0.7-ea").unwrap();
+        assert_eq!(v.components, vec![21, 0, 7]);
+        assert_eq!(v.pre_release, Some("ea".to_string()));
 
         assert!(Version::from_str("invalid").is_err());
-        assert!(Version::from_str("1.2.3.4").is_err());
+        assert!(Version::from_str("").is_err());
     }
 
     #[test]
@@ -221,12 +342,22 @@ mod tests {
         );
         assert_eq!(Version::new(21, 0, 0).to_string(), "21.0.0");
         assert_eq!(Version::new(17, 0, 9).to_string(), "17.0.9");
-        assert_eq!(
-            Version::new(11, 0, 2)
-                .with_build("9".to_string())
-                .to_string(),
-            "11.0.2+9"
-        );
+
+        // Version with single-component build
+        let v = Version::from_str("11.0.2+9").unwrap();
+        assert_eq!(v.to_string(), "11.0.2+9");
+
+        // Extended Corretto version
+        let v = Version::from_str("21.0.7.6.1").unwrap();
+        assert_eq!(v.to_string(), "21.0.7.6.1");
+
+        // Multi-component build
+        let v = Version::from_str("21.0.7+9.1.3").unwrap();
+        assert_eq!(v.to_string(), "21.0.7+9.1.3");
+
+        // Pre-release version
+        let v = Version::from_str("21.0.7-ea").unwrap();
+        assert_eq!(v.to_string(), "21.0.7-ea");
     }
 
     #[test]
@@ -242,7 +373,7 @@ mod tests {
         assert!(v17_0_9.matches_pattern("17.0.9"));
         assert!(!v17_0_9.matches_pattern("17.0.8"));
 
-        // Test that cache entries with None don't match specific user values
+        // Test that cache entries with fewer components don't match specific user values
         let v21 = Version::from_components(21, None, None);
         assert!(v21.matches_pattern("21"));
         assert!(!v21.matches_pattern("21.0")); // User specifies 21.0, cache has only 21
@@ -252,6 +383,15 @@ mod tests {
         assert!(v21_0.matches_pattern("21")); // User specifies 21, matches 21.0
         assert!(v21_0.matches_pattern("21.0")); // User specifies 21.0, matches 21.0
         assert!(!v21_0.matches_pattern("21.0.0")); // User specifies 21.0.0, cache has only 21.0
+
+        // Test extended version matching (Corretto)
+        let v_corretto = Version::from_str("21.0.7.6.1").unwrap();
+        assert!(v_corretto.matches_pattern("21"));
+        assert!(v_corretto.matches_pattern("21.0"));
+        assert!(v_corretto.matches_pattern("21.0.7"));
+        assert!(v_corretto.matches_pattern("21.0.7.6"));
+        assert!(v_corretto.matches_pattern("21.0.7.6.1"));
+        assert!(!v_corretto.matches_pattern("21.0.7.6.2"));
     }
 
     #[test]

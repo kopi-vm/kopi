@@ -77,7 +77,7 @@ fn test_search_by_major_version() {
 
     let results = searcher.search("21").unwrap();
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].package.version.major, 21);
+    assert_eq!(results[0].package.version.major(), 21);
 }
 
 #[test]
@@ -88,7 +88,7 @@ fn test_search_with_distribution() {
 
     let results = searcher.search("temurin@17").unwrap();
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].package.version.major, 17);
+    assert_eq!(results[0].package.version.major(), 17);
     assert_eq!(results[0].distribution, "temurin");
 }
 
@@ -153,7 +153,7 @@ fn test_search_latest() {
 
     let results = searcher.search_parsed(&parsed_request).unwrap();
     assert_eq!(results.len(), 1); // Only one distribution in test cache
-    assert_eq!(results[0].package.version.major, 21); // 21 is newer than 17
+    assert_eq!(results[0].package.version.major(), 21); // 21 is newer than 17
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn test_search_latest_with_distribution() {
 
     let results = searcher.search_parsed(&parsed_request).unwrap();
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].package.version.major, 21);
+    assert_eq!(results[0].package.version.major(), 21);
     assert_eq!(results[0].distribution, "temurin");
 }
 

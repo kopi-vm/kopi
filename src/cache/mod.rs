@@ -713,7 +713,7 @@ mod tests {
         let jdk_metadata = result.unwrap();
         assert_eq!(jdk_metadata.id, "test123");
         assert_eq!(jdk_metadata.distribution, "temurin");
-        assert_eq!(jdk_metadata.version.major, 21);
+        assert_eq!(jdk_metadata.version.major(), 21);
         // Architecture is parsed from filename
         assert_eq!(jdk_metadata.architecture.to_string(), "x64");
     }

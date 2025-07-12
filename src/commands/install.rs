@@ -233,10 +233,10 @@ impl InstallCommand {
         }
 
         // Show hint about using the JDK
-        if VersionParser::is_lts_version(version.major) {
+        if VersionParser::is_lts_version(version.major()) {
             println!(
                 "Note: {} is an LTS (Long Term Support) version.",
-                version.major
+                version.major()
             );
         }
         println!("\nTo use this JDK, run: kopi use {version_spec}");
@@ -438,10 +438,10 @@ impl InstallCommand {
             id: metadata.id.clone(),
             archive_type: metadata.archive_type.to_string(),
             distribution: metadata.distribution.clone(),
-            major_version: metadata.version.major,
+            major_version: metadata.version.major(),
             java_version: metadata.version.to_string(),
             distribution_version: metadata.distribution_version.clone(),
-            jdk_version: metadata.version.major,
+            jdk_version: metadata.version.major(),
             directly_downloadable: true,
             filename: format!(
                 "{}-{}-{}-{}.{}",
@@ -485,7 +485,7 @@ mod tests {
         let parser = VersionParser::new(&config);
         let version_request = parser.parse("21").unwrap();
         assert!(version_request.version.is_some());
-        assert_eq!(version_request.version.unwrap().major, 21);
+        assert_eq!(version_request.version.unwrap().major(), 21);
         assert_eq!(version_request.distribution, None);
     }
 
@@ -503,7 +503,7 @@ mod tests {
         let parser = VersionParser::new(&config);
         let version_request = parser.parse("corretto@17").unwrap();
         assert!(version_request.version.is_some());
-        assert_eq!(version_request.version.unwrap().major, 17);
+        assert_eq!(version_request.version.unwrap().major(), 17);
         assert_eq!(version_request.distribution, Some(Distribution::Corretto));
     }
 
