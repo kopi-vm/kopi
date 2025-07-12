@@ -124,18 +124,17 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
   - Auto-detect version type based on format
   - Allow users to specify `--java-version` or `--distribution-version` flags
   - Fallback search strategy
+- **Important Change**: Parse distribution_version as Version struct (currently kept as string)
 
 ### Phase 5: Code Updates
 
 #### 5.1 Update Version Usage
 - **Files to update**:
-  - `src/cache/mod.rs` - Package version parsing
+  - `src/cache/mod.rs` - Update Package struct to store distribution_version as Version instead of String; parse both java_version and distribution_version
   - `src/commands/install.rs` - Version validation
-  - `src/commands/uninstall.rs` - Version pattern matching
-  - `src/commands/use_command.rs` - Version selection
-  - `src/commands/list.rs` - Version display
-  - `src/storage/jdk.rs` - Directory name parsing
-  - `src/search/mod.rs` - Version filtering
+  - `src/uninstall/mod.rs` - Version pattern matching
+  - `src/storage/listing.rs` - Parse versions from installed JDK directory names
+  - `src/search/searcher.rs` - Version filtering (update to parse distribution_version)
 
 #### 5.2 Update Tests
 - **Test files to update**:
