@@ -81,8 +81,10 @@ impl InstallCommand {
         let repository = JdkRepository::new(&config);
 
         // Check if already installed using the actual distribution_version
-        let installation_dir =
-            repository.jdk_install_path(&distribution, &jdk_metadata.distribution_version.to_string())?;
+        let installation_dir = repository.jdk_install_path(
+            &distribution,
+            &jdk_metadata.distribution_version.to_string(),
+        )?;
 
         if dry_run {
             println!(
@@ -415,7 +417,10 @@ impl InstallCommand {
             distribution: package.distribution.clone(),
             version: crate::version::Version::from_str(&package.java_version)?,
             distribution_version: crate::version::Version::from_str(&package.distribution_version)
-                .unwrap_or_else(|_| crate::version::Version::from_str(&package.java_version).unwrap_or(crate::version::Version::new(package.major_version, 0, 0))),
+                .unwrap_or_else(|_| {
+                    crate::version::Version::from_str(&package.java_version)
+                        .unwrap_or(crate::version::Version::new(package.major_version, 0, 0))
+                }),
             architecture: crate::models::platform::Architecture::from_str(&arch)?,
             operating_system: crate::models::platform::OperatingSystem::from_str(&os)?,
             package_type: crate::models::package::PackageType::from_str(&package.package_type)?,

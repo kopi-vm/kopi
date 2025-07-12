@@ -5,15 +5,15 @@ use kopi::models::{
     metadata::JdkMetadata,
     package::{ArchiveType, ChecksumType, PackageType},
     platform::{Architecture, OperatingSystem},
-    version::Version,
 };
+use kopi::version::Version;
 
 fn create_test_metadata(id: &str, major: u32, minor: u32, patch: u32) -> JdkMetadata {
     JdkMetadata {
         id: id.to_string(),
         distribution: "temurin".to_string(),
         version: Version::new(major, minor, patch),
-        distribution_version: format!("{major}.{minor}.{patch}"),
+        distribution_version: Version::new(major, minor, patch),
         architecture: Architecture::X64,
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,

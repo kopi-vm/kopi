@@ -6,8 +6,8 @@ use kopi::models::{
     metadata::JdkMetadata,
     package::{ArchiveType, ChecksumType, PackageType},
     platform::{Architecture, OperatingSystem},
-    version::Version,
 };
+use kopi::version::Version;
 use kopi::search::{PackageSearcher, PlatformFilter};
 use std::str::FromStr;
 
@@ -48,7 +48,7 @@ fn create_realistic_cache() -> MetadataCache {
                                 id: format!("{dist_id}-{major}.0.{patch}-{arch:?}-{os:?}"),
                                 distribution: dist_id.to_string(),
                                 version: Version::new(major, 0, patch),
-                                distribution_version: format!("{major}.0.{patch}"),
+                                distribution_version: Version::new(major, 0, patch),
                                 architecture: *arch,
                                 operating_system: *os,
                                 package_type: *pkg_type,

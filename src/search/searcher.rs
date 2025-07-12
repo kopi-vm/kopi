@@ -331,7 +331,9 @@ impl<'a> PackageSearcher<'a> {
                 VersionSearchType::JavaVersion => package.version.matches_pattern(version_pattern),
                 VersionSearchType::DistributionVersion => {
                     // Use Version's matches_pattern method for distribution_version
-                    package.distribution_version.matches_pattern(version_pattern)
+                    package
+                        .distribution_version
+                        .matches_pattern(version_pattern)
                 }
                 VersionSearchType::Auto => {
                     // This shouldn't happen as Auto is resolved earlier, but handle it

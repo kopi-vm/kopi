@@ -294,7 +294,7 @@ fn test_corretto_extended_version_formats() {
     let jdk1 = env.create_real_jdk("corretto", "21.0.7.6");
     let jdk2 = env.create_real_jdk("corretto", "21.0.7.6.1");
     let jdk3 = env.create_real_jdk("corretto", "8.452.9.1");
-    
+
     assert!(jdk1.exists());
     assert!(jdk2.exists());
     assert!(jdk3.exists());
@@ -302,13 +302,18 @@ fn test_corretto_extended_version_formats() {
     // Test that specifying partial version matches multiple JDKs
     let result = handler.uninstall_jdk("corretto@21.0.7.6", false);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Multiple JDKs match"));
-    
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Multiple JDKs match")
+    );
+
     // Remove JDK2 first to avoid ambiguity
     let result = handler.uninstall_jdk("corretto@21.0.7.6.1", false);
     assert!(result.is_ok());
     assert!(!jdk2.exists());
-    
+
     // Now we can uninstall JDK1 without ambiguity
     let result = handler.uninstall_jdk("corretto@21.0.7.6", false);
     assert!(result.is_ok());
@@ -329,7 +334,7 @@ fn test_dragonwell_extended_version_formats() {
     // Create Dragonwell JDKs with 6-component versions
     let jdk1 = env.create_real_jdk("dragonwell", "21.0.7.0.7.6");
     let jdk2 = env.create_real_jdk("dragonwell", "17.0.13.0.13.11-11");
-    
+
     assert!(jdk1.exists());
     assert!(jdk2.exists());
 
@@ -358,7 +363,12 @@ fn test_partial_version_matching_extended() {
     // Try to uninstall with just "21" - should fail due to multiple matches
     let result = handler.uninstall_jdk("21", false);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Multiple JDKs match"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("Multiple JDKs match")
+    );
 
     // Uninstall with distribution and partial version
     let result = handler.uninstall_jdk("corretto@21", false);

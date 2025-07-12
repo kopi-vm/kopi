@@ -364,8 +364,8 @@ fn convert_package_to_jdk_metadata(
         .unwrap_or_else(|_| Version::new(api_package.major_version, 0, 0));
 
     // Parse distribution_version
-    let distribution_version = Version::from_str(&api_package.distribution_version)
-        .unwrap_or_else(|_| version.clone());
+    let distribution_version =
+        Version::from_str(&api_package.distribution_version).unwrap_or_else(|_| version.clone());
 
     // Parse architecture from filename
     let architecture =

@@ -140,7 +140,7 @@ impl FromStr for Version {
                     let (before_plus, after_plus) = remaining.split_at(p);
                     remaining = before_plus;
                     let build_str = &after_plus[1..];
-                    
+
                     // Check if build string is empty
                     if build_str.is_empty() {
                         return Err(KopiError::InvalidVersionFormat(s.to_string()));
@@ -164,12 +164,12 @@ impl FromStr for Version {
                     let (before_dash, after_dash) = remaining.split_at(d);
                     remaining = before_dash;
                     let pre_str = &after_dash[1..];
-                    
+
                     // Check if pre-release string is empty
                     if pre_str.is_empty() {
                         return Err(KopiError::InvalidVersionFormat(s.to_string()));
                     }
-                    
+
                     pre_release = Some(pre_str.to_string());
                 }
             }
@@ -178,7 +178,7 @@ impl FromStr for Version {
                 let (before_plus, after_plus) = remaining.split_at(p);
                 remaining = before_plus;
                 let build_str = &after_plus[1..];
-                
+
                 // Check if build string is empty
                 if build_str.is_empty() {
                     return Err(KopiError::InvalidVersionFormat(s.to_string()));
@@ -202,12 +202,12 @@ impl FromStr for Version {
                 let (before_dash, after_dash) = remaining.split_at(d);
                 remaining = before_dash;
                 let pre_str = &after_dash[1..];
-                
+
                 // Check if pre-release string is empty
                 if pre_str.is_empty() {
                     return Err(KopiError::InvalidVersionFormat(s.to_string()));
                 }
-                
+
                 pre_release = Some(pre_str.to_string());
             }
             (None, None) => {
@@ -641,7 +641,9 @@ mod tests {
 
         // Extended component ordering
         assert!(Version::from_str("21.0.7.6").unwrap() < Version::from_str("21.0.7.6.1").unwrap());
-        assert!(Version::from_str("21.0.7.5.9").unwrap() < Version::from_str("21.0.7.6.1").unwrap());
+        assert!(
+            Version::from_str("21.0.7.5.9").unwrap() < Version::from_str("21.0.7.6.1").unwrap()
+        );
 
         // Same version different component count
         assert!(Version::from_str("21").unwrap() < Version::from_str("21.0").unwrap());

@@ -507,14 +507,20 @@ fn test_search_by_distribution_version() {
         .search_parsed_with_type(&request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].package.distribution_version, Version::from_str("21.0.7.6.1").unwrap());
+    assert_eq!(
+        results[0].package.distribution_version,
+        Version::from_str("21.0.7.6.1").unwrap()
+    );
 
     // Test explicit distribution_version search
     let results = searcher
         .search_parsed_with_type(&request, VersionSearchType::DistributionVersion)
         .unwrap();
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].package.distribution_version, Version::from_str("21.0.7.6.1").unwrap());
+    assert_eq!(
+        results[0].package.distribution_version,
+        Version::from_str("21.0.7.6.1").unwrap()
+    );
 
     // Test partial matching for 6-component version
     let request = ParsedVersionRequest {
@@ -528,7 +534,10 @@ fn test_search_by_distribution_version() {
         .search_parsed_with_type(&request, VersionSearchType::DistributionVersion)
         .unwrap();
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].package.distribution_version, Version::from_str("21.0.7.0.7.6").unwrap());
+    assert_eq!(
+        results[0].package.distribution_version,
+        Version::from_str("21.0.7.0.7.6").unwrap()
+    );
 }
 
 #[test]
