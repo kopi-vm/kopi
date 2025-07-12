@@ -112,10 +112,7 @@ pub fn execute_global_command(version: &str) -> Result<()> {
     // 6. Write version file
     fs::write(&version_file, format!("{}\n", resolved_version))?;
     
-    // 7. Update system JDK symlinks if needed
-    update_system_symlinks(&resolved_version)?;
-    
-    // 8. Provide feedback
+    // 7. Provide feedback
     println!("Set global JDK version to {}", resolved_version);
     println!("This will be the default for new shells and projects without local versions");
     
@@ -123,36 +120,6 @@ pub fn execute_global_command(version: &str) -> Result<()> {
 }
 ```
 
-### System Symlink Management
-
-```rust
-fn update_system_symlinks(version: &str) -> Result<()> {
-    let kopi_home = get_kopi_home()?;
-    let default_link = kopi_home.join("default");
-    
-    // Remove existing symlink
-    if default_link.exists() {
-        fs::remove_file(&default_link).ok();
-    }
-    
-    // Create new symlink to versioned JDK
-    let jdk_path = kopi_home.join("jdks").join(version);
-    
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::symlink;
-        symlink(&jdk_path, &default_link)?;
-    }
-    
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::symlink_dir;
-        symlink_dir(&jdk_path, &default_link)?;
-    }
-    
-    Ok(())
-}
-```
 
 ### Global Version Resolution
 
@@ -260,7 +227,6 @@ ExecStart=/usr/bin/java -jar myapp.jar
 
 IDEs can detect the global Kopi version:
 - Read from ~/.kopi/version
-- Use ~/.kopi/default symlink
 - Fallback for projects without local version
 
 ## Advanced Features
@@ -315,14 +281,12 @@ pub fn migrate_from_system() -> Result<()> {
 ### Unit Tests
 - Version file creation and updates
 - Directory permission handling
-- Symlink creation on different platforms
 - Version validation logic
 
 ### Integration Tests
 - Shim fallback to global version
 - System service integration
 - Concurrent access to version file
-- Platform-specific symlink behavior
 
 ### Test Scenarios
 1. Set global version for first time
@@ -336,19 +300,16 @@ pub fn migrate_from_system() -> Result<()> {
 - Validate version strings before file operations
 - Check directory ownership before writing
 - Use atomic file writes to prevent corruption
-- Restrict symlink targets to Kopi-managed JDKs
 
 ## Platform-Specific Behavior
 
 ### Unix/Linux/macOS
-- Symlinks created with standard permissions
 - Version file with 0644 permissions
 - Directory with 0755 permissions
 
 ### Windows
-- Directory junctions for symlinks
-- Requires appropriate permissions for symlink creation
-- Falls back to file copy if symlinks unavailable
+- Version file with appropriate permissions
+- Same file format as Unix systems
 
 ## Future Enhancements
 
