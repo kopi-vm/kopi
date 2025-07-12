@@ -55,13 +55,32 @@ impl TestHomeGuard {
 impl Drop for TestHomeGuard {
     fn drop(&mut self) {
         if self.path.exists() {
-            fs::remove_dir_all(&self.path).unwrap_or_else(|e| {
-                eprintln!(
-                    "Failed to cleanup test directory {}: {}",
-                    self.path.display(),
-                    e
-                );
-            });
+            // On Windows, sometimes file handles are still open when we try to delete
+            // Retry a few times with a small delay
+            let mut attempts = 0;
+            const MAX_ATTEMPTS: u32 = 3;
+            
+            while attempts < MAX_ATTEMPTS && self.path.exists() {
+                match fs::remove_dir_all(&self.path) {
+                    Ok(_) => break,
+                    Err(e) => {
+                        attempts += 1;
+                        if attempts < MAX_ATTEMPTS {
+                            eprintln!(
+                                "Attempt {}/{} to cleanup test directory {} failed: {}. Retrying...",
+                                attempts, MAX_ATTEMPTS, self.path.display(), e
+                            );
+                            // Small delay before retry (especially helpful on Windows)
+                            std::thread::sleep(std::time::Duration::from_millis(100));
+                        } else {
+                            eprintln!(
+                                "Failed to cleanup test directory {} after {} attempts: {}",
+                                self.path.display(), MAX_ATTEMPTS, e
+                            );
+                        }
+                    }
+                }
+            }
         }
     }
 }
