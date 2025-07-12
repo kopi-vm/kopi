@@ -454,7 +454,6 @@ fn convert_api_to_cache(api_metadata: ApiMetadata) -> Result<MetadataCache> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
     use tempfile::TempDir;
 
     #[test]

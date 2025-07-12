@@ -7,6 +7,7 @@ use kopi::models::metadata::JdkMetadata;
 use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
 use kopi::models::platform::{Architecture, OperatingSystem};
 use kopi::version::Version;
+use std::str::FromStr;
 
 fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
     let test_home = TestHomeGuard::new();
@@ -18,7 +19,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         id: "test-21-lts".to_string(),
         distribution: "temurin".to_string(),
         version: Version::new(21, 0, 1),
-        distribution_version: "21.0.1+12".to_string(),
+        distribution_version: Version::from_str("21.0.1+12").unwrap(),
         architecture: Architecture::X64,
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
@@ -39,7 +40,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         id: "test-22-sts".to_string(),
         distribution: "temurin".to_string(),
         version: Version::new(22, 0, 0),
-        distribution_version: "22.0.0+36".to_string(),
+        distribution_version: Version::from_str("22.0.0+36").unwrap(),
         architecture: Architecture::X64,
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
@@ -60,7 +61,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         id: "test-23-ea".to_string(),
         distribution: "temurin".to_string(),
         version: Version::new(23, 0, 0),
-        distribution_version: "23-ea+12".to_string(),
+        distribution_version: Version::from_str("23-ea+12").unwrap(),
         architecture: Architecture::X64,
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
@@ -81,7 +82,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         id: "test-21-jre".to_string(),
         distribution: "temurin".to_string(),
         version: Version::new(21, 0, 1),
-        distribution_version: "21.0.1+12".to_string(),
+        distribution_version: Version::from_str("21.0.1+12").unwrap(),
         architecture: Architecture::X64,
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jre,
@@ -102,7 +103,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         id: "test-21-javafx".to_string(),
         distribution: "liberica".to_string(),
         version: Version::new(21, 0, 1),
-        distribution_version: "21.0.1+12".to_string(),
+        distribution_version: Version::from_str("21.0.1+12").unwrap(),
         architecture: Architecture::X64,
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
@@ -263,7 +264,7 @@ fn test_compact_mode_deduplication() {
             id: format!("test-21-{arch}"),
             distribution: "zulu".to_string(),
             version: Version::new(21, 0, 7).with_build("6".to_string()),
-            distribution_version: "21.0.7+6".to_string(),
+            distribution_version: Version::from_str("21.0.7+6").unwrap(),
             architecture: arch,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
@@ -316,7 +317,7 @@ fn test_detailed_mode_deduplication_keeps_smallest() {
             id: format!("test-21-size-{i}"),
             distribution: "temurin".to_string(),
             version: Version::new(21, 0, 1),
-            distribution_version: "21.0.1+12".to_string(),
+            distribution_version: Version::from_str("21.0.1+12").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,

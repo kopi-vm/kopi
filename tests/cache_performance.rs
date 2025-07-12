@@ -6,6 +6,7 @@ use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
 use kopi::models::platform::{Architecture, OperatingSystem};
 use kopi::search::{PackageSearcher, PlatformFilter};
 use kopi::version::Version;
+use std::str::FromStr;
 use std::time::Instant;
 
 fn create_test_config() -> KopiConfig {
@@ -55,7 +56,7 @@ fn create_large_test_cache() -> MetadataCache {
                                     ),
                                     distribution: dist_id.to_string(),
                                     version: Version::new(*major, minor, patch),
-                                    distribution_version: format!("{major}.{minor}.{patch}"),
+                                    distribution_version: Version::from_str(&format!("{major}.{minor}.{patch}")).unwrap(),
                                     architecture: *arch,
                                     operating_system: *os,
                                     package_type: *pkg_type,

@@ -5,6 +5,7 @@ use kopi::config::new_kopi_config;
 use serial_test::serial;
 use std::fs;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 fn get_test_cache_path(test_home: &TestHomeGuard) -> PathBuf {
     test_home.kopi_home().join("cache").join("metadata.json")
@@ -82,7 +83,7 @@ fn test_cache_offline_mode() {
         id: "test-id-1".to_string(),
         distribution: "temurin".to_string(),
         version: Version::new(21, 0, 1),
-        distribution_version: "21.0.1+12".to_string(),
+        distribution_version: Version::from_str("21.0.1+12").unwrap(),
         architecture: Architecture::X64,
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
@@ -148,7 +149,7 @@ fn test_find_package_in_cache() {
         id: "test-id".to_string(),
         distribution: "temurin".to_string(),
         version: Version::new(21, 0, 1),
-        distribution_version: "21.0.1+12".to_string(),
+        distribution_version: Version::from_str("21.0.1+12").unwrap(),
         architecture: Architecture::X64,
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
@@ -230,7 +231,7 @@ fn test_cache_with_install_command() {
         id: "test-install-id".to_string(),
         distribution: "temurin".to_string(),
         version: Version::new(21, 0, 1),
-        distribution_version: "21.0.1+12".to_string(),
+        distribution_version: Version::from_str("21.0.1+12").unwrap(),
         architecture: Architecture::X64,
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,

@@ -8,6 +8,7 @@ use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
 use kopi::models::platform::{Architecture, OperatingSystem};
 use kopi::version::Version;
 use std::env;
+use std::str::FromStr;
 use std::sync::Mutex;
 
 // Global mutex to ensure tests don't run concurrently when modifying KOPI_HOME
@@ -31,7 +32,7 @@ fn setup_test_cache() -> (TestHomeGuard, std::sync::MutexGuard<'static, ()>) {
             id: "temurin-21".to_string(),
             distribution: "temurin".to_string(),
             version: Version::new(21, 0, 1),
-            distribution_version: "21.0.1".to_string(),
+            distribution_version: Version::from_str("21.0.1").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
@@ -51,7 +52,7 @@ fn setup_test_cache() -> (TestHomeGuard, std::sync::MutexGuard<'static, ()>) {
             id: "temurin-17".to_string(),
             distribution: "temurin".to_string(),
             version: Version::new(17, 0, 9),
-            distribution_version: "17.0.9".to_string(),
+            distribution_version: Version::from_str("17.0.9").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
@@ -71,7 +72,7 @@ fn setup_test_cache() -> (TestHomeGuard, std::sync::MutexGuard<'static, ()>) {
             id: "temurin-11".to_string(),
             distribution: "temurin".to_string(),
             version: Version::new(11, 0, 21),
-            distribution_version: "11.0.21".to_string(),
+            distribution_version: Version::from_str("11.0.21").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
@@ -104,7 +105,7 @@ fn setup_test_cache() -> (TestHomeGuard, std::sync::MutexGuard<'static, ()>) {
             id: "corretto-21".to_string(),
             distribution: "corretto".to_string(),
             version: Version::new(21, 0, 2),
-            distribution_version: "21.0.2".to_string(),
+            distribution_version: Version::from_str("21.0.2").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
@@ -124,7 +125,7 @@ fn setup_test_cache() -> (TestHomeGuard, std::sync::MutexGuard<'static, ()>) {
             id: "corretto-17".to_string(),
             distribution: "corretto".to_string(),
             version: Version::new(17, 0, 10),
-            distribution_version: "17.0.10".to_string(),
+            distribution_version: Version::from_str("17.0.10").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
