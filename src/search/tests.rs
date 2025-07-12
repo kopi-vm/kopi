@@ -21,7 +21,7 @@ fn create_test_cache() -> MetadataCache {
             id: "test-21".to_string(),
             distribution: "temurin".to_string(),
             version: Version::new(21, 0, 1),
-            distribution_version: "21.0.1".to_string(),
+            distribution_version: Version::from_str("21.0.1").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
@@ -40,7 +40,7 @@ fn create_test_cache() -> MetadataCache {
             id: "test-17".to_string(),
             distribution: "temurin".to_string(),
             version: Version::new(17, 0, 9),
-            distribution_version: "17.0.9".to_string(),
+            distribution_version: Version::from_str("17.0.9").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
@@ -403,13 +403,13 @@ fn test_latest_with_version_filter() {
         let mut v21_0_2 = dist_cache.packages[0].clone();
         v21_0_2.id = "test-21.0.2".to_string();
         v21_0_2.version = Version::new(21, 0, 2);
-        v21_0_2.distribution_version = "21.0.2".to_string();
+        v21_0_2.distribution_version = Version::from_str("21.0.2").unwrap();
         dist_cache.packages.push(v21_0_2);
 
         let mut v22 = dist_cache.packages[0].clone();
         v22.id = "test-22".to_string();
         v22.version = Version::new(22, 0, 0);
-        v22.distribution_version = "22.0.0".to_string();
+        v22.distribution_version = Version::from_str("22.0.0").unwrap();
         dist_cache.packages.push(v22);
     }
 
@@ -481,14 +481,14 @@ fn test_search_by_distribution_version() {
         let mut corretto_pkg = dist_cache.packages[0].clone();
         corretto_pkg.id = "corretto-21".to_string();
         corretto_pkg.distribution = "corretto".to_string();
-        corretto_pkg.distribution_version = "21.0.7.6.1".to_string();
+        corretto_pkg.distribution_version = Version::from_str("21.0.7.6.1").unwrap();
         dist_cache.packages.push(corretto_pkg);
 
         // Dragonwell-style 6-component version
         let mut dragonwell_pkg = dist_cache.packages[0].clone();
         dragonwell_pkg.id = "dragonwell-21".to_string();
         dragonwell_pkg.distribution = "dragonwell".to_string();
-        dragonwell_pkg.distribution_version = "21.0.7.0.7.6".to_string();
+        dragonwell_pkg.distribution_version = Version::from_str("21.0.7.0.7.6").unwrap();
         dist_cache.packages.push(dragonwell_pkg);
     }
 
@@ -507,14 +507,14 @@ fn test_search_by_distribution_version() {
         .search_parsed_with_type(&request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].package.distribution_version, "21.0.7.6.1");
+    assert_eq!(results[0].package.distribution_version, Version::from_str("21.0.7.6.1").unwrap());
 
     // Test explicit distribution_version search
     let results = searcher
         .search_parsed_with_type(&request, VersionSearchType::DistributionVersion)
         .unwrap();
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].package.distribution_version, "21.0.7.6.1");
+    assert_eq!(results[0].package.distribution_version, Version::from_str("21.0.7.6.1").unwrap());
 
     // Test partial matching for 6-component version
     let request = ParsedVersionRequest {
@@ -528,7 +528,7 @@ fn test_search_by_distribution_version() {
         .search_parsed_with_type(&request, VersionSearchType::DistributionVersion)
         .unwrap();
     assert_eq!(results.len(), 1);
-    assert_eq!(results[0].package.distribution_version, "21.0.7.0.7.6");
+    assert_eq!(results[0].package.distribution_version, Version::from_str("21.0.7.0.7.6").unwrap());
 }
 
 #[test]
@@ -539,7 +539,7 @@ fn test_search_forced_java_version() {
     if let Some(dist_cache) = cache.distributions.get_mut("temurin") {
         let mut pkg = dist_cache.packages[0].clone();
         pkg.id = "extended-21".to_string();
-        pkg.distribution_version = "21.0.1.9.1".to_string(); // Extended format
+        pkg.distribution_version = Version::from_str("21.0.1.9.1").unwrap(); // Extended format
         dist_cache.packages.push(pkg);
     }
 
@@ -573,7 +573,7 @@ fn test_distribution_version_boundary_matching() {
             id: "test".to_string(),
             distribution: "corretto".to_string(),
             version: Version::new(21, 0, 7),
-            distribution_version: "21.0.7".to_string(),
+            distribution_version: Version::from_str("21.0.7").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
@@ -591,17 +591,17 @@ fn test_distribution_version_boundary_matching() {
 
         let mut pkg1 = base_pkg.clone();
         pkg1.id = "v1".to_string();
-        pkg1.distribution_version = "21.0.7".to_string();
+        pkg1.distribution_version = Version::from_str("21.0.7").unwrap();
         dist_cache.packages.push(pkg1);
 
         let mut pkg2 = base_pkg.clone();
         pkg2.id = "v2".to_string();
-        pkg2.distribution_version = "21.0.7.1".to_string();
+        pkg2.distribution_version = Version::from_str("21.0.7.1").unwrap();
         dist_cache.packages.push(pkg2);
 
         let mut pkg3 = base_pkg.clone();
         pkg3.id = "v3".to_string();
-        pkg3.distribution_version = "21.0.71".to_string();
+        pkg3.distribution_version = Version::from_str("21.0.71").unwrap();
         dist_cache.packages.push(pkg3);
     }
 
@@ -623,16 +623,16 @@ fn test_distribution_version_boundary_matching() {
     assert!(
         results
             .iter()
-            .any(|r| r.package.distribution_version == "21.0.7")
+            .any(|r| r.package.distribution_version == Version::from_str("21.0.7").unwrap())
     );
     assert!(
         results
             .iter()
-            .any(|r| r.package.distribution_version == "21.0.7.1")
+            .any(|r| r.package.distribution_version == Version::from_str("21.0.7.1").unwrap())
     );
     assert!(
         !results
             .iter()
-            .any(|r| r.package.distribution_version == "21.0.71")
+            .any(|r| r.package.distribution_version == Version::from_str("21.0.71").unwrap())
     );
 }

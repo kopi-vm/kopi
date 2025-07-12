@@ -363,6 +363,10 @@ fn convert_package_to_jdk_metadata(
     let version = Version::from_str(&api_package.java_version)
         .unwrap_or_else(|_| Version::new(api_package.major_version, 0, 0));
 
+    // Parse distribution_version
+    let distribution_version = Version::from_str(&api_package.distribution_version)
+        .unwrap_or_else(|_| version.clone());
+
     // Parse architecture from filename
     let architecture =
         parse_architecture_from_filename(&api_package.filename).unwrap_or(Architecture::X64);
@@ -381,7 +385,7 @@ fn convert_package_to_jdk_metadata(
         id: api_package.id,
         distribution: api_package.distribution,
         version,
-        distribution_version: api_package.distribution_version,
+        distribution_version,
         architecture,
         operating_system,
         package_type,
@@ -450,6 +454,7 @@ fn convert_api_to_cache(api_metadata: ApiMetadata) -> Result<MetadataCache> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
     use tempfile::TempDir;
 
     #[test]
@@ -494,6 +499,7 @@ mod tests {
         use crate::models::package::{ArchiveType, ChecksumType, PackageType};
         use crate::models::platform::{Architecture, OperatingSystem};
         use crate::version::Version;
+        use std::str::FromStr;
 
         let mut cache = MetadataCache::new();
 
@@ -501,7 +507,7 @@ mod tests {
             id: "test-id".to_string(),
             distribution: "temurin".to_string(),
             version: Version::new(21, 0, 1),
-            distribution_version: "21.0.1+12".to_string(),
+            distribution_version: Version::from_str("21.0.1+12").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
@@ -533,6 +539,7 @@ mod tests {
         use crate::models::package::{ArchiveType, ChecksumType, PackageType};
         use crate::models::platform::{Architecture, OperatingSystem};
         use crate::version::Version;
+        use std::str::FromStr;
 
         let mut cache = MetadataCache::new();
 
@@ -555,7 +562,7 @@ mod tests {
             id: "sap-test-id".to_string(),
             distribution: "sap_machine".to_string(),
             version: Version::new(21, 0, 7),
-            distribution_version: "21.0.7".to_string(),
+            distribution_version: Version::from_str("21.0.7").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
@@ -637,6 +644,7 @@ mod tests {
         use crate::models::package::{ArchiveType, ChecksumType, PackageType};
         use crate::models::platform::{Architecture, OperatingSystem};
         use crate::version::Version;
+        use std::str::FromStr;
 
         let mut cache = MetadataCache::new();
 
@@ -644,7 +652,7 @@ mod tests {
             id: "test-id".to_string(),
             distribution: "temurin".to_string(),
             version: Version::new(21, 0, 1),
-            distribution_version: "21.0.1+12".to_string(),
+            distribution_version: Version::from_str("21.0.1+12").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,

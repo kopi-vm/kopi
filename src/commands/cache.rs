@@ -878,6 +878,7 @@ mod tests {
         use crate::models::package::{ArchiveType, ChecksumType, PackageType};
         use crate::models::platform::{Architecture, OperatingSystem};
         use crate::version::Version;
+        use std::str::FromStr;
         use tempfile::TempDir;
 
         // Create a temporary directory for the test
@@ -905,7 +906,7 @@ mod tests {
             id: "sap-test-id".to_string(),
             distribution: "sap_machine".to_string(),
             version: Version::new(21, 0, 7),
-            distribution_version: "21.0.7".to_string(),
+            distribution_version: Version::from_str("21.0.7").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,

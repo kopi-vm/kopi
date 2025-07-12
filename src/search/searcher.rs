@@ -330,16 +330,8 @@ impl<'a> PackageSearcher<'a> {
             let matches = match version_type {
                 VersionSearchType::JavaVersion => package.version.matches_pattern(version_pattern),
                 VersionSearchType::DistributionVersion => {
-                    // For distribution_version, we do a simple string comparison
-                    // supporting partial matching (e.g., "21.0.7.6" matches "21.0.7.6.1")
-                    if package.distribution_version.starts_with(version_pattern) {
-                        // Ensure we match at component boundaries
-                        let dist_ver = &package.distribution_version;
-                        dist_ver.len() == version_pattern.len()
-                            || dist_ver.chars().nth(version_pattern.len()) == Some('.')
-                    } else {
-                        false
-                    }
+                    // Use Version's matches_pattern method for distribution_version
+                    package.distribution_version.matches_pattern(version_pattern)
                 }
                 VersionSearchType::Auto => {
                     // This shouldn't happen as Auto is resolved earlier, but handle it

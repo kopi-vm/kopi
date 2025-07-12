@@ -82,7 +82,7 @@ impl InstallCommand {
 
         // Check if already installed using the actual distribution_version
         let installation_dir =
-            repository.jdk_install_path(&distribution, &jdk_metadata.distribution_version)?;
+            repository.jdk_install_path(&distribution, &jdk_metadata.distribution_version.to_string())?;
 
         if dry_run {
             println!(
@@ -161,12 +161,12 @@ impl InstallCommand {
             repository.remove_jdk(&installation_dir)?;
             repository.prepare_jdk_installation(
                 &distribution,
-                &jdk_metadata_with_checksum.distribution_version,
+                &jdk_metadata_with_checksum.distribution_version.to_string(),
             )?
         } else {
             repository.prepare_jdk_installation(
                 &distribution,
-                &jdk_metadata_with_checksum.distribution_version,
+                &jdk_metadata_with_checksum.distribution_version.to_string(),
             )?
         };
 
@@ -184,7 +184,7 @@ impl InstallCommand {
         // Save metadata JSON file
         repository.save_jdk_metadata(
             &distribution,
-            &jdk_metadata_with_checksum.distribution_version,
+            &jdk_metadata_with_checksum.distribution_version.to_string(),
             &package,
         )?;
 
@@ -414,7 +414,8 @@ impl InstallCommand {
             id: package.id,
             distribution: package.distribution.clone(),
             version: crate::version::Version::from_str(&package.java_version)?,
-            distribution_version: package.distribution_version,
+            distribution_version: crate::version::Version::from_str(&package.distribution_version)
+                .unwrap_or_else(|_| crate::version::Version::from_str(&package.java_version).unwrap_or(crate::version::Version::new(package.major_version, 0, 0))),
             architecture: crate::models::platform::Architecture::from_str(&arch)?,
             operating_system: crate::models::platform::OperatingSystem::from_str(&os)?,
             package_type: crate::models::package::PackageType::from_str(&package.package_type)?,
@@ -440,7 +441,7 @@ impl InstallCommand {
             distribution: metadata.distribution.clone(),
             major_version: metadata.version.major(),
             java_version: metadata.version.to_string(),
-            distribution_version: metadata.distribution_version.clone(),
+            distribution_version: metadata.distribution_version.to_string(),
             jdk_version: metadata.version.major(),
             directly_downloadable: true,
             filename: format!(
@@ -528,6 +529,7 @@ mod tests {
         use crate::models::package::{ArchiveType, ChecksumType, PackageType};
         use crate::models::platform::{Architecture, OperatingSystem};
         use crate::version::Version;
+        use std::str::FromStr;
 
         let cmd = InstallCommand::new().unwrap();
 
@@ -535,7 +537,7 @@ mod tests {
             id: "test-id".to_string(),
             distribution: "temurin".to_string(),
             version: Version::new(21, 0, 1),
-            distribution_version: "21.0.1+12".to_string(),
+            distribution_version: Version::from_str("21.0.1+12").unwrap(),
             architecture: Architecture::X64,
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
