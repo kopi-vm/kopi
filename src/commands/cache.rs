@@ -42,9 +42,27 @@ pub enum CacheCommand {
         /// Include packages regardless of JavaFX bundled status
         #[arg(long)]
         javafx_bundled: bool,
+        /// Force search by java_version field
+        #[arg(long, conflicts_with = "distribution_version")]
+        java_version: bool,
+        /// Force search by distribution_version field
+        #[arg(long, conflicts_with = "java_version")]
+        distribution_version: bool,
     },
     /// List all available distributions in cache
     ListDistributions,
+}
+
+#[derive(Debug)]
+struct SearchOptions {
+    version_string: String,
+    compact: bool,
+    detailed: bool,
+    json: bool,
+    lts_only: bool,
+    javafx_bundled: bool,
+    force_java_version: bool,
+    force_distribution_version: bool,
 }
 
 impl CacheCommand {
@@ -60,7 +78,21 @@ impl CacheCommand {
                 json,
                 lts_only,
                 javafx_bundled,
-            } => search_cache(version, compact, detailed, json, lts_only, javafx_bundled),
+                java_version,
+                distribution_version,
+            } => {
+                let options = SearchOptions {
+                    version_string: version,
+                    compact,
+                    detailed,
+                    json,
+                    lts_only,
+                    javafx_bundled,
+                    force_java_version: java_version,
+                    force_distribution_version: distribution_version,
+                };
+                search_cache(options)
+            }
             CacheCommand::ListDistributions => list_distributions(),
         }
     }
@@ -146,14 +178,17 @@ fn clear_cache() -> Result<()> {
     Ok(())
 }
 
-fn search_cache(
-    version_string: String,
-    _compact: bool,
-    detailed: bool,
-    json: bool,
-    lts_only: bool,
-    javafx_bundled: bool,
-) -> Result<()> {
+fn search_cache(options: SearchOptions) -> Result<()> {
+    let SearchOptions {
+        version_string,
+        compact: _compact,
+        detailed,
+        json,
+        lts_only,
+        javafx_bundled,
+        force_java_version,
+        force_distribution_version,
+    } = options;
     let config = new_kopi_config()?;
     let cache_path = config.metadata_cache_path()?;
 
@@ -246,7 +281,17 @@ fn search_cache(
 
     // Use the shared searcher with config for additional distributions
     let searcher = PackageSearcher::new(&cache, &config);
-    let mut results = searcher.search_parsed(&parsed_request)?;
+
+    // Determine version search type based on flags
+    let version_type = if force_java_version {
+        crate::search::VersionSearchType::JavaVersion
+    } else if force_distribution_version {
+        crate::search::VersionSearchType::DistributionVersion
+    } else {
+        crate::search::VersionSearchType::Auto
+    };
+
+    let mut results = searcher.search_parsed_with_type(&parsed_request, version_type)?;
 
     // Apply LTS filtering if requested
     if lts_only {
@@ -793,7 +838,17 @@ mod tests {
             env::set_var("KOPI_HOME", temp_dir.path());
         }
 
-        let result = search_cache("21".to_string(), false, false, false, true, false);
+        let options = SearchOptions {
+            version_string: "21".to_string(),
+            compact: false,
+            detailed: false,
+            json: false,
+            lts_only: true,
+            javafx_bundled: false,
+            force_java_version: false,
+            force_distribution_version: false,
+        };
+        let result = search_cache(options);
         assert!(result.is_ok());
 
         unsafe {
@@ -880,14 +935,17 @@ mod tests {
         cache.save(&cache_path).unwrap();
 
         // Test searching with the synonym "sapmachine"
-        let result = search_cache(
-            "sapmachine@21".to_string(),
-            false,
-            false,
-            true,
-            false,
-            false,
-        );
+        let options = SearchOptions {
+            version_string: "sapmachine@21".to_string(),
+            compact: false,
+            detailed: false,
+            json: true,
+            lts_only: false,
+            javafx_bundled: false,
+            force_java_version: false,
+            force_distribution_version: false,
+        };
+        let result = search_cache(options);
         assert!(result.is_ok(), "Search should succeed with synonym");
 
         unsafe {

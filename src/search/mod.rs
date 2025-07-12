@@ -5,7 +5,7 @@ mod searcher;
 mod tests;
 
 // Re-export commonly used types
-pub use models::{PlatformFilter, SearchResult, SearchResultRef};
+pub use models::{PlatformFilter, SearchResult, SearchResultRef, VersionSearchType};
 pub use searcher::PackageSearcher;
 
 // Re-export platform functions from the main platform module for convenience

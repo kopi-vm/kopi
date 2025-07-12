@@ -223,6 +223,8 @@ fn main() {
                     json,
                     lts_only,
                     javafx_bundled,
+                    java_version: false,
+                    distribution_version: false,
                 };
                 cache_cmd.execute()
             }

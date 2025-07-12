@@ -59,7 +59,7 @@ impl Drop for TestHomeGuard {
             // Retry a few times with a small delay
             let mut attempts = 0;
             const MAX_ATTEMPTS: u32 = 3;
-            
+
             while attempts < MAX_ATTEMPTS && self.path.exists() {
                 match fs::remove_dir_all(&self.path) {
                     Ok(_) => break,
@@ -68,14 +68,19 @@ impl Drop for TestHomeGuard {
                         if attempts < MAX_ATTEMPTS {
                             eprintln!(
                                 "Attempt {}/{} to cleanup test directory {} failed: {}. Retrying...",
-                                attempts, MAX_ATTEMPTS, self.path.display(), e
+                                attempts,
+                                MAX_ATTEMPTS,
+                                self.path.display(),
+                                e
                             );
                             // Small delay before retry (especially helpful on Windows)
                             std::thread::sleep(std::time::Duration::from_millis(100));
                         } else {
                             eprintln!(
                                 "Failed to cleanup test directory {} after {} attempts: {}",
-                                self.path.display(), MAX_ATTEMPTS, e
+                                self.path.display(),
+                                MAX_ATTEMPTS,
+                                e
                             );
                         }
                     }

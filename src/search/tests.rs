@@ -427,3 +427,212 @@ fn test_latest_with_version_filter() {
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].package.version.to_string(), "21.0.2");
 }
+
+#[test]
+fn test_detect_version_type() {
+    // Standard Java versions should be detected as JavaVersion
+    assert_eq!(
+        PackageSearcher::detect_version_type("21"),
+        VersionSearchType::JavaVersion
+    );
+    assert_eq!(
+        PackageSearcher::detect_version_type("21.0"),
+        VersionSearchType::JavaVersion
+    );
+    assert_eq!(
+        PackageSearcher::detect_version_type("21.0.1"),
+        VersionSearchType::JavaVersion
+    );
+    assert_eq!(
+        PackageSearcher::detect_version_type("21.0.1+7"),
+        VersionSearchType::JavaVersion
+    );
+
+    // Extended versions should be detected as DistributionVersion
+    assert_eq!(
+        PackageSearcher::detect_version_type("21.0.7.6"),
+        VersionSearchType::DistributionVersion
+    );
+    assert_eq!(
+        PackageSearcher::detect_version_type("21.0.7.6.1"),
+        VersionSearchType::DistributionVersion
+    );
+    assert_eq!(
+        PackageSearcher::detect_version_type("21.0.7.0.7.6"),
+        VersionSearchType::DistributionVersion
+    );
+    assert_eq!(
+        PackageSearcher::detect_version_type("21.0.1+9.1"),
+        VersionSearchType::DistributionVersion
+    );
+    assert_eq!(
+        PackageSearcher::detect_version_type("21.0.1+LTS"),
+        VersionSearchType::DistributionVersion
+    );
+}
+
+#[test]
+fn test_search_by_distribution_version() {
+    let mut cache = create_test_cache();
+
+    // Add packages with extended distribution versions
+    if let Some(dist_cache) = cache.distributions.get_mut("temurin") {
+        // Corretto-style 4-component version
+        let mut corretto_pkg = dist_cache.packages[0].clone();
+        corretto_pkg.id = "corretto-21".to_string();
+        corretto_pkg.distribution = "corretto".to_string();
+        corretto_pkg.distribution_version = "21.0.7.6.1".to_string();
+        dist_cache.packages.push(corretto_pkg);
+
+        // Dragonwell-style 6-component version
+        let mut dragonwell_pkg = dist_cache.packages[0].clone();
+        dragonwell_pkg.id = "dragonwell-21".to_string();
+        dragonwell_pkg.distribution = "dragonwell".to_string();
+        dragonwell_pkg.distribution_version = "21.0.7.0.7.6".to_string();
+        dist_cache.packages.push(dragonwell_pkg);
+    }
+
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
+
+    // Test auto-detection for 4-component version
+    let request = ParsedVersionRequest {
+        version: Some(Version::from_str("21.0.7.6").unwrap()),
+        distribution: None,
+        package_type: None,
+        latest: false,
+    };
+
+    let results = searcher
+        .search_parsed_with_type(&request, VersionSearchType::Auto)
+        .unwrap();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].package.distribution_version, "21.0.7.6.1");
+
+    // Test explicit distribution_version search
+    let results = searcher
+        .search_parsed_with_type(&request, VersionSearchType::DistributionVersion)
+        .unwrap();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].package.distribution_version, "21.0.7.6.1");
+
+    // Test partial matching for 6-component version
+    let request = ParsedVersionRequest {
+        version: Some(Version::from_str("21.0.7.0.7").unwrap()),
+        distribution: None,
+        package_type: None,
+        latest: false,
+    };
+
+    let results = searcher
+        .search_parsed_with_type(&request, VersionSearchType::DistributionVersion)
+        .unwrap();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].package.distribution_version, "21.0.7.0.7.6");
+}
+
+#[test]
+fn test_search_forced_java_version() {
+    let mut cache = create_test_cache();
+
+    // Add a package with same java_version but different distribution_version
+    if let Some(dist_cache) = cache.distributions.get_mut("temurin") {
+        let mut pkg = dist_cache.packages[0].clone();
+        pkg.id = "extended-21".to_string();
+        pkg.distribution_version = "21.0.1.9.1".to_string(); // Extended format
+        dist_cache.packages.push(pkg);
+    }
+
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
+
+    // Search with a pattern that would normally match distribution_version
+    let request = ParsedVersionRequest {
+        version: Some(Version::from_str("21.0.1").unwrap()),
+        distribution: None,
+        package_type: None,
+        latest: false,
+    };
+
+    // Force java_version search - should find both packages
+    let results = searcher
+        .search_parsed_with_type(&request, VersionSearchType::JavaVersion)
+        .unwrap();
+    assert_eq!(results.len(), 2); // Both have java_version 21.0.1
+}
+
+#[test]
+fn test_distribution_version_boundary_matching() {
+    let mut cache = create_test_cache();
+
+    // Add packages with similar distribution versions
+    if let Some(dist_cache) = cache.distributions.get_mut("temurin") {
+        dist_cache.packages.clear();
+
+        let base_pkg = JdkMetadata {
+            id: "test".to_string(),
+            distribution: "corretto".to_string(),
+            version: Version::new(21, 0, 7),
+            distribution_version: "21.0.7".to_string(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: "https://example.com/jdk.tar.gz".to_string(),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 100_000_000,
+            lib_c_type: Some("glibc".to_string()),
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+        };
+
+        let mut pkg1 = base_pkg.clone();
+        pkg1.id = "v1".to_string();
+        pkg1.distribution_version = "21.0.7".to_string();
+        dist_cache.packages.push(pkg1);
+
+        let mut pkg2 = base_pkg.clone();
+        pkg2.id = "v2".to_string();
+        pkg2.distribution_version = "21.0.7.1".to_string();
+        dist_cache.packages.push(pkg2);
+
+        let mut pkg3 = base_pkg.clone();
+        pkg3.id = "v3".to_string();
+        pkg3.distribution_version = "21.0.71".to_string();
+        dist_cache.packages.push(pkg3);
+    }
+
+    let config = create_test_config();
+    let searcher = PackageSearcher::new(&cache, &config);
+
+    // Search for "21.0.7" should match "21.0.7" and "21.0.7.1" but not "21.0.71"
+    let request = ParsedVersionRequest {
+        version: Some(Version::from_str("21.0.7").unwrap()),
+        distribution: None,
+        package_type: None,
+        latest: false,
+    };
+
+    let results = searcher
+        .search_parsed_with_type(&request, VersionSearchType::DistributionVersion)
+        .unwrap();
+    assert_eq!(results.len(), 2);
+    assert!(
+        results
+            .iter()
+            .any(|r| r.package.distribution_version == "21.0.7")
+    );
+    assert!(
+        results
+            .iter()
+            .any(|r| r.package.distribution_version == "21.0.7.1")
+    );
+    assert!(
+        !results
+            .iter()
+            .any(|r| r.package.distribution_version == "21.0.71")
+    );
+}

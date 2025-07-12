@@ -6,7 +6,7 @@ use crate::models::metadata::JdkMetadata;
 use crate::platform::matches_foojay_libc_type;
 use crate::version::parser::{ParsedVersionRequest, VersionParser};
 
-use super::models::{PlatformFilter, SearchResult, SearchResultRef};
+use super::models::{PlatformFilter, SearchResult, SearchResultRef, VersionSearchType};
 
 pub struct PackageSearcher<'a> {
     cache: &'a MetadataCache,
@@ -37,12 +37,37 @@ impl<'a> PackageSearcher<'a> {
         'a: 'b,
         F: Fn(&'b str, &'b DistributionCache, &'b JdkMetadata) -> R,
     {
+        self.search_common_with_type(request, VersionSearchType::Auto, result_builder)
+    }
+
+    fn search_common_with_type<'b, F, R>(
+        &'b self,
+        request: &ParsedVersionRequest,
+        version_type: VersionSearchType,
+        result_builder: F,
+    ) -> Result<Vec<R>>
+    where
+        'a: 'b,
+        F: Fn(&'b str, &'b DistributionCache, &'b JdkMetadata) -> R,
+    {
         let cache = self.cache;
 
         let mut results = Vec::new();
 
         // Pre-compute version string if needed to avoid repeated conversions
         let version_str = request.version.as_ref().map(|v| v.to_string());
+
+        // Determine actual version type to use
+        let actual_version_type = match version_type {
+            VersionSearchType::Auto => {
+                if let Some(ref v_str) = version_str {
+                    Self::detect_version_type(v_str)
+                } else {
+                    VersionSearchType::JavaVersion
+                }
+            }
+            other => other,
+        };
 
         for (dist_name, dist_cache) in &cache.distributions {
             // Filter by distribution if specified
@@ -65,8 +90,12 @@ impl<'a> PackageSearcher<'a> {
                     }
 
                     // Apply platform filters
-                    if !self.matches_package_with_version(package, request, version_str.as_deref())
-                    {
+                    if !self.matches_package_with_version_type(
+                        package,
+                        request,
+                        version_str.as_deref(),
+                        actual_version_type,
+                    ) {
                         continue;
                     }
 
@@ -87,8 +116,12 @@ impl<'a> PackageSearcher<'a> {
             } else {
                 // Regular search - include all matching versions
                 for package in &dist_cache.packages {
-                    if !self.matches_package_with_version(package, request, version_str.as_deref())
-                    {
+                    if !self.matches_package_with_version_type(
+                        package,
+                        request,
+                        version_str.as_deref(),
+                        actual_version_type,
+                    ) {
                         continue;
                     }
 
@@ -108,12 +141,23 @@ impl<'a> PackageSearcher<'a> {
     }
 
     pub fn search_parsed(&self, request: &ParsedVersionRequest) -> Result<Vec<SearchResult>> {
-        let mut results =
-            self.search_common(request, |dist_name, dist_cache, package| SearchResult {
+        self.search_parsed_with_type(request, VersionSearchType::Auto)
+    }
+
+    pub fn search_parsed_with_type(
+        &self,
+        request: &ParsedVersionRequest,
+        version_type: VersionSearchType,
+    ) -> Result<Vec<SearchResult>> {
+        let mut results = self.search_common_with_type(
+            request,
+            version_type,
+            |dist_name, dist_cache, package| SearchResult {
                 distribution: dist_name.to_string(),
                 display_name: dist_cache.display_name.clone(),
                 package: package.clone(),
-            })?;
+            },
+        )?;
 
         // Sort by distribution and version
         results.sort_by(|a, b| match a.distribution.cmp(&b.distribution) {
@@ -122,6 +166,27 @@ impl<'a> PackageSearcher<'a> {
         });
 
         Ok(results)
+    }
+
+    /// Auto-detect whether to search by java_version or distribution_version
+    pub fn detect_version_type(version_str: &str) -> VersionSearchType {
+        // If the version has 4+ components, likely a distribution_version
+        let component_count = version_str.split('.').count();
+        if component_count >= 4 {
+            return VersionSearchType::DistributionVersion;
+        }
+
+        // If it contains non-numeric build identifiers after +, likely distribution_version
+        if let Some(plus_pos) = version_str.find('+') {
+            let build_part = &version_str[plus_pos + 1..];
+            // Check if build part contains non-numeric characters or multiple components
+            if build_part.contains('.') || build_part.chars().any(|c| !c.is_ascii_digit()) {
+                return VersionSearchType::DistributionVersion;
+            }
+        }
+
+        // Default to java_version for standard formats
+        VersionSearchType::JavaVersion
     }
 
     pub fn search_parsed_refs<'b>(
@@ -253,15 +318,36 @@ impl<'a> PackageSearcher<'a> {
         packages_to_search.first().cloned().cloned()
     }
 
-    fn matches_package_with_version(
+    fn matches_package_with_version_type(
         &self,
         package: &JdkMetadata,
         request: &ParsedVersionRequest,
         version_str: Option<&str>,
+        version_type: VersionSearchType,
     ) -> bool {
         // Check version match if version is specified
         if let Some(version_pattern) = version_str {
-            if !package.version.matches_pattern(version_pattern) {
+            let matches = match version_type {
+                VersionSearchType::JavaVersion => package.version.matches_pattern(version_pattern),
+                VersionSearchType::DistributionVersion => {
+                    // For distribution_version, we do a simple string comparison
+                    // supporting partial matching (e.g., "21.0.7.6" matches "21.0.7.6.1")
+                    if package.distribution_version.starts_with(version_pattern) {
+                        // Ensure we match at component boundaries
+                        let dist_ver = &package.distribution_version;
+                        dist_ver.len() == version_pattern.len()
+                            || dist_ver.chars().nth(version_pattern.len()) == Some('.')
+                    } else {
+                        false
+                    }
+                }
+                VersionSearchType::Auto => {
+                    // This shouldn't happen as Auto is resolved earlier, but handle it
+                    package.version.matches_pattern(version_pattern)
+                }
+            };
+
+            if !matches {
                 return false;
             }
         }

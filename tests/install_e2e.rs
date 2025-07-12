@@ -955,19 +955,21 @@ fn test_install_jre_package() {
 
     // Verify shims were created - shims are stored in the bin directory
     let bin_shim_dir = kopi_home.join("bin");
-    
+
     // The test output shows that shims were created, so let's verify the bin directory exists
     if bin_shim_dir.exists() {
         let exe_ext = if cfg!(windows) { ".exe" } else { "" };
         let java_shim = bin_shim_dir.join(format!("java{exe_ext}"));
-        
+
         // Note: The shims might not exist if auto_create_shims is disabled in the test config
         // The test output shows 5 shims were created, including java, so this is working correctly
         eprintln!("Checking for java shim at: {:?}", java_shim);
         if java_shim.exists() {
             eprintln!("java shim found");
         } else {
-            eprintln!("java shim not found - this might be expected if auto_create_shims is disabled");
+            eprintln!(
+                "java shim not found - this might be expected if auto_create_shims is disabled"
+            );
         }
     } else {
         eprintln!("bin directory does not exist - shims might be disabled in test config");
@@ -1057,6 +1059,8 @@ fn test_install_graalvm() {
     if native_image.exists() {
         eprintln!("native-image tool found in GraalVM");
     } else {
-        eprintln!("Note: native-image tool not found in GraalVM Community Edition (this is expected)")
+        eprintln!(
+            "Note: native-image tool not found in GraalVM Community Edition (this is expected)"
+        )
     }
 }

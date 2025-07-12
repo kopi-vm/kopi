@@ -1,5 +1,18 @@
 use crate::models::metadata::JdkMetadata;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VersionSearchType {
+    JavaVersion,
+    DistributionVersion,
+    Auto,
+}
+
+impl Default for VersionSearchType {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct PlatformFilter {
     pub architecture: Option<String>,
