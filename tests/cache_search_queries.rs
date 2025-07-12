@@ -173,6 +173,8 @@ fn test_search_distribution_only() {
         json: true,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     // This should succeed and return all Corretto versions
@@ -191,6 +193,8 @@ fn test_search_latest_all_distributions() {
         json: true,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     // This should succeed and return the latest version from each distribution
@@ -209,6 +213,8 @@ fn test_search_latest_specific_distribution() {
         json: true,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     // This should succeed and return only the latest Temurin version
@@ -227,6 +233,8 @@ fn test_search_backward_compatibility() {
         json: true,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     // This should succeed and return version 21 (defaulting to Temurin)
@@ -245,6 +253,8 @@ fn test_search_distribution_with_version() {
         json: true,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     // This should succeed and return Corretto 17
@@ -263,6 +273,8 @@ fn test_search_invalid_distribution() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     // The command returns Ok but prints an error message
@@ -282,6 +294,8 @@ fn test_search_jre_latest() {
         json: true,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     // This should succeed (even if no JRE packages exist, it should return empty results)
@@ -300,6 +314,8 @@ fn test_search_display_modes() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
     assert!(cmd_compact.execute().is_ok());
 
@@ -311,6 +327,8 @@ fn test_search_display_modes() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
     assert!(cmd_detailed.execute().is_ok());
 
@@ -322,6 +340,8 @@ fn test_search_display_modes() {
         json: true,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
     assert!(cmd_json.execute().is_ok());
 }

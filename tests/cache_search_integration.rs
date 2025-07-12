@@ -210,6 +210,8 @@ fn test_integration_compact_display_with_lts_filter() {
         json: false,
         lts_only: true,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -228,6 +230,8 @@ fn test_integration_detailed_display_with_distribution_search() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -246,6 +250,8 @@ fn test_integration_json_output_with_javafx_filter() {
         json: true,
         lts_only: false,
         javafx_bundled: true, // This enables JavaFX filter
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -264,6 +270,8 @@ fn test_integration_latest_search_with_lts_filter() {
         json: false,
         lts_only: true,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -282,6 +290,8 @@ fn test_integration_version_specific_search_across_distributions() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -300,6 +310,8 @@ fn test_integration_multiple_filters_combined() {
         json: false,
         lts_only: true,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -318,6 +330,8 @@ fn test_integration_edge_case_no_matching_results() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     // Should execute successfully but show no results
@@ -336,6 +350,8 @@ fn test_integration_edge_case_conflicting_display_modes() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -363,6 +379,8 @@ fn test_integration_search_with_distribution_version_format() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -381,6 +399,8 @@ fn test_integration_backward_compatibility_default_behavior() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -481,6 +501,8 @@ fn test_integration_platform_specific_filtering() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -499,6 +521,8 @@ fn test_integration_regression_old_search_patterns() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -528,6 +552,8 @@ fn test_integration_empty_cache_handling() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -546,6 +572,8 @@ fn test_integration_json_output_structure_validation() {
         json: true,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
@@ -617,6 +645,8 @@ fn test_integration_performance_large_cache() {
         json: false,
         lts_only: false,
         javafx_bundled: false,
+        java_version: false,
+        distribution_version: false,
     };
 
     assert!(cmd.execute().is_ok());
