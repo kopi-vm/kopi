@@ -65,7 +65,9 @@ impl<'a> BatchUninstaller<'a> {
 
         // Confirm unless forced
         if !force && !self.confirm_batch_removal(&jdks)? {
-            return Err(KopiError::SystemError("User cancelled operation".to_string()));
+            return Err(KopiError::SystemError(
+                "User cancelled operation".to_string(),
+            ));
         }
 
         // Perform batch removal with transaction-like behavior

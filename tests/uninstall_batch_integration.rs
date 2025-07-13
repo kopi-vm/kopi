@@ -175,7 +175,10 @@ fn test_partial_failure_recovery() {
 
     // Create test JDKs
     let jdk1_path = setup.create_mock_jdk("temurin", "21.0.5+11");
+    #[cfg(unix)]
     let jdk2_path = setup.create_mock_jdk("corretto", "17.0.9");
+    #[cfg(not(unix))]
+    let _jdk2_path = setup.create_mock_jdk("corretto", "17.0.9");
 
     // Make one JDK read-only to simulate permission error
     #[cfg(unix)]

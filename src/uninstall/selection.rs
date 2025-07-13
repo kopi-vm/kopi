@@ -1,65 +1,8 @@
-use crate::error::{KopiError, Result};
 use crate::storage::InstalledJdk;
-use std::io::{self, Write};
 
 pub struct JdkSelector;
 
 impl JdkSelector {
-    pub fn select_jdk_interactively(
-        candidates: Vec<InstalledJdk>,
-        version_spec: &str,
-    ) -> Result<InstalledJdk> {
-        if candidates.is_empty() {
-            return Err(KopiError::JdkNotInstalled {
-                jdk_spec: version_spec.to_string(),
-                version: None,
-                distribution: None,
-                auto_install_enabled: false,
-                auto_install_failed: None,
-                user_declined: false,
-                install_in_progress: false,
-            });
-        }
-
-        if candidates.len() == 1 {
-            return Ok(candidates.into_iter().next().unwrap());
-        }
-
-        println!(
-            "Multiple JDKs match '{version_spec}'. Select one to uninstall:\n"
-        );
-
-        for (idx, jdk) in candidates.iter().enumerate() {
-            println!("  {} {}", idx + 1, format_jdk_display(jdk));
-        }
-
-        loop {
-            print!("\nSelect JDK [1-{}]: ", candidates.len());
-            io::stdout()
-                .flush()
-                .map_err(|e| KopiError::SystemError(e.to_string()))?;
-
-            let mut input = String::new();
-            io::stdin()
-                .read_line(&mut input)
-                .map_err(|e| KopiError::SystemError(e.to_string()))?;
-
-            let input = input.trim();
-
-            match input.parse::<usize>() {
-                Ok(num) if num >= 1 && num <= candidates.len() => {
-                    return Ok(candidates.into_iter().nth(num - 1).unwrap());
-                }
-                _ => {
-                    println!(
-                        "Invalid selection. Please enter a number between 1 and {}.",
-                        candidates.len()
-                    );
-                }
-            }
-        }
-    }
-
     pub fn filter_by_distribution(
         jdks: Vec<InstalledJdk>,
         distribution: &str,
@@ -91,15 +34,6 @@ impl JdkSelector {
             format!("Selected {} JDKs from multiple distributions", jdks.len())
         }
     }
-}
-
-fn format_jdk_display(jdk: &InstalledJdk) -> String {
-    format!(
-        "{}@{} - {}",
-        jdk.distribution,
-        jdk.version,
-        jdk.path.display()
-    )
 }
 
 #[cfg(test)]
@@ -183,12 +117,5 @@ mod tests {
             JdkSelector::format_selection_summary(&multiple_diff_dist),
             "Selected 2 JDKs from multiple distributions"
         );
-    }
-
-    #[test]
-    fn test_format_jdk_display() {
-        let jdk = create_test_jdk("temurin", "21.0.5+11");
-        let display = format_jdk_display(&jdk);
-        assert_eq!(display, "temurin@21.0.5+11 - /test/jdks/temurin-21.0.5+11");
     }
 }

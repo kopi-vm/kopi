@@ -38,9 +38,32 @@ impl<'a> UninstallHandler<'a> {
             });
         }
 
-        // Use interactive selection when multiple JDKs match
+        // Handle multiple matches
         let jdk = if jdks_to_remove.len() > 1 {
-            selection::JdkSelector::select_jdk_interactively(jdks_to_remove, version_spec)?
+            // Return error when multiple JDKs match to avoid ambiguity
+            let jdk_list: Vec<String> = jdks_to_remove
+                .iter()
+                .map(|j| format!("  - {}@{}", j.distribution, j.version))
+                .collect();
+
+            eprintln!("Error: Multiple JDKs match the pattern '{version_spec}'");
+            eprintln!("\nFound the following JDKs:");
+            for jdk_str in &jdk_list {
+                eprintln!("{jdk_str}");
+            }
+            eprintln!("\nPlease specify exactly one JDK to uninstall using the full version:");
+            eprintln!("  kopi uninstall <distribution>@<full-version>");
+            eprintln!("\nExample:");
+            if let Some(first_jdk) = jdks_to_remove.first() {
+                eprintln!(
+                    "  kopi uninstall {}@{}",
+                    first_jdk.distribution, first_jdk.version
+                );
+            }
+
+            return Err(KopiError::SystemError(format!(
+                "Multiple JDKs match '{version_spec}'. Please specify exactly one JDK to uninstall"
+            )));
         } else {
             jdks_to_remove.into_iter().next().unwrap()
         };
