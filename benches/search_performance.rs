@@ -7,8 +7,8 @@ use kopi::models::{
     package::{ArchiveType, ChecksumType, PackageType},
     platform::{Architecture, OperatingSystem},
 };
-use kopi::version::Version;
 use kopi::search::{PackageSearcher, PlatformFilter};
+use kopi::version::Version;
 use std::str::FromStr;
 
 fn create_realistic_cache() -> MetadataCache {
