@@ -51,20 +51,20 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 - Safely remove JDK directories with rollback on failure
 - Calculate and display accurate disk space information
 
-## Phase 2: Interactive Selection and Batch Operations
+## Phase 2: Exact Specification Enforcement and Batch Operations
 
 ### Input Resources
 - Phase 1 deliverables
-- `/src/commands/install.rs` - Selection logic reference
 - `/src/storage/listing.rs` - InstalledJdk model for display
-- User interaction patterns from install command
+- Error message patterns for clarity
 
 ### Deliverables
 1. **Selection Module** (`/src/uninstall/selection.rs`)
-   - Interactive JDK selection when multiple matches
-   - Consistent selection UI with install command
-   - Use InstalledJdk for display formatting
+   - Error reporting when multiple JDKs match a pattern
+   - Clear instructions for exact specification
+   - Helper functions for filtering and formatting JDK lists
    - Distribution filtering using Distribution enum
+   - No interactive selection - returns error for ambiguous patterns
 
 2. **Batch Operations** (`/src/uninstall/batch.rs`)
    - Multi-JDK removal using JdkRepository
@@ -74,16 +74,17 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
    - Transaction-like behavior (all or nothing)
 
 3. **Unit Tests** (use mocks extensively)
-   - `src/uninstall/selection.rs` - Selection logic tests (mock user input)
+   - `src/uninstall/selection.rs` - Error message formatting and filtering tests
    - `src/uninstall/batch.rs` - Batch operation tests (mock JdkRepository)
 
 4. **Integration Tests** (`/tests/uninstall_batch_integration.rs`) (no mocks)
    - Multiple JDK removal scenarios (use real test JDKs)
-   - User interaction simulation (automated responses)
+   - Error message validation for ambiguous patterns
    - Partial failure recovery testing
 
 ### Success Criteria
-- Present clear selection UI when multiple JDKs match
+- Display clear error message when multiple JDKs match with exact specification instructions
+- Provide helpful examples showing how to specify JDKs exactly
 - Successfully remove all versions with --all flag
 - Show comprehensive batch operation summary
 - Handle partial failures gracefully
@@ -282,11 +283,12 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
   ```
 
 ### Error Handling Priorities
-1. Active JDK protection - stub implementation (always allows removal for now)
-2. Permission errors - suggest appropriate solutions
-3. Files in use - platform-specific guidance
-4. Partial removals - provide recovery options
-5. Missing JDKs - clear error with available options
+1. Ambiguous version specification - require exact JDK specification with helpful examples
+2. Active JDK protection - stub implementation (always allows removal for now)
+3. Permission errors - suggest appropriate solutions
+4. Files in use - platform-specific guidance
+5. Partial removals - provide recovery options
+6. Missing JDKs - clear error with available options
 
 ### Safety Considerations
 1. Always validate removal paths are within kopi directory
@@ -295,6 +297,13 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 4. Never remove shims during JDK uninstall
 5. Require confirmation for destructive operations
 6. Active JDK protection deferred to future implementation (stub returns false)
+
+### Implementation Note: Exact Specification Requirement
+Instead of interactive selection when multiple JDKs match, the uninstall command returns an error with clear instructions. This design choice:
+- Prevents accidental removal of wrong JDK versions
+- Ensures users are explicit about which JDK to remove
+- Avoids complexity of interactive prompts in automated environments
+- Provides clear, actionable error messages with examples
 
 ### Exit Codes
 - 0: Success
@@ -306,3 +315,6 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 
 ## Next Steps
 Begin with Phase 1, focusing on implementing the core uninstall logic with safety check stubs ready for future active JDK detection implementation.
+
+## Implementation Update
+The selection module has been implemented to return errors for ambiguous patterns rather than providing interactive selection. This design ensures safer, more predictable behavior and clearer user guidance when multiple JDKs match a pattern.

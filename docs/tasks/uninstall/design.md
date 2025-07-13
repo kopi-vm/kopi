@@ -33,17 +33,25 @@ kopi uninstall 21 --dry-run
 
 ### 1. JDK Selection Logic
 
-The uninstall command should follow the same selection logic as the install command for consistency:
+The uninstall command requires exact JDK specification when multiple JDKs match a pattern:
 
 ```bash
-# If multiple JDKs match "21", show selection prompt
+# If multiple JDKs match "21", show error with clear instructions
 kopi uninstall 21
-> Select JDK to uninstall:
-  1) temurin@21.0.5+11 (Default)
-  2) corretto@21.0.5.11.1
-  3) zulu@21.0.5+11
+Error: Multiple JDKs match the pattern '21'
 
-# Direct specification bypasses selection
+Found the following JDKs:
+  - temurin@21.0.5+11
+  - corretto@21.0.5.11.1
+  - zulu@21.0.5+11
+
+Please specify exactly one JDK to uninstall using the full version:
+  kopi uninstall <distribution>@<full-version>
+
+Example:
+  kopi uninstall temurin@21.0.5+11
+
+# Direct specification works immediately
 kopi uninstall corretto@21.0.5.11.1
 ```
 
@@ -185,6 +193,13 @@ Warning: No JDKs remaining. Run 'kopi install' to install a JDK.
 # If it was the active JDK
 Warning: Removed active JDK. Run 'kopi use' to select another JDK.
 ```
+
+### 4. Design Decision: No Interactive Selection
+When multiple JDKs match a pattern, the command displays an error with clear instructions rather than prompting for interactive selection. This ensures:
+- Predictable behavior in automated scripts
+- Clear, explicit JDK removal operations
+- Prevention of accidental removals
+- Consistent behavior across all environments
 
 ## Integration with Other Commands
 
