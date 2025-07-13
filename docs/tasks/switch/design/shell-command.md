@@ -13,6 +13,17 @@ kopi shell <version> [options]
 kopi use <version> [options]     # Alias
 ```
 
+### Current Implementation Status
+
+**⚠️ The `kopi shell` command is not yet implemented**. The current CLI in `main.rs` has a `use` command but it shows a placeholder message: "Switching to JDK {version} (not yet implemented)".
+
+**Available Infrastructure**: 
+- Platform-specific shell detection in `src/platform/shell.rs` (though unreliable on Windows as noted)
+- Process execution via `src/platform/process.rs::exec_replace()`
+- Auto-installation system in shim infrastructure
+
+**CLI Structure Difference**: The current implementation has `kopi use` as a standalone command rather than an alias for `kopi shell`. The design should be updated to match the current CLI structure or the CLI should be updated to match this design.
+
 ### Arguments
 
 - `<version>`: The JDK version to activate

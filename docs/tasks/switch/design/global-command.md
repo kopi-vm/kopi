@@ -11,6 +11,12 @@ kopi global <version>
 kopi default <version>     # Alias
 ```
 
+### Current Implementation Status
+
+**⚠️ This command is not yet implemented**. The current CLI in `main.rs` shows a placeholder message: "Setting global JDK to {version} (not yet implemented)".
+
+**Infrastructure Available**: The `VersionResolver` supports reading global default from `~/.kopi/version` and the auto-installation system is available in the shim infrastructure.
+
 ### Arguments
 
 - `<version>`: The JDK version to set as global default

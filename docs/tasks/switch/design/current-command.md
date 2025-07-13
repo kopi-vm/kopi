@@ -10,27 +10,20 @@ The `kopi current` command displays the currently active JDK version and how it 
 kopi current [options]
 ```
 
-### Options
+### Current Implementation Status
 
-**Note**: The current CLI implementation in `main.rs` does not yet define these command-specific options. They need to be added to the `Current` command definition:
+**⚠️ This command is not yet implemented**. The current CLI in `main.rs` shows a placeholder message: "Current JDK version (not yet implemented)".
 
-```rust
-// In main.rs, update the Commands enum:
-Current {
-    /// Show only the version number
-    #[arg(short, long)]
-    quiet: bool,
-    
-    /// Output in JSON format
-    #[arg(long)]
-    json: bool,
-},
-```
+**Infrastructure Available**: The underlying `VersionResolver` in `src/version/resolver.rs` is fully implemented and can be used for this command. It already supports the complete version resolution logic described below.
+
+### Planned Options
+
+When implemented, this command will support:
 
 - `-q, --quiet`: Show only the version number (no source information)
 - `--json`: Output in JSON format for scripting
 
-Verbose output is controlled by the global `-v` flag:
+Verbose output will be controlled by the global `-v` flag:
 - `kopi current`: Standard output (version and source)
 - `kopi current -v`: Info-level logging
 - `kopi current -vv`: Debug-level logging  

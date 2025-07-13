@@ -63,14 +63,21 @@ All commands follow these error handling principles:
 - Support for both primary and alias commands
 - Integration with `kopi current` for debugging version resolution
 
-## Implementation Notes
+## Implementation Status
 
-These commands work in conjunction with the shim-based architecture (ADR-013):
-- Shell command launches subprocess with KOPI_JAVA_VERSION set
-- Shims read the environment variable and version files  
-- Version resolution happens at command execution time
-- Parent shell detection enables automatic shell type selection
+**Current Implementation State**: 
+- ✅ **Version Resolution**: Fully implemented in `src/version/resolver.rs` with proper priority order
+- ✅ **Shim System**: Complete with auto-installation, security validation, and tool discovery
+- ✅ **Platform Infrastructure**: Shell detection, process execution, and platform-specific utilities
+- ⚠️ **CLI Commands**: Basic structure exists but commands not yet implemented:
+  - `current`, `use`, `global`, `local`, `which` show "not yet implemented" messages
+  - Only `install`, `cache`, `setup`, and `shim` commands are functional
+
+**Integration with Shim Architecture**:
+- Shims read environment variable and version files using `VersionResolver`
+- Version resolution happens at command execution time  
 - Auto-installation provides seamless experience for missing versions
+- Security validation ensures safe tool execution
 
 ## Auto-Installation Behavior
 
