@@ -169,7 +169,14 @@ impl SetupCommand {
         println!("{}", "─".repeat(50));
 
         let shims_dir = self.config.shims_dir()?;
-        let shell = detect_shell();
+        let (shell, _shell_path) = detect_shell().unwrap_or_else(|_| {
+            // Fallback to a default shell if detection fails
+            #[cfg(unix)]
+            let fallback = Shell::Bash;
+            #[cfg(windows)]
+            let fallback = Shell::PowerShell;
+            (fallback, PathBuf::from(""))
+        });
 
         println!("Add the following directory to your PATH:");
         println!("  {}", shims_dir.display().to_string().bold());
