@@ -23,7 +23,7 @@ mod shim_integration_tests {
         let result = resolver.resolve_version();
 
         assert!(result.is_ok());
-        let version_request = result.unwrap();
+        let (version_request, _source) = result.unwrap();
         assert_eq!(version_request.version_pattern, "21");
         assert_eq!(version_request.distribution, Some("temurin".to_string()));
     }

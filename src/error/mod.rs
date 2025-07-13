@@ -50,6 +50,12 @@ pub enum KopiError {
     #[error("Shell '{0}' is not supported")]
     UnsupportedShell(String),
 
+    #[error("Shell detection error: {0}")]
+    ShellDetectionError(String),
+
+    #[error("Shell '{0}' not found in PATH")]
+    ShellNotFound(String),
+
     #[error("Failed to update PATH: {0}")]
     PathUpdate(String),
 

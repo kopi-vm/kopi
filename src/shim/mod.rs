@@ -42,8 +42,8 @@ pub fn run_shim() -> Result<()> {
 
     // Resolve JDK version
     let resolver = VersionResolver::new();
-    let version_request = match resolver.resolve_version() {
-        Ok(req) => req,
+    let (version_request, version_source) = match resolver.resolve_version() {
+        Ok((req, source)) => (req, source),
         Err(e @ KopiError::NoLocalVersion { .. }) => {
             eprintln!(
                 "{}",
@@ -53,7 +53,7 @@ pub fn run_shim() -> Result<()> {
         }
         Err(e) => return Err(e),
     };
-    log::debug!("Resolved version: {version_request:?}");
+    log::debug!("Resolved version: {version_request:?} from {version_source:?}");
 
     // Validate version string
     security_validator.validate_version(&version_request.version_pattern)?;

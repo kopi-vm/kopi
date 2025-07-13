@@ -22,6 +22,10 @@ pub fn get_exit_code(error: &KopiError) -> i32 {
 
         KopiError::KopiNotFound { .. } => 127, // Standard "command not found" exit code
 
+        KopiError::ShellDetectionError(_) => 6,
+        KopiError::ShellNotFound(_) => 127, // Standard "command not found" exit code
+        KopiError::UnsupportedShell(_) => 7,
+
         _ => 1,
     }
 }

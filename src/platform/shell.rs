@@ -1,6 +1,8 @@
+use crate::error::{KopiError, Result};
 use crate::platform;
 use std::env;
 use std::path::{Path, PathBuf};
+use sysinfo::{Pid, ProcessesToUpdate, System};
 
 /// Detected shell type
 #[derive(Debug, Clone, PartialEq)]
@@ -13,46 +15,137 @@ pub enum Shell {
     Unknown(String),
 }
 
-/// Detect the current shell
-pub fn detect_shell() -> Shell {
-    // First try SHELL environment variable (Unix)
-    #[cfg(unix)]
-    if let Ok(shell_path) = env::var("SHELL") {
-        if let Some(shell_name) = PathBuf::from(&shell_path).file_name() {
-            let shell_name = shell_name.to_string_lossy();
-            match shell_name.as_ref() {
-                "bash" => return Shell::Bash,
-                "zsh" => return Shell::Zsh,
-                "fish" => return Shell::Fish,
-                _ => {}
+/// Detect the parent shell with its executable path
+pub fn detect_shell() -> Result<(Shell, PathBuf)> {
+    // Get current process ID
+    let current_pid = std::process::id();
+
+    // Get system information
+    let mut system = System::new();
+    system.refresh_processes(ProcessesToUpdate::All);
+
+    // Find parent process
+    if let Some(current_process) = system.process(Pid::from_u32(current_pid)) {
+        if let Some(parent_pid) = current_process.parent() {
+            if let Some(parent_process) = system.process(parent_pid) {
+                // Get the executable path
+                if let Some(exe_path) = parent_process.exe() {
+                    log::debug!("Parent process executable: {exe_path:?}");
+
+                    // Get just the file name from the path
+                    if let Some(file_name) = exe_path.file_name() {
+                        let file_str = file_name.to_string_lossy();
+                        log::debug!("Parent process file name: {file_str}");
+
+                        // Check executable file name and return both type and path
+                        match file_str.as_ref() {
+                            "bash" | "bash.exe" => {
+                                return Ok((Shell::Bash, exe_path.to_path_buf()));
+                            }
+                            "zsh" | "zsh.exe" => return Ok((Shell::Zsh, exe_path.to_path_buf())),
+                            "fish" | "fish.exe" => {
+                                return Ok((Shell::Fish, exe_path.to_path_buf()));
+                            }
+                            "powershell" | "powershell.exe" => {
+                                return Ok((Shell::PowerShell, exe_path.to_path_buf()));
+                            }
+                            "pwsh" | "pwsh.exe" => {
+                                return Ok((Shell::PowerShell, exe_path.to_path_buf()));
+                            }
+                            "cmd" | "cmd.exe" => return Ok((Shell::Cmd, exe_path.to_path_buf())),
+                            _ => {
+                                log::debug!("Parent process is not a recognized shell: {file_str}");
+                                #[cfg(windows)]
+                                {
+                                    return Err(KopiError::ShellDetectionError(format!(
+                                        "Parent process '{}' is not a recognized shell. Please specify shell type with --shell option",
+                                        file_str
+                                    )));
+                                }
+                                // On Unix, continue to try other detection methods
+                            }
+                        }
+                    }
+                }
+
+                // If we can't get the executable path on Windows, fail immediately
+                #[cfg(windows)]
+                {
+                    log::error!("Failed to get executable path for parent process");
+                    return Err(KopiError::ShellDetectionError(
+                        "Cannot determine parent shell executable path. Please specify shell type with --shell option".to_string()
+                    ));
+                }
             }
         }
     }
 
-    // On Windows, check COMSPEC or PSModulePath
+    // On Windows, we cannot proceed without parent process detection
     #[cfg(windows)]
     {
-        if env::var("PSModulePath").is_ok() {
-            return Shell::PowerShell;
-        }
-        if let Ok(comspec) = env::var("COMSPEC") {
-            if comspec.to_lowercase().contains("cmd.exe") {
-                return Shell::Cmd;
-            }
-        }
+        return Err(KopiError::ShellDetectionError(
+            "Cannot detect parent shell on Windows. Please specify shell type with --shell option"
+                .to_string(),
+        ));
     }
 
-    // Try parent process name
-    if let Ok(parent) = env::var("SHELL") {
-        return Shell::Unknown(parent);
+    // Unix: Fallback to environment detection
+    #[cfg(not(windows))]
+    {
+        let shell_type = detect_shell_from_env()?;
+        let shell_path = find_shell_in_path(&shell_type)?;
+        Ok((shell_type, shell_path))
+    }
+}
+
+/// Detect shell from environment variables (Unix fallback)
+#[cfg(not(windows))]
+fn detect_shell_from_env() -> Result<Shell> {
+    // Check SHELL environment variable (Unix)
+    if let Ok(shell) = env::var("SHELL") {
+        if shell.contains("bash") {
+            return Ok(Shell::Bash);
+        } else if shell.contains("zsh") {
+            return Ok(Shell::Zsh);
+        } else if shell.contains("fish") {
+            return Ok(Shell::Fish);
+        }
     }
 
     // Default fallback
-    #[cfg(unix)]
-    return Shell::Bash;
+    Ok(Shell::Bash)
+}
 
-    #[cfg(windows)]
-    return Shell::PowerShell;
+/// Find shell executable in PATH
+pub fn find_shell_in_path(shell: &Shell) -> Result<PathBuf> {
+    let shell_name = match shell {
+        Shell::Bash => "bash",
+        Shell::Zsh => "zsh",
+        Shell::Fish => "fish",
+        Shell::PowerShell => {
+            if cfg!(windows) {
+                "powershell"
+            } else {
+                "pwsh"
+            }
+        }
+        Shell::Cmd => "cmd",
+        Shell::Unknown(name) => name,
+    };
+
+    which::which(shell_name).map_err(|_| KopiError::ShellNotFound(shell_name.to_string()))
+}
+
+/// Parse shell name from string
+pub fn parse_shell_name(name: &str) -> Result<Shell> {
+    match name.to_lowercase().as_str() {
+        "bash" => Ok(Shell::Bash),
+        "zsh" => Ok(Shell::Zsh),
+        "fish" => Ok(Shell::Fish),
+        "powershell" | "pwsh" => Ok(Shell::PowerShell),
+        "cmd" => Ok(Shell::Cmd),
+        _ => Err(KopiError::UnsupportedShell(name.to_string())),
+    }
 }
 
 impl Shell {
@@ -138,12 +231,25 @@ mod tests {
     #[test]
     fn test_shell_detection() {
         // This test is environment-dependent, so we just verify it returns something
-        let shell = detect_shell();
-        // The shell might be Unknown in some test environments, so we just verify we got a result
-        assert!(matches!(
-            shell,
-            Shell::Bash | Shell::Zsh | Shell::Fish | Shell::PowerShell | Shell::Unknown(_)
-        ));
+        let result = detect_shell();
+
+        // On Windows without a shell parent, it should error
+        #[cfg(windows)]
+        if result.is_err() {
+            let err = result.unwrap_err();
+            assert!(err.to_string().contains("shell"));
+        }
+
+        // On Unix, it should either succeed or fallback
+        #[cfg(not(windows))]
+        if let Ok((shell, path)) = result {
+            assert!(path.exists());
+            // Verify we got a known shell type
+            assert!(matches!(
+                shell,
+                Shell::Bash | Shell::Zsh | Shell::Fish | Shell::PowerShell | Shell::Cmd
+            ));
+        }
     }
 
     #[test]
@@ -224,6 +330,90 @@ mod tests {
         // Restore original PATH
         unsafe {
             env::set_var("PATH", original_path);
+        }
+    }
+
+    #[test]
+    fn test_parse_shell_name() {
+        assert_eq!(parse_shell_name("bash").unwrap(), Shell::Bash);
+        assert_eq!(parse_shell_name("zsh").unwrap(), Shell::Zsh);
+        assert_eq!(parse_shell_name("fish").unwrap(), Shell::Fish);
+        assert_eq!(parse_shell_name("powershell").unwrap(), Shell::PowerShell);
+        assert_eq!(parse_shell_name("pwsh").unwrap(), Shell::PowerShell);
+        assert_eq!(parse_shell_name("cmd").unwrap(), Shell::Cmd);
+        assert_eq!(parse_shell_name("BASH").unwrap(), Shell::Bash); // case insensitive
+
+        assert!(parse_shell_name("tcsh").is_err());
+        assert!(parse_shell_name("unknown").is_err());
+    }
+
+    #[test]
+    fn test_find_shell_in_path() {
+        // This test depends on the system having shells installed
+        // We'll just test that the function doesn't panic
+
+        // Test with a shell that's likely to exist
+        #[cfg(unix)]
+        {
+            let result = find_shell_in_path(&Shell::Bash);
+            // On most Unix systems, bash should be available
+            // But in test environments it might not be, so we don't assert success
+            if result.is_ok() {
+                assert!(result.unwrap().exists());
+            }
+        }
+
+        #[cfg(windows)]
+        {
+            let result = find_shell_in_path(&Shell::Cmd);
+            // CMD should always be available on Windows
+            if result.is_ok() {
+                assert!(result.unwrap().exists());
+            }
+        }
+
+        // Test with a shell that definitely doesn't exist
+        let unknown_shell = Shell::Unknown("definitely_not_a_real_shell".to_string());
+        assert!(find_shell_in_path(&unknown_shell).is_err());
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn test_detect_shell_from_env() {
+        // Save original SHELL
+        let original_shell = env::var("SHELL").ok();
+
+        // Test bash detection
+        unsafe {
+            env::set_var("SHELL", "/bin/bash");
+        }
+        assert_eq!(detect_shell_from_env().unwrap(), Shell::Bash);
+
+        // Test zsh detection
+        unsafe {
+            env::set_var("SHELL", "/usr/local/bin/zsh");
+        }
+        assert_eq!(detect_shell_from_env().unwrap(), Shell::Zsh);
+
+        // Test fish detection
+        unsafe {
+            env::set_var("SHELL", "/usr/bin/fish");
+        }
+        assert_eq!(detect_shell_from_env().unwrap(), Shell::Fish);
+
+        // Test unknown shell (should default to bash)
+        unsafe {
+            env::set_var("SHELL", "/usr/bin/tcsh");
+        }
+        assert_eq!(detect_shell_from_env().unwrap(), Shell::Bash);
+
+        // Restore original SHELL
+        unsafe {
+            if let Some(shell) = original_shell {
+                env::set_var("SHELL", shell);
+            } else {
+                env::remove_var("SHELL");
+            }
         }
     }
 }

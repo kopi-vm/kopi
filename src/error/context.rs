@@ -231,6 +231,24 @@ impl<'a> ErrorContext<'a> {
                 };
                 (suggestion, details)
             }
+            KopiError::ShellDetectionError(msg) => {
+                let suggestion = Some("Specify the shell type explicitly with --shell option (e.g., --shell bash, --shell powershell).".to_string());
+                let details = Some(msg.clone());
+                (suggestion, details)
+            }
+            KopiError::ShellNotFound(shell) => {
+                let suggestion = Some(format!(
+                    "Ensure '{shell}' is installed and available in your PATH."
+                ));
+                let details = None;
+                (suggestion, details)
+            }
+            KopiError::UnsupportedShell(shell) => {
+                let suggestion =
+                    Some("Supported shells: bash, zsh, fish, powershell, cmd.".to_string());
+                let details = Some(format!("Shell '{shell}' is not supported."));
+                (suggestion, details)
+            }
             _ => (None, None),
         };
 

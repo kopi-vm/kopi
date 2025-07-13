@@ -10,6 +10,16 @@ const KOPI_VERSION_FILE: &str = ".kopi-version";
 const JAVA_VERSION_FILE: &str = ".java-version";
 const VERSION_ENV_VAR: &str = "KOPI_JAVA_VERSION";
 
+// Type alias to simplify complex return type
+type VersionSearchResult = (Option<(VersionRequest, PathBuf)>, Vec<String>);
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum VersionSource {
+    Environment(String),    // KOPI_JAVA_VERSION
+    ProjectFile(PathBuf),   // .kopi-version or .java-version
+    GlobalDefault(PathBuf), // ~/.kopi/default-version
+}
+
 pub struct VersionResolver {
     current_dir: PathBuf,
 }
@@ -31,66 +41,33 @@ impl VersionResolver {
         Self { current_dir: dir }
     }
 
-    pub fn resolve_version(&self) -> Result<VersionRequest> {
-        let mut searched_paths = Vec::new();
-
+    pub fn resolve_version(&self) -> Result<(VersionRequest, VersionSource)> {
         // Check environment variable first (fastest)
         if let Ok(env_version) = env::var(VERSION_ENV_VAR) {
-            log::debug!("Using version from environment: {env_version}");
-            return VersionRequest::from_str(&env_version);
+            log::debug!("Checking KOPI_JAVA_VERSION environment variable...");
+            log::debug!("Found KOPI_JAVA_VERSION: {env_version}");
+            let version_request = VersionRequest::from_str(&env_version)?;
+            return Ok((version_request, VersionSource::Environment(env_version)));
         }
+        log::debug!("KOPI_JAVA_VERSION not set");
 
         // Search for version files
-        let (version_request, mut file_paths) = self.search_version_files()?;
-        searched_paths.append(&mut file_paths);
+        let current_dir = self.current_dir.clone();
+        log::debug!("Searching for version files from: {current_dir:?}");
 
-        if let Some(version_request) = version_request {
-            return Ok(version_request);
+        let (version_request, searched_paths) = self.search_version_files()?;
+        if let Some((version_request, path)) = version_request {
+            return Ok((version_request, VersionSource::ProjectFile(path)));
         }
 
         // Check global default
-        if let Some(version_request) = self.get_global_default()? {
+        if let Some((version_request, path)) = self.get_global_default()? {
             log::debug!("Using global default version");
-            return Ok(version_request);
+            return Ok((version_request, VersionSource::GlobalDefault(path)));
         }
 
-        // No version found
+        // No version found - use the searched paths from search_version_files
         Err(KopiError::NoLocalVersion { searched_paths })
-    }
-
-    fn search_version_files(&self) -> Result<(Option<VersionRequest>, Vec<String>)> {
-        let mut current = self.current_dir.clone();
-        let mut searched_paths = Vec::new();
-
-        loop {
-            // Add current directory to searched paths
-            searched_paths.push(current.display().to_string());
-
-            // Check for .kopi-version first (native format)
-            let kopi_version_path = current.join(KOPI_VERSION_FILE);
-            if kopi_version_path.exists() {
-                log::debug!("Found .kopi-version at {kopi_version_path:?}");
-                let content = self.read_version_file(&kopi_version_path)?;
-                return Ok((Some(VersionRequest::from_str(&content)?), searched_paths));
-            }
-
-            // Check for .java-version (compatibility)
-            let java_version_path = current.join(JAVA_VERSION_FILE);
-            if java_version_path.exists() {
-                log::debug!("Found .java-version at {java_version_path:?}");
-                let content = self.read_version_file(&java_version_path)?;
-                // .java-version doesn't support distribution@version format
-                return Ok((Some(VersionRequest::new(content)), searched_paths));
-            }
-
-            // Move to parent directory
-            match current.parent() {
-                Some(parent) => current = parent.to_path_buf(),
-                None => break,
-            }
-        }
-
-        Ok((None, searched_paths))
     }
 
     fn read_version_file(&self, path: &Path) -> Result<String> {
@@ -109,9 +86,48 @@ impl VersionResolver {
         Ok(version)
     }
 
-    fn get_global_default(&self) -> Result<Option<VersionRequest>> {
-        // For now, we'll check for a global config file
-        // This will be enhanced when config system is fully implemented
+    fn search_version_files(&self) -> Result<VersionSearchResult> {
+        let mut current = self.current_dir.clone();
+        let mut searched_paths = Vec::new();
+
+        loop {
+            // Add current directory to searched paths
+            searched_paths.push(current.display().to_string());
+
+            // Check for .kopi-version first (native format)
+            let kopi_version_path = current.join(KOPI_VERSION_FILE);
+            log::trace!("Checking {kopi_version_path:?}");
+            if kopi_version_path.exists() {
+                log::debug!("Found .kopi-version at {kopi_version_path:?}");
+                let content = self.read_version_file(&kopi_version_path)?;
+                log::debug!("Version content: {content}");
+                let version_request = VersionRequest::from_str(&content)?;
+                return Ok((Some((version_request, kopi_version_path)), searched_paths));
+            }
+
+            // Check for .java-version (compatibility)
+            let java_version_path = current.join(JAVA_VERSION_FILE);
+            log::trace!("Checking {java_version_path:?}");
+            if java_version_path.exists() {
+                log::debug!("Found .java-version at {java_version_path:?}");
+                let content = self.read_version_file(&java_version_path)?;
+                log::debug!("Version content: {content}");
+                // .java-version doesn't support distribution@version format
+                let version_request = VersionRequest::new(content);
+                return Ok((Some((version_request, java_version_path)), searched_paths));
+            }
+
+            // Move to parent directory
+            match current.parent() {
+                Some(parent) => current = parent.to_path_buf(),
+                None => break,
+            }
+        }
+
+        Ok((None, searched_paths))
+    }
+
+    fn get_global_default(&self) -> Result<Option<(VersionRequest, PathBuf)>> {
         if let Some(home) = home_dir() {
             // TODO: Change from "default-version" to "version" to match design spec
             // and align with other tools (rbenv, pyenv)
@@ -119,7 +135,8 @@ impl VersionResolver {
 
             if global_version_path.exists() {
                 let content = self.read_version_file(&global_version_path)?;
-                return Ok(Some(VersionRequest::from_str(&content)?));
+                let version_request = VersionRequest::from_str(&content)?;
+                return Ok(Some((version_request, global_version_path)));
             }
         }
 
@@ -139,9 +156,10 @@ mod tests {
             env::set_var(VERSION_ENV_VAR, "temurin@21");
         }
         let resolver = VersionResolver::new();
-        let result = resolver.resolve_version().unwrap();
+        let (result, source) = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "21");
         assert_eq!(result.distribution, Some("temurin".to_string()));
+        assert_eq!(source, VersionSource::Environment("temurin@21".to_string()));
         unsafe {
             env::remove_var(VERSION_ENV_VAR);
         }
@@ -156,9 +174,10 @@ mod tests {
         fs::write(&version_file, "corretto@17.0.8").unwrap();
 
         let resolver = VersionResolver::with_dir(temp_path.clone());
-        let result = resolver.resolve_version().unwrap();
+        let (result, source) = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "17.0.8");
         assert_eq!(result.distribution, Some("corretto".to_string()));
+        assert_eq!(source, VersionSource::ProjectFile(version_file));
     }
 
     #[test]
@@ -170,9 +189,10 @@ mod tests {
         fs::write(&version_file, "11.0.2").unwrap();
 
         let resolver = VersionResolver::with_dir(temp_path.clone());
-        let result = resolver.resolve_version().unwrap();
+        let (result, source) = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "11.0.2");
         assert_eq!(result.distribution, None);
+        assert_eq!(source, VersionSource::ProjectFile(version_file));
     }
 
     #[test]
@@ -189,9 +209,10 @@ mod tests {
 
         // Resolver starts in child directory
         let resolver = VersionResolver::with_dir(child_dir);
-        let result = resolver.resolve_version().unwrap();
+        let (result, source) = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "8");
         assert_eq!(result.distribution, Some("zulu".to_string()));
+        assert_eq!(source, VersionSource::ProjectFile(version_file));
     }
 
     #[test]
@@ -207,11 +228,12 @@ mod tests {
         fs::write(&java_version, "17").unwrap();
 
         let resolver = VersionResolver::with_dir(temp_path.clone());
-        let result = resolver.resolve_version().unwrap();
+        let (result, source) = resolver.resolve_version().unwrap();
 
         // Should use .kopi-version
         assert_eq!(result.version_pattern, "21");
         assert_eq!(result.distribution, Some("temurin".to_string()));
+        assert_eq!(source, VersionSource::ProjectFile(kopi_version));
     }
 
     #[test]
@@ -236,7 +258,7 @@ mod tests {
         fs::write(&version_file, "  17.0.9  \n").unwrap();
 
         let resolver = VersionResolver::with_dir(temp_path.clone());
-        let result = resolver.resolve_version().unwrap();
+        let (result, _source) = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "17.0.9");
     }
 
@@ -248,5 +270,56 @@ mod tests {
         let resolver = VersionResolver::with_dir(temp_path.clone());
         let result = resolver.resolve_version();
         assert!(matches!(result, Err(KopiError::NoLocalVersion { .. })));
+    }
+
+    #[test]
+    fn test_resolve_from_global() {
+        // This test is hard to mock without filesystem interaction
+        // We'll test that if no env var or project files exist, we either get GlobalDefault or error
+        let temp_dir = TempDir::new().unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+
+        let resolver = VersionResolver::with_dir(temp_path.clone());
+        let result = resolver.resolve_version();
+
+        // Since we can't easily mock the home directory, we check if it's either
+        // success with GlobalDefault (if a global file exists) or error (no version found)
+        match result {
+            Ok((_, VersionSource::GlobalDefault(_))) => {
+                // Global file exists on this system
+            }
+            Err(KopiError::NoLocalVersion { .. }) => {
+                // No global file exists
+            }
+            _ => panic!("Unexpected result"),
+        }
+    }
+
+    #[test]
+    fn test_resolve_priority() {
+        // Test that environment variable takes priority over project files
+        let temp_dir = TempDir::new().unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+
+        // Create project file
+        let version_file = temp_path.join(KOPI_VERSION_FILE);
+        fs::write(&version_file, "corretto@17").unwrap();
+
+        // Set environment variable
+        unsafe {
+            env::set_var(VERSION_ENV_VAR, "temurin@21");
+        }
+
+        let resolver = VersionResolver::with_dir(temp_path.clone());
+        let (version_request, source) = resolver.resolve_version().unwrap();
+
+        // Should use environment variable, not project file
+        assert_eq!(version_request.version_pattern, "21");
+        assert_eq!(version_request.distribution, Some("temurin".to_string()));
+        assert_eq!(source, VersionSource::Environment("temurin@21".to_string()));
+
+        unsafe {
+            env::remove_var(VERSION_ENV_VAR);
+        }
     }
 }
