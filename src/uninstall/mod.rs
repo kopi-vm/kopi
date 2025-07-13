@@ -7,7 +7,9 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
 
+pub mod batch;
 pub mod safety;
+pub mod selection;
 
 pub struct UninstallHandler<'a> {
     repository: &'a JdkRepository<'a>,
@@ -36,14 +38,12 @@ impl<'a> UninstallHandler<'a> {
             });
         }
 
-        // For now, only support single JDK uninstall (Phase 2 will add selection)
-        if jdks_to_remove.len() > 1 {
-            return Err(KopiError::ValidationError(format!(
-                "Multiple JDKs match '{version_spec}'. Please specify distribution@version (e.g., temurin@21.0.5+11)"
-            )));
-        }
-
-        let jdk = &jdks_to_remove[0];
+        // Use interactive selection when multiple JDKs match
+        let jdk = if jdks_to_remove.len() > 1 {
+            selection::JdkSelector::select_jdk_interactively(jdks_to_remove, version_spec)?
+        } else {
+            jdks_to_remove.into_iter().next().unwrap()
+        };
         let jdk_size = self.repository.get_jdk_size(&jdk.path)?;
 
         if dry_run {
@@ -60,7 +60,7 @@ impl<'a> UninstallHandler<'a> {
         safety::perform_safety_checks(&jdk.distribution, &jdk.version.to_string())?;
 
         // Remove with progress
-        self.remove_jdk_with_progress(jdk, jdk_size)?;
+        self.remove_jdk_with_progress(&jdk, jdk_size)?;
 
         println!(
             "✓ Successfully uninstalled {}@{}",
