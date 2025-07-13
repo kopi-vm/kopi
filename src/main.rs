@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use kopi::commands::cache::CacheCommand;
+use kopi::commands::current::CurrentCommand;
 use kopi::commands::install::InstallCommand;
 use kopi::commands::setup::SetupCommand;
 use kopi::commands::shim::ShimCommand;
@@ -63,7 +64,14 @@ enum Commands {
     },
 
     /// Show currently active JDK version
-    Current,
+    Current {
+        /// Show only version number
+        #[arg(short = 'q', long)]
+        quiet: bool,
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
+    },
 
     /// Set the global default JDK version
     #[command(visible_alias = "g")]
@@ -184,9 +192,9 @@ fn main() {
                 println!("Switching to JDK {version} (not yet implemented)");
                 Ok(())
             }
-            Commands::Current => {
-                println!("Current JDK version (not yet implemented)");
-                Ok(())
+            Commands::Current { quiet, json } => {
+                let command = CurrentCommand::new()?;
+                command.execute(quiet, json)
             }
             Commands::Global { version } => {
                 println!("Setting global JDK to {version} (not yet implemented)");
