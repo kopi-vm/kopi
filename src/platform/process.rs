@@ -40,9 +40,7 @@ pub fn launch_shell_with_env(shell_path: &PathBuf, env_name: &str, env_value: &s
 
     // Build command with environment variable
     // Parent process environment is inherited by default
-    let err = Command::new(shell_path)
-        .env(env_name, env_value)
-        .exec();
+    let err = Command::new(shell_path).env(env_name, env_value).exec();
 
     // exec only returns on error
     Err(KopiError::SystemError(format!(
