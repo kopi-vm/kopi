@@ -270,18 +270,19 @@ impl std::fmt::Display for Version {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VersionRequest {
-    pub version_pattern: String,
+    pub version: Version,
     pub distribution: Option<String>,
     pub package_type: Option<crate::models::package::PackageType>,
 }
 
 impl VersionRequest {
-    pub fn new(version_pattern: String) -> Self {
-        Self {
-            version_pattern,
+    pub fn new(version_pattern: String) -> Result<Self> {
+        let version = Version::from_str(&version_pattern)?;
+        Ok(Self {
+            version,
             distribution: None,
             package_type: None,
-        }
+        })
     }
 
     pub fn with_distribution(mut self, distribution: String) -> Self {
@@ -304,9 +305,9 @@ impl FromStr for VersionRequest {
             if parts.len() != 2 {
                 return Err(KopiError::InvalidVersionFormat(s.to_string()));
             }
-            Ok(VersionRequest::new(parts[1].to_string()).with_distribution(parts[0].to_string()))
+            Ok(VersionRequest::new(parts[1].to_string())?.with_distribution(parts[0].to_string()))
         } else {
-            Ok(VersionRequest::new(s.to_string()))
+            VersionRequest::new(s.to_string())
         }
     }
 }
@@ -468,11 +469,11 @@ mod tests {
     #[test]
     fn test_version_request_parsing() {
         let req = VersionRequest::from_str("21").unwrap();
-        assert_eq!(req.version_pattern, "21");
+        assert_eq!(req.version, Version::from_str("21").unwrap());
         assert_eq!(req.distribution, None);
 
         let req = VersionRequest::from_str("corretto@17").unwrap();
-        assert_eq!(req.version_pattern, "17");
+        assert_eq!(req.version, Version::from_str("17").unwrap());
         assert_eq!(req.distribution, Some("corretto".to_string()));
 
         assert!(VersionRequest::from_str("invalid@format@").is_err());

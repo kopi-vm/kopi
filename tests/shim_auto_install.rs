@@ -90,11 +90,12 @@ install_timeout = 300
 #[test]
 fn test_version_request_formatting() {
     // Test version request with distribution
-    let version_request =
-        VersionRequest::new("21".to_string()).with_distribution("temurin".to_string());
+    let version_request = VersionRequest::new("21".to_string())
+        .unwrap()
+        .with_distribution("temurin".to_string());
 
     // Verify the version request is created correctly
-    assert_eq!(version_request.version_pattern, "21");
+    assert_eq!(version_request.version.to_string(), "21");
     assert_eq!(version_request.distribution, Some("temurin".to_string()));
 }
 

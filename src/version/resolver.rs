@@ -113,7 +113,7 @@ impl VersionResolver {
                 let content = self.read_version_file(&java_version_path)?;
                 log::debug!("Version content: {content}");
                 // .java-version doesn't support distribution@version format
-                let version_request = VersionRequest::new(content);
+                let version_request = VersionRequest::new(content)?;
                 return Ok((Some((version_request, java_version_path)), searched_paths));
             }
 
@@ -157,7 +157,7 @@ mod tests {
         }
         let resolver = VersionResolver::new();
         let (result, source) = resolver.resolve_version().unwrap();
-        assert_eq!(result.version_pattern, "21");
+        assert_eq!(result.version.to_string(), "21");
         assert_eq!(result.distribution, Some("temurin".to_string()));
         assert_eq!(source, VersionSource::Environment("temurin@21".to_string()));
         unsafe {
@@ -175,7 +175,7 @@ mod tests {
 
         let resolver = VersionResolver::with_dir(temp_path.clone());
         let (result, source) = resolver.resolve_version().unwrap();
-        assert_eq!(result.version_pattern, "17.0.8");
+        assert_eq!(result.version.to_string(), "17.0.8");
         assert_eq!(result.distribution, Some("corretto".to_string()));
         assert_eq!(source, VersionSource::ProjectFile(version_file));
     }
@@ -190,7 +190,7 @@ mod tests {
 
         let resolver = VersionResolver::with_dir(temp_path.clone());
         let (result, source) = resolver.resolve_version().unwrap();
-        assert_eq!(result.version_pattern, "11.0.2");
+        assert_eq!(result.version.to_string(), "11.0.2");
         assert_eq!(result.distribution, None);
         assert_eq!(source, VersionSource::ProjectFile(version_file));
     }
@@ -210,7 +210,7 @@ mod tests {
         // Resolver starts in child directory
         let resolver = VersionResolver::with_dir(child_dir);
         let (result, source) = resolver.resolve_version().unwrap();
-        assert_eq!(result.version_pattern, "8");
+        assert_eq!(result.version.to_string(), "8");
         assert_eq!(result.distribution, Some("zulu".to_string()));
         assert_eq!(source, VersionSource::ProjectFile(version_file));
     }
@@ -231,7 +231,7 @@ mod tests {
         let (result, source) = resolver.resolve_version().unwrap();
 
         // Should use .kopi-version
-        assert_eq!(result.version_pattern, "21");
+        assert_eq!(result.version.to_string(), "21");
         assert_eq!(result.distribution, Some("temurin".to_string()));
         assert_eq!(source, VersionSource::ProjectFile(kopi_version));
     }
@@ -259,7 +259,7 @@ mod tests {
 
         let resolver = VersionResolver::with_dir(temp_path.clone());
         let (result, _source) = resolver.resolve_version().unwrap();
-        assert_eq!(result.version_pattern, "17.0.9");
+        assert_eq!(result.version.to_string(), "17.0.9");
     }
 
     #[test]
@@ -314,7 +314,7 @@ mod tests {
         let (version_request, source) = resolver.resolve_version().unwrap();
 
         // Should use environment variable, not project file
-        assert_eq!(version_request.version_pattern, "21");
+        assert_eq!(version_request.version.to_string(), "21");
         assert_eq!(version_request.distribution, Some("temurin".to_string()));
         assert_eq!(source, VersionSource::Environment("temurin@21".to_string()));
 

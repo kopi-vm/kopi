@@ -78,8 +78,8 @@ impl CurrentCommand {
             for jdk in &installed_jdks {
                 if jdk.distribution == distribution.id() {
                     // Check if the version matches
-                    if jdk.version == version_request.version_pattern
-                        || version_matches(&jdk.version, &version_request.version_pattern)
+                    if jdk.version == version_request.version.to_string()
+                        || version_matches(&jdk.version, &version_request.version.to_string())
                     {
                         install_path = Some(jdk.path.clone());
                         is_installed = true;
@@ -93,7 +93,7 @@ impl CurrentCommand {
         if json {
             print_json_output(&version_request, &source, is_installed, &install_path)?;
         } else if quiet {
-            println!("{}", version_request.version_pattern);
+            println!("{}", version_request.version);
         } else {
             print_standard_output(&version_request, &source, is_installed)?;
         }
@@ -135,7 +135,7 @@ fn print_json_output(
     };
 
     let output = CurrentOutput {
-        version: Some(version_request.version_pattern.clone()),
+        version: Some(version_request.version.to_string()),
         source: source_name,
         source_path,
         installed: is_installed,
@@ -169,9 +169,9 @@ fn print_standard_output(
     };
 
     let version_display = if let Some(dist) = &version_request.distribution {
-        format!("{dist}@{}", version_request.version_pattern)
+        format!("{dist}@{}", version_request.version)
     } else {
-        version_request.version_pattern.clone()
+        version_request.version.to_string()
     };
 
     if is_installed {
