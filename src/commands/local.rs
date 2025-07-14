@@ -1,12 +1,8 @@
 use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
 use crate::installation::auto::{AutoInstaller, InstallationResult};
-use crate::models::distribution::Distribution;
 use crate::storage::JdkRepository;
-use crate::version::{
-    build_install_request, file::write_version_file, parser::VersionParser,
-    validate_version_for_command,
-};
+use crate::version::VersionRequest;
 use log::{debug, info};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -23,75 +19,78 @@ impl LocalCommand {
 
         // Load configuration
         let config = new_kopi_config()?;
-        let parser = VersionParser::new(&config);
 
-        // Parse version specification
-        let version_request = parser.parse(version_spec)?;
+        // Parse version specification using lenient parsing
+        let version_request = VersionRequest::from_str(version_spec)?;
         debug!("Parsed version request: {version_request:?}");
-
-        // Local command requires a specific version
-        let version = validate_version_for_command(&version_request.version, "Local")?;
-
-        // Validate version semantics
-        VersionParser::validate_version_semantics(version)?;
-
-        // Use default distribution from config if not specified
-        let distribution = if let Some(dist) = &version_request.distribution {
-            dist.clone()
-        } else {
-            Distribution::from_str(&config.default_distribution).unwrap_or(Distribution::Temurin)
-        };
 
         // Create storage repository
         let repository = JdkRepository::new(&config);
 
-        // Check if JDK is installed
-        let is_installed = repository.check_installation(&distribution, version)?;
+        // Check if matching JDK is installed
+        let mut matching_jdks = repository.find_matching_jdks(&version_request)?;
 
-        if !is_installed {
+        if matching_jdks.is_empty() {
             // Auto-installation is optional for local command
-            println!("JDK {} {} is not installed.", distribution.name(), version);
+            info!("JDK {} is not installed.", version_request.version_pattern);
 
             let auto_installer = AutoInstaller::new(&config);
-            let version_spec = format!("{}@{}", distribution.id(), version);
-            let install_request = build_install_request(&distribution, version);
 
-            match auto_installer.prompt_and_install(&version_spec, &install_request) {
-                Ok(InstallationResult::Installed) => {
+            match auto_installer.prompt_and_install(version_spec, &version_request)? {
+                InstallationResult::Installed => {
                     info!(
-                        "JDK {} {} installed successfully",
-                        distribution.name(),
-                        version
+                        "JDK {} installed successfully",
+                        version_request.version_pattern
                     );
+                    // Re-fetch matching JDKs after installation
+                    matching_jdks = repository.find_matching_jdks(&version_request)?;
                 }
-                Ok(InstallationResult::UserDeclined | InstallationResult::AutoInstallDisabled) => {
-                    // For local command, we continue even if installation is skipped
-                    eprintln!("The .kopi-version file will still be created.");
+                InstallationResult::UserDeclined => {
+                    return Err(KopiError::JdkNotInstalled {
+                        jdk_spec: version_request.version_pattern.clone(),
+                        version: None,
+                        distribution: version_request.distribution.clone(),
+                        auto_install_enabled: true,
+                        auto_install_failed: None,
+                        user_declined: true,
+                        install_in_progress: false,
+                    });
                 }
-                Err(e) => {
-                    eprintln!("Warning: Failed to install JDK: {e}");
-                    eprintln!("The .kopi-version file will still be created.");
-                    eprintln!("You can install the JDK later with:");
-                    eprintln!("  kopi install {version_spec}");
+                InstallationResult::AutoInstallDisabled => {
+                    return Err(KopiError::JdkNotInstalled {
+                        jdk_spec: version_request.version_pattern.clone(),
+                        version: None,
+                        distribution: version_request.distribution.clone(),
+                        auto_install_enabled: false,
+                        auto_install_failed: None,
+                        user_declined: false,
+                        install_in_progress: false,
+                    });
                 }
             }
         }
 
-        // Always create the version file, regardless of installation status
+        // Get the last (latest) matching JDK
+        let selected_jdk = matching_jdks
+            .last()
+            .ok_or_else(|| KopiError::JdkNotInstalled {
+                jdk_spec: version_request.version_pattern.clone(),
+                version: None,
+                distribution: version_request.distribution.clone(),
+                auto_install_enabled: false,
+                auto_install_failed: None,
+                user_declined: false,
+                install_in_progress: false,
+            })?;
+
+        // Write version file using the selected JDK
         let version_file = self.local_version_path()?;
-        write_version_file(&version_file, &version_request)?;
+        selected_jdk.write_to(&version_file)?;
 
         println!(
-            "Created .kopi-version file for {} {}",
-            distribution.name(),
-            version
+            "Created .kopi-version file for {}@{}",
+            selected_jdk.distribution, selected_jdk.version
         );
-
-        if !is_installed && !repository.check_installation(&distribution, version)? {
-            println!();
-            println!("Note: The JDK is not installed yet. Run the following to install it:");
-            println!("  kopi install {}@{}", distribution.id(), version);
-        }
 
         Ok(())
     }
@@ -106,7 +105,6 @@ impl LocalCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
 
     #[test]
     fn test_local_command_creation() {
@@ -119,50 +117,5 @@ mod tests {
         let command = LocalCommand::new().unwrap();
         let path = command.local_version_path().unwrap();
         assert!(path.ends_with(".kopi-version"));
-    }
-
-    #[test]
-    fn test_write_version_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let version_file = temp_dir.path().join(".kopi-version");
-
-        // Test with distribution
-        let version_request = crate::version::parser::ParsedVersionRequest {
-            distribution: Some(Distribution::Temurin),
-            version: Some(crate::version::Version::new(21, 0, 0)),
-            package_type: None,
-            latest: false,
-        };
-
-        crate::version::file::write_version_file(&version_file, &version_request).unwrap();
-
-        let content = std::fs::read_to_string(&version_file).unwrap();
-        assert_eq!(content, "temurin@21");
-
-        // Test without distribution
-        let version_request2 = crate::version::parser::ParsedVersionRequest {
-            distribution: None,
-            version: Some(crate::version::Version::new(17, 0, 0)),
-            package_type: None,
-            latest: false,
-        };
-
-        crate::version::file::write_version_file(&version_file, &version_request2).unwrap();
-
-        let content2 = std::fs::read_to_string(&version_file).unwrap();
-        assert_eq!(content2, "17");
-
-        // Test with full version
-        let version_request3 = crate::version::parser::ParsedVersionRequest {
-            distribution: Some(Distribution::Corretto),
-            version: Some(crate::version::Version::new(11, 0, 21)),
-            package_type: None,
-            latest: false,
-        };
-
-        crate::version::file::write_version_file(&version_file, &version_request3).unwrap();
-
-        let content3 = std::fs::read_to_string(&version_file).unwrap();
-        assert_eq!(content3, "corretto@11.0.21");
     }
 }
