@@ -95,7 +95,7 @@ fn test_version_request_formatting() {
         .with_distribution("temurin".to_string());
 
     // Verify the version request is created correctly
-    assert_eq!(version_request.version.to_string(), "21");
+    assert_eq!(version_request.version_pattern, "21");
     assert_eq!(version_request.distribution, Some("temurin".to_string()));
 }
 

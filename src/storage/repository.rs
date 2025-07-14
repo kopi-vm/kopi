@@ -9,6 +9,7 @@ use crate::version::Version;
 use log::debug;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 pub struct JdkRepository<'a> {
     config: &'a KopiConfig,
@@ -61,23 +62,63 @@ impl<'a> JdkRepository<'a> {
         distribution: &Distribution,
         version: &Version,
     ) -> Result<bool> {
+        debug!(
+            "Checking installation for {} version {}",
+            distribution.id(),
+            version
+        );
+
         // Get list of installed JDKs
         if let Ok(installed_jdks) = self.list_installed_jdks() {
+            debug!("Found {} installed JDKs", installed_jdks.len());
+
             // Look for an exact match
             for jdk in installed_jdks {
+                debug!(
+                    "Checking installed JDK: {} {} at {:?}",
+                    jdk.distribution, jdk.version, jdk.path
+                );
+
                 if jdk.distribution == distribution.id() {
-                    // Check if the version matches
-                    if version.matches_pattern(&jdk.version) {
-                        debug!(
-                            "Found installed JDK: {} {}",
-                            distribution.name(),
-                            jdk.version
-                        );
-                        return Ok(true);
+                    debug!(
+                        "Distribution matches. Checking if search version {} matches installed version {}",
+                        version, jdk.version
+                    );
+
+                    // Check if the installed version matches the search pattern
+                    // Parse the installed version string and check if it matches our search pattern
+                    match Version::from_str(&jdk.version) {
+                        Ok(installed_version) => {
+                            // Check if the installed version matches the search pattern
+                            // For example: installed "17.0.15" matches search pattern "17"
+                            if installed_version.matches_pattern(&version.to_string()) {
+                                debug!(
+                                    "Found matching JDK: {} {} (matched pattern {})",
+                                    distribution.name(),
+                                    jdk.version,
+                                    version
+                                );
+                                return Ok(true);
+                            } else {
+                                debug!(
+                                    "Version mismatch: installed version {} does not match search pattern {}",
+                                    jdk.version, version
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            debug!("Failed to parse installed version '{}': {}", jdk.version, e);
+                        }
                     }
                 }
             }
         }
+
+        debug!(
+            "No matching JDK found for {} version {}",
+            distribution.id(),
+            version
+        );
         Ok(false)
     }
 
@@ -198,5 +239,67 @@ min_disk_space_mb = 1024
 
         let result = manager.check_installation(&distribution, &version).unwrap();
         assert!(!result);
+    }
+
+    #[test]
+    fn test_check_installation_with_partial_version() {
+        let test_storage = TestStorage::new();
+        let manager = test_storage.manager();
+        let jdks_dir = test_storage.config.jdks_dir().unwrap();
+
+        // Create a JDK directory with a full version
+        fs::create_dir_all(jdks_dir.join("temurin-17.0.15")).unwrap();
+
+        // Search with just major version "17"
+        let distribution = Distribution::Temurin;
+        let search_version = Version::from_components(17, None, None);
+
+        let result = manager
+            .check_installation(&distribution, &search_version)
+            .unwrap();
+        assert!(
+            result,
+            "Should find temurin-17.0.15 when searching for version 17"
+        );
+
+        // Search with major.minor "17.0"
+        let search_version = Version::from_components(17, Some(0), None);
+        let result = manager
+            .check_installation(&distribution, &search_version)
+            .unwrap();
+        assert!(
+            result,
+            "Should find temurin-17.0.15 when searching for version 17.0"
+        );
+
+        // Search with full version "17.0.15"
+        let search_version = Version::new(17, 0, 15);
+        let result = manager
+            .check_installation(&distribution, &search_version)
+            .unwrap();
+        assert!(
+            result,
+            "Should find temurin-17.0.15 when searching for exact version"
+        );
+
+        // Search with different patch version should not match
+        let search_version = Version::new(17, 0, 14);
+        let result = manager
+            .check_installation(&distribution, &search_version)
+            .unwrap();
+        assert!(
+            !result,
+            "Should not find temurin-17.0.15 when searching for 17.0.14"
+        );
+
+        // Search with different minor version should not match
+        let search_version = Version::new(17, 1, 0);
+        let result = manager
+            .check_installation(&distribution, &search_version)
+            .unwrap();
+        assert!(
+            !result,
+            "Should not find temurin-17.0.15 when searching for 17.1.0"
+        );
     }
 }

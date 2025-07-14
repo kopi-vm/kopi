@@ -77,10 +77,15 @@ impl CurrentCommand {
             for jdk in &installed_jdks {
                 if jdk.distribution == distribution.id() {
                     // Check if the version matches
-                    if version_request.version.matches_pattern(&jdk.version) {
-                        install_path = Some(jdk.path.clone());
-                        is_installed = true;
-                        break;
+                    // Parse the version pattern and check if the installed version matches
+                    if let Ok(_pattern_version) = crate::version::Version::from_str(&version_request.version_pattern) {
+                        if let Ok(installed_version) = crate::version::Version::from_str(&jdk.version) {
+                            if installed_version.matches_pattern(&version_request.version_pattern) {
+                                install_path = Some(jdk.path.clone());
+                                is_installed = true;
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -90,7 +95,7 @@ impl CurrentCommand {
         if json {
             print_json_output(&version_request, &source, is_installed, &install_path)?;
         } else if quiet {
-            println!("{}", version_request.version);
+            println!("{}", version_request.version_pattern);
         } else {
             print_standard_output(&version_request, &source, is_installed)?;
         }
@@ -121,7 +126,7 @@ fn print_json_output(
     };
 
     let output = CurrentOutput {
-        version: Some(version_request.version.to_string()),
+        version: Some(version_request.version_pattern.clone()),
         source: source_name,
         source_path,
         installed: is_installed,
@@ -155,9 +160,9 @@ fn print_standard_output(
     };
 
     let version_display = if let Some(dist) = &version_request.distribution {
-        format!("{dist}@{}", version_request.version)
+        format!("{dist}@{}", version_request.version_pattern)
     } else {
-        version_request.version.to_string()
+        version_request.version_pattern.clone()
     };
 
     if is_installed {

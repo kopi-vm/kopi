@@ -271,16 +271,17 @@ impl std::fmt::Display for Version {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VersionRequest {
-    pub version: Version,
+    pub version_pattern: String,
     pub distribution: Option<String>,
     pub package_type: Option<crate::models::package::PackageType>,
 }
 
 impl VersionRequest {
     pub fn new(version_pattern: String) -> Result<Self> {
-        let version = Version::from_str(&version_pattern)?;
+        // Validate that the pattern can be parsed as a version
+        Version::from_str(&version_pattern)?;
         Ok(Self {
-            version,
+            version_pattern,
             distribution: None,
             package_type: None,
         })
@@ -349,7 +350,7 @@ pub fn build_install_request(
 ) -> VersionRequest {
     VersionRequest {
         distribution: Some(distribution.id().to_string()),
-        version: version.clone(),
+        version_pattern: version.to_string(),
         package_type: None,
     }
 }
@@ -511,11 +512,11 @@ mod tests {
     #[test]
     fn test_version_request_parsing() {
         let req = VersionRequest::from_str("21").unwrap();
-        assert_eq!(req.version, Version::from_str("21").unwrap());
+        assert_eq!(req.version_pattern, "21");
         assert_eq!(req.distribution, None);
 
         let req = VersionRequest::from_str("corretto@17").unwrap();
-        assert_eq!(req.version, Version::from_str("17").unwrap());
+        assert_eq!(req.version_pattern, "17");
         assert_eq!(req.distribution, Some("corretto".to_string()));
 
         assert!(VersionRequest::from_str("invalid@format@").is_err());
@@ -750,6 +751,6 @@ mod tests {
         let request = build_install_request(&dist, &version);
 
         assert_eq!(request.distribution, Some("temurin".to_string()));
-        assert_eq!(request.version.major(), 21);
+        assert_eq!(request.version_pattern, "21.0.0");
     }
 }

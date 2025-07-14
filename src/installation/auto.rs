@@ -59,9 +59,9 @@ impl<'a> AutoInstaller<'a> {
     pub fn install_jdk(&self, version_request: &VersionRequest) -> Result<()> {
         // Build the version specification for the install command
         let version_spec = if let Some(dist) = &version_request.distribution {
-            format!("{}@{}", dist, version_request.version)
+            format!("{}@{}", dist, version_request.version_pattern)
         } else {
-            version_request.version.to_string()
+            version_request.version_pattern.clone()
         };
 
         info!("Auto-installing JDK: {version_spec}");

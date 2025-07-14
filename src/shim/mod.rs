@@ -2,7 +2,7 @@ use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
 use crate::storage::JdkRepository;
-use crate::version::VersionRequest;
+use crate::version::{Version, VersionRequest};
 use std::env;
 use std::ffi::OsString;
 use std::io::IsTerminal;
@@ -56,7 +56,7 @@ pub fn run_shim() -> Result<()> {
     log::debug!("Resolved version: {version_request:?} from {version_source:?}");
 
     // Validate version string
-    security_validator.validate_version(&version_request.version.to_string())?;
+    security_validator.validate_version(&version_request.version_pattern)?;
     if let Some(dist) = &version_request.distribution {
         security_validator.validate_version(dist)?;
     }
@@ -80,9 +80,9 @@ pub fn run_shim() -> Result<()> {
                 if auto_install_enabled {
                     // Check if we should prompt the user
                     let version_spec = if let Some(dist) = &version_request.distribution {
-                        format!("{}@{}", dist, version_request.version)
+                        format!("{}@{}", dist, version_request.version_pattern)
                     } else {
-                        version_request.version.to_string()
+                        version_request.version_pattern.clone()
                     };
 
                     let should_install = match auto_installer.prompt_user(&version_spec) {
@@ -107,7 +107,7 @@ pub fn run_shim() -> Result<()> {
                                         // Still not found after installation attempt
                                         let error = KopiError::JdkNotInstalled {
                                             jdk_spec: jdk_spec.clone(),
-                                            version: Some(version_request.version.to_string()),
+                                            version: Some(version_request.version_pattern.clone()),
                                             distribution: version_request.distribution.clone(),
                                             auto_install_enabled,
                                             auto_install_failed: Some(
@@ -144,7 +144,7 @@ pub fn run_shim() -> Result<()> {
                                 // Auto-install failed for other reasons
                                 let error = KopiError::JdkNotInstalled {
                                     jdk_spec: jdk_spec.clone(),
-                                    version: Some(version_request.version.to_string()),
+                                    version: Some(version_request.version_pattern.clone()),
                                     distribution: version_request.distribution.clone(),
                                     auto_install_enabled,
                                     auto_install_failed: Some(e.to_string()),
@@ -165,7 +165,7 @@ pub fn run_shim() -> Result<()> {
                         // User declined installation
                         let error = KopiError::JdkNotInstalled {
                             jdk_spec: jdk_spec.clone(),
-                            version: Some(version_request.version.to_string()),
+                            version: Some(version_request.version_pattern.clone()),
                             distribution: version_request.distribution.clone(),
                             auto_install_enabled,
                             auto_install_failed: None,
@@ -234,6 +234,8 @@ fn find_jdk_installation(
     repository: &JdkRepository,
     version_request: &VersionRequest,
 ) -> Result<PathBuf> {
+    log::debug!("Finding JDK for version request: {version_request:?}");
+
     // Parse distribution from version request
     let distribution = if let Some(dist_name) = &version_request.distribution {
         Distribution::from_str(dist_name)?
@@ -241,23 +243,53 @@ fn find_jdk_installation(
         // Use default distribution from config or fall back to temurin
         Distribution::Temurin
     };
+    log::debug!("Using distribution: {}", distribution.id());
 
     // List installed JDKs
     let installed_jdks = repository.list_installed_jdks()?;
+    log::debug!("Found {} installed JDKs", installed_jdks.len());
 
     // Find matching JDK
     for jdk in installed_jdks {
-        if jdk.distribution.to_lowercase() == distribution.id()
-            && version_request.version.matches_pattern(&jdk.version)
-        {
-            return Ok(jdk.path);
+        log::debug!(
+            "Checking JDK: distribution={}, version={} against request: distribution={}, version={}",
+            jdk.distribution,
+            jdk.version,
+            distribution.id(),
+            version_request.version_pattern
+        );
+
+        if jdk.distribution.to_lowercase() == distribution.id() {
+            // Parse the installed JDK version and check if it matches the requested pattern
+            match Version::from_str(&jdk.version) {
+                Ok(installed_version) => {
+                    let matches =
+                        installed_version.matches_pattern(&version_request.version_pattern);
+                    log::debug!(
+                        "Version matching: installed {} matches pattern {}? {}",
+                        installed_version,
+                        version_request.version_pattern,
+                        matches
+                    );
+                    if matches {
+                        return Ok(jdk.path);
+                    }
+                }
+                Err(e) => {
+                    log::warn!(
+                        "Failed to parse installed JDK version '{}': {}",
+                        jdk.version,
+                        e
+                    );
+                }
+            }
         }
     }
 
     // No matching JDK found
     Err(KopiError::JdkNotInstalled {
-        jdk_spec: format!("{}@{}", distribution.id(), version_request.version),
-        version: Some(version_request.version.to_string()),
+        jdk_spec: format!("{}@{}", distribution.id(), version_request.version_pattern),
+        version: Some(version_request.version_pattern.clone()),
         distribution: Some(distribution.id().to_string()),
         auto_install_enabled: false, // Will be updated by caller
         auto_install_failed: None,
@@ -425,5 +457,37 @@ mod tests {
         let result = find_jdk_installation(&repository, &version_request);
         assert!(result.is_err());
         assert!(matches!(result, Err(KopiError::JdkNotInstalled { .. })));
+    }
+
+    #[test]
+    fn test_version_matching_logic() {
+        // Test that version matching works correctly
+        // Scenario: User has .kopi-version with "17", JDK installed as "17.0.15"
+
+        // The correct way: installed version matches requested pattern
+        let installed = Version::from_str("17.0.15").unwrap();
+        let requested = Version::from_str("17").unwrap();
+        assert!(installed.matches_pattern(&requested.to_string()));
+
+        // More test cases
+        assert!(Version::from_str("21.0.1").unwrap().matches_pattern("21"));
+        assert!(
+            Version::from_str("11.0.21+9")
+                .unwrap()
+                .matches_pattern("11")
+        );
+        assert!(
+            Version::from_str("17.0.15")
+                .unwrap()
+                .matches_pattern("17.0")
+        );
+
+        // Negative cases
+        assert!(!Version::from_str("17.0.15").unwrap().matches_pattern("18"));
+        assert!(
+            !Version::from_str("17.0.15")
+                .unwrap()
+                .matches_pattern("17.0.16")
+        );
     }
 }
