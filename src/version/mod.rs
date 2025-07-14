@@ -2,6 +2,7 @@ use crate::error::{KopiError, Result};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+pub mod file;
 pub mod parser;
 pub mod resolver;
 
@@ -309,6 +310,47 @@ impl FromStr for VersionRequest {
         } else {
             VersionRequest::new(s.to_string())
         }
+    }
+}
+
+/// Format version in minimal representation
+/// - Just major version if minor and patch are 0 (e.g., "21" instead of "21.0.0")
+/// - Major.minor if patch is 0 (e.g., "21.1" instead of "21.1.0")
+/// - Full version otherwise
+pub fn format_version_minimal(version: &Version) -> String {
+    if version.minor() == Some(0) && version.patch() == Some(0) {
+        // Just major version (e.g., "21" instead of "21.0.0")
+        version.major().to_string()
+    } else if version.patch() == Some(0) {
+        // Major.minor (e.g., "21.1" instead of "21.1.0")
+        format!("{}.{}", version.major(), version.minor().unwrap())
+    } else {
+        // Full version
+        version.to_string()
+    }
+}
+
+/// Common validation for version commands
+pub fn validate_version_for_command<'a>(
+    version: &'a Option<Version>,
+    command_name: &str,
+) -> Result<&'a Version> {
+    version.as_ref().ok_or_else(|| {
+        KopiError::InvalidVersionFormat(format!(
+            "{command_name} command requires a specific version (e.g., '21' or 'temurin@21')"
+        ))
+    })
+}
+
+/// Build a VersionRequest for auto-installation
+pub fn build_install_request(
+    distribution: &crate::models::distribution::Distribution,
+    version: &Version,
+) -> VersionRequest {
+    VersionRequest {
+        distribution: Some(distribution.id().to_string()),
+        version: version.clone(),
+        package_type: None,
     }
 }
 
@@ -671,5 +713,43 @@ mod tests {
         let v = Version::from_str("21.0.5+11.0.25").unwrap();
         assert_eq!(v.components, vec![21, 0, 5]);
         assert_eq!(v.build, Some(vec![11, 0, 25]));
+    }
+
+    #[test]
+    fn test_format_version_minimal() {
+        // Test major only
+        let v1 = Version::new(21, 0, 0);
+        assert_eq!(format_version_minimal(&v1), "21");
+
+        // Test major.minor
+        let v2 = Version::new(17, 1, 0);
+        assert_eq!(format_version_minimal(&v2), "17.1");
+
+        // Test full version
+        let v3 = Version::new(11, 0, 21);
+        assert_eq!(format_version_minimal(&v3), "11.0.21");
+    }
+
+    #[test]
+    fn test_validate_version_for_command() {
+        let version = Some(Version::new(21, 0, 0));
+        let result = validate_version_for_command(&version, "test");
+        assert!(result.is_ok());
+
+        let none_version: Option<Version> = None;
+        let result = validate_version_for_command(&none_version, "test");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_build_install_request() {
+        use crate::models::distribution::Distribution;
+
+        let dist = Distribution::Temurin;
+        let version = Version::new(21, 0, 0);
+        let request = build_install_request(&dist, &version);
+
+        assert_eq!(request.distribution, Some("temurin".to_string()));
+        assert_eq!(request.version.major(), 21);
     }
 }

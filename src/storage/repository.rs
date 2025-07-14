@@ -5,6 +5,8 @@ use crate::models::distribution::Distribution;
 use crate::storage::disk_space::DiskSpaceChecker;
 use crate::storage::installation::{InstallationContext, JdkInstaller};
 use crate::storage::listing::{InstalledJdk, JdkLister};
+use crate::version::Version;
+use log::debug;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -51,6 +53,32 @@ impl<'a> JdkRepository<'a> {
     pub fn list_installed_jdks(&self) -> Result<Vec<InstalledJdk>> {
         let jdks_dir = self.config.jdks_dir()?;
         JdkLister::list_installed_jdks(&jdks_dir)
+    }
+
+    /// Check if a specific JDK version is installed
+    pub fn check_installation(
+        &self,
+        distribution: &Distribution,
+        version: &Version,
+    ) -> Result<bool> {
+        // Get list of installed JDKs
+        if let Ok(installed_jdks) = self.list_installed_jdks() {
+            // Look for an exact match
+            for jdk in installed_jdks {
+                if jdk.distribution == distribution.id() {
+                    // Check if the version matches
+                    if version.matches_pattern(&jdk.version) {
+                        debug!(
+                            "Found installed JDK: {} {}",
+                            distribution.name(),
+                            jdk.version
+                        );
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+        Ok(false)
     }
 
     pub fn get_jdk_size(&self, path: &Path) -> Result<u64> {
@@ -159,5 +187,16 @@ min_disk_space_mb = 1024
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         let manager = JdkRepository::new(&config);
         assert_eq!(manager.config.storage.min_disk_space_mb, 500);
+    }
+
+    #[test]
+    fn test_check_installation_empty_repository() {
+        let test_storage = TestStorage::new();
+        let manager = test_storage.manager();
+        let distribution = Distribution::Temurin;
+        let version = Version::new(21, 0, 0);
+
+        let result = manager.check_installation(&distribution, &version).unwrap();
+        assert!(!result);
     }
 }

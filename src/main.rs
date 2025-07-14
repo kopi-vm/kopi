@@ -3,6 +3,7 @@ use kopi::commands::cache::CacheCommand;
 use kopi::commands::current::CurrentCommand;
 use kopi::commands::global::GlobalCommand;
 use kopi::commands::install::InstallCommand;
+use kopi::commands::local::LocalCommand;
 use kopi::commands::setup::SetupCommand;
 use kopi::commands::shim::ShimCommand;
 use kopi::error::{Result, format_error_chain, get_exit_code};
@@ -82,7 +83,7 @@ enum Commands {
     },
 
     /// Set the local project JDK version
-    #[command(visible_alias = "l")]
+    #[command(visible_alias = "l", alias = "pin")]
     Local {
         /// Version to set for current project
         version: String,
@@ -202,8 +203,8 @@ fn main() {
                 command.execute(&version)
             }
             Commands::Local { version } => {
-                println!("Setting local JDK to {version} (not yet implemented)");
-                Ok(())
+                let command = LocalCommand::new()?;
+                command.execute(&version)
             }
             Commands::Which { version } => {
                 let v = version.unwrap_or_else(|| "current".to_string());

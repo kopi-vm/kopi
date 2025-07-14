@@ -11,15 +11,15 @@ use log::{debug, info};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-pub struct GlobalCommand;
+pub struct LocalCommand;
 
-impl GlobalCommand {
+impl LocalCommand {
     pub fn new() -> Result<Self> {
         Ok(Self)
     }
 
     pub fn execute(&self, version_spec: &str) -> Result<()> {
-        info!("Setting global JDK version to {version_spec}");
+        info!("Setting local JDK version to {version_spec}");
 
         // Load configuration
         let config = new_kopi_config()?;
@@ -29,8 +29,8 @@ impl GlobalCommand {
         let version_request = parser.parse(version_spec)?;
         debug!("Parsed version request: {version_request:?}");
 
-        // Global command requires a specific version
-        let version = validate_version_for_command(&version_request.version, "Global")?;
+        // Local command requires a specific version
+        let version = validate_version_for_command(&version_request.version, "Local")?;
 
         // Validate version semantics
         VersionParser::validate_version_semantics(version)?;
@@ -49,61 +49,57 @@ impl GlobalCommand {
         let is_installed = repository.check_installation(&distribution, version)?;
 
         if !is_installed {
-            // Auto-installation for global command
+            // Auto-installation is optional for local command
             println!("JDK {} {} is not installed.", distribution.name(), version);
 
             let auto_installer = AutoInstaller::new(&config);
             let version_spec = format!("{}@{}", distribution.id(), version);
             let install_request = build_install_request(&distribution, version);
 
-            match auto_installer.prompt_and_install(&version_spec, &install_request)? {
-                InstallationResult::Installed => {
+            match auto_installer.prompt_and_install(&version_spec, &install_request) {
+                Ok(InstallationResult::Installed) => {
                     info!(
                         "JDK {} {} installed successfully",
                         distribution.name(),
                         version
                     );
                 }
-                InstallationResult::UserDeclined => {
-                    return Err(KopiError::JdkNotInstalled {
-                        jdk_spec: format!("{} {}", distribution.name(), version),
-                        version: Some(version.to_string()),
-                        distribution: Some(distribution.id().to_string()),
-                        auto_install_enabled: true,
-                        auto_install_failed: None,
-                        user_declined: true,
-                        install_in_progress: false,
-                    });
+                Ok(InstallationResult::UserDeclined | InstallationResult::AutoInstallDisabled) => {
+                    // For local command, we continue even if installation is skipped
+                    eprintln!("The .kopi-version file will still be created.");
                 }
-                InstallationResult::AutoInstallDisabled => {
-                    return Err(KopiError::JdkNotInstalled {
-                        jdk_spec: format!("{} {}", distribution.name(), version),
-                        version: Some(version.to_string()),
-                        distribution: Some(distribution.id().to_string()),
-                        auto_install_enabled: false,
-                        auto_install_failed: None,
-                        user_declined: false,
-                        install_in_progress: false,
-                    });
+                Err(e) => {
+                    eprintln!("Warning: Failed to install JDK: {e}");
+                    eprintln!("The .kopi-version file will still be created.");
+                    eprintln!("You can install the JDK later with:");
+                    eprintln!("  kopi install {version_spec}");
                 }
             }
         }
 
-        // Write version file
-        let version_file = self.global_version_path(&config)?;
+        // Always create the version file, regardless of installation status
+        let version_file = self.local_version_path()?;
         write_version_file(&version_file, &version_request)?;
 
         println!(
-            "Global JDK version set to {} {}",
+            "Created .kopi-version file for {} {}",
             distribution.name(),
             version
         );
 
+        if !is_installed && !repository.check_installation(&distribution, version)? {
+            println!();
+            println!("Note: The JDK is not installed yet. Run the following to install it:");
+            println!("  kopi install {}@{}", distribution.id(), version);
+        }
+
         Ok(())
     }
 
-    fn global_version_path(&self, config: &crate::config::KopiConfig) -> Result<PathBuf> {
-        Ok(config.kopi_home().join("version"))
+    fn local_version_path(&self) -> Result<PathBuf> {
+        let current_dir = std::env::current_dir()
+            .map_err(|e| KopiError::SystemError(format!("Failed to get current directory: {e}")))?;
+        Ok(current_dir.join(".kopi-version"))
     }
 }
 
@@ -113,25 +109,22 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn test_global_command_creation() {
-        let command = GlobalCommand::new().unwrap();
+    fn test_local_command_creation() {
+        let command = LocalCommand::new().unwrap();
         assert!(!std::ptr::addr_of!(command).is_null());
     }
 
     #[test]
-    fn test_global_version_path() {
-        let temp_dir = TempDir::new().unwrap();
-        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let command = GlobalCommand::new().unwrap();
-
-        let version_path = command.global_version_path(&config).unwrap();
-        assert_eq!(version_path, temp_dir.path().join("version"));
+    fn test_local_version_path() {
+        let command = LocalCommand::new().unwrap();
+        let path = command.local_version_path().unwrap();
+        assert!(path.ends_with(".kopi-version"));
     }
 
     #[test]
     fn test_write_version_file() {
         let temp_dir = TempDir::new().unwrap();
-        let version_file = temp_dir.path().join("version");
+        let version_file = temp_dir.path().join(".kopi-version");
 
         // Test with distribution
         let version_request = crate::version::parser::ParsedVersionRequest {
@@ -158,5 +151,18 @@ mod tests {
 
         let content2 = std::fs::read_to_string(&version_file).unwrap();
         assert_eq!(content2, "17");
+
+        // Test with full version
+        let version_request3 = crate::version::parser::ParsedVersionRequest {
+            distribution: Some(Distribution::Corretto),
+            version: Some(crate::version::Version::new(11, 0, 21)),
+            package_type: None,
+            latest: false,
+        };
+
+        crate::version::file::write_version_file(&version_file, &version_request3).unwrap();
+
+        let content3 = std::fs::read_to_string(&version_file).unwrap();
+        assert_eq!(content3, "corretto@11.0.21");
     }
 }

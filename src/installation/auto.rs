@@ -6,6 +6,17 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 
+/// Result of an installation attempt
+#[derive(Debug, PartialEq)]
+pub enum InstallationResult {
+    /// JDK was successfully installed
+    Installed,
+    /// User declined installation
+    UserDeclined,
+    /// Auto-install is disabled
+    AutoInstallDisabled,
+}
+
 /// Handles automatic JDK installation when a requested version is not found
 pub struct AutoInstaller<'a> {
     config: &'a KopiConfig,
@@ -82,6 +93,32 @@ impl<'a> AutoInstaller<'a> {
                 warn!("Auto-install error: {e}");
                 Err(e)
             }
+        }
+    }
+
+    /// Prompt user and install JDK if approved
+    /// This is a common function used by both global and local commands
+    pub fn prompt_and_install(
+        &self,
+        version_spec: &str,
+        version_request: &VersionRequest,
+    ) -> Result<InstallationResult> {
+        if !self.should_auto_install() {
+            return Ok(InstallationResult::AutoInstallDisabled);
+        }
+
+        // Prompt user for confirmation
+        let user_approved = self.prompt_user(version_spec)?;
+
+        if user_approved {
+            println!("Installing JDK...");
+            self.install_jdk(version_request)?;
+            Ok(InstallationResult::Installed)
+        } else {
+            println!("Skipping installation.");
+            println!("You can install this JDK later with:");
+            println!("  kopi install {version_spec}");
+            Ok(InstallationResult::UserDeclined)
         }
     }
 
