@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 authors = ["taichi"]
 license = "MIT"
+default-run = "kopi"
 
 [profile.release]
 lto = "fat"
