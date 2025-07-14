@@ -60,7 +60,7 @@ enum Commands {
     },
 
     /// Set JDK version for current shell session
-    #[command(alias = "use")]
+    #[command(visible_alias = "use")]
     Shell {
         /// JDK version to use
         version: String,
