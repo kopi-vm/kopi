@@ -1,11 +1,13 @@
 use crate::error::Result;
+use crate::version::Version;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct InstalledJdk {
     pub distribution: String,
-    pub version: String,
+    pub version: Version,
     pub path: PathBuf,
 }
 
@@ -57,7 +59,7 @@ impl JdkLister {
         let chars: Vec<char> = file_name.chars().collect();
 
         for i in 0..chars.len() - 1 {
-            if chars[i] == '-' && (chars[i + 1].is_numeric() || chars[i + 1] == 'v') {
+            if chars[i] == '-' && chars[i + 1].is_numeric() {
                 split_pos = Some(i);
                 break;
             }
@@ -71,9 +73,14 @@ impl JdkLister {
             return None;
         };
 
+        let parsed_version = match Version::from_str(version) {
+            Ok(v) => v,
+            Err(_) => return None,
+        };
+
         Some(InstalledJdk {
             distribution: distribution.to_string(),
-            version: version.to_string(),
+            version: parsed_version,
             path: path.to_path_buf(),
         })
     }
@@ -111,44 +118,43 @@ mod tests {
         assert_eq!(installed.len(), 2);
 
         assert_eq!(installed[0].distribution, "corretto");
-        assert_eq!(installed[0].version, "17.0.9");
+        assert_eq!(installed[0].version.to_string(), "17.0.9");
 
         assert_eq!(installed[1].distribution, "temurin");
-        assert_eq!(installed[1].version, "21.0.1");
+        assert_eq!(installed[1].version.to_string(), "21.0.1");
     }
 
     #[test]
     fn test_parse_jdk_dir_name() {
         let jdk = JdkLister::parse_jdk_dir_name(Path::new("temurin-21.0.1")).unwrap();
         assert_eq!(jdk.distribution, "temurin");
-        assert_eq!(jdk.version, "21.0.1");
+        assert_eq!(jdk.version.to_string(), "21.0.1");
 
         let jdk = JdkLister::parse_jdk_dir_name(Path::new("temurin-22-ea")).unwrap();
         assert_eq!(jdk.distribution, "temurin");
-        assert_eq!(jdk.version, "22-ea");
+        assert_eq!(jdk.version.to_string(), "22-ea");
 
         let jdk = JdkLister::parse_jdk_dir_name(Path::new("corretto-17.0.9+9")).unwrap();
         assert_eq!(jdk.distribution, "corretto");
-        assert_eq!(jdk.version, "17.0.9+9");
+        assert_eq!(jdk.version.to_string(), "17.0.9+9");
 
         let jdk = JdkLister::parse_jdk_dir_name(Path::new("graalvm-ce-21.0.1")).unwrap();
         assert_eq!(jdk.distribution, "graalvm-ce");
-        assert_eq!(jdk.version, "21.0.1");
-
-        let jdk = JdkLister::parse_jdk_dir_name(Path::new("zulu-v11.0.21")).unwrap();
-        assert_eq!(jdk.distribution, "zulu");
-        assert_eq!(jdk.version, "v11.0.21");
+        assert_eq!(jdk.version.to_string(), "21.0.1");
 
         let jdk = JdkLister::parse_jdk_dir_name(Path::new("liberica-21.0.1-13")).unwrap();
         assert_eq!(jdk.distribution, "liberica");
-        assert_eq!(jdk.version, "21.0.1-13");
+        assert_eq!(jdk.version.to_string(), "21.0.1-13");
 
         let jdk = JdkLister::parse_jdk_dir_name(Path::new("temurin-17")).unwrap();
         assert_eq!(jdk.distribution, "temurin");
-        assert_eq!(jdk.version, "17");
+        assert_eq!(jdk.version.to_string(), "17");
 
         assert!(JdkLister::parse_jdk_dir_name(Path::new("invalid")).is_none());
         assert!(JdkLister::parse_jdk_dir_name(Path::new("no-hyphen-here")).is_none());
         assert!(JdkLister::parse_jdk_dir_name(Path::new("temurin")).is_none());
+
+        // Version with 'v' prefix should not be parsed
+        assert!(JdkLister::parse_jdk_dir_name(Path::new("zulu-v11.0.21")).is_none());
     }
 }

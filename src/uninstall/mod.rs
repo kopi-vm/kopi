@@ -1,7 +1,6 @@
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
 use crate::storage::{InstalledJdk, JdkRepository};
-use crate::version::Version;
 use indicatif::{ProgressBar, ProgressStyle};
 use log::{debug, info};
 use std::path::{Path, PathBuf};
@@ -58,7 +57,7 @@ impl<'a> UninstallHandler<'a> {
         }
 
         // Perform safety checks
-        safety::perform_safety_checks(&jdk.distribution, &jdk.version)?;
+        safety::perform_safety_checks(&jdk.distribution, &jdk.version.to_string())?;
 
         // Remove with progress
         self.remove_jdk_with_progress(jdk, jdk_size)?;
@@ -109,9 +108,7 @@ impl<'a> UninstallHandler<'a> {
 
                 // Check version match
                 if let Some(ver_str) = version_str {
-                    if let Ok(jdk_version) = Version::from_str(&jdk.version) {
-                        return jdk_version.matches_pattern(ver_str);
-                    }
+                    return jdk.version.matches_pattern(ver_str);
                 }
 
                 // If no version specified but distribution matches, include it
@@ -279,7 +276,7 @@ mod tests {
         let matches = handler.resolve_jdks_to_uninstall("temurin@21").unwrap();
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].distribution, "temurin");
-        assert_eq!(matches[0].version, "21.0.5+11");
+        assert_eq!(matches[0].version.to_string(), "21.0.5+11");
 
         // Test non-existent version
         let matches = handler.resolve_jdks_to_uninstall("11").unwrap();

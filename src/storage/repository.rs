@@ -9,7 +9,6 @@ use crate::version::Version;
 use log::debug;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 
 pub struct JdkRepository<'a> {
     config: &'a KopiConfig,
@@ -86,29 +85,20 @@ impl<'a> JdkRepository<'a> {
                     );
 
                     // Check if the installed version matches the search pattern
-                    // Parse the installed version string and check if it matches our search pattern
-                    match Version::from_str(&jdk.version) {
-                        Ok(installed_version) => {
-                            // Check if the installed version matches the search pattern
-                            // For example: installed "17.0.15" matches search pattern "17"
-                            if installed_version.matches_pattern(&version.to_string()) {
-                                debug!(
-                                    "Found matching JDK: {} {} (matched pattern {})",
-                                    distribution.name(),
-                                    jdk.version,
-                                    version
-                                );
-                                return Ok(true);
-                            } else {
-                                debug!(
-                                    "Version mismatch: installed version {} does not match search pattern {}",
-                                    jdk.version, version
-                                );
-                            }
-                        }
-                        Err(e) => {
-                            debug!("Failed to parse installed version '{}': {}", jdk.version, e);
-                        }
+                    // For example: installed "17.0.15" matches search pattern "17"
+                    if jdk.version.matches_pattern(&version.to_string()) {
+                        debug!(
+                            "Found matching JDK: {} {} (matched pattern {})",
+                            distribution.name(),
+                            jdk.version,
+                            version
+                        );
+                        return Ok(true);
+                    } else {
+                        debug!(
+                            "Version mismatch: installed version {} does not match search pattern {}",
+                            jdk.version, version
+                        );
                     }
                 }
             }

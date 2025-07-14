@@ -78,13 +78,16 @@ impl CurrentCommand {
                 if jdk.distribution == distribution.id() {
                     // Check if the version matches
                     // Parse the version pattern and check if the installed version matches
-                    if let Ok(_pattern_version) = crate::version::Version::from_str(&version_request.version_pattern) {
-                        if let Ok(installed_version) = crate::version::Version::from_str(&jdk.version) {
-                            if installed_version.matches_pattern(&version_request.version_pattern) {
-                                install_path = Some(jdk.path.clone());
-                                is_installed = true;
-                                break;
-                            }
+                    if let Ok(_pattern_version) =
+                        crate::version::Version::from_str(&version_request.version_pattern)
+                    {
+                        if jdk
+                            .version
+                            .matches_pattern(&version_request.version_pattern)
+                        {
+                            install_path = Some(jdk.path.clone());
+                            is_installed = true;
+                            break;
                         }
                     }
                 }

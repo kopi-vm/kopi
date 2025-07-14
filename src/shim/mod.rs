@@ -2,7 +2,7 @@ use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
 use crate::storage::JdkRepository;
-use crate::version::{Version, VersionRequest};
+use crate::version::VersionRequest;
 use std::env;
 use std::ffi::OsString;
 use std::io::IsTerminal;
@@ -260,28 +260,18 @@ fn find_jdk_installation(
         );
 
         if jdk.distribution.to_lowercase() == distribution.id() {
-            // Parse the installed JDK version and check if it matches the requested pattern
-            match Version::from_str(&jdk.version) {
-                Ok(installed_version) => {
-                    let matches =
-                        installed_version.matches_pattern(&version_request.version_pattern);
-                    log::debug!(
-                        "Version matching: installed {} matches pattern {}? {}",
-                        installed_version,
-                        version_request.version_pattern,
-                        matches
-                    );
-                    if matches {
-                        return Ok(jdk.path);
-                    }
-                }
-                Err(e) => {
-                    log::warn!(
-                        "Failed to parse installed JDK version '{}': {}",
-                        jdk.version,
-                        e
-                    );
-                }
+            // Check if the installed JDK version matches the requested pattern
+            let matches = jdk
+                .version
+                .matches_pattern(&version_request.version_pattern);
+            log::debug!(
+                "Version matching: installed {} matches pattern {}? {}",
+                jdk.version,
+                version_request.version_pattern,
+                matches
+            );
+            if matches {
+                return Ok(jdk.path);
             }
         }
     }
@@ -364,6 +354,7 @@ fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
+    use crate::version::Version;
     use std::fs;
     use tempfile::TempDir;
 
