@@ -304,10 +304,21 @@ impl FromStr for VersionRequest {
     fn from_str(s: &str) -> Result<Self> {
         if s.contains('@') {
             let parts: Vec<&str> = s.split('@').collect();
-            if parts.len() != 2 {
-                return Err(KopiError::InvalidVersionFormat(s.to_string()));
+            match parts.len() {
+                2 => {
+                    // Legacy format: distribution@version
+                    Ok(VersionRequest::new(parts[1].to_string())?
+                        .with_distribution(parts[0].to_string()))
+                }
+                3 => {
+                    // New format: package_type@version@distribution
+                    let package_type = crate::models::package::PackageType::from_str(parts[0])?;
+                    Ok(VersionRequest::new(parts[1].to_string())?
+                        .with_distribution(parts[2].to_string())
+                        .with_package_type(package_type))
+                }
+                _ => Err(KopiError::InvalidVersionFormat(s.to_string())),
             }
-            Ok(VersionRequest::new(parts[1].to_string())?.with_distribution(parts[0].to_string()))
         } else {
             VersionRequest::new(s.to_string())
         }
@@ -514,12 +525,35 @@ mod tests {
         let req = VersionRequest::from_str("21").unwrap();
         assert_eq!(req.version_pattern, "21");
         assert_eq!(req.distribution, None);
+        assert_eq!(req.package_type, None);
 
+        // Legacy format: distribution@version
         let req = VersionRequest::from_str("corretto@17").unwrap();
         assert_eq!(req.version_pattern, "17");
         assert_eq!(req.distribution, Some("corretto".to_string()));
+        assert_eq!(req.package_type, None);
 
+        // New format: package_type@version@distribution
+        let req = VersionRequest::from_str("jre@21@temurin").unwrap();
+        assert_eq!(req.version_pattern, "21");
+        assert_eq!(req.distribution, Some("temurin".to_string()));
+        assert_eq!(
+            req.package_type,
+            Some(crate::models::package::PackageType::Jre)
+        );
+
+        let req = VersionRequest::from_str("jdk@17.0.9@corretto").unwrap();
+        assert_eq!(req.version_pattern, "17.0.9");
+        assert_eq!(req.distribution, Some("corretto".to_string()));
+        assert_eq!(
+            req.package_type,
+            Some(crate::models::package::PackageType::Jdk)
+        );
+
+        // Invalid formats
         assert!(VersionRequest::from_str("invalid@format@").is_err());
+        assert!(VersionRequest::from_str("too@many@parts@here").is_err());
+        assert!(VersionRequest::from_str("invalid_type@21@temurin").is_err()); // Invalid package type
     }
 
     #[test]
