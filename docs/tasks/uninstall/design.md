@@ -1,5 +1,27 @@
 # Kopi Uninstall Command Design
 
+## Implementation Status
+
+**Current Status**: Partially implemented (core functionality complete, CLI integration pending)
+
+### Implemented Components
+- ✅ Core uninstall functionality (`src/uninstall/mod.rs`)
+- ✅ Batch uninstall support (`src/uninstall/batch.rs`)
+- ✅ Safety checks framework (`src/uninstall/safety.rs` - stubs only)
+- ✅ JDK selection logic (`src/uninstall/selection.rs`)
+- ✅ Version pattern matching (flexible matching for extended formats)
+- ✅ Atomic removal with rollback capability
+- ✅ Progress indicators for large removals
+- ✅ Disk space calculation and reporting
+- ✅ Integration tests
+
+### Pending Implementation
+- ❌ CLI integration (command not added to `main.rs`)
+- ❌ `--force` flag handling
+- ❌ Active JDK detection (safety check stubs always return false)
+- ❌ Running process detection
+- ❌ `--all` flag in CLI
+
 ## Overview
 
 The `kopi uninstall` command removes installed JDK distributions from the local system. This command is essential for disk space management and keeping the JDK installation directory clean.
@@ -23,11 +45,11 @@ kopi uninstall 21 --dry-run
 ```
 
 ### Command Options
-| Option | Short | Description |
-|--------|-------|-------------|
-| `--force` | `-f` | Force uninstall even if JDK is in use |
-| `--dry-run` | | Show what would be removed without actually removing |
-| `--all` | | Remove all versions of specified distribution |
+| Option | Short | Description | Status |
+|--------|-------|-------------|--------|
+| `--force` | `-f` | Force uninstall even if JDK is in use | ❌ Not implemented |
+| `--dry-run` | | Show what would be removed without actually removing | ✅ Implemented |
+| `--all` | | Remove all versions of specified distribution | ✅ Logic implemented, CLI pending |
 
 ## Functional Requirements
 
@@ -88,6 +110,8 @@ Error: Cannot uninstall temurin@21.0.5+11 - it is currently active
        Use --force to override this check
 ```
 
+**Implementation Note**: Safety check functions (`is_active_global_jdk` and `is_active_local_jdk`) are currently stubs that always return `false`. These will be implemented when the `global` and `local` commands are available.
+
 ### 3. Removal Process
 
 #### Components to Remove
@@ -101,6 +125,11 @@ Error: Cannot uninstall temurin@21.0.5+11 - it is currently active
 #### Metadata Updates
 - Update cached metadata to reflect removal
 - Do NOT remove distribution from cache (may want to reinstall later)
+
+**Implementation Note**: The removal process uses an atomic rename-then-delete pattern:
+1. Rename JDK directory to `.{jdk-name}.removing`
+2. Delete the renamed directory
+3. Rollback on failure by renaming back
 
 ### 4. Batch Operations
 
@@ -116,6 +145,12 @@ kopi uninstall corretto --all
   Total: 1.2 GB will be freed
 Continue? [y/N]
 ```
+
+**Implementation Status**: The batch uninstall logic is fully implemented in `BatchUninstaller`, including:
+- Multi-progress bars for visual feedback
+- Transaction-like behavior (report all successes/failures)
+- Confirmation prompts (unless `--force`)
+- Per-JDK safety checks
 
 #### Pattern-based Uninstall (Future Enhancement)
 ```bash
@@ -138,6 +173,15 @@ kopi uninstall jre --all
     └── java                   # Shim - NOT removed
 ```
 
+### Current Module Structure
+```
+src/uninstall/
+├── mod.rs         # Main UninstallHandler implementation
+├── batch.rs       # BatchUninstaller for --all operations
+├── safety.rs      # Safety checks (stubs for now)
+└── selection.rs   # JDK selection utilities
+```
+
 ### 2. Uninstall Flow
 ```
 1. Parse command arguments
@@ -153,12 +197,12 @@ kopi uninstall jre --all
 
 ### 3. Error Handling
 
-| Error Type | Exit Code | Description |
-|------------|-----------|-------------|
-| JDK not found | 4 | Specified JDK is not installed |
-| Active JDK | 10 | Attempting to uninstall active JDK without --force |
-| Permission denied | 13 | Insufficient permissions to remove files |
-| Partial removal | 14 | Some files could not be removed |
+| Error Type | Exit Code | Description | Implementation Status |
+|------------|-----------|-------------|----------------------|
+| JDK not found | 4 | Specified JDK is not installed | ✅ Implemented |
+| Active JDK | 10 | Attempting to uninstall active JDK without --force | ❌ Safety checks are stubs |
+| Permission denied | 13 | Insufficient permissions to remove files | ✅ Implemented |
+| Partial removal | 14 | Some files could not be removed | ✅ Handled via rollback |
 
 ### 4. Disk Space Calculation
 ```rust
@@ -168,6 +212,8 @@ let total_size = calculate_directory_size(&jdk_path)?;
 // Display in human-readable format
 println!("This will free {}", format_size(total_size));
 ```
+
+**Implementation Note**: Disk space calculation is implemented using `JdkRepository::get_jdk_size()` which recursively calculates directory size. The `format_size()` function provides human-readable output (B, KB, MB, GB, TB).
 
 ## User Experience Considerations
 
@@ -252,14 +298,22 @@ kopi prune --older-than 90d
 - Handle files in use (may need reboot)
 - Consider antivirus interference
 
+## Next Steps for Full Implementation
+
+1. **CLI Integration**: Add `Uninstall` variant to the `Commands` enum in `main.rs`
+2. **Force Flag**: Implement `--force` flag to bypass safety checks
+3. **Active JDK Detection**: Replace stub functions when `global` and `local` commands are ready
+4. **Process Detection**: Implement checking for running Java processes
+5. **List Command Enhancement**: Show installed size in `kopi list` output
+
 ## Summary
 
-The `kopi uninstall` command provides a safe and user-friendly way to remove JDK installations. Key features include:
+The `kopi uninstall` command core functionality is complete and well-tested. The implementation provides:
 
-1. **Safety First**: Prevents accidental removal of active JDKs
-2. **Clear Feedback**: Shows what will be removed and disk space impact
-3. **Flexible Selection**: Supports specific versions or bulk removal
-4. **Clean Removal**: Removes JDK installations completely
-5. **Smart Integration**: Works seamlessly with other kopi commands
+1. **Safety Framework**: Structure for preventing accidental removal (awaiting active JDK detection)
+2. **Clear Feedback**: Shows what will be removed and disk space freed
+3. **Flexible Selection**: Pattern matching supports all distribution version formats
+4. **Atomic Removal**: Rollback capability prevents partial removals
+5. **Batch Operations**: Efficient bulk removal with progress tracking
 
-This design ensures users can confidently manage their JDK installations while preventing common mistakes like removing the currently active JDK.
+Once integrated into the CLI, users will be able to confidently manage their JDK installations with proper safeguards against common mistakes.
