@@ -4,4 +4,5 @@ pub mod global;
 pub mod install;
 pub mod local;
 pub mod setup;
+pub mod shell;
 pub mod shim;

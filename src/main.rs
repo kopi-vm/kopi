@@ -5,6 +5,7 @@ use kopi::commands::global::GlobalCommand;
 use kopi::commands::install::InstallCommand;
 use kopi::commands::local::LocalCommand;
 use kopi::commands::setup::SetupCommand;
+use kopi::commands::shell::ShellCommand;
 use kopi::commands::shim::ShimCommand;
 use kopi::error::{Result, format_error_chain, get_exit_code};
 use kopi::logging;
@@ -58,11 +59,14 @@ enum Commands {
         all: bool,
     },
 
-    /// Switch to a specific JDK version temporarily
-    #[command(visible_alias = "u")]
-    Use {
-        /// Version to use
+    /// Set JDK version for current shell session
+    #[command(alias = "use")]
+    Shell {
+        /// JDK version to use
         version: String,
+        /// Override shell detection
+        #[arg(long)]
+        shell: Option<String>,
     },
 
     /// Show currently active JDK version
@@ -190,9 +194,9 @@ fn main() {
                 }
                 Ok(())
             }
-            Commands::Use { version } => {
-                println!("Switching to JDK {version} (not yet implemented)");
-                Ok(())
+            Commands::Shell { version, shell } => {
+                let command = ShellCommand::new()?;
+                command.execute(&version, shell.as_deref())
             }
             Commands::Current { quiet, json } => {
                 let command = CurrentCommand::new()?;
