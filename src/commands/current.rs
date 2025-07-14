@@ -1,11 +1,9 @@
 use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
-use crate::models::distribution::Distribution;
 use crate::storage::JdkRepository;
 use crate::version::resolver::{VersionResolver, VersionSource};
 use serde::Serialize;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 #[derive(Serialize)]
 struct CurrentOutput {
@@ -61,36 +59,16 @@ impl CurrentCommand {
 
         // Check if the version is actually installed
         let repository = JdkRepository::new(&config);
-        let distribution = if let Some(dist_str) = &version_request.distribution {
-            Distribution::from_str(dist_str).unwrap_or(Distribution::Temurin)
-        } else {
-            Distribution::from_str(&config.default_distribution).unwrap_or(Distribution::Temurin)
-        };
 
-        // Try to find the installation - check for exact version match first
+        // Try to find matching installations using find_matching_jdks
         let mut install_path = None;
         let mut is_installed = false;
 
-        // Get list of installed JDKs
-        if let Ok(installed_jdks) = repository.list_installed_jdks() {
-            // Look for an exact match
-            for jdk in &installed_jdks {
-                if jdk.distribution == distribution.id() {
-                    // Check if the version matches
-                    // Parse the version pattern and check if the installed version matches
-                    if let Ok(_pattern_version) =
-                        crate::version::Version::from_str(&version_request.version_pattern)
-                    {
-                        if jdk
-                            .version
-                            .matches_pattern(&version_request.version_pattern)
-                        {
-                            install_path = Some(jdk.path.clone());
-                            is_installed = true;
-                            break;
-                        }
-                    }
-                }
+        // Get matching JDKs and use the last one from the results
+        if let Ok(matching_jdks) = repository.find_matching_jdks(&version_request) {
+            if let Some(jdk) = matching_jdks.last() {
+                install_path = Some(jdk.path.clone());
+                is_installed = true;
             }
         }
 
