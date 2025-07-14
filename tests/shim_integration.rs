@@ -24,7 +24,7 @@ mod shim_integration_tests {
 
         assert!(result.is_ok());
         let (version_request, _source) = result.unwrap();
-        assert_eq!(version_request.version_pattern, "21");
+        assert_eq!(version_request.version.to_string(), "21");
         assert_eq!(version_request.distribution, Some("temurin".to_string()));
     }
 
