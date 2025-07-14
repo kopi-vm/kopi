@@ -49,7 +49,7 @@ impl TestSetup {
 fn test_batch_uninstall_multiple_jdks() {
     let setup = TestSetup::new();
     let repository = JdkRepository::new(&setup.config);
-    let batch_uninstaller = BatchUninstaller::new(&repository);
+    let batch_uninstaller = BatchUninstaller::new(&setup.config, &repository);
 
     // Create multiple test JDKs
     let jdk1_path = setup.create_mock_jdk("temurin", "21.0.5+11");
@@ -83,7 +83,7 @@ fn test_batch_uninstall_multiple_jdks() {
 fn test_batch_uninstall_dry_run() {
     let setup = TestSetup::new();
     let repository = JdkRepository::new(&setup.config);
-    let batch_uninstaller = BatchUninstaller::new(&repository);
+    let batch_uninstaller = BatchUninstaller::new(&setup.config, &repository);
 
     // Create test JDKs
     let jdk1_path = setup.create_mock_jdk("temurin", "21.0.5+11");
@@ -106,7 +106,7 @@ fn test_batch_uninstall_dry_run() {
 fn test_uninstall_all_by_distribution() {
     let setup = TestSetup::new();
     let repository = JdkRepository::new(&setup.config);
-    let batch_uninstaller = BatchUninstaller::new(&repository);
+    let batch_uninstaller = BatchUninstaller::new(&setup.config, &repository);
 
     // Create JDKs from different distributions
     let temurin1 = setup.create_mock_jdk("temurin", "21.0.5+11");
@@ -132,7 +132,7 @@ fn test_uninstall_all_by_distribution() {
 fn test_uninstall_all_empty() {
     let setup = TestSetup::new();
     let repository = JdkRepository::new(&setup.config);
-    let batch_uninstaller = BatchUninstaller::new(&repository);
+    let batch_uninstaller = BatchUninstaller::new(&setup.config, &repository);
 
     // Attempt to uninstall when no JDKs are installed
     let result = batch_uninstaller.uninstall_all(None, true, false);
@@ -171,7 +171,7 @@ fn test_selection_filter_by_distribution() {
 fn test_partial_failure_recovery() {
     let setup = TestSetup::new();
     let repository = JdkRepository::new(&setup.config);
-    let batch_uninstaller = BatchUninstaller::new(&repository);
+    let batch_uninstaller = BatchUninstaller::new(&setup.config, &repository);
 
     // Create test JDKs
     let jdk1_path = setup.create_mock_jdk("temurin", "21.0.5+11");

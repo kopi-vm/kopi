@@ -6,3 +6,4 @@ pub mod local;
 pub mod setup;
 pub mod shell;
 pub mod shim;
+pub mod uninstall;

@@ -8,6 +8,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 pub mod batch;
+pub mod feedback;
 pub mod safety;
 pub mod selection;
 
@@ -94,7 +95,7 @@ impl<'a> UninstallHandler<'a> {
         Ok(())
     }
 
-    fn resolve_jdks_to_uninstall(&self, version_spec: &str) -> Result<Vec<InstalledJdk>> {
+    pub fn resolve_jdks_to_uninstall(&self, version_spec: &str) -> Result<Vec<InstalledJdk>> {
         debug!("Resolving JDKs to uninstall for spec: {version_spec}");
 
         // List all installed JDKs

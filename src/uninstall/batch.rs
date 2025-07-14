@@ -1,8 +1,11 @@
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::storage::{InstalledJdk, JdkRepository};
+use crate::uninstall::feedback::{
+    display_batch_uninstall_confirmation, display_batch_uninstall_summary,
+};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::{info, warn};
-use std::io::{self, Write};
 use std::time::Duration;
 
 pub struct BatchUninstaller<'a> {
@@ -10,7 +13,7 @@ pub struct BatchUninstaller<'a> {
 }
 
 impl<'a> BatchUninstaller<'a> {
-    pub fn new(repository: &'a JdkRepository<'a>) -> Self {
+    pub fn new(_config: &KopiConfig, repository: &'a JdkRepository<'a>) -> Self {
         Self { repository }
     }
 
@@ -103,22 +106,8 @@ impl<'a> BatchUninstaller<'a> {
     }
 
     fn confirm_batch_removal(&self, jdks: &[InstalledJdk]) -> Result<bool> {
-        print!(
-            "\nAre you sure you want to remove {} JDK{}? [y/N] ",
-            jdks.len(),
-            if jdks.len() == 1 { "" } else { "s" }
-        );
-        io::stdout()
-            .flush()
-            .map_err(|e| KopiError::SystemError(e.to_string()))?;
-
-        let mut input = String::new();
-        io::stdin()
-            .read_line(&mut input)
-            .map_err(|e| KopiError::SystemError(e.to_string()))?;
-
-        let response = input.trim().to_lowercase();
-        Ok(response == "y" || response == "yes")
+        let total_size = self.calculate_total_size(jdks)?;
+        display_batch_uninstall_confirmation(jdks, total_size)
     }
 
     fn execute_batch_removal(&self, jdks: Vec<InstalledJdk>, total_size: u64) -> Result<()> {
@@ -151,7 +140,10 @@ impl<'a> BatchUninstaller<'a> {
             spinner.enable_steady_tick(Duration::from_millis(100));
 
             // Perform safety checks
-            match crate::uninstall::safety::perform_safety_checks(&jdk.distribution, &jdk.version) {
+            match crate::uninstall::safety::perform_safety_checks(
+                &jdk.distribution.to_string(),
+                &jdk.version.to_string(),
+            ) {
                 Ok(()) => {}
                 Err(e) => {
                     warn!(
@@ -192,31 +184,18 @@ impl<'a> BatchUninstaller<'a> {
         overall_pb.finish_and_clear();
 
         // Report results
-        if removed_count > 0 {
-            println!(
-                "\n✓ Successfully removed {} JDK{}",
-                removed_count,
-                if removed_count == 1 { "" } else { "s" }
-            );
-            println!("  Freed {} of disk space", format_size(total_size));
-        }
+        let failed_with_messages: Vec<(InstalledJdk, String)> = failed_jdks
+            .into_iter()
+            .map(|(jdk, err)| (jdk, err.to_string()))
+            .collect();
 
-        if !failed_jdks.is_empty() {
-            eprintln!(
-                "\n✗ Failed to remove {} JDK{}:",
-                failed_jdks.len(),
-                if failed_jdks.len() == 1 { "" } else { "s" }
-            );
-            for (jdk, error) in &failed_jdks {
-                eprintln!("  - {}@{}: {}", jdk.distribution, jdk.version, error);
-            }
+        display_batch_uninstall_summary(&removed_jdks, &failed_with_messages, total_size);
 
-            // Return error if all removals failed
-            if removed_count == 0 {
-                return Err(KopiError::SystemError(
-                    "All JDK removals failed".to_string(),
-                ));
-            }
+        // Return error if all removals failed
+        if removed_count == 0 {
+            return Err(KopiError::SystemError(
+                "All JDK removals failed".to_string(),
+            ));
         }
 
         Ok(())
@@ -244,8 +223,10 @@ fn format_size(bytes: u64) -> String {
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
+    use crate::version::Version;
     use mockall::mock;
     use std::path::PathBuf;
+    use std::str::FromStr;
     use tempfile::TempDir;
 
     // Mock JdkRepository trait
@@ -260,7 +241,7 @@ mod tests {
     fn create_test_jdk(distribution: &str, version: &str, path: &str) -> InstalledJdk {
         InstalledJdk {
             distribution: distribution.to_string(),
-            version: version.to_string(),
+            version: Version::from_str(version).unwrap(),
             path: PathBuf::from(path),
         }
     }
@@ -270,7 +251,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         let repository = JdkRepository::new(&config);
-        let batch_uninstaller = BatchUninstaller::new(&repository);
+        let batch_uninstaller = BatchUninstaller::new(&config, &repository);
 
         // Create some test directories
         let jdk1_path = temp_dir.path().join("jdks").join("temurin-21.0.5+11");

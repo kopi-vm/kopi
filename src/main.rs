@@ -7,6 +7,7 @@ use kopi::commands::local::LocalCommand;
 use kopi::commands::setup::SetupCommand;
 use kopi::commands::shell::ShellCommand;
 use kopi::commands::shim::ShimCommand;
+use kopi::commands::uninstall::UninstallCommand;
 use kopi::error::{Result, format_error_chain, get_exit_code};
 use kopi::logging;
 
@@ -154,6 +155,25 @@ enum Commands {
         #[command(subcommand)]
         command: ShimCommand,
     },
+
+    /// Uninstall a JDK version
+    #[command(visible_alias = "u", alias = "remove")]
+    Uninstall {
+        /// Version to uninstall (e.g., "21", "17.0.9", "corretto@21")
+        version: String,
+
+        /// Skip confirmation prompts
+        #[arg(short, long)]
+        force: bool,
+
+        /// Show what would be uninstalled without actually removing
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Uninstall all versions of a distribution
+        #[arg(long)]
+        all: bool,
+    },
 }
 
 fn setup_logger(cli: &Cli) {
@@ -247,6 +267,15 @@ fn main() {
                 command.execute(force)
             }
             Commands::Shim { command } => command.execute(),
+            Commands::Uninstall {
+                version,
+                force,
+                dry_run,
+                all,
+            } => {
+                let command = UninstallCommand::new()?;
+                command.execute(&version, force, dry_run, all)
+            }
         }
     })();
 

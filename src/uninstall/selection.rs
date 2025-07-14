@@ -39,12 +39,14 @@ impl JdkSelector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::version::Version;
     use std::path::PathBuf;
+    use std::str::FromStr;
 
     fn create_test_jdk(distribution: &str, version: &str) -> InstalledJdk {
         InstalledJdk {
             distribution: distribution.to_string(),
-            version: version.to_string(),
+            version: Version::from_str(version).unwrap(),
             path: PathBuf::from(format!("/test/jdks/{distribution}-{version}")),
         }
     }
