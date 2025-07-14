@@ -248,7 +248,7 @@ fn find_jdk_installation(
     // Find matching JDK
     for jdk in installed_jdks {
         if jdk.distribution.to_lowercase() == distribution.id()
-            && version_matches(&jdk.version, &version_request.version.to_string())
+            && version_request.version.matches_pattern(&jdk.version)
         {
             return Ok(jdk.path);
         }
@@ -266,18 +266,6 @@ fn find_jdk_installation(
     })
 }
 
-fn version_matches(installed_version: &str, pattern: &str) -> bool {
-    // Parse both versions
-    if let (Ok(installed), Ok(_requested)) = (
-        crate::version::Version::from_str(installed_version),
-        crate::version::Version::from_str(pattern),
-    ) {
-        installed.matches_pattern(pattern)
-    } else {
-        // Fallback to string comparison if parsing fails
-        installed_version == pattern
-    }
-}
 
 fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
     let bin_dir = jdk_path.join("bin");

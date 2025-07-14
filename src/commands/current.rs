@@ -2,7 +2,6 @@ use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
 use crate::storage::JdkRepository;
-use crate::version::Version;
 use crate::version::resolver::{VersionResolver, VersionSource};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -78,9 +77,7 @@ impl CurrentCommand {
             for jdk in &installed_jdks {
                 if jdk.distribution == distribution.id() {
                     // Check if the version matches
-                    if jdk.version == version_request.version.to_string()
-                        || version_matches(&jdk.version, &version_request.version.to_string())
-                    {
+                    if version_request.version.matches_pattern(&jdk.version) {
                         install_path = Some(jdk.path.clone());
                         is_installed = true;
                         break;
@@ -99,17 +96,6 @@ impl CurrentCommand {
         }
 
         Ok(())
-    }
-}
-
-fn version_matches(installed_version: &str, requested_version: &str) -> bool {
-    // Parse the installed version and use Version's matches_pattern method
-    // e.g., "17" matches "17.0.9"
-    if let Ok(version) = Version::from_str(installed_version) {
-        version.matches_pattern(requested_version)
-    } else {
-        // Fallback to exact string comparison if parsing fails
-        installed_version == requested_version
     }
 }
 
@@ -192,25 +178,6 @@ mod tests {
     use std::fs;
     use tempfile::TempDir;
 
-    #[test]
-    fn test_version_matches() {
-        // Basic version matching
-        assert!(version_matches("17.0.9", "17"));
-        assert!(version_matches("17.0.9", "17.0"));
-        assert!(version_matches("17.0.9", "17.0.9"));
-        assert!(!version_matches("17.0.9", "17.0.10"));
-        assert!(!version_matches("17.0.9", "18"));
-        assert!(!version_matches("17.0.9", "170"));
-
-        // Extended version formats (now properly supported with Version struct)
-        assert!(version_matches("21.0.7.6.1", "21")); // Corretto format
-        assert!(version_matches("21.0.7.6.1", "21.0")); // Corretto format
-        assert!(version_matches("21.0.7.6.1", "21.0.7")); // Corretto format
-        assert!(version_matches("17.0.9+11", "17")); // Version with build
-        assert!(version_matches("17.0.9+11", "17.0.9")); // Build ignored when not in pattern
-        assert!(version_matches("17.0.9+11", "17.0.9+11")); // Exact build match
-        assert!(!version_matches("17.0.9+11", "17.0.9+12")); // Different build
-    }
 
     #[test]
     fn test_current_with_env_var() {
