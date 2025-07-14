@@ -266,7 +266,6 @@ fn find_jdk_installation(
     })
 }
 
-
 fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
     let bin_dir = jdk_path.join("bin");
 

@@ -58,8 +58,7 @@ pub fn detect_shell() -> Result<(Shell, PathBuf)> {
                                 #[cfg(windows)]
                                 {
                                     return Err(KopiError::ShellDetectionError(format!(
-                                        "Parent process '{}' is not a recognized shell. Please specify shell type with --shell option",
-                                        file_str
+                                        "Parent process '{file_str}' is not a recognized shell. Please specify shell type with --shell option"
                                     )));
                                 }
                                 // On Unix, continue to try other detection methods
@@ -83,10 +82,10 @@ pub fn detect_shell() -> Result<(Shell, PathBuf)> {
     // On Windows, we cannot proceed without parent process detection
     #[cfg(windows)]
     {
-        return Err(KopiError::ShellDetectionError(
+        Err(KopiError::ShellDetectionError(
             "Cannot detect parent shell on Windows. Please specify shell type with --shell option"
                 .to_string(),
-        ));
+        ))
     }
 
     // Unix: Fallback to environment detection

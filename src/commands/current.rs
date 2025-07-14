@@ -178,7 +178,6 @@ mod tests {
     use std::fs;
     use tempfile::TempDir;
 
-
     #[test]
     fn test_current_with_env_var() {
         // Save and set environment variable
