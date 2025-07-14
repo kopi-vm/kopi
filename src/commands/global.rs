@@ -1,12 +1,8 @@
 use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
 use crate::installation::auto::{AutoInstaller, InstallationResult};
-use crate::models::distribution::Distribution;
 use crate::storage::JdkRepository;
-use crate::version::{
-    build_install_request, file::write_version_file, parser::VersionParser,
-    validate_version_for_command,
-};
+use crate::version::VersionRequest;
 use log::{debug, info};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -23,52 +19,37 @@ impl GlobalCommand {
 
         // Load configuration
         let config = new_kopi_config()?;
-        let parser = VersionParser::new(&config);
 
-        // Parse version specification
-        let version_request = parser.parse(version_spec)?;
+        // Parse version specification using lenient parsing
+        let version_request = VersionRequest::from_str(version_spec)?;
         debug!("Parsed version request: {version_request:?}");
-
-        // Global command requires a specific version
-        let version = validate_version_for_command(&version_request.version, "Global")?;
-
-        // Validate version semantics
-        VersionParser::validate_version_semantics(version)?;
-
-        // Use default distribution from config if not specified
-        let distribution = if let Some(dist) = &version_request.distribution {
-            dist.clone()
-        } else {
-            Distribution::from_str(&config.default_distribution).unwrap_or(Distribution::Temurin)
-        };
 
         // Create storage repository
         let repository = JdkRepository::new(&config);
 
-        // Check if JDK is installed
-        let is_installed = repository.check_installation(&distribution, version)?;
+        // Check if matching JDK is installed
+        let mut matching_jdks = repository.find_matching_jdks(&version_request)?;
 
-        if !is_installed {
+        if matching_jdks.is_empty() {
             // Auto-installation for global command
-            println!("JDK {} {} is not installed.", distribution.name(), version);
+            info!("JDK {} is not installed.", version_request.version_pattern);
 
             let auto_installer = AutoInstaller::new(&config);
-            let version_spec = format!("{}@{}", distribution.id(), version);
-            let install_request = build_install_request(&distribution, version);
 
-            match auto_installer.prompt_and_install(&version_spec, &install_request)? {
+            match auto_installer.prompt_and_install(version_spec, &version_request)? {
                 InstallationResult::Installed => {
                     info!(
-                        "JDK {} {} installed successfully",
-                        distribution.name(),
-                        version
+                        "JDK {} installed successfully",
+                        version_request.version_pattern
                     );
+                    // Re-fetch matching JDKs after installation
+                    matching_jdks = repository.find_matching_jdks(&version_request)?;
                 }
                 InstallationResult::UserDeclined => {
                     return Err(KopiError::JdkNotInstalled {
-                        jdk_spec: format!("{} {}", distribution.name(), version),
-                        version: Some(version.to_string()),
-                        distribution: Some(distribution.id().to_string()),
+                        jdk_spec: version_request.version_pattern.clone(),
+                        version: Some(version_request.version_pattern.clone()),
+                        distribution: version_request.distribution.clone(),
                         auto_install_enabled: true,
                         auto_install_failed: None,
                         user_declined: true,
@@ -77,9 +58,9 @@ impl GlobalCommand {
                 }
                 InstallationResult::AutoInstallDisabled => {
                     return Err(KopiError::JdkNotInstalled {
-                        jdk_spec: format!("{} {}", distribution.name(), version),
-                        version: Some(version.to_string()),
-                        distribution: Some(distribution.id().to_string()),
+                        jdk_spec: version_request.version_pattern.clone(),
+                        version: Some(version_request.version_pattern.clone()),
+                        distribution: version_request.distribution.clone(),
                         auto_install_enabled: false,
                         auto_install_failed: None,
                         user_declined: false,
@@ -89,14 +70,26 @@ impl GlobalCommand {
             }
         }
 
-        // Write version file
+        // Get the last (latest) matching JDK
+        let selected_jdk = matching_jdks
+            .last()
+            .ok_or_else(|| KopiError::JdkNotInstalled {
+                jdk_spec: version_request.version_pattern.clone(),
+                version: Some(version_request.version_pattern.clone()),
+                distribution: version_request.distribution.clone(),
+                auto_install_enabled: false,
+                auto_install_failed: None,
+                user_declined: false,
+                install_in_progress: false,
+            })?;
+
+        // Write version file using the selected JDK
         let version_file = self.global_version_path(&config)?;
-        write_version_file(&version_file, &version_request)?;
+        selected_jdk.write_to(&version_file)?;
 
         println!(
-            "Global JDK version set to {} {}",
-            distribution.name(),
-            version
+            "Global JDK version set to {}@{}",
+            selected_jdk.distribution, selected_jdk.version
         );
 
         Ok(())
@@ -126,37 +119,5 @@ mod tests {
 
         let version_path = command.global_version_path(&config).unwrap();
         assert_eq!(version_path, temp_dir.path().join("version"));
-    }
-
-    #[test]
-    fn test_write_version_file() {
-        let temp_dir = TempDir::new().unwrap();
-        let version_file = temp_dir.path().join("version");
-
-        // Test with distribution
-        let version_request = crate::version::parser::ParsedVersionRequest {
-            distribution: Some(Distribution::Temurin),
-            version: Some(crate::version::Version::new(21, 0, 0)),
-            package_type: None,
-            latest: false,
-        };
-
-        crate::version::file::write_version_file(&version_file, &version_request).unwrap();
-
-        let content = std::fs::read_to_string(&version_file).unwrap();
-        assert_eq!(content, "temurin@21");
-
-        // Test without distribution
-        let version_request2 = crate::version::parser::ParsedVersionRequest {
-            distribution: None,
-            version: Some(crate::version::Version::new(17, 0, 0)),
-            package_type: None,
-            latest: false,
-        };
-
-        crate::version::file::write_version_file(&version_file, &version_request2).unwrap();
-
-        let content2 = std::fs::read_to_string(&version_file).unwrap();
-        assert_eq!(content2, "17");
     }
 }
