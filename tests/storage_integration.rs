@@ -85,7 +85,7 @@ fn test_full_installation_workflow() {
     let installed = manager.list_installed_jdks().unwrap();
     assert_eq!(installed.len(), 1);
     assert_eq!(installed[0].distribution, "temurin");
-    assert_eq!(installed[0].version, version);
+    assert_eq!(installed[0].version.to_string(), version);
 }
 
 #[test]

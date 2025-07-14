@@ -148,7 +148,7 @@ fn benchmark_total_overhead(c: &mut Criterion) {
 
             // Version resolution
             let version_result = black_box(resolver.resolve_version());
-            if let Ok(version_req) = version_result {
+            if let Ok((version_req, _source)) = version_result {
                 let _ = black_box(validator.validate_version(&version_req.version_pattern));
             }
 

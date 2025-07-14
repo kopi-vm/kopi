@@ -198,7 +198,7 @@ fn test_storage_installation_workflow() {
     let installed = storage.list_installed_jdks().unwrap();
     assert_eq!(installed.len(), 1);
     assert_eq!(installed[0].distribution, "temurin");
-    assert_eq!(installed[0].version, "21.0.1+35.1");
+    assert_eq!(installed[0].version.to_string(), "21.0.1+35.1");
 }
 
 #[test]

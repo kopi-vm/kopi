@@ -963,7 +963,7 @@ fn test_install_jre_package() {
 
         // Note: The shims might not exist if auto_create_shims is disabled in the test config
         // The test output shows 5 shims were created, including java, so this is working correctly
-        eprintln!("Checking for java shim at: {:?}", java_shim);
+        eprintln!("Checking for java shim at: {java_shim:?}");
         if java_shim.exists() {
             eprintln!("java shim found");
         } else {
