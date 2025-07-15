@@ -62,6 +62,24 @@ impl Distribution {
     pub fn default_distribution() -> &'static str {
         "temurin"
     }
+
+    /// Returns a list of all known distribution IDs
+    pub fn known_distributions() -> Vec<&'static str> {
+        vec![
+            "temurin",
+            "corretto",
+            "zulu",
+            "openjdk",
+            "graalvm",
+            "dragonwell",
+            "sapmachine",
+            "liberica",
+            "mandrel",
+            "kona",
+            "semeru",
+            "trava",
+        ]
+    }
 }
 
 impl FromStr for Distribution {

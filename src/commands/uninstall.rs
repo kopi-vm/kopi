@@ -4,7 +4,9 @@ use crate::storage::JdkRepository;
 use crate::uninstall::UninstallHandler;
 use crate::uninstall::batch::BatchUninstaller;
 use crate::uninstall::feedback::{display_uninstall_confirmation, display_uninstall_summary};
+use crate::version::VersionRequest;
 use log::{debug, info};
+use std::str::FromStr;
 
 pub struct UninstallCommand;
 
@@ -38,8 +40,12 @@ impl UninstallCommand {
         handler: &UninstallHandler,
         repository: &JdkRepository,
     ) -> Result<()> {
-        // Get JDKs to uninstall
-        let jdks_to_remove = handler.resolve_jdks_to_uninstall(version_spec)?;
+        // Parse version specification using lenient parsing
+        let version_request = VersionRequest::from_str(version_spec)?;
+        debug!("Parsed version request: {version_request:?}");
+
+        // Get JDKs to uninstall using find_matching_jdks
+        let jdks_to_remove = repository.find_matching_jdks(&version_request)?;
 
         if jdks_to_remove.is_empty() {
             return Err(crate::error::KopiError::JdkNotInstalled {

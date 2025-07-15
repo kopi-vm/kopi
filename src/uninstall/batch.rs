@@ -1,42 +1,58 @@
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
+use crate::models::distribution::Distribution;
 use crate::storage::{InstalledJdk, JdkRepository};
 use crate::uninstall::feedback::{
     display_batch_uninstall_confirmation, display_batch_uninstall_summary,
 };
+use crate::version::VersionRequest;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use log::{info, warn};
+use log::{debug, info, warn};
+use std::str::FromStr;
 use std::time::Duration;
 
 pub struct BatchUninstaller<'a> {
+    config: &'a KopiConfig,
     repository: &'a JdkRepository<'a>,
 }
 
 impl<'a> BatchUninstaller<'a> {
-    pub fn new(_config: &KopiConfig, repository: &'a JdkRepository<'a>) -> Self {
-        Self { repository }
+    pub fn new(config: &'a KopiConfig, repository: &'a JdkRepository<'a>) -> Self {
+        Self { config, repository }
     }
 
     pub fn uninstall_all(&self, spec: Option<&str>, force: bool, dry_run: bool) -> Result<()> {
-        // List all installed JDKs
-        let mut jdks = self.repository.list_installed_jdks()?;
+        let jdks = if let Some(spec_str) = spec {
+            // Build the list of all known distributions (built-in + additional)
+            let mut all_distributions: Vec<String> = Distribution::known_distributions()
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect();
+            all_distributions.extend(self.config.additional_distributions.clone());
 
-        // Filter by distribution or version if specified
-        if let Some(spec_str) = spec {
-            // Check if spec looks like a version (starts with a digit)
-            if spec_str
-                .chars()
-                .next()
-                .map(|c| c.is_ascii_digit())
-                .unwrap_or(false)
-            {
-                // Filter by version prefix
-                jdks.retain(|jdk| jdk.version.to_string().starts_with(spec_str));
+            // Check if spec is a distribution name (case-insensitive)
+            let is_distribution = all_distributions
+                .iter()
+                .any(|dist| dist.eq_ignore_ascii_case(spec_str));
+
+            if is_distribution {
+                // Filter installed JDKs by distribution
+                debug!("Filtering JDKs by distribution: {spec_str}");
+                let all_jdks = self.repository.list_installed_jdks()?;
+                all_jdks
+                    .into_iter()
+                    .filter(|jdk| jdk.distribution.eq_ignore_ascii_case(spec_str))
+                    .collect()
             } else {
-                // Filter by distribution
-                jdks.retain(|jdk| jdk.distribution.eq_ignore_ascii_case(spec_str));
+                // Parse as version request
+                let version_request = VersionRequest::from_str(spec_str)?;
+                debug!("Parsed version request: {version_request:?}");
+                self.repository.find_matching_jdks(&version_request)?
             }
-        }
+        } else {
+            // List all installed JDKs if no spec provided
+            self.repository.list_installed_jdks()?
+        };
 
         if jdks.is_empty() {
             return Err(KopiError::JdkNotInstalled {
@@ -286,5 +302,23 @@ mod tests {
         assert_eq!(format_size(1536), "1.5 KB");
         assert_eq!(format_size(1048576), "1.0 MB");
         assert_eq!(format_size(1073741824), "1.0 GB");
+    }
+
+    #[test]
+    fn test_uninstall_all_invalid_spec() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let repository = JdkRepository::new(&config);
+        let batch_uninstaller = BatchUninstaller::new(&config, &repository);
+
+        // Test invalid version spec
+        let result = batch_uninstaller.uninstall_all(Some("invalid.version"), false, false);
+        assert!(result.is_err());
+        match result {
+            Err(KopiError::InvalidVersionFormat(_)) => {
+                // Good, got the expected error type
+            }
+            _ => panic!("Expected InvalidVersionFormat error"),
+        }
     }
 }
