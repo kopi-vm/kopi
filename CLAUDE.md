@@ -358,3 +358,15 @@ fn test_parse_foojay_api_response() {
   - `TaskManager` → `TaskScheduler`, `TaskExecutor`, `TaskQueue`
   - `ShimManager` → `ShimInstaller`, `ShimRegistry`, `ShimProvisioner`
 - This principle helps maintain code clarity and makes the codebase more intuitive
+
+### Avoid Vague "Util" or "Utils" Naming
+- Never use "util" or "utils" in directory names, file names, class names, or variable names
+- These terms are too generic and don't clearly convey the purpose or responsibility
+- Always choose specific names that describe the actual functionality
+- Examples of better alternatives:
+  - `utils/strings.rs` → `string_operations.rs`, `text_processing.rs`, `string_formatter.rs`
+  - `FileUtils` → `FileOperations`, `FileSystem`, `PathValidator`
+  - `DateUtil` → `DateFormatter`, `DateParser`, `TimeCalculator`
+  - `CommonUtils` → Split into specific modules based on functionality
+  - `util_function()` → Name based on what it does: `validate_input()`, `format_output()`
+- This principle ensures code is self-documenting and responsibilities are clear
