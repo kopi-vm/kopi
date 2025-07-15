@@ -12,6 +12,7 @@ use std::time::Duration;
 pub mod batch;
 pub mod error_formatting;
 pub mod feedback;
+pub mod post_check;
 pub mod progress;
 pub mod safety;
 pub mod selection;

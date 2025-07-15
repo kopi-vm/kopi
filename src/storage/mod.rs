@@ -11,7 +11,7 @@ use std::fs;
 use std::path::Path;
 
 pub use installation::InstallationContext;
-pub use listing::InstalledJdk;
+pub use listing::{InstalledJdk, JdkLister};
 pub use repository::JdkRepository;
 
 pub fn save_jdk_metadata(

@@ -3,6 +3,7 @@ use kopi::commands::cache::CacheCommand;
 use kopi::commands::current::CurrentCommand;
 use kopi::commands::global::GlobalCommand;
 use kopi::commands::install::InstallCommand;
+use kopi::commands::list::ListCommand;
 use kopi::commands::local::LocalCommand;
 use kopi::commands::setup::SetupCommand;
 use kopi::commands::shell::ShellCommand;
@@ -54,11 +55,7 @@ enum Commands {
 
     /// List installed JDK versions
     #[command(visible_alias = "ls")]
-    List {
-        /// Show all versions including remote ones
-        #[arg(short, long)]
-        all: bool,
-    },
+    List,
 
     /// Set JDK version for current shell session
     #[command(visible_alias = "use")]
@@ -206,13 +203,9 @@ fn main() {
                     javafx_bundled,
                 )
             }
-            Commands::List { all } => {
-                if all {
-                    println!("Listing all available JDK versions (not yet implemented)");
-                } else {
-                    println!("Listing installed JDK versions (not yet implemented)");
-                }
-                Ok(())
+            Commands::List => {
+                let command = ListCommand::new()?;
+                command.execute()
             }
             Commands::Shell { version, shell } => {
                 let command = ShellCommand::new()?;
