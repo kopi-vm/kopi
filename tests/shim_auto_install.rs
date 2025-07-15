@@ -20,6 +20,7 @@ fn create_test_config_with_auto_install(enabled: bool, prompt: bool) -> KopiConf
 }
 
 #[test]
+#[serial]
 fn test_auto_install_configuration() {
     // Test with auto-install enabled
     let config = create_test_config_with_auto_install(true, false);
@@ -56,6 +57,7 @@ fn test_shims_config_defaults() {
 }
 
 #[test]
+#[serial]
 fn test_shims_config_from_toml() {
     let test_home = TestHomeGuard::new();
     let kopi_home = test_home.kopi_home();
@@ -100,6 +102,7 @@ fn test_version_request_formatting() {
 }
 
 #[test]
+#[serial]
 fn test_shims_config_with_custom_tools() {
     let test_home = TestHomeGuard::new();
     let kopi_home = test_home.kopi_home();
@@ -137,6 +140,7 @@ exclude_tools = ["javah", "jhat"]
 }
 
 #[test]
+#[serial]
 fn test_auto_install_timeout_configuration() {
     let test_home = TestHomeGuard::new();
     let kopi_home = test_home.kopi_home();
@@ -189,6 +193,7 @@ fn test_environment_variable_overrides() {
 }
 
 #[test]
+#[serial]
 fn test_combined_config_settings() {
     let test_home = TestHomeGuard::new();
     let kopi_home = test_home.kopi_home();

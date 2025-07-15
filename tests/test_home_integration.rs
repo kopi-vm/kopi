@@ -17,7 +17,7 @@ fn test_install_with_isolated_home() {
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Listing installed JDK versions"));
+        .stdout(predicate::str::contains("No JDKs installed"));
 }
 
 #[test]
@@ -209,7 +209,7 @@ fn test_user_home_directory_isolation() {
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Listing installed JDK versions"));
+        .stdout(predicate::str::contains("No JDKs installed"));
 
     // Verify user's .kopi was not affected
     if user_kopi_exists {
