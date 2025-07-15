@@ -1,11 +1,10 @@
 use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
 use crate::installation::auto::{AutoInstaller, InstallationResult};
-use crate::models::distribution::Distribution;
 use crate::platform::process::launch_shell_with_env;
 use crate::platform::shell::{Shell, detect_shell, find_shell_in_path};
 use crate::storage::JdkRepository;
-use crate::version::{build_install_request, parser::VersionParser, validate_version_for_command};
+use crate::version::VersionRequest;
 use log::{debug, info};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -22,52 +21,37 @@ impl ShellCommand {
 
         // Load configuration
         let config = new_kopi_config()?;
-        let parser = VersionParser::new(&config);
 
-        // Parse version specification
-        let version_request = parser.parse(version_spec)?;
+        // Parse version specification using lenient parsing
+        let version_request = VersionRequest::from_str(version_spec)?;
         debug!("Parsed version request: {version_request:?}");
-
-        // Shell command requires a specific version
-        let version = validate_version_for_command(&version_request.version, "Shell")?;
-
-        // Validate version semantics
-        VersionParser::validate_version_semantics(version)?;
-
-        // Use default distribution from config if not specified
-        let distribution = if let Some(dist) = &version_request.distribution {
-            dist.clone()
-        } else {
-            Distribution::from_str(&config.default_distribution).unwrap_or(Distribution::Temurin)
-        };
 
         // Create storage repository
         let repository = JdkRepository::new(&config);
 
-        // Check if JDK is installed
-        let is_installed = repository.check_installation(&distribution, version)?;
+        // Check if matching JDK is installed
+        let mut matching_jdks = repository.find_matching_jdks(&version_request)?;
 
-        if !is_installed {
+        if matching_jdks.is_empty() {
             // Auto-installation for shell command
-            println!("JDK {} {} is not installed.", distribution.name(), version);
+            info!("JDK {} is not installed.", version_request.version_pattern);
 
             let auto_installer = AutoInstaller::new(&config);
-            let version_spec_str = format!("{}@{}", distribution.id(), version);
-            let install_request = build_install_request(&distribution, version);
 
-            match auto_installer.prompt_and_install(&version_spec_str, &install_request)? {
+            match auto_installer.prompt_and_install(version_spec, &version_request)? {
                 InstallationResult::Installed => {
                     info!(
-                        "JDK {} {} installed successfully",
-                        distribution.name(),
-                        version
+                        "JDK {} installed successfully",
+                        version_request.version_pattern
                     );
+                    // Re-fetch matching JDKs after installation
+                    matching_jdks = repository.find_matching_jdks(&version_request)?;
                 }
                 InstallationResult::UserDeclined => {
                     return Err(KopiError::JdkNotInstalled {
-                        jdk_spec: format!("{} {}", distribution.name(), version),
-                        version: Some(version.to_string()),
-                        distribution: Some(distribution.id().to_string()),
+                        jdk_spec: version_request.version_pattern.clone(),
+                        version: Some(version_request.version_pattern.clone()),
+                        distribution: version_request.distribution.clone(),
                         auto_install_enabled: true,
                         auto_install_failed: None,
                         user_declined: true,
@@ -76,9 +60,9 @@ impl ShellCommand {
                 }
                 InstallationResult::AutoInstallDisabled => {
                     return Err(KopiError::JdkNotInstalled {
-                        jdk_spec: format!("{} {}", distribution.name(), version),
-                        version: Some(version.to_string()),
-                        distribution: Some(distribution.id().to_string()),
+                        jdk_spec: version_request.version_pattern.clone(),
+                        version: Some(version_request.version_pattern.clone()),
+                        distribution: version_request.distribution.clone(),
                         auto_install_enabled: false,
                         auto_install_failed: None,
                         user_declined: false,
@@ -87,6 +71,19 @@ impl ShellCommand {
                 }
             }
         }
+
+        // Get the last (latest) matching JDK
+        let selected_jdk = matching_jdks
+            .last()
+            .ok_or_else(|| KopiError::JdkNotInstalled {
+                jdk_spec: version_request.version_pattern.clone(),
+                version: Some(version_request.version_pattern.clone()),
+                distribution: version_request.distribution.clone(),
+                auto_install_enabled: false,
+                auto_install_failed: None,
+                user_declined: false,
+                install_in_progress: false,
+            })?;
 
         // Detect or override shell
         let (shell_type, shell_path) = if let Some(shell_name) = shell_override {
@@ -98,7 +95,13 @@ impl ShellCommand {
         info!("Using shell: {shell_type:?} at {shell_path:?}");
 
         // Launch shell with KOPI_JAVA_VERSION set
-        let version_str = format!("{}@{}", distribution.id(), version);
+        let version_str = format!("{}@{}", selected_jdk.distribution, selected_jdk.version);
+
+        println!(
+            "Launching shell with JDK {}@{}",
+            selected_jdk.distribution, selected_jdk.version
+        );
+
         self.launch_shell(&shell_path, &version_str)
     }
 
