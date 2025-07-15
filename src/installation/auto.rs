@@ -100,7 +100,6 @@ impl<'a> AutoInstaller<'a> {
     /// This is a common function used by both global and local commands
     pub fn prompt_and_install(
         &self,
-        version_spec: &str,
         version_request: &VersionRequest,
     ) -> Result<InstallationResult> {
         if !self.should_auto_install() {
@@ -108,7 +107,7 @@ impl<'a> AutoInstaller<'a> {
         }
 
         // Prompt user for confirmation
-        let user_approved = self.prompt_user(version_spec)?;
+        let user_approved = self.prompt_user(&version_request.version_pattern)?;
 
         if user_approved {
             println!("Installing JDK...");
@@ -117,7 +116,7 @@ impl<'a> AutoInstaller<'a> {
         } else {
             println!("Skipping installation.");
             println!("You can install this JDK later with:");
-            println!("  kopi install {version_spec}");
+            println!("  kopi install {}", version_request.version_pattern);
             Ok(InstallationResult::UserDeclined)
         }
     }

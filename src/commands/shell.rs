@@ -38,7 +38,7 @@ impl ShellCommand {
 
             let auto_installer = AutoInstaller::new(&config);
 
-            match auto_installer.prompt_and_install(version_spec, &version_request)? {
+            match auto_installer.prompt_and_install(&version_request)? {
                 InstallationResult::Installed => {
                     info!(
                         "JDK {} installed successfully",
