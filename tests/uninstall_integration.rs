@@ -576,14 +576,14 @@ fn test_uninstall_command_with_jre_suffix() {
     }
 
     // Create a mock JRE installation
-    // Note: JRE installations have "-jre" in the directory name  
+    // Note: JRE installations have "-jre" in the directory name
     let jre_dir = env.config.jdks_dir().unwrap().join("temurin-jre-21.0.5-11");
     fs::create_dir_all(&jre_dir).unwrap();
 
     // The directory naming doesn't match the expected pattern for version parsing
     // This test is commented out as the jre@ prefix format is not supported
     // TODO: Add support for JRE uninstall if needed
-    
+
     // For now, just clean up the directory
     fs::remove_dir_all(&jre_dir).ok();
 }

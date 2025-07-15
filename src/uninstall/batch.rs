@@ -17,25 +17,32 @@ impl<'a> BatchUninstaller<'a> {
         Self { repository }
     }
 
-    pub fn uninstall_all(
-        &self,
-        distribution: Option<&str>,
-        force: bool,
-        dry_run: bool,
-    ) -> Result<()> {
+    pub fn uninstall_all(&self, spec: Option<&str>, force: bool, dry_run: bool) -> Result<()> {
         // List all installed JDKs
         let mut jdks = self.repository.list_installed_jdks()?;
 
-        // Filter by distribution if specified
-        if let Some(dist) = distribution {
-            jdks.retain(|jdk| jdk.distribution.eq_ignore_ascii_case(dist));
+        // Filter by distribution or version if specified
+        if let Some(spec_str) = spec {
+            // Check if spec looks like a version (starts with a digit)
+            if spec_str
+                .chars()
+                .next()
+                .map(|c| c.is_ascii_digit())
+                .unwrap_or(false)
+            {
+                // Filter by version prefix
+                jdks.retain(|jdk| jdk.version.to_string().starts_with(spec_str));
+            } else {
+                // Filter by distribution
+                jdks.retain(|jdk| jdk.distribution.eq_ignore_ascii_case(spec_str));
+            }
         }
 
         if jdks.is_empty() {
             return Err(KopiError::JdkNotInstalled {
-                jdk_spec: distribution.unwrap_or("all").to_string(),
+                jdk_spec: spec.unwrap_or("all").to_string(),
                 version: None,
-                distribution: distribution.map(String::from),
+                distribution: None,
                 auto_install_enabled: false,
                 auto_install_failed: None,
                 user_declined: false,
