@@ -63,8 +63,14 @@ impl LocalCommand {
                     std::fs::write(&version_file, version_request.to_string())?;
 
                     println!("Created .kopi-version file for {version_request}");
-                    println!("Warning: JDK {} is not installed", version_request.version_pattern);
-                    println!("Run 'kopi install {}' to install this JDK", version_request.version_pattern);
+                    println!(
+                        "Warning: JDK {} is not installed",
+                        version_request.version_pattern
+                    );
+                    println!(
+                        "Run 'kopi install {}' to install this JDK",
+                        version_request.version_pattern
+                    );
 
                     return Ok(());
                 }

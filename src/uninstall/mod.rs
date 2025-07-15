@@ -1,14 +1,18 @@
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
+use crate::storage::formatting::format_size;
 use crate::storage::{InstalledJdk, JdkRepository};
-use indicatif::{ProgressBar, ProgressStyle};
+use crate::uninstall::error_formatting::format_multiple_jdk_matches_error;
+use crate::uninstall::progress::ProgressReporter;
 use log::{debug, info};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
 
 pub mod batch;
+pub mod error_formatting;
 pub mod feedback;
+pub mod progress;
 pub mod safety;
 pub mod selection;
 
@@ -41,30 +45,10 @@ impl<'a> UninstallHandler<'a> {
 
         // Handle multiple matches
         let jdk = if jdks_to_remove.len() > 1 {
-            // Return error when multiple JDKs match to avoid ambiguity
-            let jdk_list: Vec<String> = jdks_to_remove
-                .iter()
-                .map(|j| format!("  - {}@{}", j.distribution, j.version))
-                .collect();
-
-            eprintln!("Error: Multiple JDKs match the pattern '{version_spec}'");
-            eprintln!("\nFound the following JDKs:");
-            for jdk_str in &jdk_list {
-                eprintln!("{jdk_str}");
-            }
-            eprintln!("\nPlease specify exactly one JDK to uninstall using the full version:");
-            eprintln!("  kopi uninstall <distribution>@<full-version>");
-            eprintln!("\nExample:");
-            if let Some(first_jdk) = jdks_to_remove.first() {
-                eprintln!(
-                    "  kopi uninstall {}@{}",
-                    first_jdk.distribution, first_jdk.version
-                );
-            }
-
-            return Err(KopiError::SystemError(format!(
-                "Multiple JDKs match '{version_spec}'. Please specify exactly one JDK to uninstall"
-            )));
+            return Err(format_multiple_jdk_matches_error(
+                version_spec,
+                &jdks_to_remove,
+            ));
         } else {
             jdks_to_remove.into_iter().next().unwrap()
         };
@@ -149,18 +133,9 @@ impl<'a> UninstallHandler<'a> {
 
         // Create progress bar for large removals (> 100MB)
         let pb = if size > 100 * 1024 * 1024 {
-            let pb = ProgressBar::new_spinner();
-            pb.set_style(
-                ProgressStyle::default_spinner()
-                    .template("{spinner:.green} {msg}")
-                    .unwrap()
-                    .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
-            );
-            pb.set_message(format!(
-                "Removing {} ({})...",
-                jdk.path.display(),
-                format_size(size)
-            ));
+            let progress_reporter = ProgressReporter::new();
+            let pb = progress_reporter
+                .create_jdk_removal_spinner(&jdk.path.display().to_string(), &format_size(size));
             pb.enable_steady_tick(Duration::from_millis(100));
             Some(pb)
         } else {
@@ -218,23 +193,6 @@ impl<'a> UninstallHandler<'a> {
     fn rollback_removal(&self, original_path: &PathBuf, temp_path: &PathBuf) -> Result<()> {
         std::fs::rename(temp_path, original_path)?;
         Ok(())
-    }
-}
-
-fn format_size(bytes: u64) -> String {
-    const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
-    let mut size = bytes as f64;
-    let mut unit_index = 0;
-
-    while size >= 1024.0 && unit_index < UNITS.len() - 1 {
-        size /= 1024.0;
-        unit_index += 1;
-    }
-
-    if unit_index == 0 {
-        format!("{} {}", size as u64, UNITS[unit_index])
-    } else {
-        format!("{:.1} {}", size, UNITS[unit_index])
     }
 }
 
@@ -305,16 +263,6 @@ mod tests {
         // Test non-existent version
         let matches = handler.resolve_jdks_to_uninstall("11").unwrap();
         assert!(matches.is_empty());
-    }
-
-    #[test]
-    fn test_format_size() {
-        assert_eq!(format_size(512), "512 B");
-        assert_eq!(format_size(1024), "1.0 KB");
-        assert_eq!(format_size(1536), "1.5 KB");
-        assert_eq!(format_size(1048576), "1.0 MB");
-        assert_eq!(format_size(1073741824), "1.0 GB");
-        assert_eq!(format_size(1610612736), "1.5 GB");
     }
 
     #[test]

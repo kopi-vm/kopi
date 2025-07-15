@@ -1,4 +1,5 @@
 mod disk_space;
+pub mod formatting;
 mod installation;
 mod listing;
 mod repository;

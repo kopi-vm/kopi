@@ -99,17 +99,7 @@ pub fn display_batch_uninstall_summary(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::Version;
-    use std::path::PathBuf;
-    use std::str::FromStr;
-
-    fn create_test_jdk(distribution: &str, version: &str) -> InstalledJdk {
-        InstalledJdk {
-            distribution: distribution.to_string(),
-            version: Version::from_str(version).unwrap(),
-            path: PathBuf::from(format!("/test/jdks/{}-{}", distribution, version)),
-        }
-    }
+    use crate::test::fixtures::create_test_jdk;
 
     #[test]
     fn test_display_uninstall_summary_single() {

@@ -13,5 +13,7 @@ pub mod search;
 pub mod security;
 pub mod shim;
 pub mod storage;
+#[cfg(test)]
+pub mod test;
 pub mod uninstall;
 pub mod version;

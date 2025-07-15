@@ -1,12 +1,13 @@
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
+use crate::storage::formatting::format_size;
 use crate::storage::{InstalledJdk, JdkRepository};
 use crate::uninstall::feedback::{
     display_batch_uninstall_confirmation, display_batch_uninstall_summary,
 };
+use crate::uninstall::progress::ProgressReporter;
 use crate::version::VersionRequest;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use log::{debug, info, warn};
 use std::str::FromStr;
 use std::time::Duration;
@@ -134,15 +135,8 @@ impl<'a> BatchUninstaller<'a> {
     }
 
     fn execute_batch_removal(&self, jdks: Vec<InstalledJdk>, total_size: u64) -> Result<()> {
-        let multi_progress = MultiProgress::new();
-        let overall_pb = multi_progress.add(ProgressBar::new(jdks.len() as u64));
-        overall_pb.set_style(
-            ProgressStyle::default_bar()
-                .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} JDKs removed")
-                .unwrap()
-                .progress_chars("#>-"),
-        );
-        overall_pb.set_message("Removing JDKs...");
+        let progress_reporter = ProgressReporter::new_batch();
+        let overall_pb = progress_reporter.create_batch_removal_bar(jdks.len() as u64);
 
         let mut removed_count = 0;
         let mut failed_jdks = Vec::new();
@@ -152,14 +146,8 @@ impl<'a> BatchUninstaller<'a> {
             info!("Removing {}@{}", jdk.distribution, jdk.version);
 
             // Create spinner for current JDK
-            let spinner = multi_progress.add(ProgressBar::new_spinner());
-            spinner.set_style(
-                ProgressStyle::default_spinner()
-                    .template("{spinner:.green} {msg}")
-                    .unwrap()
-                    .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
-            );
-            spinner.set_message(format!("Removing {}@{}...", jdk.distribution, jdk.version));
+            let spinner = progress_reporter
+                .create_spinner(&format!("Removing {}@{}...", jdk.distribution, jdk.version));
             spinner.enable_steady_tick(Duration::from_millis(100));
 
             // Perform safety checks
@@ -225,32 +213,15 @@ impl<'a> BatchUninstaller<'a> {
     }
 }
 
-fn format_size(bytes: u64) -> String {
-    const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
-    let mut size = bytes as f64;
-    let mut unit_index = 0;
-
-    while size >= 1024.0 && unit_index < UNITS.len() - 1 {
-        size /= 1024.0;
-        unit_index += 1;
-    }
-
-    if unit_index == 0 {
-        format!("{} {}", size as u64, UNITS[unit_index])
-    } else {
-        format!("{:.1} {}", size, UNITS[unit_index])
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
-    use crate::version::Version;
     use mockall::mock;
-    use std::path::PathBuf;
-    use std::str::FromStr;
     use tempfile::TempDir;
+
+    // Import shared test fixtures
+    use crate::test::fixtures::create_test_jdk_with_path;
 
     // Mock JdkRepository trait
     mock! {
@@ -258,14 +229,6 @@ mod tests {
             fn list_installed_jdks(&self) -> Result<Vec<InstalledJdk>>;
             fn get_jdk_size(&self, path: &std::path::Path) -> Result<u64>;
             fn remove_jdk(&self, path: &std::path::Path) -> Result<()>;
-        }
-    }
-
-    fn create_test_jdk(distribution: &str, version: &str, path: &str) -> InstalledJdk {
-        InstalledJdk {
-            distribution: distribution.to_string(),
-            version: Version::from_str(version).unwrap(),
-            path: PathBuf::from(path),
         }
     }
 
@@ -287,21 +250,12 @@ mod tests {
         std::fs::write(jdk2_path.join("test2.txt"), vec![0u8; 2048]).unwrap();
 
         let jdks = vec![
-            create_test_jdk("temurin", "21.0.5+11", jdk1_path.to_str().unwrap()),
-            create_test_jdk("corretto", "17.0.9", jdk2_path.to_str().unwrap()),
+            create_test_jdk_with_path("temurin", "21.0.5+11", jdk1_path.to_str().unwrap()),
+            create_test_jdk_with_path("corretto", "17.0.9", jdk2_path.to_str().unwrap()),
         ];
 
         let total_size = batch_uninstaller.calculate_total_size(&jdks).unwrap();
         assert_eq!(total_size, 3072);
-    }
-
-    #[test]
-    fn test_format_size() {
-        assert_eq!(format_size(512), "512 B");
-        assert_eq!(format_size(1024), "1.0 KB");
-        assert_eq!(format_size(1536), "1.5 KB");
-        assert_eq!(format_size(1048576), "1.0 MB");
-        assert_eq!(format_size(1073741824), "1.0 GB");
     }
 
     #[test]
