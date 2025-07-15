@@ -57,15 +57,16 @@ impl LocalCommand {
                     });
                 }
                 InstallationResult::AutoInstallDisabled => {
-                    return Err(KopiError::JdkNotInstalled {
-                        jdk_spec: version_request.version_pattern.clone(),
-                        version: None,
-                        distribution: version_request.distribution.clone(),
-                        auto_install_enabled: false,
-                        auto_install_failed: None,
-                        user_declined: false,
-                        install_in_progress: false,
-                    });
+                    // When auto-install is disabled, still create the .kopi-version file
+                    // but show a warning about the JDK not being installed
+                    let version_file = self.local_version_path()?;
+                    std::fs::write(&version_file, version_request.to_string())?;
+
+                    println!("Created .kopi-version file for {version_request}");
+                    println!("Warning: JDK {} is not installed", version_request.version_pattern);
+                    println!("Run 'kopi install {}' to install this JDK", version_request.version_pattern);
+
+                    return Ok(());
                 }
             }
         }

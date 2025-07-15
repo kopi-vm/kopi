@@ -217,6 +217,11 @@ mod tests {
 
     #[test]
     fn test_kopi_version_takes_precedence() {
+        // Clear environment variable to ensure test isolation
+        unsafe {
+            env::remove_var(VERSION_ENV_VAR);
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 

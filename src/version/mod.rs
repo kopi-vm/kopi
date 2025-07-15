@@ -278,6 +278,13 @@ pub struct VersionRequest {
 
 impl VersionRequest {
     pub fn new(version_pattern: String) -> Result<Self> {
+        // Special handling for "latest" - not allowed for local command
+        if version_pattern.eq_ignore_ascii_case("latest") {
+            return Err(KopiError::InvalidVersionFormat(
+                "Local command requires a specific version, not 'latest'".to_string(),
+            ));
+        }
+
         // Validate that the pattern can be parsed as a version
         Version::from_str(&version_pattern)?;
         Ok(Self {
@@ -295,6 +302,15 @@ impl VersionRequest {
     pub fn with_package_type(mut self, package_type: crate::models::package::PackageType) -> Self {
         self.package_type = Some(package_type);
         self
+    }
+}
+
+impl std::fmt::Display for VersionRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.distribution {
+            Some(dist) => write!(f, "{}@{}", dist, self.version_pattern),
+            None => write!(f, "{}", self.version_pattern),
+        }
     }
 }
 

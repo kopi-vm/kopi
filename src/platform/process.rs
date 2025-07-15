@@ -60,7 +60,7 @@ pub fn launch_shell_with_env(shell_path: &PathBuf, env_name: &str, env_value: &s
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()
-        .map_err(|e| KopiError::SystemError(format!("Failed to spawn shell: {}", e)))?;
+        .map_err(|e| KopiError::SystemError(format!("Failed to spawn shell: {e}")))?;
 
     // Exit with the same code as the shell
     std::process::exit(status.code().unwrap_or(1));
