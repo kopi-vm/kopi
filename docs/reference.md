@@ -79,72 +79,153 @@ If an uninstall fails, kopi provides cleanup functionality:
 
 ## Version Management Commands
 
-### `kopi use`
+### `kopi shell` (alias: `use`)
 
-Switch to a JDK version in current shell. (Not yet implemented)
+Set JDK version for current shell session. This command outputs shell-specific environment setup commands that should be evaluated by your shell.
 
 **Usage:**
 ```bash
-kopi use <version>                       # Switch to a JDK version in current shell
+kopi shell <version>                     # Set JDK version for current shell session
+kopi use <version>                       # Alias for 'kopi shell'
 ```
+
+**Options:**
+- `--shell <shell>`: Override shell detection (bash, zsh, fish, powershell)
+
+**Examples:**
+```bash
+# Bash/Zsh
+eval "$(kopi shell 21)"
+
+# Fish
+kopi shell 21 | source
+
+# PowerShell
+kopi shell 21 | Invoke-Expression
+
+# Use specific shell format
+eval "$(kopi shell 21 --shell bash)"
+```
+
+**Notes:**
+- Automatically installs the JDK if not already installed
+- Sets JAVA_HOME and updates PATH for the current shell session
+- Changes are session-specific and don't affect other shells
 
 ### `kopi global`
 
-Set default JDK version globally. (Not yet implemented)
+Set the global default JDK version. This becomes the default for all new shell sessions.
 
 **Usage:**
 ```bash
 kopi global <version>                    # Set default JDK version globally
 ```
 
+**Aliases:** `g`, `default`
+
+**Examples:**
+```bash
+kopi global 21                           # Set Java 21 as global default
+kopi global temurin@17.0.2               # Set specific distribution/version as default
+kopi default corretto@21                 # Using 'default' alias
+```
+
+**Notes:**
+- Automatically installs the JDK if not already installed
+- Updates the global configuration in `~/.kopi/config.toml`
+- Takes effect in new shell sessions
+
 ### `kopi local`
 
-Set JDK version for current project. (Not yet implemented)
+Set JDK version for the current project. Creates a `.kopi-version` file in the current directory.
 
 **Usage:**
 ```bash
 kopi local <version>                     # Set JDK version for current project
 ```
 
-### `kopi pin`
+**Aliases:** `l`, `pin`
 
-Alias for 'kopi local'. (Not yet implemented)
-
-**Usage:**
+**Examples:**
 ```bash
-kopi pin <version>                       # Alias for 'kopi local' (pins JDK version in project config)
+kopi local 21                            # Use Java 21 for this project
+kopi local corretto@17                   # Use Amazon Corretto 17
+kopi pin temurin@21.0.1                  # Using 'pin' alias
 ```
+
+**Notes:**
+- Automatically installs the JDK if not already installed
+- Creates `.kopi-version` file in the current directory
+- Takes precedence over global settings
+- Affects all subdirectories (walks up to find config)
 
 ## Information Commands
 
 ### `kopi list`
 
-List installed JDK versions. (Not yet implemented)
+List all installed JDK versions with their distribution, version, and disk usage.
 
 **Usage:**
 ```bash
 kopi list                                # List installed JDK versions
-kopi list --all                          # Show all versions including remote ones (not yet implemented)
+```
+
+**Alias:** `ls`
+
+**Output includes:**
+- Distribution name and icon
+- Full version number
+- Disk space usage
+- Installation path
+
+**Example output:**
+```
+Installed JDKs:
+  ☕ temurin       21.0.5+11        489 MB   ~/.kopi/jdks/temurin-21.0.5+11
+  🌳 corretto      17.0.13.11.1     324 MB   ~/.kopi/jdks/corretto-17.0.13.11.1
+  🔷 zulu          11.0.25+9        298 MB   ~/.kopi/jdks/zulu-11.0.25+9
 ```
 
 ### `kopi current`
 
-Show current JDK version and details. (Not yet implemented)
+Show the currently active JDK version and details.
 
 **Usage:**
 ```bash
 kopi current                             # Show current JDK version and details
+kopi current -q                          # Show only version number
+kopi current --json                      # Output in JSON format
+```
+
+**Options:**
+- `-q, --quiet`: Show only the version number without additional information
+- `--json`: Output in JSON format for scripting
+
+**Examples:**
+```bash
+kopi current
+# Output: ☕ temurin 21.0.5+11 (current: shell)
+
+kopi current -q
+# Output: 21.0.5+11
+
+kopi current --json
+# Output: {"distribution":"temurin","version":"21.0.5+11","source":"shell"}
 ```
 
 ### `kopi which`
 
-Show path to current java executable. (Not yet implemented)
+Show installation path for a JDK version. (Not yet implemented)
 
 **Usage:**
 ```bash
 kopi which                               # Show path to current java executable
 kopi which <version>                     # Show path for specific JDK version
 ```
+
+**Alias:** `w`
+
+**Note:** This command is not yet implemented.
 
 ## Setup and Maintenance Commands
 
@@ -241,19 +322,24 @@ kopi shim verify java --fix              # Verify and fix java shim if needed
 
 ## Advanced Features
 
-### `kopi default`
+### Default Distribution
 
-Set default distribution for installations. (Not yet implemented)
+The default distribution for installations is configured in `~/.kopi/config.toml`:
 
-**Usage:**
-```bash
-kopi default <distribution>              # Set default distribution for installations
+```toml
+default_distribution = "temurin"
 ```
 
-**Examples:**
+This setting determines which distribution is used when you install a JDK without specifying a distribution:
 ```bash
-kopi default temurin                     # Set Eclipse Temurin as default
-kopi default corretto                    # Set Amazon Corretto as default
+kopi install 21                          # Uses default distribution (temurin)
+kopi install corretto@21                 # Explicitly uses corretto
+```
+
+To change the default distribution, edit the configuration file directly or use:
+```bash
+# Set a new global default JDK (also updates default distribution)
+kopi global corretto@21
 ```
 
 ### `kopi refresh`
@@ -288,7 +374,6 @@ kopi search 21 --detailed                # Show full details
 kopi search 21 --lts-only                # Only show LTS versions
 ```
 
-
 ### `kopi doctor`
 
 Diagnose kopi installation issues. (Not yet implemented)
@@ -298,6 +383,7 @@ Diagnose kopi installation issues. (Not yet implemented)
 kopi doctor                              # Diagnose kopi installation issues
 ```
 
+**Note:** This command is planned but not yet implemented. When available, it will check for common configuration issues, PATH setup, and installation problems.
 
 ## Cache Management Commands
 
@@ -405,12 +491,15 @@ kopi cache clear                         # Delete the cache file
 - `temurin` - Eclipse Temurin (formerly AdoptOpenJDK)
 - `corretto` - Amazon Corretto
 - `zulu` - Azul Zulu
-- `oracle` - Oracle JDK
+- `openjdk` - OpenJDK
 - `graalvm` - GraalVM
-- `liberica` - BellSoft Liberica
-- `sapmachine` - SAP Machine
-- `semeru` - IBM Semeru
 - `dragonwell` - Alibaba Dragonwell
+- `sapmachine` - SAP Machine
+- `liberica` - BellSoft Liberica
+- `mandrel` - Red Hat Mandrel
+- `kona` - Tencent Kona
+- `semeru` - IBM Semeru
+- `trava` - Trava OpenJDK
 
 ### Custom Distributions
 
@@ -514,15 +603,16 @@ Version resolution order (highest to lowest priority):
 ## Shell Integration
 
 Kopi uses shims for transparent version management:
-- Add `~/.kopi/bin` to PATH
+- Add `~/.kopi/shims` to PATH
 - Creates shims for `java`, `javac`, `jar`, etc.
-- Automatic version switching based on project configuration (when implemented)
+- Automatic version switching based on project configuration
 
-Note: The `kopi shell` command is planned but not yet implemented. When available, it will:
-- Launch a new shell subprocess with JDK environment variables properly configured
-- Set `JAVA_HOME`, update `PATH` to include JDK bin directory
-- Provide isolated environments when shim approach isn't suitable
-- Respect project-specific JDK versions when launched within a project directory
+The `kopi shell` command provides an alternative to shims:
+- Outputs shell-specific commands to set JDK environment variables
+- Sets `JAVA_HOME` and updates `PATH` to include JDK bin directory
+- Must be evaluated by your shell (e.g., `eval "$(kopi shell 21)"`)
+- Provides session-specific environments without modifying global PATH
+- Respects project-specific JDK versions when executed within a project directory
 
 ## Version Specification Format
 

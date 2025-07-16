@@ -170,13 +170,13 @@ Key architectural components:
 - **Command Interface**: Subcommand-based CLI using clap derive API
 - **JDK Metadata**: Fetches available JDK versions from foojay.io API
 - **Version Management**: Installs and manages multiple JDK versions in `~/.kopi/jdks/<vendor>-<version>/`
-- **Shell Integration**: Creates shims in `~/.kopi/bin/` for Java executables
+- **Shell Integration**: Creates shims in `~/.kopi/shims/` for Java executables
 - **Project Configuration**: Reads `.kopi-version` (native format with `@` separator) or `.java-version` (compatibility)
 - **Metadata Caching**: Stores JDK metadata in `~/.kopi/cache/metadata.json` with hybrid caching strategy
 
 Storage locations:
 - JDKs: `~/.kopi/jdks/<vendor>-<version>/`
-- Shims: `~/.kopi/bin/`
+- Shims: `~/.kopi/shims/`
 - Config: `~/.kopi/config.toml`
 - Cache: `~/.kopi/cache/`
 
