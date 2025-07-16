@@ -1,15 +1,18 @@
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
+use crate::platform;
 use crate::storage::formatting::format_size;
 use crate::storage::{InstalledJdk, JdkRepository};
+use crate::uninstall::cleanup::UninstallCleanup;
 use crate::uninstall::error_formatting::format_multiple_jdk_matches_error;
 use crate::uninstall::progress::ProgressReporter;
-use log::{debug, info};
+use log::{debug, info, warn};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Duration;
 
 pub mod batch;
+pub mod cleanup;
 pub mod error_formatting;
 pub mod feedback;
 pub mod post_check;
@@ -24,6 +27,48 @@ pub struct UninstallHandler<'a> {
 impl<'a> UninstallHandler<'a> {
     pub fn new(repository: &'a JdkRepository<'a>) -> Self {
         Self { repository }
+    }
+
+    /// Perform cleanup operations for failed uninstalls
+    pub fn recover_from_failures(&self, force: bool) -> Result<()> {
+        let cleanup = UninstallCleanup::new(self.repository);
+
+        let actions = cleanup.detect_and_cleanup_partial_removals()?;
+
+        if actions.is_empty() {
+            println!("No recovery actions needed.");
+            return Ok(());
+        }
+
+        println!("Found {} recovery actions:", actions.len());
+        for action in &actions {
+            println!("  - {action:?}");
+        }
+
+        let result = cleanup.execute_cleanup(actions, force)?;
+
+        if result.is_success() {
+            println!("✓ Recovery completed successfully");
+            for success in result.successes {
+                println!("  ✓ {success}");
+            }
+        } else {
+            println!("⚠ Recovery completed with errors");
+            for success in result.successes {
+                println!("  ✓ {success}");
+            }
+            for failure in result.failures {
+                println!("  ✗ {failure}");
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get cleanup suggestions for a failed uninstall
+    pub fn get_cleanup_suggestions(&self, error: &KopiError) -> Vec<String> {
+        let cleanup = UninstallCleanup::new(self.repository);
+        cleanup.suggest_cleanup_actions(error)
     }
 
     pub fn uninstall_jdk(&self, version_spec: &str, dry_run: bool) -> Result<()> {
@@ -69,15 +114,30 @@ impl<'a> UninstallHandler<'a> {
         safety::perform_safety_checks(&jdk.distribution, &jdk.version.to_string())?;
 
         // Remove with progress
-        self.remove_jdk_with_progress(&jdk, jdk_size)?;
+        match self.remove_jdk_with_progress(&jdk, jdk_size) {
+            Ok(()) => {
+                println!(
+                    "✓ Successfully uninstalled {}@{}",
+                    jdk.distribution, jdk.version
+                );
+                println!("  Freed {} of disk space", format_size(jdk_size));
+                Ok(())
+            }
+            Err(e) => {
+                warn!("Uninstall failed: {e}");
 
-        println!(
-            "✓ Successfully uninstalled {}@{}",
-            jdk.distribution, jdk.version
-        );
-        println!("  Freed {} of disk space", format_size(jdk_size));
+                // Provide cleanup suggestions
+                let suggestions = self.get_cleanup_suggestions(&e);
+                if !suggestions.is_empty() {
+                    println!("\nRecovery suggestions:");
+                    for suggestion in suggestions {
+                        println!("  • {suggestion}");
+                    }
+                }
 
-        Ok(())
+                Err(e)
+            }
+        }
     }
 
     pub fn resolve_jdks_to_uninstall(&self, version_spec: &str) -> Result<Vec<InstalledJdk>> {
@@ -132,6 +192,16 @@ impl<'a> UninstallHandler<'a> {
     fn remove_jdk_with_progress(&self, jdk: &InstalledJdk, size: u64) -> Result<()> {
         info!("Removing JDK at {}", jdk.path.display());
 
+        // Check for files in use before removal
+        let files_in_use = platform::uninstall::check_files_in_use(&jdk.path)?;
+        if !files_in_use.is_empty() {
+            warn!("Files may be in use:");
+            for file in &files_in_use {
+                warn!("  {file}");
+            }
+            // Continue with removal but warn user
+        }
+
         // Create progress bar for large removals (> 100MB)
         let pb = if size > 100 * 1024 * 1024 {
             let progress_reporter = ProgressReporter::new();
@@ -143,11 +213,19 @@ impl<'a> UninstallHandler<'a> {
             None
         };
 
+        // Prepare platform-specific removal
+        platform::uninstall::prepare_for_removal(&jdk.path)?;
+
         // Atomic removal with rollback capability
         let temp_path = self.prepare_atomic_removal(&jdk.path)?;
 
         match self.finalize_removal(&temp_path) {
             Ok(()) => {
+                // Platform-specific cleanup
+                if let Err(e) = platform::uninstall::post_removal_cleanup(&jdk.path) {
+                    debug!("Post-removal cleanup failed: {e}");
+                }
+
                 if let Some(pb) = pb {
                     pb.finish_and_clear();
                 }

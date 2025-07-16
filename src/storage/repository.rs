@@ -19,6 +19,10 @@ impl<'a> JdkRepository<'a> {
         Self { config }
     }
 
+    pub fn jdks_dir(&self) -> Result<PathBuf> {
+        self.config.jdks_dir()
+    }
+
     pub fn jdk_install_path(
         &self,
         distribution: &Distribution,

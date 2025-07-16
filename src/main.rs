@@ -157,7 +157,7 @@ enum Commands {
     #[command(visible_alias = "u", alias = "remove")]
     Uninstall {
         /// Version to uninstall (e.g., "21", "17.0.9", "corretto@21")
-        version: String,
+        version: Option<String>,
 
         /// Skip confirmation prompts
         #[arg(short, long)]
@@ -170,6 +170,10 @@ enum Commands {
         /// Uninstall all versions of a distribution
         #[arg(long)]
         all: bool,
+
+        /// Clean up failed or partial uninstall operations
+        #[arg(long)]
+        cleanup: bool,
     },
 }
 
@@ -265,9 +269,10 @@ fn main() {
                 force,
                 dry_run,
                 all,
+                cleanup,
             } => {
                 let command = UninstallCommand::new()?;
-                command.execute(&version, force, dry_run, all)
+                command.execute(version.as_deref(), force, dry_run, all, cleanup)
             }
         }
     })();

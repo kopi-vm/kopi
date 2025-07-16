@@ -3,6 +3,7 @@ use crate::error::{KopiError, Result};
 use crate::storage::JdkRepository;
 use crate::uninstall::UninstallHandler;
 use crate::uninstall::batch::BatchUninstaller;
+use crate::uninstall::cleanup::UninstallCleanup;
 use crate::uninstall::feedback::{display_uninstall_confirmation, display_uninstall_summary};
 use crate::version::VersionRequest;
 use log::{debug, info};
@@ -15,21 +16,44 @@ impl UninstallCommand {
         Ok(Self)
     }
 
-    pub fn execute(&self, version_spec: &str, force: bool, dry_run: bool, all: bool) -> Result<()> {
-        info!("Uninstall command: {version_spec}");
-        debug!("Uninstall options: force={force}, dry_run={dry_run}, all={all}");
+    pub fn execute(
+        &self,
+        version_spec: Option<&str>,
+        force: bool,
+        dry_run: bool,
+        all: bool,
+        cleanup: bool,
+    ) -> Result<()> {
+        debug!("Uninstall options: force={force}, dry_run={dry_run}, all={all}, cleanup={cleanup}");
 
         let config = new_kopi_config()?;
         let repository = JdkRepository::new(&config);
         let handler = UninstallHandler::new(&repository);
 
-        if all {
-            // Batch uninstall all versions of a distribution
-            self.execute_batch_uninstall(version_spec, force, dry_run, &config, &repository)
-        } else {
-            // Single JDK uninstall
-            self.execute_single_uninstall(version_spec, force, dry_run, &handler, &repository)
+        // Execute normal uninstall if version is specified
+        if let Some(version) = version_spec {
+            info!("Uninstall command: {version}");
+            if all {
+                // Batch uninstall all versions of a distribution
+                self.execute_batch_uninstall(version, force, dry_run, &config, &repository)?;
+            } else {
+                // Single JDK uninstall
+                self.execute_single_uninstall(version, force, dry_run, &handler, &repository)?;
+            }
+        } else if !cleanup {
+            // If no version specified and no cleanup flag, it's an error
+            return Err(KopiError::InvalidVersionFormat(
+                "Either specify a version to uninstall or use --cleanup flag".to_string(),
+            ));
         }
+
+        // Execute cleanup if flag is set
+        if cleanup {
+            info!("Performing cleanup of failed uninstall operations");
+            self.execute_cleanup(force, dry_run, &handler)?;
+        }
+
+        Ok(())
     }
 
     fn execute_single_uninstall(
@@ -119,6 +143,38 @@ impl UninstallCommand {
     ) -> Result<()> {
         let batch_uninstaller = BatchUninstaller::new(config, repository);
         batch_uninstaller.uninstall_all(Some(distribution_spec), force, dry_run)
+    }
+
+    fn execute_cleanup(
+        &self,
+        force: bool,
+        dry_run: bool,
+        handler: &UninstallHandler,
+    ) -> Result<()> {
+        info!("Executing cleanup of failed uninstall operations");
+
+        if dry_run {
+            // For dry-run, we need to create the cleanup handler ourselves
+            let config = new_kopi_config()?;
+            let repository = JdkRepository::new(&config);
+            let cleanup = UninstallCleanup::new(&repository);
+            let actions = cleanup.detect_and_cleanup_partial_removals()?;
+
+            if actions.is_empty() {
+                println!("No cleanup actions needed.");
+                return Ok(());
+            }
+
+            println!("Would perform the following cleanup actions:");
+            for action in &actions {
+                println!("  - {action:?}");
+            }
+
+            return Ok(());
+        }
+
+        // Perform the actual cleanup
+        handler.recover_from_failures(force)
     }
 }
 

@@ -34,13 +34,48 @@ kopi install zulu@11.0.15                # Zulu JDK version 11.0.15
 
 ### `kopi uninstall`
 
-Remove an installed JDK version. (Not yet implemented)
+Remove an installed JDK version and free up disk space.
 
 **Usage:**
 ```bash
 kopi uninstall <version>                 # Remove an installed JDK version
 kopi uninstall <distribution>@<version>  # Remove specific distribution
+kopi uninstall <distribution> --all      # Remove all versions of a distribution
 ```
+
+**Options:**
+- `--force`: Skip confirmation prompts and safety checks
+- `--dry-run`: Show what would be removed without actually removing
+- `--all`: Remove all versions of a distribution (requires distribution name)
+- `--cleanup`: Clean up failed or partial uninstall operations (can be used alone or with version)
+
+**Examples:**
+```bash
+kopi uninstall 21                        # Remove Java 21 (must be only one installed)
+kopi uninstall temurin@21.0.5+11         # Remove specific version
+kopi uninstall corretto --all            # Remove all Corretto versions
+kopi uninstall zulu@17 --dry-run         # Preview what would be removed
+kopi uninstall temurin@21 --force        # Skip confirmation prompt
+kopi uninstall --cleanup                 # Clean up failed uninstall operations
+kopi uninstall --cleanup --force         # Force cleanup without confirmation
+kopi uninstall --cleanup --dry-run       # Preview cleanup actions
+kopi uninstall temurin@21 --cleanup      # Uninstall temurin@21 then perform cleanup
+```
+
+**Safety Features:**
+- Requires exact specification when multiple JDKs match
+- Shows disk space that will be freed
+- Confirms removal before proceeding (unless `--force` is used)
+- Atomic removal with rollback on failure
+- Platform-specific cleanup (Windows antivirus handling, Unix symlink cleanup)
+
+**Error Cleanup:**
+If an uninstall fails, kopi provides cleanup functionality:
+- Use `kopi uninstall --cleanup` to clean up failed operations
+- Detects temporary removal directories (`.*.removing`)
+- Finds partially removed JDKs (missing essential files)
+- Cleans up orphaned metadata files
+- Handles platform-specific cleanup scenarios
 
 ## Version Management Commands
 
@@ -270,6 +305,7 @@ Diagnose kopi installation issues. (Not yet implemented)
 ```bash
 kopi doctor                              # Diagnose kopi installation issues
 ```
+
 
 ## Cache Management Commands
 
@@ -822,6 +858,54 @@ Error: Cache not found
 ```
 **Solution:** Run `kopi cache refresh` to fetch the latest JDK metadata
 
+**8. Uninstall Issues**
+
+**Multiple JDKs Match:**
+```bash
+Error: Multiple JDKs match version '21'
+```
+**Solution:** Use exact specification:
+```bash
+kopi uninstall temurin@21.0.5+11   # Specify exact version
+kopi uninstall corretto@21          # Specify distribution
+```
+
+**Files in Use (Windows):**
+```bash
+Error: Files may be held by antivirus software
+```
+**Solution:**
+- Close any running Java applications
+- Temporarily disable real-time antivirus protection
+- Add kopi directory to antivirus exclusions
+- Use `--force` flag to attempt forced removal
+
+**Permission Errors:**
+```bash
+Error: Permission denied removing JDK
+```
+**Solution:**
+- Run as Administrator (Windows) or with sudo (Unix)
+- Check file permissions in `~/.kopi/jdks/`
+- Ensure no files are read-only or locked
+
+**Partial Removal Cleanup:**
+```bash
+Error: Partial removal detected
+```
+**Solution:**
+- Run `kopi uninstall --cleanup` to clean up partial removals
+- Use `kopi uninstall --cleanup --force` to attempt stubborn file removal
+- Check for orphaned temporary directories and metadata files
+
+**Orphaned Symlinks (Unix):**
+```bash
+Warning: Orphaned symlinks found
+```
+**Solution:**
+- Automatic cleanup during uninstall
+- Manual cleanup: `find ~/.kopi -type l ! -exec test -e {} \; -delete`
+
 ### Exit Codes
 
 Kopi uses specific exit codes to help with scripting and automation:
@@ -829,10 +913,15 @@ Kopi uses specific exit codes to help with scripting and automation:
 - `0`: Success
 - `1`: General error
 - `2`: Invalid input or configuration error
+- `3`: No local version found
+- `4`: JDK not installed
+- `10`: Active JDK (reserved for future use)
 - `13`: Permission denied
+- `14`: Partial removal failure
 - `17`: Resource already exists
 - `20`: Network error
 - `28`: Disk space error
+- `127`: Command not found
 
 ### Shim-Specific Issues
 

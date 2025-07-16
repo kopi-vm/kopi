@@ -11,6 +11,7 @@ pub mod process;
 pub mod shell;
 pub mod shim;
 pub mod symlink;
+pub mod uninstall;
 
 // Internal modules
 mod constants;

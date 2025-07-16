@@ -436,7 +436,7 @@ fn test_uninstall_command_single_jdk() {
 
     // Execute uninstall command with force flag to skip confirmation
     let command = UninstallCommand::new().unwrap();
-    let result = command.execute("temurin@21.0.5-11", true, false, false);
+    let result = command.execute(Some("temurin@21.0.5-11"), true, false, false, false);
 
     assert!(result.is_ok());
 
@@ -458,7 +458,7 @@ fn test_uninstall_command_dry_run() {
 
     // Execute uninstall command with dry_run flag
     let command = UninstallCommand::new().unwrap();
-    let result = command.execute("corretto@17.0.13.11.1", false, true, false);
+    let result = command.execute(Some("corretto@17.0.13.11.1"), false, true, false, false);
 
     assert!(result.is_ok());
 
@@ -484,7 +484,7 @@ fn test_uninstall_command_all_versions() {
 
     // Execute uninstall command with --all flag
     let command = UninstallCommand::new().unwrap();
-    let result = command.execute("zulu", true, false, true);
+    let result = command.execute(Some("zulu"), true, false, true, false);
 
     assert!(result.is_ok());
 
@@ -508,7 +508,7 @@ fn test_uninstall_command_nonexistent_error() {
 
     // Try to uninstall a JDK that doesn't exist
     let command = UninstallCommand::new().unwrap();
-    let result = command.execute("nonexistent@1.0.0", false, false, false);
+    let result = command.execute(Some("nonexistent@1.0.0"), false, false, false, false);
 
     assert!(result.is_err());
 
@@ -534,7 +534,7 @@ fn test_uninstall_command_ambiguous_error() {
 
     // Try to uninstall with just the major version
     let command = UninstallCommand::new().unwrap();
-    let result = command.execute("21", false, false, false);
+    let result = command.execute(Some("21"), false, false, false, false);
 
     assert!(result.is_err());
 
@@ -559,7 +559,7 @@ fn test_uninstall_command_version_shorthand() {
 
     // Uninstall using shorthand version (should work when unambiguous)
     let command = UninstallCommand::new().unwrap();
-    let result = command.execute("17", true, false, false);
+    let result = command.execute(Some("17"), true, false, false, false);
 
     assert!(result.is_ok());
 
