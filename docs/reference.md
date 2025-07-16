@@ -112,6 +112,31 @@ eval "$(kopi shell 21 --shell bash)"
 - Sets JAVA_HOME and updates PATH for the current shell session
 - Changes are session-specific and don't affect other shells
 
+### `kopi env`
+
+Output environment variables for shell evaluation, similar to direnv. (Not yet implemented)
+
+**Usage:**
+```bash
+kopi env                                 # Output environment variables for current JDK
+kopi env <version>                       # Output environment variables for specific JDK
+```
+
+**Examples:**
+```bash
+# Bash/Zsh
+eval "$(kopi env)"
+
+# Fish
+kopi env | source
+
+# Use in shell hooks
+# Add to .bashrc or .zshrc for automatic environment setup
+eval "$(kopi env)"
+```
+
+**Note:** This command is planned but not yet implemented. When available, it will output environment variable settings (like JAVA_HOME) that can be evaluated by the shell, allowing integration with shell hooks and custom environment management workflows. Unlike `kopi shell`, this command focuses solely on environment variable output without modifying PATH or providing interactive features.
+
 ### `kopi global`
 
 Set the global default JDK version. This becomes the default for all new shell sessions.
