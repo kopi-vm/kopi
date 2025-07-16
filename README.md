@@ -3,7 +3,7 @@
 [![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-Kopi is a fast, modern JDK (Java Development Kit) version manager written in Rust. It allows developers to seamlessly install, manage, and switch between different JDK versions and distributions with minimal overhead.
+Kopi is a JDK version management tool written in Rust that integrates with your shell to seamlessly switch between different Java Development Kit versions. It fetches JDK metadata from foojay.io and provides a simple, fast interface similar to tools like volta, nvm, and pyenv.
 
 ## Who is this for?
 
@@ -17,11 +17,11 @@ Kopi is designed for:
 
 - 🚀 **Fast Performance** - Built with Rust for minimal overhead and instant JDK switching
 - 🔄 **Automatic Version Switching** - Detects and switches JDK versions based on project configuration
-- 📦 **Multiple Distribution Support** - Install JDKs from various vendors (AdoptOpenJDK, Amazon Corretto, Azul Zulu, Eclipse Temurin, Oracle, and more)
+- 📦 **Multiple Distribution Support** - Install JDKs from various vendors (Eclipse Temurin, Amazon Corretto, Azul Zulu, GraalVM, and more)
 - 🛡️ **Shell Integration** - Transparent version management through shims - no manual PATH configuration needed
 - 📌 **Project Pinning** - Lock JDK versions per project using `.kopi-version` or `.java-version` files
-- 🌐 **Smart Caching** - Efficient metadata caching with online/offline support
-- 🔒 **Security First** - Built-in checksum validation and HTTPS verification for all downloads
+- 🌐 **Smart Caching** - Efficient metadata caching for fast searches and offline support
+- 🗑️ **Easy Uninstall** - Remove JDKs with automatic cleanup of metadata and shims
 - 🎯 **Cross-Platform** - Works on macOS, Linux, and Windows
 
 ## How it Works
@@ -47,16 +47,18 @@ Kopi integrates with your shell to intercept Java commands and automatically rou
 # Install kopi (coming soon to package managers)
 cargo install kopi
 
-# Initialize shell integration
-kopi shell --init >> ~/.bashrc  # or ~/.zshrc
-source ~/.bashrc
+# Initial setup - creates directories and installs shims
+kopi setup
+
+# Add shims directory to your PATH (in ~/.bashrc, ~/.zshrc, or ~/.config/fish/config.fish)
+export PATH="$HOME/.kopi/shims:$PATH"
 ```
 
 ### Basic Usage
 
 ```bash
 # Install a JDK
-kopi install 21                    # Latest JDK 21
+kopi install 21                    # Latest JDK 21 (Eclipse Temurin by default)
 kopi install temurin@17           # Specific distribution and version
 kopi install corretto@11.0.21     # Exact version
 
@@ -72,6 +74,10 @@ kopi local 17                     # Creates .kopi-version file
 
 # Show current JDK
 kopi current
+
+# Uninstall a JDK
+kopi uninstall temurin@21         # Remove specific version
+kopi uninstall corretto --all     # Remove all Corretto versions
 ```
 
 ## Project Configuration
@@ -94,21 +100,74 @@ When you `cd` into a project directory, kopi automatically switches to the confi
 
 ### Search Available JDKs
 ```bash
-kopi cache search 21              # Search for JDK 21 variants
-kopi cache search --vendor=corretto  # Filter by vendor
+kopi search 21                    # Search for JDK 21 variants
+kopi search corretto              # List all Corretto versions
+kopi search 21 --lts-only         # Show only LTS versions
+kopi search 21 --detailed         # Show full details
 ```
 
-### Manage Storage
+### Shell Environment
 ```bash
-kopi prune                        # Remove unused JDK versions
-kopi doctor                       # Diagnose configuration issues
+# Set JDK for current shell session
+eval "$(kopi shell 21)"           # Bash/Zsh
+kopi shell 21 | source            # Fish
+kopi shell 21 | Invoke-Expression # PowerShell
 ```
 
-### Offline Support
+### Cache Management
 ```bash
-kopi cache update                 # Update metadata cache
-kopi install 21 --offline        # Install using cached metadata
+kopi cache refresh                # Update metadata from foojay.io
+kopi cache info                   # Show cache details
+kopi cache clear                  # Remove cached metadata
 ```
+
+### Shim Management
+```bash
+kopi shim list                    # List installed shims
+kopi shim add native-image        # Add shim for GraalVM tool
+kopi shim verify                  # Check shim integrity
+```
+
+## Supported Distributions
+
+Kopi supports JDKs from multiple vendors:
+
+- **temurin** - Eclipse Temurin (formerly AdoptOpenJDK) - default
+- **corretto** - Amazon Corretto
+- **zulu** - Azul Zulu
+- **openjdk** - OpenJDK
+- **graalvm** - GraalVM
+- **dragonwell** - Alibaba Dragonwell
+- **sapmachine** - SAP Machine
+- **liberica** - BellSoft Liberica
+- **mandrel** - Red Hat Mandrel
+- **kona** - Tencent Kona
+- **semeru** - IBM Semeru
+- **trava** - Trava OpenJDK
+
+Run `kopi cache list-distributions` to see all available distributions.
+
+## Configuration
+
+### Global Configuration
+Kopi stores global settings in `~/.kopi/config.toml`:
+
+```toml
+# Default distribution for installations
+default_distribution = "temurin"
+
+# Additional custom distributions
+additional_distributions = ["company-jdk"]
+
+[storage]
+# Minimum required disk space in MB
+min_disk_space_mb = 500
+```
+
+### Environment Variables
+- `KOPI_HOME` - Override default kopi home directory (default: `~/.kopi`)
+- `HTTP_PROXY` / `HTTPS_PROXY` - Proxy configuration for downloads
+- `NO_PROXY` - Hosts to bypass proxy
 
 ## Architecture
 
@@ -161,16 +220,19 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ### Development Workflow
 
+When completing any coding task:
 1. Run `cargo fmt` to format code
-2. Run `cargo clippy` to check for improvements
-3. Run `cargo test` to ensure all tests pass
-4. Submit a pull request
+2. Run `cargo clippy` to check for improvements  
+3. Run `cargo check` for fast error checking
+4. Run `cargo test --lib` to run unit tests
+5. Submit a pull request
+
+All commands must pass without errors before considering work complete.
 
 ## Documentation
 
 - [User Reference](docs/reference.md) - Complete command reference
 - [Architecture Decision Records](docs/adr/) - Design decisions and rationale
-- [API Documentation](https://docs.rs/kopi) - Rust API documentation
 
 ## License
 
