@@ -5,13 +5,7 @@ use log::debug;
 use std::path::Path;
 
 #[cfg(target_os = "windows")]
-use crate::error::KopiError;
-#[cfg(target_os = "windows")]
-use log::warn;
-#[cfg(target_os = "windows")]
 use std::process::Command;
-#[cfg(target_os = "windows")]
-use std::time::Duration;
 
 #[cfg(not(target_os = "windows"))]
 use std::process::Command;
@@ -61,34 +55,6 @@ pub fn post_removal_cleanup(path: &Path) -> Result<()> {
     }
 }
 
-/// Handle antivirus interference on Windows
-#[cfg(target_os = "windows")]
-fn handle_antivirus_interference(path: &Path) -> Result<()> {
-    debug!("Checking for antivirus interference at {}", path.display());
-
-    // Wait a bit for antivirus to release files
-    std::thread::sleep(Duration::from_millis(500));
-
-    // Check if path still exists after delay
-    if path.exists() {
-        warn!("Files may be held by antivirus software");
-        // Try a few more times with increasing delays
-        for attempt in 1..=3 {
-            std::thread::sleep(Duration::from_millis(attempt * 1000));
-            if !path.exists() {
-                debug!("Antivirus released files after {} attempts", attempt);
-                return Ok(());
-            }
-        }
-
-        return Err(KopiError::SystemError(
-            "Files may be held by antivirus software. Try temporarily disabling real-time protection.".to_string()
-        ));
-    }
-
-    Ok(())
-}
-
 #[cfg(target_os = "windows")]
 fn check_files_in_use_windows(path: &Path) -> Result<Vec<String>> {
     let mut files_in_use = Vec::new();
@@ -128,11 +94,11 @@ fn prepare_windows_removal(path: &Path) -> Result<()> {
         .arg(path.display().to_string())
         .output()
     {
-        debug!("Failed to remove read-only attributes: {}", e);
+        debug!("Failed to remove read-only attributes: {e}");
     }
 
-    // Handle potential antivirus interference
-    handle_antivirus_interference(path)?;
+    // Note: handle_antivirus_interference should only be called after actual removal attempts,
+    // not during preparation phase when files are expected to still exist
 
     Ok(())
 }

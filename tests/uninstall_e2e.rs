@@ -326,11 +326,50 @@ JAVA_RUNTIME_VERSION="{}"
 
         #[cfg(windows)]
         {
-            use std::os::windows::fs::MetadataExt;
-            // Set read-only attribute on Windows
-            if let Ok(mut file) = std::fs::OpenOptions::new().write(true).open(&partial_jdk) {
-                // This is a simplified approach - in real Windows scenarios
-                // we'd need to use Windows API calls
+            // Set read-only attribute on Windows using WinAPI
+            use std::ffi::OsStr;
+            use std::os::windows::ffi::OsStrExt;
+            use winapi::um::fileapi::{
+                GetFileAttributesW, INVALID_FILE_ATTRIBUTES, SetFileAttributesW,
+            };
+            use winapi::um::winnt::FILE_ATTRIBUTE_READONLY;
+
+            fn set_readonly_windows(path: &std::path::Path) -> std::io::Result<()> {
+                let path_wide: Vec<u16> = OsStr::new(path)
+                    .encode_wide()
+                    .chain(std::iter::once(0))
+                    .collect();
+
+                unsafe {
+                    // Get current attributes
+                    let current_attrs = GetFileAttributesW(path_wide.as_ptr());
+                    if current_attrs == INVALID_FILE_ATTRIBUTES {
+                        return Err(std::io::Error::last_os_error());
+                    }
+
+                    // Add READ_ONLY attribute
+                    let new_attrs = current_attrs | FILE_ATTRIBUTE_READONLY;
+
+                    // Set attributes
+                    if SetFileAttributesW(path_wide.as_ptr(), new_attrs) == 0 {
+                        return Err(std::io::Error::last_os_error());
+                    }
+                }
+
+                Ok(())
+            }
+
+            // Set read-only on the directory itself
+            set_readonly_windows(&partial_jdk).unwrap();
+
+            // Also set read-only on all files within the directory to make removal more difficult
+            if let Ok(entries) = fs::read_dir(&partial_jdk) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_file() {
+                        let _ = set_readonly_windows(&path); // Ignore individual failures
+                    }
+                }
             }
         }
 

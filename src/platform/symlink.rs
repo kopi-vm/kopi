@@ -1,6 +1,7 @@
 //! Platform-specific symlink operations.
 
 use crate::error::Result;
+#[cfg(not(target_os = "windows"))]
 use log::{debug, warn};
 use std::fs;
 use std::path::Path;
@@ -103,7 +104,9 @@ pub fn cleanup_orphaned_symlinks(_dir: &Path) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(target_os = "windows"))]
     use super::*;
+    #[cfg(not(target_os = "windows"))]
     use tempfile::TempDir;
 
     #[cfg(not(target_os = "windows"))]
