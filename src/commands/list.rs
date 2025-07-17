@@ -1,19 +1,20 @@
-use crate::config::new_kopi_config;
+use crate::config::KopiConfig;
 use crate::error::Result;
 use crate::storage::JdkRepository;
 use crate::storage::formatting::format_size;
 use log::debug;
 
-pub struct ListCommand;
+pub struct ListCommand<'a> {
+    config: &'a KopiConfig,
+}
 
-impl ListCommand {
-    pub fn new() -> Result<Self> {
-        Ok(Self)
+impl<'a> ListCommand<'a> {
+    pub fn new(config: &'a KopiConfig) -> Result<Self> {
+        Ok(Self { config })
     }
 
     pub fn execute(&self) -> Result<()> {
-        let config = new_kopi_config()?;
-        let repository = JdkRepository::new(&config);
+        let repository = JdkRepository::new(self.config);
 
         // List installed JDKs
         let installed_jdks = repository.list_installed_jdks()?;

@@ -1,4 +1,4 @@
-use crate::config::new_kopi_config;
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::installation::auto::{AutoInstaller, InstallationResult};
 use crate::platform::process::launch_shell_with_env;
@@ -9,25 +9,24 @@ use log::{debug, info};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-pub struct ShellCommand;
+pub struct ShellCommand<'a> {
+    config: &'a KopiConfig,
+}
 
-impl ShellCommand {
-    pub fn new() -> Result<Self> {
-        Ok(Self)
+impl<'a> ShellCommand<'a> {
+    pub fn new(config: &'a KopiConfig) -> Result<Self> {
+        Ok(Self { config })
     }
 
     pub fn execute(&self, version_spec: &str, shell_override: Option<&str>) -> Result<()> {
         info!("Setting shell JDK version to {version_spec}");
-
-        // Load configuration
-        let config = new_kopi_config()?;
 
         // Parse version specification using lenient parsing
         let version_request = VersionRequest::from_str(version_spec)?;
         debug!("Parsed version request: {version_request:?}");
 
         // Create storage repository
-        let repository = JdkRepository::new(&config);
+        let repository = JdkRepository::new(self.config);
 
         // Check if matching JDK is installed
         let mut matching_jdks = repository.find_matching_jdks(&version_request)?;
@@ -36,7 +35,7 @@ impl ShellCommand {
             // Auto-installation for shell command
             info!("JDK {} is not installed.", version_request.version_pattern);
 
-            let auto_installer = AutoInstaller::new(&config);
+            let auto_installer = AutoInstaller::new(self.config);
 
             match auto_installer.prompt_and_install(&version_request)? {
                 InstallationResult::Installed => {

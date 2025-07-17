@@ -44,17 +44,15 @@ pub enum ShimCommand {
 }
 
 impl ShimCommand {
-    pub fn execute(&self) -> Result<()> {
-        let config = crate::config::new_kopi_config()?;
-
+    pub fn execute(&self, config: &KopiConfig) -> Result<()> {
         match self {
-            ShimCommand::Add { tool, force } => self.add_shim(&config, tool, *force),
-            ShimCommand::Remove { tool } => self.remove_shim(&config, tool),
+            ShimCommand::Add { tool, force } => self.add_shim(config, tool, *force),
+            ShimCommand::Remove { tool } => self.remove_shim(config, tool),
             ShimCommand::List {
                 available,
                 distribution,
-            } => self.list_shims(&config, *available, distribution.as_deref()),
-            ShimCommand::Verify { fix } => self.verify_shims(&config, *fix),
+            } => self.list_shims(config, *available, distribution.as_deref()),
+            ShimCommand::Verify { fix } => self.verify_shims(config, *fix),
         }
     }
 

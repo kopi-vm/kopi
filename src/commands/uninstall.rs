@@ -1,4 +1,4 @@
-use crate::config::new_kopi_config;
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::storage::JdkRepository;
 use crate::uninstall::UninstallHandler;
@@ -9,11 +9,13 @@ use crate::version::VersionRequest;
 use log::{debug, info};
 use std::str::FromStr;
 
-pub struct UninstallCommand;
+pub struct UninstallCommand<'a> {
+    config: &'a KopiConfig,
+}
 
-impl UninstallCommand {
-    pub fn new() -> Result<Self> {
-        Ok(Self)
+impl<'a> UninstallCommand<'a> {
+    pub fn new(config: &'a KopiConfig) -> Result<Self> {
+        Ok(Self { config })
     }
 
     pub fn execute(
@@ -26,8 +28,7 @@ impl UninstallCommand {
     ) -> Result<()> {
         debug!("Uninstall options: force={force}, dry_run={dry_run}, all={all}, cleanup={cleanup}");
 
-        let config = new_kopi_config()?;
-        let repository = JdkRepository::new(&config);
+        let repository = JdkRepository::new(self.config);
         let handler = UninstallHandler::new(&repository);
 
         // Execute normal uninstall if version is specified
@@ -35,7 +36,7 @@ impl UninstallCommand {
             info!("Uninstall command: {version}");
             if all {
                 // Batch uninstall all versions of a distribution
-                self.execute_batch_uninstall(version, force, dry_run, &config, &repository)?;
+                self.execute_batch_uninstall(version, force, dry_run, self.config, &repository)?;
             } else {
                 // Single JDK uninstall
                 self.execute_single_uninstall(version, force, dry_run, &handler, &repository)?;
@@ -155,8 +156,7 @@ impl UninstallCommand {
 
         if dry_run {
             // For dry-run, we need to create the cleanup handler ourselves
-            let config = new_kopi_config()?;
-            let repository = JdkRepository::new(&config);
+            let repository = JdkRepository::new(self.config);
             let cleanup = UninstallCleanup::new(&repository);
             let actions = cleanup.detect_and_cleanup_partial_removals()?;
 

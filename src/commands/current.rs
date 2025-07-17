@@ -1,4 +1,4 @@
-use crate::config::new_kopi_config;
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::storage::JdkRepository;
 use crate::version::resolver::{VersionResolver, VersionSource};
@@ -15,17 +15,16 @@ struct CurrentOutput {
     distribution: Option<String>,
 }
 
-pub struct CurrentCommand;
+pub struct CurrentCommand<'a> {
+    config: &'a KopiConfig,
+}
 
-impl CurrentCommand {
-    pub fn new() -> Result<Self> {
-        Ok(Self)
+impl<'a> CurrentCommand<'a> {
+    pub fn new(config: &'a KopiConfig) -> Result<Self> {
+        Ok(Self { config })
     }
 
     pub fn execute(&self, quiet: bool, json: bool) -> Result<()> {
-        // Load configuration
-        let config = new_kopi_config()?;
-
         // Create version resolver
         let resolver = VersionResolver::new();
 
@@ -58,7 +57,7 @@ impl CurrentCommand {
         };
 
         // Check if the version is actually installed
-        let repository = JdkRepository::new(&config);
+        let repository = JdkRepository::new(self.config);
 
         // Try to find matching installations using find_matching_jdks
         let mut install_path = None;

@@ -1,6 +1,6 @@
 use crate::api::ApiClient;
 use crate::archive::extract_archive;
-use crate::config::new_kopi_config;
+use crate::config::KopiConfig;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
@@ -18,15 +18,16 @@ use crate::version::parser::VersionParser;
 use log::{debug, info, trace, warn};
 use std::str::FromStr;
 
-pub struct InstallCommand {
+pub struct InstallCommand<'a> {
     api_client: ApiClient,
+    config: &'a KopiConfig,
 }
 
-impl InstallCommand {
-    pub fn new() -> Result<Self> {
+impl<'a> InstallCommand<'a> {
+    pub fn new(config: &'a KopiConfig) -> Result<Self> {
         let api_client = ApiClient::new();
 
-        Ok(Self { api_client })
+        Ok(Self { api_client, config })
     }
 
     pub fn execute(
@@ -43,9 +44,8 @@ impl InstallCommand {
             "Install options: force={force}, dry_run={dry_run}, no_progress={no_progress}, timeout={timeout_secs:?}, javafx_bundled={javafx_bundled}"
         );
 
-        // Load config to parse version with additional distributions support
-        let config = new_kopi_config()?;
-        let parser = VersionParser::new(&config);
+        // Use config to parse version with additional distributions support
+        let parser = VersionParser::new(self.config);
 
         // Parse version specification
         let version_request = parser.parse(version_spec)?;
@@ -65,7 +65,8 @@ impl InstallCommand {
         let distribution = if let Some(dist) = version_request.distribution.clone() {
             dist
         } else {
-            Distribution::from_str(&config.default_distribution).unwrap_or(Distribution::Temurin)
+            Distribution::from_str(&self.config.default_distribution)
+                .unwrap_or(Distribution::Temurin)
         };
 
         println!("Installing {} {}...", distribution.name(), version);
@@ -78,7 +79,7 @@ impl InstallCommand {
         let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
 
         // Create storage manager with config
-        let repository = JdkRepository::new(&config);
+        let repository = JdkRepository::new(self.config);
 
         // Check if already installed using the actual distribution_version
         let installation_dir = repository.jdk_install_path(
@@ -201,7 +202,7 @@ impl InstallCommand {
         );
 
         // Create shims if enabled in config
-        if config.shims.auto_create_shims {
+        if self.config.shims.auto_create_shims {
             debug!("Auto-creating shims for newly installed JDK");
 
             // Discover JDK tools
@@ -220,7 +221,7 @@ impl InstallCommand {
 
             if !tools.is_empty() {
                 println!("\nCreating shims...");
-                let shim_installer = ShimInstaller::new(config.kopi_home());
+                let shim_installer = ShimInstaller::new(self.config.kopi_home());
                 let created_shims = shim_installer.create_missing_shims(&tools)?;
 
                 if !created_shims.is_empty() {
@@ -259,11 +260,10 @@ impl InstallCommand {
         let lib_c_type = get_foojay_libc_type();
 
         // First try to find the package in cache if it exists
-        let config = new_kopi_config()?;
-        let cache_path = config.metadata_cache_path()?;
+        let cache_path = self.config.metadata_cache_path()?;
         if cache_path.exists() {
             if let Ok(cache) = crate::cache::load_cache(&cache_path) {
-                let searcher = PackageSearcher::new(&cache, &config);
+                let searcher = PackageSearcher::new(&cache, self.config);
                 if let Some(jdk_metadata) = searcher.find_exact_package(
                     distribution,
                     &version.to_string(),

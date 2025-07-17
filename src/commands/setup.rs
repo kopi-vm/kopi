@@ -11,13 +11,12 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-pub struct SetupCommand {
-    config: KopiConfig,
+pub struct SetupCommand<'a> {
+    config: &'a KopiConfig,
 }
 
-impl SetupCommand {
-    pub fn new() -> Result<Self> {
-        let config = crate::config::new_kopi_config()?;
+impl<'a> SetupCommand<'a> {
+    pub fn new(config: &'a KopiConfig) -> Result<Self> {
         Ok(Self { config })
     }
 

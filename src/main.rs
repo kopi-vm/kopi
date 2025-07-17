@@ -9,6 +9,7 @@ use kopi::commands::setup::SetupCommand;
 use kopi::commands::shell::ShellCommand;
 use kopi::commands::shim::ShimCommand;
 use kopi::commands::uninstall::UninstallCommand;
+use kopi::config::new_kopi_config;
 use kopi::error::{Result, format_error_chain, get_exit_code};
 use kopi::logging;
 
@@ -187,6 +188,15 @@ fn main() {
     // Initialize logger based on CLI flags and environment
     setup_logger(&cli);
 
+    // Load configuration once at startup
+    let config = match new_kopi_config() {
+        Ok(config) => config,
+        Err(e) => {
+            eprintln!("{}", format_error_chain(&e));
+            std::process::exit(get_exit_code(&e));
+        }
+    };
+
     let result: Result<()> = (|| {
         match cli.command {
             Commands::Install {
@@ -197,7 +207,7 @@ fn main() {
                 timeout,
                 javafx_bundled,
             } => {
-                let command = InstallCommand::new()?;
+                let command = InstallCommand::new(&config)?;
                 command.execute(
                     &version,
                     force,
@@ -208,23 +218,23 @@ fn main() {
                 )
             }
             Commands::List => {
-                let command = ListCommand::new()?;
+                let command = ListCommand::new(&config)?;
                 command.execute()
             }
             Commands::Shell { version, shell } => {
-                let command = ShellCommand::new()?;
+                let command = ShellCommand::new(&config)?;
                 command.execute(&version, shell.as_deref())
             }
             Commands::Current { quiet, json } => {
-                let command = CurrentCommand::new()?;
+                let command = CurrentCommand::new(&config)?;
                 command.execute(quiet, json)
             }
             Commands::Global { version } => {
-                let command = GlobalCommand::new()?;
+                let command = GlobalCommand::new(&config)?;
                 command.execute(&version)
             }
             Commands::Local { version } => {
-                let command = LocalCommand::new()?;
+                let command = LocalCommand::new(&config)?;
                 command.execute(&version)
             }
             Commands::Which { version } => {
@@ -232,11 +242,11 @@ fn main() {
                 println!("Path for JDK {v} (not yet implemented)");
                 Ok(())
             }
-            Commands::Cache { command } => command.execute(),
+            Commands::Cache { command } => command.execute(&config),
             Commands::Refresh { javafx_bundled } => {
                 // Delegate to cache refresh command
                 let cache_cmd = CacheCommand::Refresh { javafx_bundled };
-                cache_cmd.execute()
+                cache_cmd.execute(&config)
             }
             Commands::Search {
                 version,
@@ -257,13 +267,13 @@ fn main() {
                     java_version: false,
                     distribution_version: false,
                 };
-                cache_cmd.execute()
+                cache_cmd.execute(&config)
             }
             Commands::Setup { force } => {
-                let command = SetupCommand::new()?;
+                let command = SetupCommand::new(&config)?;
                 command.execute(force)
             }
-            Commands::Shim { command } => command.execute(),
+            Commands::Shim { command } => command.execute(&config),
             Commands::Uninstall {
                 version,
                 force,
@@ -271,7 +281,7 @@ fn main() {
                 all,
                 cleanup,
             } => {
-                let command = UninstallCommand::new()?;
+                let command = UninstallCommand::new(&config)?;
                 command.execute(version.as_deref(), force, dry_run, all, cleanup)
             }
         }

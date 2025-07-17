@@ -1,4 +1,4 @@
-use crate::config::new_kopi_config;
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::installation::auto::{AutoInstaller, InstallationResult};
 use crate::storage::JdkRepository;
@@ -7,25 +7,24 @@ use log::{debug, info};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-pub struct LocalCommand;
+pub struct LocalCommand<'a> {
+    config: &'a KopiConfig,
+}
 
-impl LocalCommand {
-    pub fn new() -> Result<Self> {
-        Ok(Self)
+impl<'a> LocalCommand<'a> {
+    pub fn new(config: &'a KopiConfig) -> Result<Self> {
+        Ok(Self { config })
     }
 
     pub fn execute(&self, version_spec: &str) -> Result<()> {
         info!("Setting local JDK version to {version_spec}");
-
-        // Load configuration
-        let config = new_kopi_config()?;
 
         // Parse version specification using lenient parsing
         let version_request = VersionRequest::from_str(version_spec)?;
         debug!("Parsed version request: {version_request:?}");
 
         // Create storage repository
-        let repository = JdkRepository::new(&config);
+        let repository = JdkRepository::new(self.config);
 
         // Check if matching JDK is installed
         let mut matching_jdks = repository.find_matching_jdks(&version_request)?;
@@ -34,7 +33,7 @@ impl LocalCommand {
             // Auto-installation is optional for local command
             info!("JDK {} is not installed.", version_request.version_pattern);
 
-            let auto_installer = AutoInstaller::new(&config);
+            let auto_installer = AutoInstaller::new(self.config);
 
             match auto_installer.prompt_and_install(&version_request)? {
                 InstallationResult::Installed => {

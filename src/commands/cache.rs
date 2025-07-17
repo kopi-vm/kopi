@@ -1,5 +1,5 @@
 use crate::cache;
-use crate::config::new_kopi_config;
+use crate::config::KopiConfig;
 use crate::error::Result;
 use crate::search::{PackageSearcher, get_current_platform};
 use crate::version::parser::VersionParser;
@@ -66,11 +66,11 @@ struct SearchOptions {
 }
 
 impl CacheCommand {
-    pub fn execute(self) -> Result<()> {
+    pub fn execute(self, config: &KopiConfig) -> Result<()> {
         match self {
-            CacheCommand::Refresh { javafx_bundled } => refresh_cache(javafx_bundled),
-            CacheCommand::Info => show_cache_info(),
-            CacheCommand::Clear => clear_cache(),
+            CacheCommand::Refresh { javafx_bundled } => refresh_cache(javafx_bundled, config),
+            CacheCommand::Info => show_cache_info(config),
+            CacheCommand::Clear => clear_cache(config),
             CacheCommand::Search {
                 version,
                 compact,
@@ -91,14 +91,14 @@ impl CacheCommand {
                     force_java_version: java_version,
                     force_distribution_version: distribution_version,
                 };
-                search_cache(options)
+                search_cache(options, config)
             }
-            CacheCommand::ListDistributions => list_distributions(),
+            CacheCommand::ListDistributions => list_distributions(config),
         }
     }
 }
 
-fn refresh_cache(javafx_bundled: bool) -> Result<()> {
+fn refresh_cache(javafx_bundled: bool, config: &KopiConfig) -> Result<()> {
     let spinner = ProgressBar::new_spinner();
     spinner.set_style(
         ProgressStyle::default_spinner()
@@ -109,8 +109,7 @@ fn refresh_cache(javafx_bundled: bool) -> Result<()> {
     spinner.set_message("Refreshing metadata cache from foojay.io...");
     spinner.enable_steady_tick(Duration::from_millis(100));
 
-    let config = new_kopi_config()?;
-    let cache = cache::fetch_and_cache_metadata_with_options(javafx_bundled, &config)?;
+    let cache = cache::fetch_and_cache_metadata_with_options(javafx_bundled, config)?;
 
     spinner.finish_and_clear();
     println!("{} Cache refreshed successfully", "✓".green().bold());
@@ -128,8 +127,7 @@ fn refresh_cache(javafx_bundled: bool) -> Result<()> {
     Ok(())
 }
 
-fn show_cache_info() -> Result<()> {
-    let config = new_kopi_config()?;
+fn show_cache_info(config: &KopiConfig) -> Result<()> {
     let cache_path = config.metadata_cache_path()?;
 
     if !cache_path.exists() {
@@ -164,8 +162,7 @@ fn show_cache_info() -> Result<()> {
     Ok(())
 }
 
-fn clear_cache() -> Result<()> {
-    let config = new_kopi_config()?;
+fn clear_cache(config: &KopiConfig) -> Result<()> {
     let cache_path = config.metadata_cache_path()?;
 
     if cache_path.exists() {
@@ -178,7 +175,7 @@ fn clear_cache() -> Result<()> {
     Ok(())
 }
 
-fn search_cache(options: SearchOptions) -> Result<()> {
+fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
     let SearchOptions {
         version_string,
         compact: _compact,
@@ -189,7 +186,6 @@ fn search_cache(options: SearchOptions) -> Result<()> {
         force_java_version,
         force_distribution_version,
     } = options;
-    let config = new_kopi_config()?;
     let cache_path = config.metadata_cache_path()?;
 
     // Load cache or create new one if it doesn't exist
@@ -201,7 +197,7 @@ fn search_cache(options: SearchOptions) -> Result<()> {
     };
 
     // Parse the version string to check if distribution was specified
-    let parser = VersionParser::new(&config);
+    let parser = VersionParser::new(config);
     let parsed_request = match parser.parse(&version_string) {
         Ok(req) => req,
         Err(e) => {
@@ -251,7 +247,7 @@ fn search_cache(options: SearchOptions) -> Result<()> {
                 println!("Distribution '{dist_id}' not found in cache. Fetching from foojay.io...");
             }
 
-            match cache::fetch_and_cache_distribution(canonical_name, javafx_bundled, &config) {
+            match cache::fetch_and_cache_distribution(canonical_name, javafx_bundled, config) {
                 Ok(updated_cache) => {
                     cache = updated_cache;
                     if !json {
@@ -280,7 +276,7 @@ fn search_cache(options: SearchOptions) -> Result<()> {
     }
 
     // Use the shared searcher with config for additional distributions
-    let searcher = PackageSearcher::new(&cache, &config);
+    let searcher = PackageSearcher::new(&cache, config);
 
     // Determine version search type based on flags
     let version_type = if force_java_version {
@@ -679,8 +675,7 @@ fn search_cache(options: SearchOptions) -> Result<()> {
     Ok(())
 }
 
-fn list_distributions() -> Result<()> {
-    let config = new_kopi_config()?;
+fn list_distributions(config: &KopiConfig) -> Result<()> {
     let cache_path = config.metadata_cache_path()?;
 
     if !cache_path.exists() {
@@ -863,7 +858,7 @@ mod tests {
 
         // Test that version-only searches don't default to Temurin
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
-        let parser = VersionParser::new(&config);
+        let parser = VersionParser::new(config);
         let parsed = parser.parse("21").unwrap();
         assert!(parsed.version.is_some());
         assert_eq!(parsed.distribution, None); // Should not default to any distribution
