@@ -5,7 +5,19 @@ use log::debug;
 use std::path::Path;
 
 #[cfg(target_os = "windows")]
+use std::ffi::OsStr;
+
+#[cfg(target_os = "windows")]
+use std::os::windows::ffi::OsStrExt;
+
+#[cfg(target_os = "windows")]
 use std::process::Command;
+
+#[cfg(target_os = "windows")]
+use winapi::um::fileapi::{GetFileAttributesW, INVALID_FILE_ATTRIBUTES, SetFileAttributesW};
+
+#[cfg(target_os = "windows")]
+use winapi::um::winnt::FILE_ATTRIBUTE_READONLY;
 
 #[cfg(not(target_os = "windows"))]
 use std::process::Command;
@@ -87,18 +99,51 @@ fn check_files_in_use_windows(path: &Path) -> Result<Vec<String>> {
 
 #[cfg(target_os = "windows")]
 fn prepare_windows_removal(path: &Path) -> Result<()> {
-    // Remove read-only attributes recursively
-    if let Err(e) = Command::new("attrib")
-        .arg("-R")
-        .arg("/S")
-        .arg(path.display().to_string())
-        .output()
-    {
-        debug!("Failed to remove read-only attributes: {e}");
+    use walkdir::WalkDir;
+
+    // Remove read-only attributes recursively using winapi
+    for entry in WalkDir::new(path) {
+        match entry {
+            Ok(entry) => {
+                if let Err(e) = remove_readonly_attribute(entry.path()) {
+                    debug!(
+                        "Failed to remove read-only attribute from {}: {}",
+                        entry.path().display(),
+                        e
+                    );
+                }
+            }
+            Err(e) => {
+                debug!("Failed to access directory entry: {e}");
+            }
+        }
     }
 
-    // Note: handle_antivirus_interference should only be called after actual removal attempts,
-    // not during preparation phase when files are expected to still exist
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn remove_readonly_attribute(path: &Path) -> std::io::Result<()> {
+    let path_wide: Vec<u16> = OsStr::new(path)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    unsafe {
+        // Get current attributes
+        let current_attrs = GetFileAttributesW(path_wide.as_ptr());
+        if current_attrs == INVALID_FILE_ATTRIBUTES {
+            return Err(std::io::Error::last_os_error());
+        }
+
+        // Remove READ_ONLY attribute if present
+        let new_attrs = current_attrs & !FILE_ATTRIBUTE_READONLY;
+
+        // Only call SetFileAttributesW if the attributes actually changed
+        if new_attrs != current_attrs && SetFileAttributesW(path_wide.as_ptr(), new_attrs) == 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+    }
 
     Ok(())
 }

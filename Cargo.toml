@@ -81,7 +81,7 @@ libc = "0.2"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.53.0"
 junction = "1.2.0"
-winapi = { version = "0.3", features = ["fileapi"] }
+winapi = { version = "0.3", features = ["fileapi", "winnt"] }
 
 [features]
 integration_tests = []
