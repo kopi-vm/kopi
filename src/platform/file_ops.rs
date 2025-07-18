@@ -79,6 +79,7 @@ pub fn make_writable(path: &Path) -> std::io::Result<()> {
     {
         let metadata = fs::metadata(path)?;
         let mut permissions = metadata.permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
         permissions.set_readonly(false);
         fs::set_permissions(path, permissions)
     }
