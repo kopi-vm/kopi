@@ -262,11 +262,7 @@ impl<'a> UninstallCleanup<'a> {
         walkdir::WalkDir::new(path)
             .into_iter()
             .filter_map(|e| e.ok())
-            .try_for_each(|entry| {
-                let mut perms = entry.metadata()?.permissions();
-                perms.set_readonly(false);
-                fs::set_permissions(entry.path(), perms)
-            })?;
+            .try_for_each(|entry| platform::file_ops::make_writable(entry.path()))?;
 
         fs::remove_dir_all(path)?;
         Ok(())

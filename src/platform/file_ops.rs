@@ -61,6 +61,29 @@ pub fn set_permissions_from_mode(_path: &Path, _mode: u32) -> std::io::Result<()
     Ok(())
 }
 
+/// Make a file or directory writable.
+///
+/// On Unix systems, this adds owner write permission.
+/// On Windows, this removes the read-only attribute.
+pub fn make_writable(path: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        let metadata = fs::metadata(path)?;
+        let mut permissions = metadata.permissions();
+        let mode = permissions.mode() | 0o200; // Add owner write permission
+        permissions.set_mode(mode);
+        fs::set_permissions(path, permissions)
+    }
+
+    #[cfg(windows)]
+    {
+        let metadata = fs::metadata(path)?;
+        let mut permissions = metadata.permissions();
+        permissions.set_readonly(false);
+        fs::set_permissions(path, permissions)
+    }
+}
+
 /// Atomically rename a file from source to destination.
 ///
 /// On Unix systems, rename is atomic by default.
