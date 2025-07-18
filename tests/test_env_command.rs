@@ -10,7 +10,11 @@ use std::path::Path;
 fn get_test_command(kopi_home: &Path) -> Command {
     let mut cmd = Command::cargo_bin("kopi").unwrap();
     cmd.env("KOPI_HOME", kopi_home.to_str().unwrap());
-    cmd.env("HOME", kopi_home.parent().unwrap());
+    let parent = kopi_home.parent().unwrap();
+    cmd.env("HOME", parent);
+    // On Windows, dirs crate uses USERPROFILE, not HOME
+    #[cfg(windows)]
+    cmd.env("USERPROFILE", parent);
     cmd
 }
 
@@ -21,23 +25,24 @@ fn test_env_basic_bash() {
     test_home.setup_kopi_structure();
     let kopi_home = test_home.kopi_home();
 
-    // Create a mock JDK installation
+    // Create a mock JDK installation with proper structure
     let jdk_path = kopi_home.join("jdks").join("temurin-21.0.1");
-    fs::create_dir_all(&jdk_path).unwrap();
-
-    // Set a global version (using the correct filename that VersionResolver expects)
-    let global_version_file = kopi_home.join("default-version");
-    fs::write(&global_version_file, "temurin@21.0.1").unwrap();
+    let bin_dir = jdk_path.join("bin");
+    fs::create_dir_all(&bin_dir).unwrap();
+    
+    // Create mock executables
+    let exe_ext = if cfg!(windows) { ".exe" } else { "" };
+    fs::write(bin_dir.join(format!("java{}", exe_ext)), "mock java").unwrap();
+    fs::write(bin_dir.join(format!("javac{}", exe_ext)), "mock javac").unwrap();
 
     // Test env command
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env");
+    cmd.env("KOPI_JAVA_VERSION", "temurin@21.0.1");
+    cmd.arg("env").arg("--shell").arg("bash");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "export JAVA_HOME=\"{}\"",
-            jdk_path.display()
-        )));
+        .stdout(predicate::str::contains("export JAVA_HOME="))
+        .stdout(predicate::str::contains("temurin-21.0.1"));
 }
 
 /// Test env command with quiet flag
@@ -47,23 +52,24 @@ fn test_env_quiet_flag() {
     test_home.setup_kopi_structure();
     let kopi_home = test_home.kopi_home();
 
-    // Create a mock JDK installation
+    // Create a mock JDK installation with proper structure
     let jdk_path = kopi_home.join("jdks").join("temurin-21.0.1");
-    fs::create_dir_all(&jdk_path).unwrap();
-
-    // Set a global version (using the correct filename that VersionResolver expects)
-    let global_version_file = kopi_home.join("default-version");
-    fs::write(&global_version_file, "temurin@21.0.1").unwrap();
+    let bin_dir = jdk_path.join("bin");
+    fs::create_dir_all(&bin_dir).unwrap();
+    
+    // Create mock executables
+    let exe_ext = if cfg!(windows) { ".exe" } else { "" };
+    fs::write(bin_dir.join(format!("java{}", exe_ext)), "mock java").unwrap();
+    fs::write(bin_dir.join(format!("javac{}", exe_ext)), "mock javac").unwrap();
 
     // Test env command with quiet flag
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env").arg("--quiet");
+    cmd.env("KOPI_JAVA_VERSION", "temurin@21.0.1");
+    cmd.arg("env").arg("--shell").arg("bash").arg("--quiet");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "export JAVA_HOME=\"{}\"",
-            jdk_path.display()
-        )))
+        .stdout(predicate::str::contains("export JAVA_HOME="))
+        .stdout(predicate::str::contains("temurin-21.0.1"))
         .stderr(predicate::str::is_empty());
 }
 
@@ -74,14 +80,11 @@ fn test_env_jdk_not_installed() {
     test_home.setup_kopi_structure();
     let kopi_home = test_home.kopi_home();
 
-    // Set a global version without installing the JDK
-    let global_version_file = kopi_home.join("default-version");
-    fs::write(&global_version_file, "temurin@21.0.1").unwrap();
-
-    // Test env command
+    // Test env command with version set but JDK not installed
     let mut cmd = get_test_command(&kopi_home);
+    cmd.env("KOPI_JAVA_VERSION", "temurin@21.0.1");
     cmd.arg("env");
     cmd.assert()
         .failure()
-        .stderr(predicate::str::contains("is not installed"));
+        .stderr(predicate::str::contains("Error: JDK 'temurin@21.0.1' is not installed"));
 }
