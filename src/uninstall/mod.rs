@@ -193,7 +193,7 @@ impl<'a> UninstallHandler<'a> {
         info!("Removing JDK at {}", jdk.path.display());
 
         // Check for files in use before removal
-        let files_in_use = platform::uninstall::check_files_in_use(&jdk.path)?;
+        let files_in_use = platform::file_ops::check_files_in_use(&jdk.path)?;
         if !files_in_use.is_empty() {
             warn!("Files may be in use:");
             for file in &files_in_use {
@@ -214,7 +214,7 @@ impl<'a> UninstallHandler<'a> {
         };
 
         // Prepare platform-specific removal
-        platform::uninstall::prepare_for_removal(&jdk.path)?;
+        platform::file_ops::prepare_for_removal(&jdk.path)?;
 
         // Atomic removal with rollback capability
         let temp_path = self.prepare_atomic_removal(&jdk.path)?;
@@ -222,7 +222,7 @@ impl<'a> UninstallHandler<'a> {
         match self.finalize_removal(&temp_path) {
             Ok(()) => {
                 // Platform-specific cleanup
-                if let Err(e) = platform::uninstall::post_removal_cleanup(&jdk.path) {
+                if let Err(e) = platform::file_ops::post_removal_cleanup(&jdk.path) {
                     debug!("Post-removal cleanup failed: {e}");
                 }
 

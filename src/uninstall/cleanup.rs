@@ -113,7 +113,7 @@ impl<'a> UninstallCleanup<'a> {
         info!("Performing force cleanup of {}", jdk_path.display());
 
         // Try platform-specific preparation
-        if let Err(e) = platform::uninstall::prepare_for_removal(jdk_path) {
+        if let Err(e) = platform::file_ops::prepare_for_removal(jdk_path) {
             warn!("Platform preparation failed: {e}");
         }
 
