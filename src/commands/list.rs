@@ -73,7 +73,7 @@ mod tests {
         // Create jdks directory but leave it empty
         fs::create_dir_all(config.jdks_dir().unwrap()).unwrap();
 
-        let command = ListCommand::new().unwrap();
+        let command = ListCommand::new(&config).unwrap();
 
         // This would need proper testing infrastructure to capture stdout
         // For now, we just test that the command can be created and executed
@@ -102,7 +102,7 @@ mod tests {
         fs::write(jdk1_path.join("mock_file"), "test content").unwrap();
         fs::write(jdk2_path.join("mock_file"), "test content").unwrap();
 
-        let command = ListCommand::new().unwrap();
+        let command = ListCommand::new(&config).unwrap();
 
         // This would need proper testing infrastructure to capture stdout
         // For now, we just test that the command can be created and executed

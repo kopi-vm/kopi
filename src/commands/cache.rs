@@ -785,7 +785,8 @@ mod tests {
             env::set_var("KOPI_HOME", temp_dir.path());
         }
 
-        let result = show_cache_info();
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let result = show_cache_info(&config);
         assert!(result.is_ok());
 
         unsafe {
@@ -801,7 +802,8 @@ mod tests {
             env::set_var("KOPI_HOME", temp_dir.path());
         }
 
-        let result = clear_cache();
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let result = clear_cache(&config);
         assert!(result.is_ok());
 
         unsafe {
@@ -817,7 +819,8 @@ mod tests {
             env::set_var("KOPI_HOME", temp_dir.path());
         }
 
-        let result = list_distributions();
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let result = list_distributions(&config);
         assert!(result.is_ok());
 
         unsafe {
@@ -843,7 +846,8 @@ mod tests {
             force_java_version: false,
             force_distribution_version: false,
         };
-        let result = search_cache(options);
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let result = search_cache(options, &config);
         assert!(result.is_ok());
 
         unsafe {
@@ -858,7 +862,7 @@ mod tests {
 
         // Test that version-only searches don't default to Temurin
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
-        let parser = VersionParser::new(config);
+        let parser = VersionParser::new(&config);
         let parsed = parser.parse("21").unwrap();
         assert!(parsed.version.is_some());
         assert_eq!(parsed.distribution, None); // Should not default to any distribution
@@ -941,7 +945,8 @@ mod tests {
             force_java_version: false,
             force_distribution_version: false,
         };
-        let result = search_cache(options);
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let result = search_cache(options, &config);
         assert!(result.is_ok(), "Search should succeed with synonym");
 
         unsafe {

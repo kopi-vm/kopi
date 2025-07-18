@@ -181,10 +181,13 @@ impl<'a> UninstallCommand<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn test_uninstall_command_creation() {
-        let command = UninstallCommand::new();
+        let temp_dir = TempDir::new().unwrap();
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let command = UninstallCommand::new(&config);
         assert!(command.is_ok());
     }
 }

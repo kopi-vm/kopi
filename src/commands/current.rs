@@ -171,7 +171,9 @@ mod tests {
             env::set_var("KOPI_JAVA_VERSION", "21");
         }
 
-        let _command = CurrentCommand::new().unwrap();
+        let temp_dir = TempDir::new().unwrap();
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let _command = CurrentCommand::new(&config).unwrap();
         // This would need mocking to properly test without side effects
 
         // Restore environment

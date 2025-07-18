@@ -483,11 +483,11 @@ mod tests {
 
     #[test]
     fn test_parse_version_spec() {
-        let cmd = InstallCommand::new();
+        let config = KopiConfig::new(std::env::temp_dir()).unwrap();
+        let cmd = InstallCommand::new(&config);
         assert!(cmd.is_ok());
 
         // Test version parsing is called correctly
-        let config = KopiConfig::new(std::env::temp_dir()).unwrap();
         let parser = VersionParser::new(&config);
         let version_request = parser.parse("21").unwrap();
         assert!(version_request.version.is_some());
@@ -499,7 +499,8 @@ mod tests {
     fn test_dry_run_prevents_installation() {
         // This would be a more complex test with mocks
         // For now, just verify the command can be created
-        let cmd = InstallCommand::new();
+        let config = KopiConfig::new(std::env::temp_dir()).unwrap();
+        let cmd = InstallCommand::new(&config);
         assert!(cmd.is_ok());
     }
 
@@ -536,7 +537,8 @@ mod tests {
         use crate::version::Version;
         use std::str::FromStr;
 
-        let cmd = InstallCommand::new().unwrap();
+        let config = KopiConfig::new(std::env::temp_dir()).unwrap();
+        let cmd = InstallCommand::new(&config).unwrap();
 
         let metadata = JdkMetadata {
             id: "test-id".to_string(),

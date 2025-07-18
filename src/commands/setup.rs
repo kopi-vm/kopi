@@ -259,7 +259,7 @@ mod tests {
     fn test_create_directories() {
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let setup = SetupCommand { config };
+        let setup = SetupCommand { config: &config };
 
         setup.create_directories().unwrap();
 
@@ -273,7 +273,7 @@ mod tests {
     fn test_show_path_instructions() {
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let setup = SetupCommand { config };
+        let setup = SetupCommand { config: &config };
 
         // This should not fail even if shell detection fails
         let result = setup.show_path_instructions();

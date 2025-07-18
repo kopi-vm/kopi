@@ -111,16 +111,21 @@ impl<'a> LocalCommand<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn test_local_command_creation() {
-        let command = LocalCommand::new().unwrap();
+        let temp_dir = TempDir::new().unwrap();
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let command = LocalCommand::new(&config).unwrap();
         assert!(!std::ptr::addr_of!(command).is_null());
     }
 
     #[test]
     fn test_local_version_path() {
-        let command = LocalCommand::new().unwrap();
+        let temp_dir = TempDir::new().unwrap();
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let command = LocalCommand::new(&config).unwrap();
         let path = command.local_version_path().unwrap();
         assert!(path.ends_with(".kopi-version"));
     }

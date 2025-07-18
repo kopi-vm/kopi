@@ -108,7 +108,9 @@ mod tests {
 
     #[test]
     fn test_global_command_creation() {
-        let command = GlobalCommand::new().unwrap();
+        let temp_dir = TempDir::new().unwrap();
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let command = GlobalCommand::new(&config).unwrap();
         assert!(!std::ptr::addr_of!(command).is_null());
     }
 
@@ -116,9 +118,9 @@ mod tests {
     fn test_global_version_path() {
         let temp_dir = TempDir::new().unwrap();
         let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let command = GlobalCommand::new().unwrap();
+        let command = GlobalCommand::new(&config).unwrap();
 
-        let version_path = command.global_version_path(command.config).unwrap();
+        let version_path = command.global_version_path(&config).unwrap();
         assert_eq!(version_path, temp_dir.path().join("version"));
     }
 }

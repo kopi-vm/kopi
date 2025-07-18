@@ -133,16 +133,21 @@ impl<'a> ShellCommand<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn test_shell_command_creation() {
-        let command = ShellCommand::new().unwrap();
+        let temp_dir = TempDir::new().unwrap();
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let command = ShellCommand::new(&config).unwrap();
         assert!(!std::ptr::addr_of!(command).is_null());
     }
 
     #[test]
     fn test_shell_override() {
-        let cmd = ShellCommand::new().unwrap();
+        let temp_dir = TempDir::new().unwrap();
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let cmd = ShellCommand::new(&config).unwrap();
 
         // Test known shells
         let (shell_type, _) = cmd
