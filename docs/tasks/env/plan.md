@@ -43,35 +43,40 @@ This document outlines the implementation plan for the `kopi env` command, which
 - [ ] Integrate with `ErrorContext` for helpful messages
 - [ ] Implement `--quiet` flag to suppress stderr output
 
-## Phase 2: Multi-Shell Support
+## Phase 2: Multi-Shell Support ✅
 
 ### 2.1 Shell Detection Integration
-- [ ] Use existing `platform::shell::detect_shell()` function
-- [ ] Handle `--shell` option with `parse_shell_name()`
-- [ ] Pass detected/specified shell to formatter
+- [x] Use existing `platform::shell::detect_shell()` function
+- [x] Handle `--shell` option with `parse_shell_name()`
+- [x] Pass detected/specified shell to formatter
 
 ### 2.2 Fish Shell Support
-- [ ] Implement Fish formatter:
+- [x] Implement Fish formatter:
   ```fish
   set -gx JAVA_HOME "/path/to/jdk"
   ```
-- [ ] Add Fish-specific tests
+- [x] Add Fish-specific tests
 
 ### 2.3 PowerShell Support
-- [ ] Implement PowerShell formatter:
+- [x] Implement PowerShell formatter:
   ```powershell
   $env:JAVA_HOME = "C:\path\to\jdk"
   ```
-- [ ] Handle Windows path formats
-- [ ] Add PowerShell-specific tests
+- [x] Handle Windows path formats
+- [x] Add PowerShell-specific tests
 
 ### 2.4 Windows CMD Support
-- [ ] Implement CMD formatter:
+- [x] Implement CMD formatter:
   ```cmd
   set JAVA_HOME=C:\path\to\jdk
   ```
-- [ ] Handle `--export` flag (no-op for CMD)
-- [ ] Add CMD-specific tests
+- [x] Handle `--export` flag (no-op for CMD)
+- [x] Add CMD-specific tests
+
+### Additional Improvements Completed
+- [x] Enhanced path escaping for special characters in all shells
+- [x] Added comprehensive integration tests in `tests/commands/env_command.rs`
+- [x] Added error handling tests for edge cases
 
 ## Phase 3: Performance Optimization
 

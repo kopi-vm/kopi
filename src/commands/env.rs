@@ -97,24 +97,45 @@ impl EnvFormatter {
 
         match self.shell_type {
             Shell::Bash | Shell::Zsh => {
+                // Escape double quotes and backslashes in the path
+                let escaped_path = java_home.replace('\\', "\\\\").replace('"', "\\\"");
                 if self.export {
-                    Ok(format!("export JAVA_HOME=\"{java_home}\"\n"))
+                    Ok(format!("export JAVA_HOME=\"{escaped_path}\"\n"))
                 } else {
-                    Ok(format!("JAVA_HOME=\"{java_home}\"\n"))
+                    Ok(format!("JAVA_HOME=\"{escaped_path}\"\n"))
                 }
             }
-            Shell::Fish => Ok(format!("set -gx JAVA_HOME \"{java_home}\"\n")),
-            Shell::PowerShell => Ok(format!("$env:JAVA_HOME = \"{java_home}\"\n")),
+            Shell::Fish => {
+                // Fish also needs quote escaping
+                let escaped_path = java_home.replace('\\', "\\\\").replace('"', "\\\"");
+                Ok(format!("set -gx JAVA_HOME \"{escaped_path}\"\n"))
+            }
+            Shell::PowerShell => {
+                // PowerShell uses backtick for escaping
+                let escaped_path = java_home.replace('"', "`\"");
+                Ok(format!("$env:JAVA_HOME = \"{escaped_path}\"\n"))
+            }
             Shell::Cmd => {
-                // CMD doesn't have export concept
-                Ok(format!("set JAVA_HOME={java_home}\n"))
+                // CMD is more complex - spaces and special chars need quotes
+                if java_home.contains(' ')
+                    || java_home.contains('&')
+                    || java_home.contains('(')
+                    || java_home.contains(')')
+                {
+                    // Use quotes and escape internal quotes
+                    let escaped_path = java_home.replace('"', "\"\"");
+                    Ok(format!("set JAVA_HOME=\"{escaped_path}\"\n"))
+                } else {
+                    Ok(format!("set JAVA_HOME={java_home}\n"))
+                }
             }
             Shell::Unknown(_) => {
-                // Default to bash-style export
+                // Default to bash-style export with escaping
+                let escaped_path = java_home.replace('\\', "\\\\").replace('"', "\\\"");
                 if self.export {
-                    Ok(format!("export JAVA_HOME=\"{java_home}\"\n"))
+                    Ok(format!("export JAVA_HOME=\"{escaped_path}\"\n"))
                 } else {
-                    Ok(format!("JAVA_HOME=\"{java_home}\"\n"))
+                    Ok(format!("JAVA_HOME=\"{escaped_path}\"\n"))
                 }
             }
         }
@@ -175,6 +196,58 @@ mod tests {
         assert_eq!(
             output,
             "set JAVA_HOME=C:\\Users\\user\\.kopi\\jdks\\temurin-21\n"
+        );
+    }
+
+    #[test]
+    fn test_bash_formatter_with_quotes() {
+        let formatter = EnvFormatter::new(Shell::Bash, true);
+        let path = PathBuf::from("/home/user/\"special\"/jdk");
+        let output = formatter.format_env(&path).unwrap();
+        assert_eq!(
+            output,
+            "export JAVA_HOME=\"/home/user/\\\"special\\\"/jdk\"\n"
+        );
+    }
+
+    #[test]
+    fn test_powershell_formatter_with_quotes() {
+        let formatter = EnvFormatter::new(Shell::PowerShell, true);
+        let path = PathBuf::from("C:\\Program Files\\Java\\\"JDK\"\\bin");
+        let output = formatter.format_env(&path).unwrap();
+        assert_eq!(
+            output,
+            "$env:JAVA_HOME = \"C:\\Program Files\\Java\\`\"JDK`\"\\bin\"\n"
+        );
+    }
+
+    #[test]
+    fn test_cmd_formatter_with_spaces() {
+        let formatter = EnvFormatter::new(Shell::Cmd, true);
+        let path = PathBuf::from("C:\\Program Files\\Java\\jdk-21");
+        let output = formatter.format_env(&path).unwrap();
+        assert_eq!(
+            output,
+            "set JAVA_HOME=\"C:\\Program Files\\Java\\jdk-21\"\n"
+        );
+    }
+
+    #[test]
+    fn test_cmd_formatter_with_special_chars() {
+        let formatter = EnvFormatter::new(Shell::Cmd, true);
+        let path = PathBuf::from("C:\\Dev\\Java (x64)\\jdk");
+        let output = formatter.format_env(&path).unwrap();
+        assert_eq!(output, "set JAVA_HOME=\"C:\\Dev\\Java (x64)\\jdk\"\n");
+    }
+
+    #[test]
+    fn test_fish_formatter_with_escaping() {
+        let formatter = EnvFormatter::new(Shell::Fish, true);
+        let path = PathBuf::from("/home/user/\"kopi\"/jdk");
+        let output = formatter.format_env(&path).unwrap();
+        assert_eq!(
+            output,
+            "set -gx JAVA_HOME \"/home/user/\\\"kopi\\\"/jdk\"\n"
         );
     }
 }
