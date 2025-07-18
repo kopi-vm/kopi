@@ -1,5 +1,6 @@
 pub mod cache;
 pub mod current;
+pub mod env;
 pub mod global;
 pub mod install;
 pub mod list;

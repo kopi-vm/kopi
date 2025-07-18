@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use kopi::commands::cache::CacheCommand;
 use kopi::commands::current::CurrentCommand;
+use kopi::commands::env::EnvCommand;
 use kopi::commands::global::GlobalCommand;
 use kopi::commands::install::InstallCommand;
 use kopi::commands::list::ListCommand;
@@ -76,6 +77,21 @@ enum Commands {
         /// Output in JSON format
         #[arg(long)]
         json: bool,
+    },
+
+    /// Output environment variables for shell evaluation
+    Env {
+        /// Specific version to use (defaults to current)
+        version: Option<String>,
+        /// Override shell detection
+        #[arg(long)]
+        shell: Option<String>,
+        /// Output export statements (default: true)
+        #[arg(long, default_value = "true")]
+        export: bool,
+        /// Suppress helpful messages on stderr
+        #[arg(short = 'q', long)]
+        quiet: bool,
     },
 
     /// Set the global default JDK version
@@ -228,6 +244,15 @@ fn main() {
             Commands::Current { quiet, json } => {
                 let command = CurrentCommand::new(&config)?;
                 command.execute(quiet, json)
+            }
+            Commands::Env {
+                version,
+                shell,
+                export,
+                quiet,
+            } => {
+                let command = EnvCommand::new(&config)?;
+                command.execute(version.as_deref(), shell.as_deref(), export, quiet)
             }
             Commands::Global { version } => {
                 let command = GlobalCommand::new(&config)?;
