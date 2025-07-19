@@ -1,4 +1,5 @@
-use super::*;
+use crate::cache::models::{PlatformFilter, VersionSearchType};
+use crate::cache::searcher::PackageSearcher;
 use crate::cache::{DistributionCache, MetadataCache};
 use crate::config::KopiConfig;
 use crate::models::distribution::Distribution;

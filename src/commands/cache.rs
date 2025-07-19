@@ -109,7 +109,7 @@ fn refresh_cache(javafx_bundled: bool, config: &KopiConfig) -> Result<()> {
     spinner.set_message("Refreshing metadata cache from foojay.io...");
     spinner.enable_steady_tick(Duration::from_millis(100));
 
-    let cache = cache::fetch_and_cache_metadata_with_options(javafx_bundled, config)?;
+    let cache = cache::fetch_and_cache_metadata(javafx_bundled, config)?;
 
     spinner.finish_and_clear();
     println!("{} Cache refreshed successfully", "✓".green().bold());
