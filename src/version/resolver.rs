@@ -129,9 +129,7 @@ impl VersionResolver {
 
     fn get_global_default(&self) -> Result<Option<(VersionRequest, PathBuf)>> {
         if let Some(home) = home_dir() {
-            // TODO: Change from "default-version" to "version" to match design spec
-            // and align with other tools (rbenv, pyenv)
-            let global_version_path = home.join(".kopi").join("default-version");
+            let global_version_path = home.join(".kopi").join("version");
 
             if global_version_path.exists() {
                 let content = self.read_version_file(&global_version_path)?;
