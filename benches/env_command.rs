@@ -4,66 +4,99 @@
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use kopi::commands::env::EnvCommand;
-use kopi::config::KopiConfig;
+use kopi::config::new_kopi_config;
+use std::env;
 use std::fs;
 use tempfile::TempDir;
 
-/// Create a test configuration with a temporary home directory
-fn setup_test_config() -> (KopiConfig, TempDir) {
+/// Create a test configuration with a temporary home directory and set KOPI_HOME
+fn setup_test_env() -> (TempDir, impl Drop) {
     let temp_dir = TempDir::new().unwrap();
     let kopi_home = temp_dir.path();
 
-    // Create config - this will create necessary directories
-    let config = KopiConfig::new(kopi_home.to_path_buf()).unwrap();
-    
-    // Force directory creation
-    let _ = config.jdks_dir();
-    let _ = config.cache_dir();
+    // Set KOPI_HOME environment variable
+    unsafe {
+        env::set_var("KOPI_HOME", kopi_home);
+    }
 
-    (config, temp_dir)
+    // Create necessary directories
+    fs::create_dir_all(kopi_home.join("jdks")).unwrap();
+    fs::create_dir_all(kopi_home.join("cache")).unwrap();
+
+    // Return a guard that will restore the environment when dropped
+    struct EnvGuard {
+        original: Option<String>,
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            unsafe {
+                if let Some(val) = &self.original {
+                    env::set_var("KOPI_HOME", val);
+                } else {
+                    env::remove_var("KOPI_HOME");
+                }
+            }
+        }
+    }
+
+    let guard = EnvGuard {
+        original: env::var("KOPI_HOME").ok(),
+    };
+
+    (temp_dir, guard)
 }
 
-/// Create a mock JDK installation for testing
-fn create_mock_jdk(config: &KopiConfig, version: &str, distribution: &str) {
-    let jdks_dir = config.jdks_dir().unwrap();
-    let jdk_dir = jdks_dir.join(format!("{}-{}", distribution, version));
-    fs::create_dir_all(&jdk_dir).unwrap();
+/// Install a real JDK using kopi install command
+fn install_jdk(kopi_home: &std::path::Path, version: &str, distribution: &str) {
+    use std::process::Command;
 
-    // Create bin directory
-    let bin_dir = jdk_dir.join("bin");
-    fs::create_dir_all(&bin_dir).unwrap();
+    // Build the kopi path - use the release binary from this project
+    let kopi_binary = std::env::current_dir()
+        .unwrap()
+        .join("target")
+        .join("release")
+        .join("kopi");
 
-    // Create java executable (empty file for testing)
-    #[cfg(unix)]
-    {
-        fs::write(bin_dir.join("java"), "").unwrap();
+    // Run kopi install command with KOPI_HOME set
+    let output = Command::new(&kopi_binary)
+        .env("KOPI_HOME", kopi_home)
+        .arg("install")
+        .arg(format!("{distribution}@{version}"))
+        .output()
+        .expect("Failed to execute kopi install");
+
+    if !output.status.success() {
+        panic!(
+            "Failed to install JDK {}@{}: {}\n{}",
+            distribution,
+            version,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
-    #[cfg(windows)]
-    {
-        fs::write(bin_dir.join("java.exe"), "").unwrap();
-    }
-    
-    // Create a simple marker file for testing
-    fs::write(jdk_dir.join(".installed"), "").unwrap();
 }
 
 /// Benchmark env command with global configuration
 fn benchmark_env_global(c: &mut Criterion) {
-    let (config, _temp) = setup_test_config();
-
-    // Create a JDK installation
-    create_mock_jdk(&config, "21", "temurin");
-
-    // Set global version
-    fs::write(
-        config.config_path(),
-        "[global]\ndefault_version = \"temurin@21\"",
-    )
-    .unwrap();
-
     c.bench_function("env_global_config", |b| {
+        // Setup once before iterations
+        let (_temp_dir, _guard) = setup_test_env();
+        let kopi_home = env::var("KOPI_HOME").unwrap();
+        let kopi_home_path = std::path::Path::new(&kopi_home);
+
+        // Install a real JDK
+        install_jdk(kopi_home_path, "21", "temurin");
+
+        // Set global version in ~/.kopi/version
+        let version_file = kopi_home_path.join("version");
+        fs::write(&version_file, "temurin@21").unwrap();
+
         b.iter(|| {
+            // Create config and run command
+            let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
+            // Use quiet=true (last parameter) to suppress output during benchmarking
             let _ = black_box(cmd.execute(None, Some("bash"), true, true));
         });
     });
@@ -71,42 +104,50 @@ fn benchmark_env_global(c: &mut Criterion) {
 
 /// Benchmark env command with project-specific version file
 fn benchmark_env_project(c: &mut Criterion) {
-    let (config, temp) = setup_test_config();
-
-    // Create a JDK installation
-    create_mock_jdk(&config, "17", "corretto");
-
-    // Create project directory with .kopi-version
-    let project_dir = temp.path().join("project");
-    fs::create_dir_all(&project_dir).unwrap();
-    fs::write(project_dir.join(".kopi-version"), "corretto@17").unwrap();
-
-    // Change to project directory
-    let original_dir = std::env::current_dir().unwrap();
-    std::env::set_current_dir(&project_dir).unwrap();
-
     c.bench_function("env_project_version", |b| {
+        // Setup once before iterations
+        let (_temp_dir, _guard) = setup_test_env();
+        let kopi_home = env::var("KOPI_HOME").unwrap();
+        let kopi_home_path = std::path::Path::new(&kopi_home);
+
+        // Install a real JDK
+        install_jdk(kopi_home_path, "17", "corretto");
+
+        // Create project directory with .kopi-version
+        let project_dir = kopi_home_path.join("project");
+        fs::create_dir_all(&project_dir).unwrap();
+        fs::write(project_dir.join(".kopi-version"), "corretto@17").unwrap();
+
+        // Change to project directory
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&project_dir).unwrap();
+
         b.iter(|| {
+            let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
             let _ = black_box(cmd.execute(None, Some("bash"), true, true));
         });
-    });
 
-    // Restore original directory
-    std::env::set_current_dir(original_dir).unwrap();
+        // Restore original directory
+        std::env::set_current_dir(original_dir).unwrap();
+    });
 }
 
 /// Benchmark env command with explicit version
 fn benchmark_env_explicit(c: &mut Criterion) {
-    let (config, _temp) = setup_test_config();
-
-    // Create multiple JDK installations
-    create_mock_jdk(&config, "11", "temurin");
-    create_mock_jdk(&config, "17", "temurin");
-    create_mock_jdk(&config, "21", "temurin");
-
     c.bench_function("env_explicit_version", |b| {
+        // Setup once before iterations
+        let (_temp_dir, _guard) = setup_test_env();
+        let kopi_home = env::var("KOPI_HOME").unwrap();
+        let kopi_home_path = std::path::Path::new(&kopi_home);
+
+        // Install multiple real JDKs
+        install_jdk(kopi_home_path, "11", "temurin");
+        install_jdk(kopi_home_path, "17", "temurin");
+        install_jdk(kopi_home_path, "21", "temurin");
+
         b.iter(|| {
+            let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
             let _ = black_box(cmd.execute(Some("temurin@17"), Some("bash"), true, true));
         });
@@ -115,55 +156,64 @@ fn benchmark_env_explicit(c: &mut Criterion) {
 
 /// Benchmark env command with deep directory hierarchy
 fn benchmark_env_deep_hierarchy(c: &mut Criterion) {
-    let (config, temp) = setup_test_config();
-
-    // Create a JDK installation
-    create_mock_jdk(&config, "21", "zulu");
-
-    // Create deep directory structure
-    let mut current = temp.path().to_path_buf();
-    for i in 0..10 {
-        current = current.join(format!("level{}", i));
-        fs::create_dir(&current).unwrap();
-    }
-
-    // Put .kopi-version at the root
-    fs::write(temp.path().join(".kopi-version"), "zulu@21").unwrap();
-
-    // Change to deepest directory
-    let original_dir = std::env::current_dir().unwrap();
-    std::env::set_current_dir(&current).unwrap();
-
     c.bench_function("env_deep_hierarchy", |b| {
+        // Setup once before iterations
+        let (_temp_dir, _guard) = setup_test_env();
+        let kopi_home = env::var("KOPI_HOME").unwrap();
+        let kopi_home_path = std::path::Path::new(&kopi_home);
+
+        // Install a real JDK
+        install_jdk(kopi_home_path, "21", "zulu");
+
+        // Create deep directory structure
+        let mut current = kopi_home_path.join("project");
+        for i in 0..10 {
+            current = current.join(format!("level{i}"));
+            fs::create_dir_all(&current).unwrap();
+        }
+
+        // Put .kopi-version at the project root
+        fs::write(
+            kopi_home_path.join("project").join(".kopi-version"),
+            "zulu@21",
+        )
+        .unwrap();
+
+        // Change to deepest directory
+        let original_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&current).unwrap();
+
         b.iter(|| {
+            let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
             let _ = black_box(cmd.execute(None, Some("bash"), true, true));
         });
-    });
 
-    // Restore original directory
-    std::env::set_current_dir(original_dir).unwrap();
+        // Restore original directory
+        std::env::set_current_dir(original_dir).unwrap();
+    });
 }
 
 /// Benchmark different shell formatters
 fn benchmark_env_shells(c: &mut Criterion) {
-    let (config, _temp) = setup_test_config();
-
-    // Create a JDK installation
-    create_mock_jdk(&config, "21", "temurin");
-
-    // Set global version
-    fs::write(
-        config.config_path(),
-        "[global]\ndefault_version = \"temurin@21\"",
-    )
-    .unwrap();
-
     let shells = vec!["bash", "zsh", "fish", "powershell", "cmd"];
 
     for shell in shells {
-        c.bench_function(&format!("env_shell_{}", shell), |b| {
+        c.bench_function(&format!("env_shell_{shell}"), |b| {
+            // Setup once before iterations
+            let (_temp_dir, _guard) = setup_test_env();
+            let kopi_home = env::var("KOPI_HOME").unwrap();
+            let kopi_home_path = std::path::Path::new(&kopi_home);
+
+            // Install a real JDK
+            install_jdk(kopi_home_path, "21", "temurin");
+
+            // Set global version
+            let version_file = kopi_home_path.join("version");
+            fs::write(&version_file, "temurin@21").unwrap();
+
             b.iter(|| {
+                let config = new_kopi_config().unwrap();
                 let cmd = EnvCommand::new(&config).unwrap();
                 let _ = black_box(cmd.execute(None, Some(shell), true, true));
             });
@@ -173,11 +223,13 @@ fn benchmark_env_shells(c: &mut Criterion) {
 
 /// Benchmark env command error cases
 fn benchmark_env_errors(c: &mut Criterion) {
-    let (config, _temp) = setup_test_config();
-
-    // No JDK installed - this will error
     c.bench_function("env_no_jdk_error", |b| {
+        // Setup once before iterations
+        let (_temp_dir, _guard) = setup_test_env();
+
+        // No JDK installed - this will error
         b.iter(|| {
+            let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
             let _ = black_box(cmd.execute(Some("temurin@99"), Some("bash"), true, true));
         });
@@ -189,14 +241,15 @@ fn benchmark_env_cold_start(c: &mut Criterion) {
     c.bench_function("env_cold_start", |b| {
         b.iter(|| {
             // Create new config each time to simulate cold start
-            let (config, _temp) = setup_test_config();
-            create_mock_jdk(&config, "21", "temurin");
-            fs::write(
-                config.config_path(),
-                "[global]\ndefault_version = \"temurin@21\"",
-            )
-            .unwrap();
+            let (_temp_dir, _guard) = setup_test_env();
+            let kopi_home = env::var("KOPI_HOME").unwrap();
+            let kopi_home_path = std::path::Path::new(&kopi_home);
 
+            install_jdk(kopi_home_path, "21", "temurin");
+            let version_file = kopi_home_path.join("version");
+            fs::write(&version_file, "temurin@21").unwrap();
+
+            let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
             let _ = black_box(cmd.execute(None, Some("bash"), true, true));
         });
@@ -219,13 +272,13 @@ criterion_main!(env_benchmarks);
 /// Additional module for microbenchmarks
 #[cfg(test)]
 mod microbenchmarks {
-    #[allow(unused_imports)]
-    use super::*;
+    use kopi::config::new_kopi_config;
     use kopi::platform::shell::{detect_shell, parse_shell_name};
     use kopi::version::resolver::VersionResolver;
+    use std::env;
+    use std::fs;
     use std::time::Instant;
     use tempfile::TempDir;
-    use std::fs;
 
     #[test]
     #[ignore]
@@ -268,6 +321,12 @@ mod microbenchmarks {
     #[ignore]
     fn measure_version_file_lookup() {
         let temp = TempDir::new().unwrap();
+        let original_home = env::var("KOPI_HOME").ok();
+
+        // Set KOPI_HOME to temp directory
+        unsafe {
+            env::set_var("KOPI_HOME", temp.path());
+        }
 
         // Create nested directories
         let mut path = temp.path().to_path_buf();
@@ -280,13 +339,15 @@ mod microbenchmarks {
         fs::write(temp.path().join(".kopi-version"), "temurin@21").unwrap();
 
         // Measure from deepest directory
-        std::env::set_current_dir(&path).unwrap();
+        let original_dir = env::current_dir().unwrap();
+        env::set_current_dir(&path).unwrap();
 
         let iterations = 100;
         let start = Instant::now();
 
         for _ in 0..iterations {
-            let resolver = VersionResolver::new();
+            let config = new_kopi_config().unwrap();
+            let resolver = VersionResolver::new(&config);
             let _ = resolver.resolve_version();
         }
 
@@ -297,5 +358,15 @@ mod microbenchmarks {
             "Version resolution (20 levels deep): {:?} per call",
             per_call
         );
+
+        // Restore original state
+        env::set_current_dir(original_dir).unwrap();
+        unsafe {
+            if let Some(home) = original_home {
+                env::set_var("KOPI_HOME", home);
+            } else {
+                env::remove_var("KOPI_HOME");
+            }
+        }
     }
 }
