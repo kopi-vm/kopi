@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::time::Duration;
 
 use crate::api::ApiClient;
 use crate::config::KopiConfig;
@@ -49,6 +50,18 @@ impl Default for MetadataCache {
 }
 
 impl MetadataCache {
+    /// Check if the cache is stale based on the given maximum age
+    pub fn is_stale(&self, max_age: Duration) -> bool {
+        let now = Utc::now();
+        let elapsed = now.signed_duration_since(self.last_updated);
+
+        // Convert chrono::Duration to std::time::Duration for comparison
+        match elapsed.to_std() {
+            Ok(std_duration) => std_duration > max_age,
+            Err(_) => true, // If time went backwards or conversion failed, consider stale
+        }
+    }
+
     pub fn has_version(&self, version: &str) -> bool {
         for dist in self.distributions.values() {
             for package in &dist.packages {
@@ -404,7 +417,7 @@ fn convert_package_to_jdk_metadata(
     Ok(jdk_metadata)
 }
 
-fn convert_api_to_cache(api_metadata: ApiMetadata) -> Result<MetadataCache> {
+pub fn convert_api_to_cache(api_metadata: ApiMetadata) -> Result<MetadataCache> {
     use std::str::FromStr;
 
     let mut cache = MetadataCache::new();

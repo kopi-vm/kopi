@@ -1,13 +1,13 @@
 use crate::api::ApiClient;
 use crate::archive::extract_archive;
+use crate::cache::{self, MetadataCache};
 use crate::config::KopiConfig;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
 use crate::models::metadata::JdkMetadata;
 use crate::platform::{
-    get_current_architecture, get_current_os, get_foojay_libc_type, get_platform_description,
-    matches_foojay_libc_type,
+    get_current_architecture, get_current_os, get_platform_description, matches_foojay_libc_type,
 };
 use crate::search::PackageSearcher;
 use crate::security::verify_checksum;
@@ -17,6 +17,7 @@ use crate::storage::JdkRepository;
 use crate::version::parser::VersionParser;
 use log::{debug, info, trace, warn};
 use std::str::FromStr;
+use std::time::Duration;
 
 pub struct InstallCommand<'a> {
     api_client: ApiClient,
@@ -28,6 +29,67 @@ impl<'a> InstallCommand<'a> {
         let api_client = ApiClient::new();
 
         Ok(Self { api_client, config })
+    }
+
+    /// Ensure we have a fresh cache, refreshing if necessary
+    fn ensure_fresh_cache(&self) -> Result<MetadataCache> {
+        let cache_path = self.config.metadata_cache_path()?;
+        let max_age = Duration::from_secs(self.config.cache.max_age_hours * 3600);
+
+        // Check if cache needs refresh
+        let should_refresh = if cache_path.exists() {
+            match cache::load_cache(&cache_path) {
+                Ok(cache) => {
+                    if self.config.cache.auto_refresh {
+                        cache.is_stale(max_age)
+                    } else {
+                        false
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to load existing cache: {e}");
+                    true
+                }
+            }
+        } else {
+            debug!("No cache found, will fetch from API");
+            true
+        };
+
+        // Refresh if needed
+        if should_refresh && self.config.cache.auto_refresh {
+            info!("Refreshing package cache...");
+            match self.api_client.fetch_all_metadata() {
+                Ok(metadata) => {
+                    let cache = self.convert_api_metadata_to_cache(metadata)?;
+                    cache.save(&cache_path)?;
+                    Ok(cache)
+                }
+                Err(e) => {
+                    // If refresh fails and we have an existing cache, use it with warning
+                    if cache_path.exists() {
+                        if let Ok(cache) = cache::load_cache(&cache_path) {
+                            warn!("Failed to refresh cache: {e}. Using existing cache.");
+                            return Ok(cache);
+                        }
+                    }
+                    Err(KopiError::MetadataFetch(format!(
+                        "Failed to fetch metadata: {e}"
+                    )))
+                }
+            }
+        } else {
+            cache::load_cache(&cache_path)
+        }
+    }
+
+    /// Convert API metadata to cache format
+    fn convert_api_metadata_to_cache(
+        &self,
+        api_metadata: crate::models::api::ApiMetadata,
+    ) -> Result<MetadataCache> {
+        // Use the existing conversion function from cache module
+        cache::convert_api_to_cache(api_metadata)
     }
 
     pub fn execute(
@@ -252,146 +314,97 @@ impl<'a> InstallCommand<'a> {
         distribution: &Distribution,
         version: &crate::version::Version,
         version_request: &crate::version::parser::ParsedVersionRequest,
-        javafx_bundled: bool,
+        _javafx_bundled: bool,
     ) -> Result<crate::models::api::Package> {
         // Build query parameters
         let arch = get_current_architecture();
         let os = get_current_os();
-        let lib_c_type = get_foojay_libc_type();
 
-        // First try to find the package in cache if it exists
-        let cache_path = self.config.metadata_cache_path()?;
-        if cache_path.exists() {
-            if let Ok(cache) = crate::cache::load_cache(&cache_path) {
-                let searcher = PackageSearcher::new(&cache, self.config);
-                if let Some(jdk_metadata) = searcher.find_exact_package(
-                    distribution,
-                    &version.to_string(),
-                    &arch,
-                    &os,
-                    version_request.package_type.as_ref(),
-                ) {
-                    // Convert cached JdkMetadata to API Package format
-                    debug!(
-                        "Found package in cache: {} {}",
-                        distribution.name(),
-                        version
-                    );
-                    return Ok(self.convert_metadata_to_package(&jdk_metadata));
+        // Always ensure we have a fresh cache
+        let mut cache = self.ensure_fresh_cache()?;
+
+        // Search in cache
+        let searcher = PackageSearcher::new(&cache, self.config);
+
+        // First try exact match
+        if let Some(jdk_metadata) = searcher.find_exact_package(
+            distribution,
+            &version.to_string(),
+            &arch,
+            &os,
+            version_request.package_type.as_ref(),
+        ) {
+            debug!(
+                "Found exact package match: {} {}",
+                distribution.name(),
+                version
+            );
+            return Ok(self.convert_metadata_to_package(&jdk_metadata));
+        }
+
+        // If not found and refresh_on_miss is enabled, try refreshing cache once
+        if self.config.cache.refresh_on_miss {
+            info!("Package not found in cache, refreshing...");
+            match self.api_client.fetch_all_metadata() {
+                Ok(metadata) => {
+                    cache = self.convert_api_metadata_to_cache(metadata)?;
+                    let cache_path = self.config.metadata_cache_path()?;
+                    cache.save(&cache_path)?;
+
+                    // Search again in fresh cache
+                    let searcher = PackageSearcher::new(&cache, self.config);
+                    if let Some(jdk_metadata) = searcher.find_exact_package(
+                        distribution,
+                        &version.to_string(),
+                        &arch,
+                        &os,
+                        version_request.package_type.as_ref(),
+                    ) {
+                        debug!(
+                            "Found package after refresh: {} {}",
+                            distribution.name(),
+                            version
+                        );
+                        return Ok(self.convert_metadata_to_package(&jdk_metadata));
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to refresh cache on miss: {e}");
                 }
             }
         }
 
-        // If not found in cache or cache doesn't exist, fetch directly from API
-        debug!("Package not found in cache, fetching directly from API");
+        // Package not found after all attempts
+        // Try to find available versions in cache for helpful error message
+        let available_versions = cache
+            .distributions
+            .get(distribution.id())
+            .map(|dist| {
+                let mut versions: Vec<String> = dist
+                    .packages
+                    .iter()
+                    .filter(|pkg| {
+                        pkg.architecture.to_string() == arch
+                            && pkg.operating_system.to_string() == os
+                    })
+                    .map(|pkg| pkg.version.to_string())
+                    .collect();
+                versions.sort();
+                versions.dedup();
+                versions
+            })
+            .unwrap_or_default();
 
-        // Archive types to query for (as expected by foojay.io API)
-        let archive_types = vec![
-            "tar.gz".to_string(),
-            "zip".to_string(),
-            "tgz".to_string(),
-            "tar".to_string(),
-        ];
-
-        let package_type_str = version_request
-            .package_type
-            .as_ref()
-            .map(|pt| pt.to_string())
-            .unwrap_or_else(|| "jdk".to_string());
-
-        let query = crate::api::PackageQuery {
-            version: Some(version.to_string()),
-            distribution: Some(distribution.id().to_string()),
-            architecture: Some(arch.clone()),
-            operating_system: Some(os.clone()),
-            package_type: Some(package_type_str),
-            archive_types: Some(archive_types),
-            latest: Some("per_version".to_string()),
-            directly_downloadable: Some(true),
-            lib_c_type: Some(lib_c_type.to_string()),
-            javafx_bundled: if javafx_bundled { None } else { Some(false) },
-        };
-
-        // Get packages from API
-        let packages = self.api_client.get_packages(Some(query))?;
-
-        // Debug: Log the response
-        debug!("API returned {} packages", packages.len());
-        for (i, pkg) in packages.iter().enumerate() {
-            trace!(
-                "Package[{}]: distribution={}, version={}, filename={}, archive_type={}, os={}, id={}",
-                i,
-                pkg.distribution,
-                pkg.java_version,
-                pkg.filename,
-                pkg.archive_type,
-                pkg.operating_system,
-                pkg.id
-            );
-        }
-
-        if packages.is_empty() {
-            // Try to find any packages for this distribution to suggest versions
-            let archive_types = vec![
-                "tar.gz".to_string(),
-                "zip".to_string(),
-                "tgz".to_string(),
-                "tar".to_string(),
-            ];
-
-            let package_type_str_all = version_request
-                .package_type
-                .as_ref()
-                .map(|pt| pt.to_string())
-                .unwrap_or_else(|| "jdk".to_string());
-
-            let query_all = crate::api::PackageQuery {
-                distribution: Some(distribution.id().to_string()),
-                architecture: Some(arch.clone()),
-                operating_system: Some(os.clone()),
-                package_type: Some(package_type_str_all),
-                archive_types: Some(archive_types),
-                directly_downloadable: Some(true),
-                lib_c_type: Some(lib_c_type.to_string()),
-                version: None,
-                latest: None,
-                javafx_bundled: if javafx_bundled { None } else { Some(false) },
-            };
-
-            let all_packages = self
-                .api_client
-                .get_packages(Some(query_all))
-                .unwrap_or_default();
-            let version_strings: Vec<String> = all_packages
-                .iter()
-                .map(|p| p.java_version.clone())
-                .collect();
-
-            return Err(KopiError::VersionNotAvailable(format!(
-                "{} {} not found. Available versions: {}",
-                distribution.name(),
-                version,
-                if version_strings.is_empty() {
-                    "none".to_string()
-                } else {
-                    version_strings.join(", ")
-                }
-            )));
-        }
-
-        // Find the first package that matches the requested distribution
-        let package = packages
-            .into_iter()
-            .find(|p| p.distribution.to_lowercase() == distribution.id())
-            .ok_or_else(|| {
-                KopiError::VersionNotAvailable(format!(
-                    "{} {} not found in the returned packages",
-                    distribution.name(),
-                    version
-                ))
-            })?;
-
-        Ok(package)
+        Err(KopiError::VersionNotAvailable(format!(
+            "{} {} not found. Available versions: {}",
+            distribution.name(),
+            version,
+            if available_versions.is_empty() {
+                "none for your platform".to_string()
+            } else {
+                available_versions.join(", ")
+            }
+        )))
     }
 
     fn convert_package_to_metadata(
