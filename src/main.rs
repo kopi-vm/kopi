@@ -80,6 +80,16 @@ enum Commands {
     },
 
     /// Output environment variables for shell evaluation
+    ///
+    /// Sets JAVA_HOME for the current JDK. Use with eval/source in your shell.
+    #[command(long_about = "Output environment variables for shell evaluation
+
+Sets JAVA_HOME for the current or specified JDK version.
+
+Examples:
+  eval \"$(kopi env)\"              # Bash/Zsh
+  kopi env | source               # Fish
+  kopi env | Invoke-Expression    # PowerShell")]
     Env {
         /// Specific version to use (defaults to current)
         version: Option<String>,

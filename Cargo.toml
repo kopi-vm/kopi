@@ -100,6 +100,10 @@ serial_test = "3.2.0"
 name = "kopi_bench"
 harness = false
 
+[[bench]]
+name = "env_command"
+harness = false
+
 [[bin]]
 name = "kopi-shim"
 path = "src/bin/kopi-shim.rs"

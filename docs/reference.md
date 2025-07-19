@@ -114,7 +114,7 @@ eval "$(kopi shell 21 --shell bash)"
 
 ### `kopi env`
 
-Output environment variables for shell evaluation, similar to direnv. (Not yet implemented)
+Output environment variables for shell evaluation, similar to direnv. This command outputs shell-specific environment setup for JAVA_HOME without modifying PATH.
 
 **Usage:**
 ```bash
@@ -122,20 +122,57 @@ kopi env                                 # Output environment variables for curr
 kopi env <version>                       # Output environment variables for specific JDK
 ```
 
+**Options:**
+- `--shell <shell>`: Override shell detection (bash, zsh, fish, powershell, cmd)
+- `--export`: Include export statement (default: true)
+- `-q, --quiet`: Suppress helpful messages on stderr
+
+**Version Resolution:**
+The command resolves the JDK version in the following order:
+1. Explicit version parameter (if provided)
+2. `KOPI_JAVA_VERSION` environment variable
+3. `.kopi-version` file in current or parent directories
+4. `.java-version` file in current or parent directories
+5. Global default version
+
 **Examples:**
 ```bash
-# Bash/Zsh
+# Bash/Zsh - Auto-detect version and shell
 eval "$(kopi env)"
 
-# Fish
+# Fish - Use current project version
 kopi env | source
 
-# Use in shell hooks
-# Add to .bashrc or .zshrc for automatic environment setup
-eval "$(kopi env)"
+# PowerShell - Specific version
+kopi env temurin@21 | Invoke-Expression
+
+# Windows CMD - Use --shell flag
+FOR /F "tokens=*" %i IN ('kopi env --shell cmd') DO %i
+
+# Without export statement (just the value)
+kopi env --export=false
+
+# Quiet mode (no helper messages)
+eval "$(kopi env --quiet)"
+
+# Use in shell hooks (.bashrc/.zshrc)
+if command -v kopi &> /dev/null; then
+    eval "$(kopi env --quiet)"
+fi
 ```
 
-**Note:** This command is planned but not yet implemented. When available, it will output environment variable settings (like JAVA_HOME) that can be evaluated by the shell, allowing integration with shell hooks and custom environment management workflows. Unlike `kopi shell`, this command focuses solely on environment variable output without modifying PATH or providing interactive features.
+**Shell-Specific Output Formats:**
+- **Bash/Zsh**: `export JAVA_HOME="/path/to/jdk"`
+- **Fish**: `set -gx JAVA_HOME "/path/to/jdk"`
+- **PowerShell**: `$env:JAVA_HOME = "/path/to/jdk"`
+- **CMD**: `set JAVA_HOME=/path/to/jdk`
+
+**Notes:**
+- Outputs to stdout for shell evaluation, stderr for messages
+- Properly escapes paths with spaces and special characters
+- Verifies JDK is installed before outputting
+- Unlike `kopi shell`, this only sets JAVA_HOME without PATH modifications
+- Ideal for integration with direnv, shell prompts, or custom scripts
 
 ### `kopi global`
 
