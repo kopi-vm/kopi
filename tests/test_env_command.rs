@@ -29,7 +29,7 @@ fn test_env_basic_bash() {
     let jdk_path = kopi_home.join("jdks").join("temurin-21.0.1");
     let bin_dir = jdk_path.join("bin");
     fs::create_dir_all(&bin_dir).unwrap();
-    
+
     // Create mock executables
     let exe_ext = if cfg!(windows) { ".exe" } else { "" };
     fs::write(bin_dir.join(format!("java{}", exe_ext)), "mock java").unwrap();
@@ -56,7 +56,7 @@ fn test_env_quiet_flag() {
     let jdk_path = kopi_home.join("jdks").join("temurin-21.0.1");
     let bin_dir = jdk_path.join("bin");
     fs::create_dir_all(&bin_dir).unwrap();
-    
+
     // Create mock executables
     let exe_ext = if cfg!(windows) { ".exe" } else { "" };
     fs::write(bin_dir.join(format!("java{}", exe_ext)), "mock java").unwrap();
@@ -84,7 +84,7 @@ fn test_env_jdk_not_installed() {
     let mut cmd = get_test_command(&kopi_home);
     cmd.env("KOPI_JAVA_VERSION", "temurin@21.0.1");
     cmd.arg("env");
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains("Error: JDK 'temurin@21.0.1' is not installed"));
+    cmd.assert().failure().stderr(predicate::str::contains(
+        "Error: JDK 'temurin@21.0.1' is not installed",
+    ));
 }

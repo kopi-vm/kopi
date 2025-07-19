@@ -47,7 +47,8 @@ fn benchmark_version_resolution(c: &mut Criterion) {
 
     // Benchmark with no version file (uses environment or default)
     c.bench_function("version_resolution_no_file", |b| {
-        let resolver = VersionResolver::new();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::new(&config);
         b.iter(|| {
             std::env::set_current_dir(temp_dir.path()).unwrap();
             black_box(resolver.resolve_version())
@@ -56,7 +57,8 @@ fn benchmark_version_resolution(c: &mut Criterion) {
 
     // Benchmark with version file in current directory
     c.bench_function("version_resolution_current_dir", |b| {
-        let resolver = VersionResolver::new();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::new(&config);
         b.iter(|| {
             std::env::set_current_dir(&project_dir).unwrap();
             black_box(resolver.resolve_version())
@@ -65,7 +67,8 @@ fn benchmark_version_resolution(c: &mut Criterion) {
 
     // Benchmark with version file in parent directory
     c.bench_function("version_resolution_parent_dir", |b| {
-        let resolver = VersionResolver::new();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::new(&config);
         b.iter(|| {
             std::env::set_current_dir(&nested_dir).unwrap();
             black_box(resolver.resolve_version())
@@ -74,7 +77,8 @@ fn benchmark_version_resolution(c: &mut Criterion) {
 
     // Benchmark with environment variable override
     c.bench_function("version_resolution_env_override", |b| {
-        let resolver = VersionResolver::new();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::new(&config);
         unsafe {
             std::env::set_var("KOPI_JAVA_VERSION", "corretto@17");
         }
@@ -139,7 +143,8 @@ fn benchmark_total_overhead(c: &mut Criterion) {
             // Simulate shim operations
             let registry = ToolRegistry::new();
             let validator = SecurityValidator::new(&config);
-            let resolver = VersionResolver::new();
+            let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+            let resolver = VersionResolver::new(&config);
 
             // Tool detection
             let tool = "java";

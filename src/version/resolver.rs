@@ -1,6 +1,6 @@
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::version::VersionRequest;
-use dirs::home_dir;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,25 +20,24 @@ pub enum VersionSource {
     GlobalDefault(PathBuf), // ~/.kopi/default-version
 }
 
-pub struct VersionResolver {
+pub struct VersionResolver<'a> {
     current_dir: PathBuf,
+    config: &'a KopiConfig,
 }
 
-impl Default for VersionResolver {
-    fn default() -> Self {
+impl<'a> VersionResolver<'a> {
+    pub fn new(config: &'a KopiConfig) -> Self {
         Self {
             current_dir: env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+            config,
         }
     }
-}
 
-impl VersionResolver {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn with_dir(dir: PathBuf) -> Self {
-        Self { current_dir: dir }
+    pub fn with_dir(dir: PathBuf, config: &'a KopiConfig) -> Self {
+        Self {
+            current_dir: dir,
+            config,
+        }
     }
 
     pub fn resolve_version(&self) -> Result<(VersionRequest, VersionSource)> {
@@ -128,14 +127,12 @@ impl VersionResolver {
     }
 
     fn get_global_default(&self) -> Result<Option<(VersionRequest, PathBuf)>> {
-        if let Some(home) = home_dir() {
-            let global_version_path = home.join(".kopi").join("version");
+        let global_version_path = self.config.kopi_home().join("version");
 
-            if global_version_path.exists() {
-                let content = self.read_version_file(&global_version_path)?;
-                let version_request = VersionRequest::from_str(&content)?;
-                return Ok(Some((version_request, global_version_path)));
-            }
+        if global_version_path.exists() {
+            let content = self.read_version_file(&global_version_path)?;
+            let version_request = VersionRequest::from_str(&content)?;
+            return Ok(Some((version_request, global_version_path)));
         }
 
         Ok(None)
@@ -145,15 +142,20 @@ impl VersionResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::KopiConfig;
+    use serial_test::serial;
     use std::fs;
     use tempfile::TempDir;
 
     #[test]
+    #[serial]
     fn test_resolve_from_env_var() {
         unsafe {
             env::set_var(VERSION_ENV_VAR, "temurin@21");
         }
-        let resolver = VersionResolver::new();
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::new(&config);
         let (result, source) = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "21");
         assert_eq!(result.distribution, Some("temurin".to_string()));
@@ -164,14 +166,21 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_resolve_from_kopi_version_file() {
+        // Clear environment variable to ensure test isolation
+        unsafe {
+            env::remove_var(VERSION_ENV_VAR);
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
         let version_file = temp_path.join(KOPI_VERSION_FILE);
         fs::write(&version_file, "corretto@17.0.8").unwrap();
 
-        let resolver = VersionResolver::with_dir(temp_path.clone());
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(temp_path.clone(), &config);
         let (result, source) = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "17.0.8");
         assert_eq!(result.distribution, Some("corretto".to_string()));
@@ -179,14 +188,21 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_resolve_from_java_version_file() {
+        // Clear environment variable to ensure test isolation
+        unsafe {
+            env::remove_var(VERSION_ENV_VAR);
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
         let version_file = temp_path.join(JAVA_VERSION_FILE);
         fs::write(&version_file, "11.0.2").unwrap();
 
-        let resolver = VersionResolver::with_dir(temp_path.clone());
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(temp_path.clone(), &config);
         let (result, source) = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "11.0.2");
         assert_eq!(result.distribution, None);
@@ -194,7 +210,13 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_resolve_searches_parent_directories() {
+        // Clear environment variable to ensure test isolation
+        unsafe {
+            env::remove_var(VERSION_ENV_VAR);
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let parent_dir = temp_dir.path().to_path_buf();
 
@@ -206,7 +228,8 @@ mod tests {
         fs::write(&version_file, "zulu@8").unwrap();
 
         // Resolver starts in child directory
-        let resolver = VersionResolver::with_dir(child_dir);
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(child_dir, &config);
         let (result, source) = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "8");
         assert_eq!(result.distribution, Some("zulu".to_string()));
@@ -214,8 +237,10 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_kopi_version_takes_precedence() {
-        // Clear environment variable to ensure test isolation
+        // Save original value and ensure clean state
+        let original = env::var(VERSION_ENV_VAR).ok();
         unsafe {
             env::remove_var(VERSION_ENV_VAR);
         }
@@ -230,75 +255,142 @@ mod tests {
         let java_version = temp_path.join(JAVA_VERSION_FILE);
         fs::write(&java_version, "17").unwrap();
 
-        let resolver = VersionResolver::with_dir(temp_path.clone());
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(temp_path.clone(), &config);
         let (result, source) = resolver.resolve_version().unwrap();
 
         // Should use .kopi-version
         assert_eq!(result.version_pattern, "21");
         assert_eq!(result.distribution, Some("temurin".to_string()));
         assert_eq!(source, VersionSource::ProjectFile(kopi_version));
+
+        // Restore original value
+        unsafe {
+            if let Some(val) = original {
+                env::set_var(VERSION_ENV_VAR, val);
+            } else {
+                env::remove_var(VERSION_ENV_VAR);
+            }
+        }
     }
 
     #[test]
+    #[serial]
     fn test_empty_version_file_error() {
+        // Clear environment variable to ensure test isolation
+        unsafe {
+            env::remove_var(VERSION_ENV_VAR);
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
         let version_file = temp_path.join(KOPI_VERSION_FILE);
         fs::write(&version_file, "").unwrap();
 
-        let resolver = VersionResolver::with_dir(temp_path.clone());
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(temp_path.clone(), &config);
         let result = resolver.resolve_version();
         assert!(result.is_err());
     }
 
     #[test]
+    #[serial]
     fn test_whitespace_trimmed() {
+        // Clear environment variable to ensure test isolation
+        unsafe {
+            env::remove_var(VERSION_ENV_VAR);
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
         let version_file = temp_path.join(JAVA_VERSION_FILE);
         fs::write(&version_file, "  17.0.9  \n").unwrap();
 
-        let resolver = VersionResolver::with_dir(temp_path.clone());
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(temp_path.clone(), &config);
         let (result, _source) = resolver.resolve_version().unwrap();
         assert_eq!(result.version_pattern, "17.0.9");
     }
 
     #[test]
+    #[serial]
     fn test_no_version_found() {
+        // Clear environment variable to ensure test isolation
+        unsafe {
+            env::remove_var(VERSION_ENV_VAR);
+        }
+
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
-        let resolver = VersionResolver::with_dir(temp_path.clone());
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(temp_path.clone(), &config);
         let result = resolver.resolve_version();
         assert!(matches!(result, Err(KopiError::NoLocalVersion { .. })));
     }
 
     #[test]
-    fn test_resolve_from_global() {
-        // This test is hard to mock without filesystem interaction
-        // We'll test that if no env var or project files exist, we either get GlobalDefault or error
+    #[serial]
+    fn test_resolve_from_global_when_exists() {
+        // Clear environment variable to ensure test isolation
+        unsafe {
+            env::remove_var(VERSION_ENV_VAR);
+        }
+
+        // Test when global version file exists
         let temp_dir = TempDir::new().unwrap();
         let temp_path = temp_dir.path().to_path_buf();
 
-        let resolver = VersionResolver::with_dir(temp_path.clone());
+        // Create a global version file in the temp kopi home
+        let global_version_path = temp_dir.path().join("version");
+        fs::write(&global_version_path, "temurin@17").unwrap();
+
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(temp_path.clone(), &config);
         let result = resolver.resolve_version();
 
-        // Since we can't easily mock the home directory, we check if it's either
-        // success with GlobalDefault (if a global file exists) or error (no version found)
-        match result {
-            Ok((_, VersionSource::GlobalDefault(_))) => {
-                // Global file exists on this system
-            }
-            Err(KopiError::NoLocalVersion { .. }) => {
-                // No global file exists
-            }
-            _ => panic!("Unexpected result"),
+        // Should successfully resolve from global default
+        let (version_request, source) = result.unwrap();
+        assert_eq!(version_request.version_pattern, "17");
+        assert_eq!(version_request.distribution, Some("temurin".to_string()));
+        assert_eq!(source, VersionSource::GlobalDefault(global_version_path));
+    }
+
+    #[test]
+    #[serial]
+    fn test_resolve_from_global_when_not_exists() {
+        // Clear environment variable to ensure test isolation
+        unsafe {
+            env::remove_var(VERSION_ENV_VAR);
+        }
+
+        // Test when no version files exist anywhere
+        let temp_dir = TempDir::new().unwrap();
+        let temp_path = temp_dir.path().to_path_buf();
+
+        // Don't create any version files
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(temp_path.clone(), &config);
+        let result = resolver.resolve_version();
+
+        // Should return NoLocalVersion error
+        assert!(matches!(result, Err(KopiError::NoLocalVersion { .. })));
+
+        // Verify the error contains searched paths
+        if let Err(KopiError::NoLocalVersion { searched_paths }) = result {
+            assert!(!searched_paths.is_empty());
+            assert!(
+                searched_paths
+                    .iter()
+                    .any(|p| p.contains(&temp_path.display().to_string()))
+            );
         }
     }
 
     #[test]
+    #[serial]
     fn test_resolve_priority() {
         // Test that environment variable takes priority over project files
         let temp_dir = TempDir::new().unwrap();
@@ -313,7 +405,8 @@ mod tests {
             env::set_var(VERSION_ENV_VAR, "temurin@21");
         }
 
-        let resolver = VersionResolver::with_dir(temp_path.clone());
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(temp_path.clone(), &config);
         let (version_request, source) = resolver.resolve_version().unwrap();
 
         // Should use environment variable, not project file

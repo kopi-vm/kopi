@@ -26,7 +26,7 @@ impl<'a> CurrentCommand<'a> {
 
     pub fn execute(&self, quiet: bool, json: bool) -> Result<()> {
         // Create version resolver
-        let resolver = VersionResolver::new();
+        let resolver = VersionResolver::new(self.config);
 
         // Resolve version with source tracking
         let (version_request, source) = match resolver.resolve_version() {

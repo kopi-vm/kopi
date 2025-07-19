@@ -30,7 +30,7 @@ impl<'a> EnvCommand<'a> {
             (request, VersionSource::Environment(ver.to_string()))
         } else {
             // Use version resolver
-            let resolver = VersionResolver::new();
+            let resolver = VersionResolver::new(self.config);
             resolver.resolve_version()?
         };
 

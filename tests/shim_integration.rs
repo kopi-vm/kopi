@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod shim_integration_tests {
+    use kopi::config::KopiConfig;
     use kopi::error::{ErrorContext, KopiError, format_error_with_color};
     use kopi::version::resolver::VersionResolver;
     use std::fs;
@@ -19,7 +20,8 @@ mod shim_integration_tests {
         fs::write(&version_file, "temurin@21").unwrap();
 
         // Resolver should find the version file when starting from project directory
-        let resolver = VersionResolver::with_dir(project_dir.clone());
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(project_dir.clone(), &config);
         let result = resolver.resolve_version();
 
         assert!(result.is_ok());
@@ -34,7 +36,8 @@ mod shim_integration_tests {
         let project_dir = temp_dir.path().join("deep").join("nested").join("project");
         fs::create_dir_all(&project_dir).unwrap();
 
-        let resolver = VersionResolver::with_dir(project_dir.clone());
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolver = VersionResolver::with_dir(project_dir.clone(), &config);
         let result = resolver.resolve_version();
 
         // Check that it's a NoLocalVersion error with searched paths

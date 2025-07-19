@@ -41,7 +41,7 @@ pub fn run_shim() -> Result<()> {
     security_validator.validate_tool(&tool_name)?;
 
     // Resolve JDK version
-    let resolver = VersionResolver::new();
+    let resolver = VersionResolver::new(&config);
     let (version_request, version_source) = match resolver.resolve_version() {
         Ok((req, source)) => (req, source),
         Err(e @ KopiError::NoLocalVersion { .. }) => {
