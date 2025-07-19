@@ -95,57 +95,10 @@ impl MetadataCache {
         storage::save_cache(self, path)
     }
 
-    /// Resolve a distribution name using synonyms
-    /// Returns the canonical name if found in synonym map, otherwise returns the input
-    pub fn resolve_distribution_name<'a>(&self, name: &'a str) -> &'a str
-    where
-        'a: 'a,
-    {
-        // Try to resolve via synonym map first
-        if let Some(canonical_name) = self.synonym_map.get(name) {
-            // We need to return the input string since we can't return a reference
-            // with a different lifetime. Instead, we'll handle this differently.
-            // For now, return the input if it matches the canonical name
-            if canonical_name == name {
-                return name;
-            }
-        }
-
-        // If it's already a canonical name in distributions, return it
-        if self.distributions.contains_key(name) {
-            return name;
-        }
-
-        // Return the input as-is
-        name
-    }
-
     /// Get the canonical name for a distribution from the synonym map
     /// Returns None if not found
     pub fn get_canonical_name(&self, name: &str) -> Option<&str> {
         self.synonym_map.get(name).map(|s| s.as_str())
-    }
-
-    /// Find a JDK package in the cache by its criteria
-    pub fn find_package(
-        &self,
-        distribution: &str,
-        version: &str,
-        architecture: &str,
-        operating_system: &str,
-    ) -> Option<&JdkMetadata> {
-        // Try to get canonical name from synonym map
-        let canonical_name = self
-            .get_canonical_name(distribution)
-            .unwrap_or(distribution);
-
-        self.distributions.get(canonical_name).and_then(|dist| {
-            dist.packages.iter().find(|pkg| {
-                pkg.version.to_string() == version
-                    && pkg.architecture.to_string() == architecture
-                    && pkg.operating_system.to_string() == operating_system
-            })
-        })
     }
 }
 
