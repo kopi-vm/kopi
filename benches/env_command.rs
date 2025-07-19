@@ -272,12 +272,20 @@ criterion_main!(env_benchmarks);
 /// Additional module for microbenchmarks
 #[cfg(test)]
 mod microbenchmarks {
+    // Move imports here to avoid unused import warnings
+    #[allow(unused_imports)]
     use kopi::config::new_kopi_config;
+    #[allow(unused_imports)]
     use kopi::platform::shell::{detect_shell, parse_shell_name};
+    #[allow(unused_imports)]
     use kopi::version::resolver::VersionResolver;
+    #[allow(unused_imports)]
     use std::env;
+    #[allow(unused_imports)]
     use std::fs;
+    #[allow(unused_imports)]
     use std::time::Instant;
+    #[allow(unused_imports)]
     use tempfile::TempDir;
 
     #[test]

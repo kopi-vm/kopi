@@ -3,15 +3,14 @@ use crate::config::KopiConfig;
 use crate::error::Result;
 use crate::models::distribution::Distribution;
 use crate::models::metadata::JdkMetadata;
-use crate::platform::matches_foojay_libc_type;
-use crate::version::parser::{ParsedVersionRequest, VersionParser};
+use crate::version::parser::ParsedVersionRequest;
 
-use super::models::{PlatformFilter, SearchResult, SearchResultRef, VersionSearchType};
+use super::models::{PlatformFilter, SearchResult, VersionSearchType};
 
 pub struct PackageSearcher<'a> {
     cache: &'a MetadataCache,
     platform_filter: PlatformFilter,
-    config: &'a KopiConfig,
+    _config: &'a KopiConfig,
 }
 
 impl<'a> PackageSearcher<'a> {
@@ -19,25 +18,8 @@ impl<'a> PackageSearcher<'a> {
         Self {
             cache,
             platform_filter: PlatformFilter::default(),
-            config,
+            _config: config,
         }
-    }
-
-    pub fn with_platform_filter(mut self, filter: PlatformFilter) -> Self {
-        self.platform_filter = filter;
-        self
-    }
-
-    fn search_common<'b, F, R>(
-        &'b self,
-        request: &ParsedVersionRequest,
-        result_builder: F,
-    ) -> Result<Vec<R>>
-    where
-        'a: 'b,
-        F: Fn(&'b str, &'b DistributionCache, &'b JdkMetadata) -> R,
-    {
-        self.search_common_with_type(request, VersionSearchType::Auto, result_builder)
     }
 
     fn search_common_with_type<'b, F, R>(
@@ -134,16 +116,6 @@ impl<'a> PackageSearcher<'a> {
         Ok(results)
     }
 
-    pub fn search(&self, version_string: &str) -> Result<Vec<SearchResult>> {
-        let parser = VersionParser::new(self.config);
-        let parsed_request = parser.parse(version_string)?;
-        self.search_parsed(&parsed_request)
-    }
-
-    pub fn search_parsed(&self, request: &ParsedVersionRequest) -> Result<Vec<SearchResult>> {
-        self.search_parsed_with_type(request, VersionSearchType::Auto)
-    }
-
     pub fn search_parsed_with_type(
         &self,
         request: &ParsedVersionRequest,
@@ -189,29 +161,6 @@ impl<'a> PackageSearcher<'a> {
         VersionSearchType::JavaVersion
     }
 
-    pub fn search_parsed_refs<'b>(
-        &'b self,
-        request: &ParsedVersionRequest,
-    ) -> Result<Vec<SearchResultRef<'b>>>
-    where
-        'a: 'b,
-    {
-        let mut results =
-            self.search_common(request, |dist_name, dist_cache, package| SearchResultRef {
-                distribution: dist_name,
-                display_name: &dist_cache.display_name,
-                package,
-            })?;
-
-        // Sort by distribution and version
-        results.sort_by(|a, b| match a.distribution.cmp(b.distribution) {
-            std::cmp::Ordering::Equal => b.package.version.cmp(&a.package.version),
-            other => other,
-        });
-
-        Ok(results)
-    }
-
     pub fn find_exact_package(
         &self,
         distribution: &Distribution,
@@ -239,83 +188,6 @@ impl<'a> PackageSearcher<'a> {
                     && (package_type.is_none() || Some(&pkg.package_type) == package_type)
             })
             .cloned()
-    }
-
-    pub fn find_auto_selected_package(
-        &self,
-        distribution: &Distribution,
-        version: &str,
-        architecture: &str,
-        operating_system: &str,
-        requested_package_type: Option<crate::models::package::PackageType>,
-    ) -> Option<JdkMetadata> {
-        let cache = self.cache;
-
-        // Look up distribution by its API name, resolving synonyms
-        let canonical_name = cache
-            .get_canonical_name(distribution.id())
-            .unwrap_or(distribution.id());
-        let dist_cache = cache.distributions.get(canonical_name)?;
-
-        // Find packages matching version, arch, and OS
-        let matching_packages: Vec<&JdkMetadata> = dist_cache
-            .packages
-            .iter()
-            .filter(|pkg| {
-                pkg.version.matches_pattern(version)
-                    && pkg.architecture.to_string() == architecture
-                    && pkg.operating_system.to_string() == operating_system
-            })
-            .collect();
-
-        // If only one match, return it
-        if matching_packages.len() == 1 {
-            return matching_packages.first().cloned().cloned();
-        }
-
-        // Multiple matches - apply the same logic as install command
-        let packages_to_search = if let Some(requested_type) = requested_package_type {
-            // If package type was explicitly requested, filter to that type
-            let filtered: Vec<&JdkMetadata> = matching_packages
-                .iter()
-                .filter(|pkg| pkg.package_type == requested_type)
-                .cloned()
-                .collect();
-
-            if !filtered.is_empty() {
-                filtered
-            } else {
-                // No packages of requested type, fall back to all packages
-                matching_packages
-            }
-        } else {
-            // No specific package type requested, prefer JDK over JRE
-            let jdk_packages: Vec<&JdkMetadata> = matching_packages
-                .iter()
-                .filter(|pkg| pkg.package_type == crate::models::package::PackageType::Jdk)
-                .cloned()
-                .collect();
-
-            if !jdk_packages.is_empty() {
-                jdk_packages
-            } else {
-                matching_packages
-            }
-        };
-
-        // Then try to find one with matching lib_c_type
-        if let Some(pkg) = packages_to_search.iter().find(|pkg| {
-            if let Some(ref pkg_lib_c) = pkg.lib_c_type {
-                matches_foojay_libc_type(pkg_lib_c)
-            } else {
-                false
-            }
-        }) {
-            return Some((*pkg).clone());
-        }
-
-        // If no exact lib_c_type match, return the first one (mimics install behavior)
-        packages_to_search.first().cloned().cloned()
     }
 
     fn matches_package_with_version_type(

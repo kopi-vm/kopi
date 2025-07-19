@@ -1,5 +1,5 @@
 use criterion::{BenchmarkId, Criterion, black_box};
-use kopi::cache::{DistributionCache, MetadataCache};
+use kopi::cache::{DistributionCache, MetadataCache, PackageSearcher};
 use kopi::models::{
     distribution::Distribution as JdkDistribution,
     metadata::JdkMetadata,
@@ -75,16 +75,20 @@ pub fn bench_cache_operations(c: &mut Criterion) {
         });
     }
 
-    // Benchmark find_package_in_cache
+    // Benchmark find_exact_package using PackageSearcher
     let cache = create_cache_with_size(1000);
+    let config = kopi::config::KopiConfig::new(std::env::temp_dir()).unwrap();
+    let searcher = PackageSearcher::new(&cache, &config);
+    use kopi::models::distribution::Distribution;
 
     group.bench_function("find_exact_match", |b| {
         b.iter(|| {
-            cache.find_package(
-                black_box("temurin"),
+            searcher.find_exact_package(
+                &Distribution::Temurin,
                 black_box("11.0.5"),
                 black_box("x64"),
                 black_box("linux"),
+                None,
             )
         })
     });

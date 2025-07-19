@@ -1,7 +1,8 @@
 use criterion::{Criterion, black_box};
 use kopi::cache::{DistributionCache, MetadataCache};
-use kopi::cache::{PackageSearcher, PlatformFilter};
+use kopi::cache::{PackageSearcher, VersionSearchType};
 use kopi::config::KopiConfig;
+use kopi::version::parser::VersionParser;
 use kopi::models::{
     distribution::Distribution,
     metadata::JdkMetadata,
@@ -105,49 +106,70 @@ pub fn bench_search_performance(c: &mut Criterion) {
     let cache = create_realistic_cache();
     let config = KopiConfig::new(std::env::temp_dir()).expect("Failed to create config");
     let searcher = PackageSearcher::new(&cache, &config);
+    let parser = VersionParser::new(&config);
 
     // Benchmark simple version search
     group.bench_function("search_major_version", |b| {
-        b.iter(|| searcher.search(black_box("21")))
+        b.iter(|| {
+            let parsed = parser.parse(black_box("21")).unwrap();
+            searcher.search_parsed_with_type(&parsed, VersionSearchType::Auto)
+        })
     });
 
     // Benchmark exact version search
     group.bench_function("search_exact_version", |b| {
-        b.iter(|| searcher.search(black_box("21.0.1")))
+        b.iter(|| {
+            let parsed = parser.parse(black_box("21.0.1")).unwrap();
+            searcher.search_parsed_with_type(&parsed, VersionSearchType::Auto)
+        })
     });
 
     // Benchmark distribution search
     group.bench_function("search_distribution", |b| {
-        b.iter(|| searcher.search(black_box("temurin")))
+        b.iter(|| {
+            let parsed = parser.parse(black_box("temurin")).unwrap();
+            searcher.search_parsed_with_type(&parsed, VersionSearchType::Auto)
+        })
     });
 
     // Benchmark distribution with version
     group.bench_function("search_distribution_version", |b| {
-        b.iter(|| searcher.search(black_box("temurin@21")))
+        b.iter(|| {
+            let parsed = parser.parse(black_box("temurin@21")).unwrap();
+            searcher.search_parsed_with_type(&parsed, VersionSearchType::Auto)
+        })
     });
 
     // Benchmark latest search
     group.bench_function("search_latest", |b| {
-        b.iter(|| searcher.search(black_box("latest")))
+        b.iter(|| {
+            let parsed = parser.parse(black_box("latest")).unwrap();
+            searcher.search_parsed_with_type(&parsed, VersionSearchType::Auto)
+        })
     });
 
-    // Benchmark search with platform filter
-    let platform_filter = PlatformFilter {
-        architecture: Some("x64".to_string()),
-        operating_system: Some("linux".to_string()),
-        lib_c_type: Some("glibc".to_string()),
-    };
-
-    group.bench_function("search_with_platform_filter", |b| {
-        let searcher_with_filter =
-            PackageSearcher::new(&cache, &config).with_platform_filter(platform_filter.clone());
-        b.iter(|| searcher_with_filter.search(black_box("21")))
+    // Benchmark search with platform check (we can't filter anymore)
+    group.bench_function("search_with_platform_check", |b| {
+        b.iter(|| {
+            let parsed = parser.parse(black_box("21")).unwrap();
+            let results = searcher.search_parsed_with_type(&parsed, VersionSearchType::Auto).unwrap();
+            // Filter results manually to simulate platform filtering
+            results
+                .into_iter()
+                .filter(|r| {
+                    r.package.architecture.to_string() == "x64" &&
+                    r.package.operating_system.to_string() == "linux" &&
+                    r.package.lib_c_type.as_deref() == Some("glibc")
+                })
+                .collect::<Vec<_>>()
+        })
     });
 
     // Benchmark LTS filtering
     group.bench_function("filter_lts_versions", |b| {
         b.iter(|| {
-            let results = searcher.search(black_box("temurin")).unwrap();
+            let parsed = parser.parse(black_box("temurin")).unwrap();
+            let results = searcher.search_parsed_with_type(&parsed, VersionSearchType::Auto).unwrap();
             results
                 .into_iter()
                 .filter(|result| result.package.term_of_support.as_deref() == Some("lts"))
@@ -155,16 +177,16 @@ pub fn bench_search_performance(c: &mut Criterion) {
         })
     });
 
-    // Benchmark auto-selection
-    group.bench_function("auto_select_package", |b| {
+    // Benchmark exact package finding
+    group.bench_function("find_exact_package", |b| {
         let dist = Distribution::Temurin;
         b.iter(|| {
-            searcher.find_auto_selected_package(
+            searcher.find_exact_package(
                 black_box(&dist),
                 black_box("21.0.0"),
                 black_box("x64"),
                 black_box("linux"),
-                black_box(Some(PackageType::Jdk)),
+                black_box(Some(&PackageType::Jdk)),
             )
         })
     });
