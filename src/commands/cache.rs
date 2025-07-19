@@ -1,7 +1,7 @@
 use crate::cache;
+use crate::cache::{PackageSearcher, get_current_platform};
 use crate::config::KopiConfig;
 use crate::error::Result;
-use crate::search::{PackageSearcher, get_current_platform};
 use crate::version::parser::VersionParser;
 use chrono::Local;
 use clap::Subcommand;
@@ -280,11 +280,11 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
 
     // Determine version search type based on flags
     let version_type = if force_java_version {
-        crate::search::VersionSearchType::JavaVersion
+        crate::cache::VersionSearchType::JavaVersion
     } else if force_distribution_version {
-        crate::search::VersionSearchType::DistributionVersion
+        crate::cache::VersionSearchType::DistributionVersion
     } else {
-        crate::search::VersionSearchType::Auto
+        crate::cache::VersionSearchType::Auto
     };
 
     let mut results = searcher.search_parsed_with_type(&parsed_request, version_type)?;

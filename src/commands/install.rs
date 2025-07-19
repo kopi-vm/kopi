@@ -1,5 +1,6 @@
 use crate::api::ApiClient;
 use crate::archive::extract_archive;
+use crate::cache::PackageSearcher;
 use crate::cache::{self, MetadataCache};
 use crate::config::KopiConfig;
 use crate::download::download_jdk;
@@ -9,7 +10,6 @@ use crate::models::metadata::JdkMetadata;
 use crate::platform::{
     get_current_architecture, get_current_os, get_platform_description, matches_foojay_libc_type,
 };
-use crate::search::PackageSearcher;
 use crate::security::verify_checksum;
 use crate::shim::discovery::{discover_distribution_tools, discover_jdk_tools};
 use crate::shim::installer::ShimInstaller;

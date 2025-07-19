@@ -1,3 +1,9 @@
+mod models;
+mod searcher;
+
+#[cfg(test)]
+mod tests;
+
 use chrono::{DateTime, Utc};
 use log::warn;
 use serde::{Deserialize, Serialize};
@@ -14,6 +20,13 @@ use crate::models::distribution::Distribution as JdkDistribution;
 use crate::models::metadata::JdkMetadata;
 use crate::models::package::ChecksumType;
 use crate::platform;
+
+// Re-export commonly used types from search functionality
+pub use models::{PlatformFilter, SearchResult, SearchResultRef, VersionSearchType};
+pub use searcher::PackageSearcher;
+
+// Re-export platform functions from the main platform module for convenience
+pub use crate::platform::{get_current_architecture, get_current_os, get_current_platform};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MetadataCache {
@@ -226,7 +239,6 @@ pub fn fetch_and_cache_distribution(
     javafx_bundled: bool,
     config: &KopiConfig,
 ) -> Result<MetadataCache> {
-    use crate::search::get_current_platform;
     use std::str::FromStr;
 
     // Get current platform info

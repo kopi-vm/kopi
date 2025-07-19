@@ -1,5 +1,6 @@
 use criterion::{Criterion, black_box};
 use kopi::cache::{DistributionCache, MetadataCache};
+use kopi::cache::{PackageSearcher, PlatformFilter};
 use kopi::config::KopiConfig;
 use kopi::models::{
     distribution::Distribution,
@@ -7,7 +8,6 @@ use kopi::models::{
     package::{ArchiveType, ChecksumType, PackageType},
     platform::{Architecture, OperatingSystem},
 };
-use kopi::search::{PackageSearcher, PlatformFilter};
 use kopi::version::Version;
 use std::str::FromStr;
 

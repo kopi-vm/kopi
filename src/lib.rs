@@ -9,7 +9,6 @@ pub mod installation;
 pub mod logging;
 pub mod models;
 pub mod platform;
-pub mod search;
 pub mod security;
 pub mod shim;
 pub mod storage;
