@@ -75,15 +75,15 @@ pub fn bench_cache_operations(c: &mut Criterion) {
         });
     }
 
-    // Benchmark find_exact_package using PackageSearcher
+    // Benchmark lookup using PackageSearcher
     let cache = create_cache_with_size(1000);
     let config = kopi::config::KopiConfig::new(std::env::temp_dir()).unwrap();
     let searcher = PackageSearcher::new(&cache, &config);
     use kopi::models::distribution::Distribution;
 
-    group.bench_function("find_exact_match", |b| {
+    group.bench_function("lookup_match", |b| {
         b.iter(|| {
-            searcher.find_exact_package(
+            searcher.lookup(
                 &Distribution::Temurin,
                 black_box("11.0.5"),
                 black_box("x64"),

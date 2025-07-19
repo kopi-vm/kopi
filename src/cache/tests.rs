@@ -79,7 +79,7 @@ fn test_search_by_major_version() {
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].package.version.major(), 21);
@@ -94,7 +94,7 @@ fn test_search_with_distribution() {
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("temurin@17").unwrap();
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].package.version.major(), 17);
@@ -112,7 +112,7 @@ fn test_search_with_platform_filter() {
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("17").unwrap();
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 1);
     // Verify the result matches our test platform
@@ -121,13 +121,13 @@ fn test_search_with_platform_filter() {
 }
 
 #[test]
-fn test_find_exact_package() {
+fn test_lookup() {
     let cache = create_test_cache();
     let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
 
     let package =
-        searcher.find_exact_package(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
+        searcher.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -147,7 +147,7 @@ fn test_search_distribution_only() {
     };
 
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 2);
     assert!(results.iter().all(|r| r.distribution == "temurin"));
@@ -167,7 +167,7 @@ fn test_search_latest() {
     };
 
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 1); // Only one distribution in test cache
     assert_eq!(results[0].package.version.major(), 21); // 21 is newer than 17
@@ -187,7 +187,7 @@ fn test_search_latest_with_distribution() {
     };
 
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].package.version.major(), 21);
@@ -208,7 +208,7 @@ fn test_search_with_package_type_filter() {
     };
 
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert!(
         results
@@ -226,7 +226,7 @@ fn test_search_no_cache() {
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 0);
 }
@@ -249,7 +249,7 @@ fn test_search_non_existent_distribution() {
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("corretto@21").unwrap();
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 0);
 }
@@ -263,7 +263,7 @@ fn test_search_non_existent_version() {
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("99").unwrap();
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 0);
 }
@@ -279,7 +279,7 @@ fn test_platform_filter_no_match() {
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     // Our test cache only has x64/linux packages, so if we had arm64 filter, we'd get 0 results
     // Since we can't filter, we'll just verify the packages are x64
@@ -300,7 +300,7 @@ fn test_platform_filter_lib_c_mismatch() {
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert!(
         results
@@ -326,7 +326,7 @@ fn test_platform_filter_missing_lib_c() {
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     // We should find both packages (with and without lib_c_type)
     assert_eq!(results.len(), 2);
@@ -348,20 +348,20 @@ fn test_platform_filter_missing_lib_c() {
 }
 
 #[test]
-fn test_find_exact_package_single_match() {
+fn test_lookup_single_match() {
     let cache = create_test_cache();
     let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
 
     let package =
-        searcher.find_exact_package(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
+        searcher.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
 }
 
 #[test]
-fn test_find_exact_package_multiple_packages() {
+fn test_lookup_multiple_packages() {
     let mut cache = create_test_cache();
     let config = create_test_config();
 
@@ -375,8 +375,8 @@ fn test_find_exact_package_multiple_packages() {
 
     let searcher = PackageSearcher::new(&cache, &config);
 
-    // find_exact_package with no package type filter should find the first match
-    let jdk_package = searcher.find_exact_package(
+    // lookup with no package type filter should find the first match
+    let jdk_package = searcher.lookup(
         &Distribution::Temurin,
         "21.0.1",
         "x64",
@@ -386,7 +386,7 @@ fn test_find_exact_package_multiple_packages() {
     assert!(jdk_package.is_some());
     assert_eq!(jdk_package.unwrap().package_type, PackageType::Jdk);
 
-    let jre_package = searcher.find_exact_package(
+    let jre_package = searcher.lookup(
         &Distribution::Temurin,
         "21.0.1",
         "x64",
@@ -398,7 +398,7 @@ fn test_find_exact_package_multiple_packages() {
 }
 
 #[test]
-fn test_find_exact_package_with_requested_type() {
+fn test_lookup_with_requested_type() {
     let mut cache = create_test_cache();
     let config = create_test_config();
 
@@ -413,7 +413,7 @@ fn test_find_exact_package_with_requested_type() {
     let searcher = PackageSearcher::new(&cache, &config);
 
     // Request JRE specifically
-    let package = searcher.find_exact_package(
+    let package = searcher.lookup(
         &Distribution::Temurin,
         "21.0.1",
         "x64",
@@ -434,11 +434,11 @@ fn test_empty_cache() {
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 0);
 
-    let exact = searcher.find_exact_package(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
+    let exact = searcher.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
     assert!(exact.is_none());
 }
 
@@ -473,7 +473,7 @@ fn test_latest_with_version_filter() {
     };
 
     let results = searcher
-        .search_parsed_with_type(&parsed_request, VersionSearchType::Auto)
+        .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].package.version.to_string(), "21.0.2");
@@ -555,7 +555,7 @@ fn test_search_by_distribution_version() {
     };
 
     let results = searcher
-        .search_parsed_with_type(&request, VersionSearchType::Auto)
+        .search(&request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(
@@ -565,7 +565,7 @@ fn test_search_by_distribution_version() {
 
     // Test explicit distribution_version search
     let results = searcher
-        .search_parsed_with_type(&request, VersionSearchType::DistributionVersion)
+        .search(&request, VersionSearchType::DistributionVersion)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(
@@ -582,7 +582,7 @@ fn test_search_by_distribution_version() {
     };
 
     let results = searcher
-        .search_parsed_with_type(&request, VersionSearchType::DistributionVersion)
+        .search(&request, VersionSearchType::DistributionVersion)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(
@@ -616,7 +616,7 @@ fn test_search_forced_java_version() {
 
     // Force java_version search - should find both packages
     let results = searcher
-        .search_parsed_with_type(&request, VersionSearchType::JavaVersion)
+        .search(&request, VersionSearchType::JavaVersion)
         .unwrap();
     assert_eq!(results.len(), 2); // Both have java_version 21.0.1
 }
@@ -677,7 +677,7 @@ fn test_distribution_version_boundary_matching() {
     };
 
     let results = searcher
-        .search_parsed_with_type(&request, VersionSearchType::DistributionVersion)
+        .search(&request, VersionSearchType::DistributionVersion)
         .unwrap();
     assert_eq!(results.len(), 2);
     assert!(

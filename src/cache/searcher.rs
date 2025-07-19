@@ -22,7 +22,7 @@ impl<'a> PackageSearcher<'a> {
         }
     }
 
-    fn search_common_with_type<'b, F, R>(
+    fn search_internal<'b, F, R>(
         &'b self,
         request: &ParsedVersionRequest,
         version_type: VersionSearchType,
@@ -72,7 +72,7 @@ impl<'a> PackageSearcher<'a> {
                     }
 
                     // Apply platform filters
-                    if !self.matches_package_with_version_type(
+                    if !self.matches_package(
                         package,
                         request,
                         version_str.as_deref(),
@@ -98,7 +98,7 @@ impl<'a> PackageSearcher<'a> {
             } else {
                 // Regular search - include all matching versions
                 for package in &dist_cache.packages {
-                    if !self.matches_package_with_version_type(
+                    if !self.matches_package(
                         package,
                         request,
                         version_str.as_deref(),
@@ -116,12 +116,12 @@ impl<'a> PackageSearcher<'a> {
         Ok(results)
     }
 
-    pub fn search_parsed_with_type(
+    pub fn search(
         &self,
         request: &ParsedVersionRequest,
         version_type: VersionSearchType,
     ) -> Result<Vec<SearchResult>> {
-        let mut results = self.search_common_with_type(
+        let mut results = self.search_internal(
             request,
             version_type,
             |dist_name, dist_cache, package| SearchResult {
@@ -161,7 +161,7 @@ impl<'a> PackageSearcher<'a> {
         VersionSearchType::JavaVersion
     }
 
-    pub fn find_exact_package(
+    pub fn lookup(
         &self,
         distribution: &Distribution,
         version: &str,
@@ -190,7 +190,7 @@ impl<'a> PackageSearcher<'a> {
             .cloned()
     }
 
-    fn matches_package_with_version_type(
+    fn matches_package(
         &self,
         package: &JdkMetadata,
         request: &ParsedVersionRequest,

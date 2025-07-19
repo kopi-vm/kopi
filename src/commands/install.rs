@@ -327,7 +327,7 @@ impl<'a> InstallCommand<'a> {
         let searcher = PackageSearcher::new(&cache, self.config);
 
         // First try exact match
-        if let Some(jdk_metadata) = searcher.find_exact_package(
+        if let Some(jdk_metadata) = searcher.lookup(
             distribution,
             &version.to_string(),
             &arch,
@@ -353,7 +353,7 @@ impl<'a> InstallCommand<'a> {
 
                     // Search again in fresh cache
                     let searcher = PackageSearcher::new(&cache, self.config);
-                    if let Some(jdk_metadata) = searcher.find_exact_package(
+                    if let Some(jdk_metadata) = searcher.lookup(
                         distribution,
                         &version.to_string(),
                         &arch,
