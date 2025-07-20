@@ -71,11 +71,11 @@ export SCCACHE_CACHE_SIZE="20G"
 - `cargo check` - Fast error checking without building
 
 ### Testing
-- `cargo test` - Run all tests with optimized test profile
-- `cargo test --lib` - Run only unit tests (fastest)
-- `cargo test -- --nocapture` - Run tests with stdout/stderr output
-- `cargo test [test_name]` - Run specific test
-- `cargo test --features perf-tests` - Run performance tests (usually ignored)
+- `cargo test --quiet` - Run all tests with optimized test profile
+- `cargo test --lib --quiet` - Run only unit tests (fastest)
+- `cargo test --quiet -- --nocapture` - Run tests with stdout/stderr output
+- `cargo test --quiet [test_name]` - Run specific test
+- `cargo test --quiet --features perf-tests` - Run performance tests (usually ignored)
 
 **Test Organization**:
 - Unit tests should be placed in the same file as the code being tested using `#[cfg(test)]`
@@ -107,7 +107,7 @@ When finishing any coding task, always run the following commands in order and f
 2. `cargo fmt` - Auto-format code
 3. `cargo clippy` - Check for type and linting errors
 4. `cargo check` - Fast error checking without building
-5. `cargo test --lib` - Run unit tests (faster than full test suite)
+5. `cargo test --lib --quiet` - Run unit tests (faster than full test suite)
 
 Address any errors from each command before proceeding to the next. All must pass successfully before considering the work complete.
 

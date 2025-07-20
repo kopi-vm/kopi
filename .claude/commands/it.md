@@ -7,7 +7,7 @@ Run integration tests:
 
 ```bash
 echo "Running integration tests..."
-cargo test --features integration_tests
+cargo test --quiet --features integration_tests
 ```
 
 Quick diagnostic commands:
