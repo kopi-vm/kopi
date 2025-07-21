@@ -77,7 +77,8 @@ impl CheckCategory {
     ) -> Vec<Box<dyn DiagnosticCheck + 'a>> {
         use crate::doctor::checks::{
             BinaryPermissionsCheck, ConfigFileCheck, DirectoryPermissionsCheck,
-            InstallationDirectoryCheck, KopiBinaryCheck, OwnershipCheck, ShimsInPathCheck,
+            InstallationDirectoryCheck, KopiBinaryCheck, OwnershipCheck, PathCheck,
+            ShellConfigurationCheck, ShellDetectionCheck, ShimFunctionalityCheck, ShimsInPathCheck,
             VersionCheck,
         };
 
@@ -95,7 +96,10 @@ impl CheckCategory {
                 Box::new(OwnershipCheck::new(config)),
             ],
             CheckCategory::Shell => vec![
-                // Phase 3: Shell integration checks will go here
+                Box::new(ShellDetectionCheck) as Box<dyn DiagnosticCheck + 'a>,
+                Box::new(PathCheck::new(config)),
+                Box::new(ShellConfigurationCheck),
+                Box::new(ShimFunctionalityCheck::new(config)),
             ],
             CheckCategory::Jdks => vec![
                 // Phase 3: JDK installation checks will go here
