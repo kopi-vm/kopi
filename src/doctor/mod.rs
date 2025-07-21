@@ -1,6 +1,7 @@
 use std::fmt;
 use std::time::{Duration, Instant};
 
+pub mod checks;
 pub mod formatters;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,6 +69,45 @@ impl CheckCategory {
             CheckCategory::Cache,
         ]
     }
+
+    /// Create all diagnostic checks for this category
+    pub fn create_checks<'a>(
+        &self,
+        config: &'a crate::config::KopiConfig,
+    ) -> Vec<Box<dyn DiagnosticCheck + 'a>> {
+        use crate::doctor::checks::{
+            BinaryPermissionsCheck, ConfigFileCheck, DirectoryPermissionsCheck,
+            InstallationDirectoryCheck, KopiBinaryCheck, OwnershipCheck, ShimsInPathCheck,
+            VersionCheck,
+        };
+
+        match self {
+            CheckCategory::Installation => vec![
+                Box::new(KopiBinaryCheck) as Box<dyn DiagnosticCheck + 'a>,
+                Box::new(VersionCheck),
+                Box::new(InstallationDirectoryCheck::new(config)),
+                Box::new(ConfigFileCheck::new(config)),
+                Box::new(ShimsInPathCheck::new(config)),
+            ],
+            CheckCategory::Permissions => vec![
+                Box::new(DirectoryPermissionsCheck::new(config)),
+                Box::new(BinaryPermissionsCheck::new(config)),
+                Box::new(OwnershipCheck::new(config)),
+            ],
+            CheckCategory::Shell => vec![
+                // Phase 3: Shell integration checks will go here
+            ],
+            CheckCategory::Jdks => vec![
+                // Phase 3: JDK installation checks will go here
+            ],
+            CheckCategory::Network => vec![
+                // Phase 3: Network connectivity checks will go here
+            ],
+            CheckCategory::Cache => vec![
+                // Phase 3: Cache validation checks will go here
+            ],
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -87,6 +127,7 @@ impl CheckResult {
         category: CheckCategory,
         status: CheckStatus,
         message: impl Into<String>,
+        duration: Duration,
     ) -> Self {
         Self {
             name: name.into(),
@@ -95,7 +136,7 @@ impl CheckResult {
             message: message.into(),
             details: None,
             suggestion: None,
-            duration: Duration::default(),
+            duration,
         }
     }
 
@@ -106,11 +147,6 @@ impl CheckResult {
 
     pub fn with_suggestion(mut self, suggestion: impl Into<String>) -> Self {
         self.suggestion = Some(suggestion.into());
-        self
-    }
-
-    pub fn with_duration(mut self, duration: Duration) -> Self {
-        self.duration = duration;
         self
     }
 }
@@ -163,90 +199,42 @@ impl DiagnosticSummary {
 
 pub trait DiagnosticCheck: Send + Sync {
     fn name(&self) -> &str;
-    fn category(&self) -> CheckCategory;
-    fn run(&self) -> Result<CheckResult, Box<dyn std::error::Error>>;
+    fn run(&self, start: Instant, category: CheckCategory) -> CheckResult;
 }
 
-pub struct DiagnosticEngine {
-    checks: Vec<Box<dyn DiagnosticCheck>>,
+pub struct DiagnosticEngine<'a> {
+    config: &'a crate::config::KopiConfig,
 }
 
-impl DiagnosticEngine {
-    pub fn new() -> Self {
-        Self { checks: Vec::new() }
-    }
-
-    pub fn add_check(&mut self, check: Box<dyn DiagnosticCheck>) {
-        self.checks.push(check);
+impl<'a> DiagnosticEngine<'a> {
+    pub fn new(config: &'a crate::config::KopiConfig) -> Self {
+        Self { config }
     }
 
     pub fn run_checks(&self, categories: Option<Vec<CheckCategory>>) -> Vec<CheckResult> {
         let mut results = Vec::new();
 
-        for check in &self.checks {
-            if let Some(ref cats) = categories {
-                if !cats.contains(&check.category()) {
-                    continue;
-                }
+        // Determine which categories to run
+        let categories_to_run = categories.unwrap_or_else(CheckCategory::all);
+
+        // Create checks for each category and run them
+        for category in categories_to_run {
+            let checks = category.create_checks(self.config);
+
+            for check in checks {
+                let start = Instant::now();
+                let result = check.run(start, category);
+                results.push(result);
             }
-
-            let start = Instant::now();
-            let result = match check.run() {
-                Ok(mut result) => {
-                    result.duration = start.elapsed();
-                    result
-                }
-                Err(e) => CheckResult::new(
-                    check.name(),
-                    check.category(),
-                    CheckStatus::Fail,
-                    format!("Check failed: {e}"),
-                )
-                .with_duration(start.elapsed()),
-            };
-
-            results.push(result);
         }
 
         results
     }
 }
 
-impl Default for DiagnosticEngine {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    struct MockCheck {
-        name: String,
-        category: CheckCategory,
-        status: CheckStatus,
-        message: String,
-    }
-
-    impl DiagnosticCheck for MockCheck {
-        fn name(&self) -> &str {
-            &self.name
-        }
-
-        fn category(&self) -> CheckCategory {
-            self.category
-        }
-
-        fn run(&self) -> Result<CheckResult, Box<dyn std::error::Error>> {
-            Ok(CheckResult::new(
-                &self.name,
-                self.category,
-                self.status,
-                &self.message,
-            ))
-        }
-    }
 
     #[test]
     fn test_check_status_display() {
@@ -281,15 +269,29 @@ mod tests {
                 CheckCategory::Installation,
                 CheckStatus::Pass,
                 "OK",
+                Duration::from_millis(100),
             ),
-            CheckResult::new("test2", CheckCategory::Shell, CheckStatus::Fail, "Failed"),
+            CheckResult::new(
+                "test2",
+                CheckCategory::Shell,
+                CheckStatus::Fail,
+                "Failed",
+                Duration::from_millis(200),
+            ),
             CheckResult::new(
                 "test3",
                 CheckCategory::Network,
                 CheckStatus::Warning,
                 "Warning",
+                Duration::from_millis(150),
             ),
-            CheckResult::new("test4", CheckCategory::Cache, CheckStatus::Skip, "Skipped"),
+            CheckResult::new(
+                "test4",
+                CheckCategory::Cache,
+                CheckStatus::Skip,
+                "Skipped",
+                Duration::from_millis(50),
+            ),
         ];
 
         let summary = DiagnosticSummary::from_results(&results, Duration::from_secs(1));
@@ -308,6 +310,7 @@ mod tests {
             CheckCategory::Installation,
             CheckStatus::Pass,
             "OK",
+            Duration::from_millis(100),
         )];
         let summary = DiagnosticSummary::from_results(&results, Duration::from_secs(1));
         assert_eq!(summary.determine_exit_code(), 0);
@@ -317,6 +320,7 @@ mod tests {
             CheckCategory::Shell,
             CheckStatus::Warning,
             "Warning",
+            Duration::from_millis(200),
         ));
         let summary = DiagnosticSummary::from_results(&results, Duration::from_secs(1));
         assert_eq!(summary.determine_exit_code(), 2);
@@ -326,55 +330,12 @@ mod tests {
             CheckCategory::Network,
             CheckStatus::Fail,
             "Failed",
+            Duration::from_millis(150),
         ));
         let summary = DiagnosticSummary::from_results(&results, Duration::from_secs(1));
         assert_eq!(summary.determine_exit_code(), 1);
     }
 
-    #[test]
-    fn test_diagnostic_engine() {
-        let mut engine = DiagnosticEngine::new();
-
-        engine.add_check(Box::new(MockCheck {
-            name: "test1".to_string(),
-            category: CheckCategory::Installation,
-            status: CheckStatus::Pass,
-            message: "Installation OK".to_string(),
-        }));
-
-        engine.add_check(Box::new(MockCheck {
-            name: "test2".to_string(),
-            category: CheckCategory::Shell,
-            status: CheckStatus::Fail,
-            message: "Shell config missing".to_string(),
-        }));
-
-        let results = engine.run_checks(None);
-        assert_eq!(results.len(), 2);
-        assert_eq!(results[0].status, CheckStatus::Pass);
-        assert_eq!(results[1].status, CheckStatus::Fail);
-    }
-
-    #[test]
-    fn test_category_filtering() {
-        let mut engine = DiagnosticEngine::new();
-
-        engine.add_check(Box::new(MockCheck {
-            name: "install_check".to_string(),
-            category: CheckCategory::Installation,
-            status: CheckStatus::Pass,
-            message: "OK".to_string(),
-        }));
-
-        engine.add_check(Box::new(MockCheck {
-            name: "shell_check".to_string(),
-            category: CheckCategory::Shell,
-            status: CheckStatus::Pass,
-            message: "OK".to_string(),
-        }));
-
-        let results = engine.run_checks(Some(vec![CheckCategory::Installation]));
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0].name, "install_check");
-    }
+    // Note: DiagnosticEngine tests are now integration tests since it requires
+    // a real KopiConfig and initializes all checks internally
 }

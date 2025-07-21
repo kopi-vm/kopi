@@ -181,12 +181,14 @@ mod tests {
                 CheckCategory::Installation,
                 CheckStatus::Pass,
                 "Found at /usr/local/bin/kopi",
+                Duration::from_millis(100),
             ),
             CheckResult::new(
                 "Configuration file",
                 CheckCategory::Installation,
                 CheckStatus::Warning,
                 "Config file missing",
+                Duration::from_millis(150),
             )
             .with_suggestion("Run 'kopi config init' to create a default configuration"),
             CheckResult::new(
@@ -194,6 +196,7 @@ mod tests {
                 CheckCategory::Shell,
                 CheckStatus::Fail,
                 "~/.kopi/shims not found in PATH",
+                Duration::from_millis(200),
             )
             .with_details("Current PATH: /usr/bin:/bin")
             .with_suggestion("Add 'export PATH=\"$HOME/.kopi/shims:$PATH\"' to your shell config"),
@@ -258,6 +261,7 @@ mod tests {
             CheckCategory::Network,
             CheckStatus::Pass,
             "All good",
+            Duration::from_millis(50),
         );
 
         let results = vec![result];

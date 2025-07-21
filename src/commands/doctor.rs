@@ -5,7 +5,6 @@ use crate::error::Result;
 use std::time::Instant;
 
 pub struct DoctorCommand<'a> {
-    #[allow(dead_code)]
     config: &'a KopiConfig,
 }
 
@@ -35,11 +34,8 @@ impl<'a> DoctorCommand<'a> {
             None
         };
 
-        // Create diagnostic engine
-        let engine = DiagnosticEngine::new();
-
-        // In Phase 1, we don't have any actual checks implemented yet
-        // This will be populated in later phases
+        // Create diagnostic engine with config - all checks are initialized internally
+        let engine = DiagnosticEngine::new(self.config);
 
         // Run checks
         let results = engine.run_checks(categories);
