@@ -10,6 +10,7 @@ use kopi::commands::setup::SetupCommand;
 use kopi::commands::shell::ShellCommand;
 use kopi::commands::shim::ShimCommand;
 use kopi::commands::uninstall::UninstallCommand;
+use kopi::commands::which::WhichCommand;
 use kopi::config::new_kopi_config;
 use kopi::error::{Result, format_error_chain, get_exit_code};
 use kopi::logging;
@@ -118,8 +119,20 @@ Examples:
     /// Show installation path for a JDK version
     #[command(visible_alias = "w")]
     Which {
-        /// Version to locate (defaults to current)
+        /// JDK version specification (optional)
         version: Option<String>,
+
+        /// Show path for specific JDK tool
+        #[arg(long, default_value = "java")]
+        tool: String,
+
+        /// Show JDK home directory instead of executable path
+        #[arg(long)]
+        home: bool,
+
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
     },
 
     /// Manage JDK metadata cache
@@ -268,10 +281,14 @@ fn main() {
                 let command = LocalCommand::new(&config)?;
                 command.execute(&version)
             }
-            Commands::Which { version } => {
-                let v = version.unwrap_or_else(|| "current".to_string());
-                println!("Path for JDK {v} (not yet implemented)");
-                Ok(())
+            Commands::Which {
+                version,
+                tool,
+                home,
+                json,
+            } => {
+                let command = WhichCommand::new(&config)?;
+                command.execute(version.as_deref(), &tool, home, json)
             }
             Commands::Cache { command } => command.execute(&config),
             Commands::Refresh { javafx_bundled } => {

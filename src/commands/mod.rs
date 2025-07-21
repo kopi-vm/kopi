@@ -9,3 +9,4 @@ pub mod setup;
 pub mod shell;
 pub mod shim;
 pub mod uninstall;
+pub mod which;
