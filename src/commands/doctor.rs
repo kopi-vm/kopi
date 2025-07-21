@@ -1,0 +1,82 @@
+use crate::config::KopiConfig;
+use crate::doctor::formatters::{format_human_readable, format_json};
+use crate::doctor::{CheckCategory, DiagnosticEngine, DiagnosticSummary};
+use crate::error::Result;
+use std::time::Instant;
+
+pub struct DoctorCommand<'a> {
+    #[allow(dead_code)]
+    config: &'a KopiConfig,
+}
+
+impl<'a> DoctorCommand<'a> {
+    pub fn new(config: &'a KopiConfig) -> Result<Self> {
+        Ok(Self { config })
+    }
+
+    pub fn execute(&self, json: bool, verbose: bool, check: Option<&str>) -> Result<()> {
+        let start = Instant::now();
+
+        // Parse category filter if provided
+        let categories = if let Some(category_str) = check {
+            match CheckCategory::parse(category_str) {
+                Some(cat) => Some(vec![cat]),
+                None => {
+                    eprintln!("Invalid check category: {category_str}");
+                    eprintln!(
+                        "Valid categories: installation, shell, jdks, permissions, network, cache"
+                    );
+                    return Err(crate::error::KopiError::InvalidConfig(format!(
+                        "Invalid check category: {category_str}"
+                    )));
+                }
+            }
+        } else {
+            None
+        };
+
+        // Create diagnostic engine
+        let engine = DiagnosticEngine::new();
+
+        // In Phase 1, we don't have any actual checks implemented yet
+        // This will be populated in later phases
+
+        // Run checks
+        let results = engine.run_checks(categories);
+
+        let total_duration = start.elapsed();
+        let summary = DiagnosticSummary::from_results(&results, total_duration);
+
+        // Output results
+        if json {
+            format_json(&mut std::io::stdout(), &results, &summary)?;
+        } else {
+            format_human_readable(&mut std::io::stdout(), &results, &summary, verbose)?;
+        }
+
+        // Exit with appropriate code
+        std::process::exit(summary.determine_exit_code());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_doctor_command_creation() {
+        let config = KopiConfig::new(PathBuf::from("/tmp/test")).unwrap();
+        let command = DoctorCommand::new(&config).unwrap();
+        assert!(std::ptr::eq(command.config, &config));
+    }
+
+    #[test]
+    fn test_invalid_category() {
+        let config = KopiConfig::new(PathBuf::from("/tmp/test")).unwrap();
+        let command = DoctorCommand::new(&config).unwrap();
+
+        let result = command.execute(false, false, Some("invalid_category"));
+        assert!(result.is_err());
+    }
+}

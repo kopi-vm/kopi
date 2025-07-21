@@ -3,6 +3,7 @@ pub mod archive;
 pub mod cache;
 pub mod commands;
 pub mod config;
+pub mod doctor;
 pub mod download;
 pub mod error;
 pub mod installation;

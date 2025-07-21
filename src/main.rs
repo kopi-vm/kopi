@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use kopi::commands::cache::CacheCommand;
 use kopi::commands::current::CurrentCommand;
+use kopi::commands::doctor::DoctorCommand;
 use kopi::commands::env::EnvCommand;
 use kopi::commands::global::GlobalCommand;
 use kopi::commands::install::InstallCommand;
@@ -212,6 +213,17 @@ Examples:
         #[arg(long)]
         cleanup: bool,
     },
+
+    /// Run diagnostics on kopi installation
+    Doctor {
+        /// Output results in JSON format
+        #[arg(long)]
+        json: bool,
+
+        /// Run only specific category of checks
+        #[arg(long, value_name = "CATEGORY")]
+        check: Option<String>,
+    },
 }
 
 fn setup_logger(cli: &Cli) {
@@ -331,6 +343,10 @@ fn main() {
             } => {
                 let command = UninstallCommand::new(&config)?;
                 command.execute(version.as_deref(), force, dry_run, all, cleanup)
+            }
+            Commands::Doctor { json, check } => {
+                let command = DoctorCommand::new(&config)?;
+                command.execute(json, cli.verbose > 0, check.as_deref())
             }
         }
     })();
