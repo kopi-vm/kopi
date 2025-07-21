@@ -258,22 +258,7 @@ impl<'a> ShimFunctionalityCheck<'a> {
     }
 
     fn check_shim_executable(&self, shim_path: &Path) -> bool {
-        match fs::metadata(shim_path) {
-            Ok(metadata) => {
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    let mode = metadata.permissions().mode();
-                    mode & 0o111 != 0
-                }
-                #[cfg(windows)]
-                {
-                    // On Windows, .exe files are executable by default
-                    true
-                }
-            }
-            Err(_) => false,
-        }
+        crate::platform::file_ops::is_executable(shim_path).unwrap_or(false)
     }
 }
 
@@ -465,7 +450,11 @@ mod tests {
         fs::create_dir_all(&shims_dir).unwrap();
 
         // Create mock shim files
-        let java_shim = shims_dir.join("java");
+        let java_shim = if cfg!(windows) {
+            shims_dir.join("java.exe")
+        } else {
+            shims_dir.join("java")
+        };
         fs::write(&java_shim, "#!/bin/sh\necho mock").unwrap();
 
         #[cfg(unix)]

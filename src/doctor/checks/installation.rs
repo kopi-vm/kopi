@@ -21,23 +21,22 @@ impl DiagnosticCheck for KopiBinaryCheck {
 
         match which(binary_name) {
             Ok(path) => {
-                // Check if the binary is executable
-                match fs::metadata(&path) {
-                    Ok(metadata) => {
-                        #[cfg(unix)]
-                        {
-                            use std::os::unix::fs::PermissionsExt;
-                            let mode = metadata.permissions().mode();
-                            if mode & 0o111 == 0 {
-                                return CheckResult::new(
-                                    self.name(),
-                                    category,
-                                    CheckStatus::Fail,
-                                    "Kopi binary found but not executable",
-                                    start.elapsed(),
-                                )
-                                .with_suggestion(format!("Run: chmod +x {}", path.display()));
-                            }
+                // Check if the binary is executable using platform-specific logic
+                match crate::platform::file_ops::is_executable(&path) {
+                    Ok(is_exec) => {
+                        if !is_exec {
+                            return CheckResult::new(
+                                self.name(),
+                                category,
+                                CheckStatus::Fail,
+                                "Kopi binary found but not executable",
+                                start.elapsed(),
+                            )
+                            .with_suggestion(if cfg!(unix) {
+                                format!("Run: chmod +x {}", path.display())
+                            } else {
+                                "Ensure the file has .exe extension".to_string()
+                            });
                         }
 
                         CheckResult::new(
@@ -559,7 +558,14 @@ mod tests {
 
         // Test when shims not in PATH
         unsafe {
-            env::set_var("PATH", "/usr/bin:/bin");
+            env::set_var(
+                "PATH",
+                if cfg!(windows) {
+                    "C:\\Windows;C:\\Windows\\System32"
+                } else {
+                    "/usr/bin:/bin"
+                },
+            );
         }
         let check = ShimsInPathCheck::new(&config);
         let start = Instant::now();
@@ -569,7 +575,14 @@ mod tests {
 
         // Test when shims in PATH
         unsafe {
-            env::set_var("PATH", format!("{}:/usr/bin", shims_dir.display()));
+            env::set_var(
+                "PATH",
+                if cfg!(windows) {
+                    format!("{};C:\\Windows", shims_dir.display())
+                } else {
+                    format!("{}:/usr/bin", shims_dir.display())
+                },
+            );
         }
         let check = ShimsInPathCheck::new(&config);
         let start = Instant::now();

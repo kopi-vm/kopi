@@ -7,6 +7,9 @@ use std::path::Path;
 use std::time::Instant;
 use which::which;
 
+#[cfg(unix)]
+use libc;
+
 /// Check write permissions on kopi directories
 pub struct DirectoryPermissionsCheck<'a> {
     config: &'a KopiConfig,
@@ -197,30 +200,49 @@ impl DiagnosticCheck for OwnershipCheck<'_> {
     }
 
     fn run(&self, start: Instant, category: CheckCategory) -> CheckResult {
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::MetadataExt;
+        let kopi_home = self.config.kopi_home();
 
-            let kopi_home = self.config.kopi_home();
+        if !kopi_home.exists() {
+            return CheckResult::new(
+                self.name(),
+                category,
+                CheckStatus::Skip,
+                "Cannot check ownership - kopi home does not exist",
+                start.elapsed(),
+            );
+        }
 
-            if !kopi_home.exists() {
-                return CheckResult::new(
-                    self.name(),
-                    category,
-                    CheckStatus::Skip,
-                    "Cannot check ownership - kopi home does not exist",
-                    start.elapsed(),
-                );
-            }
+        // Check ownership using platform-specific implementation
+        match crate::platform::file_ops::check_ownership(kopi_home) {
+            Ok(is_owner) => {
+                if !is_owner {
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::MetadataExt;
+                        let current_uid = unsafe { libc::getuid() };
 
-            // Get current user's UID
-            let current_uid = unsafe { libc::getuid() };
+                        if let Ok(metadata) = fs::metadata(kopi_home) {
+                            let dir_uid = metadata.uid();
+                            return CheckResult::new(
+                                self.name(),
+                                category,
+                                CheckStatus::Warning,
+                                "Kopi home directory owned by different user",
+                                start.elapsed(),
+                            )
+                            .with_details(format!(
+                                "Directory owned by UID {dir_uid}, current user is UID {current_uid}"
+                            ))
+                            .with_suggestion(format!(
+                                "Transfer ownership: sudo chown -R {} {}",
+                                std::env::var("USER").unwrap_or_else(|_| current_uid.to_string()),
+                                kopi_home.display()
+                            ));
+                        }
+                    }
 
-            // Check ownership of kopi home
-            match fs::metadata(kopi_home) {
-                Ok(metadata) => {
-                    let dir_uid = metadata.uid();
-                    if dir_uid != current_uid {
+                    #[cfg(windows)]
+                    {
                         return CheckResult::new(
                             self.name(),
                             category,
@@ -228,47 +250,29 @@ impl DiagnosticCheck for OwnershipCheck<'_> {
                             "Kopi home directory owned by different user",
                             start.elapsed(),
                         )
-                        .with_details(format!(
-                            "Directory owned by UID {dir_uid}, current user is UID {current_uid}"
-                        ))
-                        .with_suggestion(format!(
-                            "Transfer ownership: sudo chown -R {} {}",
-                            std::env::var("USER").unwrap_or_else(|_| current_uid.to_string()),
-                            kopi_home.display()
-                        ));
+                        .with_details("Directory is not owned by the current user")
+                        .with_suggestion(
+                            "Take ownership via Properties > Security > Advanced > Owner",
+                        );
                     }
                 }
-                Err(e) => {
-                    return CheckResult::new(
-                        self.name(),
-                        category,
-                        CheckStatus::Warning,
-                        "Cannot check ownership",
-                        start.elapsed(),
-                    )
-                    .with_details(e.to_string());
-                }
+
+                CheckResult::new(
+                    self.name(),
+                    category,
+                    CheckStatus::Pass,
+                    "File ownership is consistent",
+                    start.elapsed(),
+                )
             }
-
-            CheckResult::new(
+            Err(e) => CheckResult::new(
                 self.name(),
                 category,
-                CheckStatus::Pass,
-                "File ownership is consistent",
+                CheckStatus::Warning,
+                "Cannot check ownership",
                 start.elapsed(),
             )
-        }
-
-        #[cfg(windows)]
-        {
-            // Windows doesn't have the same ownership model
-            CheckResult::new(
-                self.name(),
-                category,
-                CheckStatus::Pass,
-                "File ownership checks not applicable on Windows",
-                start.elapsed(),
-            )
+            .with_details(e.to_string()),
         }
     }
 }
@@ -361,7 +365,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(unix)]
     fn test_ownership_check() {
         let temp_dir = TempDir::new().unwrap();
 
