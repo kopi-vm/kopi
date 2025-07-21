@@ -9,5 +9,5 @@ RUSTC_WRAPPER = "sccache"
 incremental = true
 
 [alias]
-it = "test --features integration_tests"
+it = "test --quiet --features integration_tests"
 shim = "build --bin kopi-shim --profile release-shim"
