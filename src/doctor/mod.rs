@@ -76,11 +76,13 @@ impl CheckCategory {
         config: &'a crate::config::KopiConfig,
     ) -> Vec<Box<dyn DiagnosticCheck + 'a>> {
         use crate::doctor::checks::{
-            BinaryPermissionsCheck, ConfigFileCheck, DirectoryPermissionsCheck,
-            InstallationDirectoryCheck, JdkDiskSpaceCheck, JdkInstallationCheck, JdkIntegrityCheck,
-            JdkVersionConsistencyCheck, KopiBinaryCheck, OwnershipCheck, PathCheck,
+            ApiConnectivityCheck, BinaryPermissionsCheck, CacheFileCheck, CacheFormatCheck,
+            CachePermissionsCheck, CacheSizeCheck, CacheStalenessCheck, ConfigFileCheck,
+            DirectoryPermissionsCheck, DnsResolutionCheck, InstallationDirectoryCheck,
+            JdkDiskSpaceCheck, JdkInstallationCheck, JdkIntegrityCheck, JdkVersionConsistencyCheck,
+            KopiBinaryCheck, OwnershipCheck, PathCheck, ProxyConfigurationCheck,
             ShellConfigurationCheck, ShellDetectionCheck, ShimFunctionalityCheck, ShimsInPathCheck,
-            VersionCheck,
+            TlsVerificationCheck, VersionCheck,
         };
 
         match self {
@@ -109,10 +111,17 @@ impl CheckCategory {
                 Box::new(JdkVersionConsistencyCheck::new(config)),
             ],
             CheckCategory::Network => vec![
-                // Phase 3: Network connectivity checks will go here
+                Box::new(ApiConnectivityCheck) as Box<dyn DiagnosticCheck + 'a>,
+                Box::new(DnsResolutionCheck),
+                Box::new(ProxyConfigurationCheck),
+                Box::new(TlsVerificationCheck),
             ],
             CheckCategory::Cache => vec![
-                // Phase 3: Cache validation checks will go here
+                Box::new(CacheFileCheck::new(config)) as Box<dyn DiagnosticCheck + 'a>,
+                Box::new(CachePermissionsCheck::new(config)),
+                Box::new(CacheFormatCheck::new(config)),
+                Box::new(CacheStalenessCheck::new(config)),
+                Box::new(CacheSizeCheck::new(config)),
             ],
         }
     }

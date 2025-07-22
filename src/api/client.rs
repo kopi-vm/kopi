@@ -8,8 +8,8 @@ use retry::{OperationResult, delay::Exponential, retry_with_index};
 use std::thread;
 use std::time::Duration;
 
-const FOOJAY_API_BASE: &str = "https://api.foojay.io/disco";
-const API_VERSION: &str = "v3.0";
+pub const FOOJAY_API_BASE: &str = "https://api.foojay.io/disco";
+pub const API_VERSION: &str = "v3.0";
 const USER_AGENT: &str = concat!("kopi/", env!("CARGO_PKG_VERSION"));
 const DEFAULT_TIMEOUT: u64 = 30;
 const MAX_RETRIES: usize = 3;

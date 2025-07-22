@@ -612,6 +612,74 @@ pub fn check_executable_permissions(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Check if a file is readable by the current user
+///
+/// On Unix: Checks if the file has read permission for the owner
+/// On Windows: Attempts to read the file to verify readability
+#[cfg(unix)]
+pub fn check_file_readable(path: &Path) -> std::io::Result<bool> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let metadata = fs::metadata(path)?;
+    let permissions = metadata.permissions();
+    let mode = permissions.mode();
+
+    // Check if readable by owner (0o400)
+    Ok(mode & 0o400 != 0)
+}
+
+/// Check if a file is readable by the current user
+///
+/// On Unix: Checks if the file has read permission for the owner
+/// On Windows: Attempts to read the file to verify readability
+#[cfg(windows)]
+pub fn check_file_readable(path: &Path) -> std::io::Result<bool> {
+    // On Windows, just try to open the file for reading
+    match fs::File::open(path) {
+        Ok(_) => Ok(true),
+        Err(e) => {
+            // If it's a permission error, the file exists but isn't readable
+            if e.kind() == std::io::ErrorKind::PermissionDenied {
+                Ok(false)
+            } else {
+                // For other errors (file not found, etc.), propagate the error
+                Err(e)
+            }
+        }
+    }
+}
+
+/// Get file permissions in a platform-independent format
+///
+/// On Unix: Returns the octal permission mode (e.g., 644)
+/// On Windows: Returns a string indicating read-only status
+#[cfg(unix)]
+pub fn get_file_permissions_string(path: &Path) -> std::io::Result<String> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let metadata = fs::metadata(path)?;
+    let permissions = metadata.permissions();
+    let mode = permissions.mode();
+
+    Ok(format!("{:o}", mode & 0o777))
+}
+
+/// Get file permissions in a platform-independent format
+///
+/// On Unix: Returns the octal permission mode (e.g., 644)
+/// On Windows: Returns a string indicating read-only status
+#[cfg(windows)]
+pub fn get_file_permissions_string(path: &Path) -> std::io::Result<String> {
+    let metadata = fs::metadata(path)?;
+    let permissions = metadata.permissions();
+
+    if permissions.readonly() {
+        Ok("read-only".to_string())
+    } else {
+        Ok("read-write".to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -802,5 +870,96 @@ mod tests {
 
         // Test with directory
         assert!(check_executable_permissions(temp_dir.path()).is_err());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_check_file_readable_unix() {
+        use std::os::unix::fs::PermissionsExt;
+        use tempfile::NamedTempFile;
+
+        let temp_file = NamedTempFile::new().unwrap();
+
+        // Set readable permissions (644)
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_mode(0o644);
+        temp_file.as_file().set_permissions(perms).unwrap();
+
+        assert!(check_file_readable(temp_file.path()).unwrap());
+
+        // Set unreadable permissions (000)
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_mode(0o000);
+        temp_file.as_file().set_permissions(perms).unwrap();
+
+        assert!(!check_file_readable(temp_file.path()).unwrap());
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_check_file_readable_windows() {
+        use tempfile::NamedTempFile;
+
+        let temp_file = NamedTempFile::new().unwrap();
+
+        // By default, temp files should be readable
+        assert!(check_file_readable(temp_file.path()).unwrap());
+
+        // Test with non-existent file
+        let non_existent = temp_file.path().with_extension("nonexistent");
+        assert!(check_file_readable(&non_existent).is_err());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_get_file_permissions_string_unix() {
+        use std::os::unix::fs::PermissionsExt;
+        use tempfile::NamedTempFile;
+
+        let temp_file = NamedTempFile::new().unwrap();
+
+        // Set specific permissions
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_mode(0o644);
+        temp_file.as_file().set_permissions(perms).unwrap();
+
+        assert_eq!(
+            get_file_permissions_string(temp_file.path()).unwrap(),
+            "644"
+        );
+
+        // Set different permissions
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_mode(0o755);
+        temp_file.as_file().set_permissions(perms).unwrap();
+
+        assert_eq!(
+            get_file_permissions_string(temp_file.path()).unwrap(),
+            "755"
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_get_file_permissions_string_windows() {
+        use tempfile::NamedTempFile;
+
+        let temp_file = NamedTempFile::new().unwrap();
+
+        // By default, temp files are writable
+        assert_eq!(
+            get_file_permissions_string(temp_file.path()).unwrap(),
+            "read-write"
+        );
+
+        // Set file as read-only
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_readonly(true);
+        temp_file.as_file().set_permissions(perms).unwrap();
+
+        assert_eq!(
+            get_file_permissions_string(temp_file.path()).unwrap(),
+            "read-only"
+        );
     }
 }
