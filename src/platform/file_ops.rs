@@ -66,7 +66,10 @@ pub fn make_executable(_path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Check if a file is executable
+/// Check if a file is executable (simple check)
+///
+/// Returns true if the file has execute permissions on Unix or has .exe extension on Windows.
+/// For more strict security checks, use `check_executable_permissions` instead.
 #[cfg(unix)]
 pub fn is_executable(path: &Path) -> std::io::Result<bool> {
     let metadata = fs::metadata(path)?;
@@ -141,52 +144,10 @@ pub fn atomic_rename(from: &Path, to: &Path) -> std::io::Result<()> {
 }
 
 /// Check if any files in the given path are currently in use
+#[cfg(target_os = "windows")]
 pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
     debug!("Checking if files are in use at {}", path.display());
 
-    #[cfg(target_os = "windows")]
-    {
-        check_files_in_use_windows(path)
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        check_files_in_use_unix(path)
-    }
-}
-
-/// Prepare path for removal with platform-specific handling
-pub fn prepare_for_removal(path: &Path) -> Result<()> {
-    debug!("Preparing {} for removal", path.display());
-
-    #[cfg(target_os = "windows")]
-    {
-        prepare_windows_removal(path)
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        prepare_unix_removal(path)
-    }
-}
-
-/// Clean up after removal with platform-specific handling
-pub fn post_removal_cleanup(path: &Path) -> Result<()> {
-    debug!("Performing post-removal cleanup for {}", path.display());
-
-    #[cfg(target_os = "windows")]
-    {
-        cleanup_windows(path)
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        cleanup_unix(path)
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn check_files_in_use_windows(path: &Path) -> Result<Vec<String>> {
     let mut files_in_use = Vec::new();
 
     // Use handle.exe if available to check for open handles
@@ -215,8 +176,35 @@ fn check_files_in_use_windows(path: &Path) -> Result<Vec<String>> {
     Ok(files_in_use)
 }
 
+/// Check if any files in the given path are currently in use
+#[cfg(not(target_os = "windows"))]
+pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
+    debug!("Checking if files are in use at {}", path.display());
+
+    let mut files_in_use = Vec::new();
+
+    // Use lsof to check for open files
+    if let Ok(output) = Command::new("lsof")
+        .arg("+D")
+        .arg(path.display().to_string())
+        .output()
+    {
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            if !stdout.trim().is_empty() {
+                files_in_use.push(format!("Open files detected: {}", stdout.trim()));
+            }
+        }
+    }
+
+    Ok(files_in_use)
+}
+
+/// Prepare path for removal with platform-specific handling
 #[cfg(target_os = "windows")]
-fn prepare_windows_removal(path: &Path) -> Result<()> {
+pub fn prepare_for_removal(path: &Path) -> Result<()> {
+    debug!("Preparing {} for removal", path.display());
+
     use walkdir::WalkDir;
 
     // Remove read-only attributes recursively using winapi
@@ -235,6 +223,45 @@ fn prepare_windows_removal(path: &Path) -> Result<()> {
                 debug!("Failed to access directory entry: {e}");
             }
         }
+    }
+
+    Ok(())
+}
+
+/// Prepare path for removal with platform-specific handling
+#[cfg(not(target_os = "windows"))]
+pub fn prepare_for_removal(path: &Path) -> Result<()> {
+    debug!("Preparing {} for removal", path.display());
+
+    // Make all files writable
+    if let Err(e) = Command::new("chmod")
+        .arg("-R")
+        .arg("u+w")
+        .arg(path.display().to_string())
+        .output()
+    {
+        debug!("Failed to make files writable: {e}");
+    }
+
+    Ok(())
+}
+
+/// Clean up after removal with platform-specific handling
+#[cfg(target_os = "windows")]
+pub fn post_removal_cleanup(path: &Path) -> Result<()> {
+    debug!("Performing post-removal cleanup for {}", path.display());
+    // Windows-specific cleanup if needed
+    Ok(())
+}
+
+/// Clean up after removal with platform-specific handling
+#[cfg(not(target_os = "windows"))]
+pub fn post_removal_cleanup(path: &Path) -> Result<()> {
+    debug!("Performing post-removal cleanup for {}", path.display());
+
+    // Clean up any remaining symbolic links that might point to the removed JDK
+    if let Some(parent) = path.parent() {
+        super::symlink::cleanup_orphaned_symlinks(parent)?;
     }
 
     Ok(())
@@ -261,58 +288,6 @@ fn remove_readonly_attribute(path: &Path) -> std::io::Result<()> {
         if new_attrs != current_attrs && SetFileAttributesW(path_wide.as_ptr(), new_attrs) == 0 {
             return Err(std::io::Error::last_os_error());
         }
-    }
-
-    Ok(())
-}
-
-#[cfg(target_os = "windows")]
-fn cleanup_windows(_path: &Path) -> Result<()> {
-    // Windows-specific cleanup if needed
-    Ok(())
-}
-
-#[cfg(not(target_os = "windows"))]
-fn check_files_in_use_unix(path: &Path) -> Result<Vec<String>> {
-    let mut files_in_use = Vec::new();
-
-    // Use lsof to check for open files
-    if let Ok(output) = Command::new("lsof")
-        .arg("+D")
-        .arg(path.display().to_string())
-        .output()
-    {
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            if !stdout.trim().is_empty() {
-                files_in_use.push(format!("Open files detected: {}", stdout.trim()));
-            }
-        }
-    }
-
-    Ok(files_in_use)
-}
-
-#[cfg(not(target_os = "windows"))]
-fn prepare_unix_removal(path: &Path) -> Result<()> {
-    // Make all files writable
-    if let Err(e) = Command::new("chmod")
-        .arg("-R")
-        .arg("u+w")
-        .arg(path.display().to_string())
-        .output()
-    {
-        debug!("Failed to make files writable: {e}");
-    }
-
-    Ok(())
-}
-
-#[cfg(not(target_os = "windows"))]
-fn cleanup_unix(path: &Path) -> Result<()> {
-    // Clean up any remaining symbolic links that might point to the removed JDK
-    if let Some(parent) = path.parent() {
-        super::symlink::cleanup_orphaned_symlinks(parent)?;
     }
 
     Ok(())
@@ -430,6 +405,149 @@ pub fn check_ownership(path: &Path) -> std::io::Result<bool> {
     }
 }
 
+/// Check if a file has secure permissions
+#[cfg(unix)]
+pub fn check_file_permissions(path: &Path) -> Result<bool> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let metadata = std::fs::metadata(path)?;
+    let permissions = metadata.permissions();
+    let mode = permissions.mode();
+
+    // Check if file has dangerous permissions (world-writable)
+    if mode & 0o002 != 0 {
+        return Ok(false);
+    }
+
+    Ok(true)
+}
+
+/// Check if a file has secure permissions
+#[cfg(windows)]
+pub fn check_file_permissions(path: &Path) -> Result<bool> {
+    use crate::error::KopiError;
+
+    let metadata = fs::metadata(path)?;
+
+    // On Windows, check if the file is read-only and exists
+    if !metadata.is_file() {
+        return Err(KopiError::SecurityError(format!(
+            "Path {path:?} is not a regular file"
+        )));
+    }
+
+    // Check if the file has the read-only attribute
+    // In Windows, files without read-only attribute are writable by the owner
+    // For JDK files, we generally want them to be read-only after installation
+    if metadata.permissions().readonly() {
+        debug!("File {path:?} is read-only (secure)");
+        Ok(true)
+    } else {
+        log::warn!("File {path:?} is writable - consider setting read-only for security");
+        Ok(true) // Still return true as writable files are not inherently insecure on Windows
+    }
+}
+
+/// Set secure permissions on a file (read-only for security)
+#[cfg(unix)]
+pub fn set_secure_permissions(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let metadata = std::fs::metadata(path)?;
+    let mut permissions = metadata.permissions();
+
+    // Set to 644 (owner: read/write, group: read, others: read)
+    // This prevents accidental modification while allowing execution
+    permissions.set_mode(0o644);
+
+    std::fs::set_permissions(path, permissions)?;
+    Ok(())
+}
+
+/// Set secure permissions on a file (read-only for security)
+#[cfg(windows)]
+pub fn set_secure_permissions(path: &Path) -> Result<()> {
+    let metadata = std::fs::metadata(path)?;
+    let mut permissions = metadata.permissions();
+
+    // Set the read-only attribute on Windows
+    permissions.set_readonly(true);
+
+    std::fs::set_permissions(path, permissions)?;
+    Ok(())
+}
+
+/// Check if a file has valid executable permissions with security validation
+///
+/// This function performs a more strict check than `is_executable`:
+/// - Verifies the file is a regular file (not a directory or symlink)
+/// - Checks for executable permissions
+/// - On Unix: Also ensures the file is not world-writable (security risk)
+#[cfg(unix)]
+pub fn check_executable_permissions(path: &Path) -> Result<()> {
+    use crate::error::KopiError;
+    use std::os::unix::fs::PermissionsExt;
+
+    let metadata = std::fs::metadata(path)?;
+
+    if !metadata.is_file() {
+        return Err(KopiError::SecurityError(format!(
+            "Path '{}' is not a regular file",
+            path.display()
+        )));
+    }
+
+    // Use is_executable for basic check
+    if !is_executable(path)? {
+        return Err(KopiError::SecurityError(format!(
+            "File '{}' is not executable",
+            path.display()
+        )));
+    }
+
+    // Additional security check: ensure file is not world-writable
+    let permissions = metadata.permissions();
+    let mode = permissions.mode();
+    if mode & 0o002 != 0 {
+        return Err(KopiError::SecurityError(format!(
+            "File '{}' is world-writable, which is a security risk",
+            path.display()
+        )));
+    }
+
+    Ok(())
+}
+
+/// Check if a file has valid executable permissions with security validation
+///
+/// This function performs a more strict check than `is_executable`:
+/// - Verifies the file is a regular file (not a directory or symlink)
+/// - Checks for executable permissions
+/// - On Unix: Also ensures the file is not world-writable (security risk)
+#[cfg(windows)]
+pub fn check_executable_permissions(path: &Path) -> Result<()> {
+    use crate::error::KopiError;
+
+    let metadata = std::fs::metadata(path)?;
+
+    if !metadata.is_file() {
+        return Err(KopiError::SecurityError(format!(
+            "Path '{}' is not a regular file",
+            path.display()
+        )));
+    }
+
+    // Use is_executable for the extension check
+    if !is_executable(path)? {
+        return Err(KopiError::SecurityError(format!(
+            "File '{}' does not have .exe extension",
+            path.display()
+        )));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -469,5 +587,142 @@ mod tests {
         // Should own files we create
         assert!(check_ownership(temp_dir.path()).unwrap());
         assert!(check_ownership(&test_file).unwrap());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_check_file_permissions_unix() {
+        use std::os::unix::fs::PermissionsExt;
+        use tempfile::NamedTempFile;
+
+        let temp_file = NamedTempFile::new().unwrap();
+
+        // Set safe permissions (644)
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_mode(0o644);
+        temp_file.as_file().set_permissions(perms.clone()).unwrap();
+
+        assert!(check_file_permissions(temp_file.path()).unwrap());
+
+        // Set unsafe permissions (world-writable)
+        perms.set_mode(0o666);
+        temp_file.as_file().set_permissions(perms).unwrap();
+
+        assert!(!check_file_permissions(temp_file.path()).unwrap());
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_check_file_permissions_windows() {
+        use tempfile::NamedTempFile;
+
+        let temp_file = NamedTempFile::new().unwrap();
+
+        // By default, temp files are writable
+        assert!(check_file_permissions(temp_file.path()).unwrap());
+
+        // Set file as read-only
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_readonly(true);
+        temp_file.as_file().set_permissions(perms.clone()).unwrap();
+
+        // Should still be OK (read-only is more secure)
+        assert!(check_file_permissions(temp_file.path()).unwrap());
+
+        // Test with a directory (should fail)
+        let temp_dir = tempfile::tempdir().unwrap();
+        assert!(check_file_permissions(temp_dir.path()).is_err());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_set_secure_permissions_unix() {
+        use std::os::unix::fs::PermissionsExt;
+        use tempfile::NamedTempFile;
+
+        let temp_file = NamedTempFile::new().unwrap();
+
+        // Set some initial permissions
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_mode(0o777);
+        temp_file.as_file().set_permissions(perms).unwrap();
+
+        // Apply secure permissions
+        set_secure_permissions(temp_file.path()).unwrap();
+
+        // Check that permissions are now 644
+        let new_perms = temp_file.as_file().metadata().unwrap().permissions();
+        assert_eq!(new_perms.mode() & 0o777, 0o644);
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_set_secure_permissions_windows() {
+        use tempfile::NamedTempFile;
+
+        let temp_file = NamedTempFile::new().unwrap();
+
+        // By default, temp files are writable
+        let initial_perms = temp_file.as_file().metadata().unwrap().permissions();
+        assert!(!initial_perms.readonly());
+
+        // Apply secure permissions
+        set_secure_permissions(temp_file.path()).unwrap();
+
+        // Check that file is now read-only
+        let new_perms = temp_file.as_file().metadata().unwrap().permissions();
+        assert!(new_perms.readonly());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_check_executable_permissions_unix() {
+        use std::os::unix::fs::PermissionsExt;
+        use tempfile::NamedTempFile;
+
+        let temp_file = NamedTempFile::new().unwrap();
+
+        // Set executable but world-writable (insecure)
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_mode(0o777);
+        temp_file.as_file().set_permissions(perms).unwrap();
+
+        // Should fail due to world-writable
+        assert!(check_executable_permissions(temp_file.path()).is_err());
+
+        // Set executable and secure
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_mode(0o755);
+        temp_file.as_file().set_permissions(perms).unwrap();
+
+        // Should pass
+        assert!(check_executable_permissions(temp_file.path()).is_ok());
+
+        // Set non-executable
+        let mut perms = temp_file.as_file().metadata().unwrap().permissions();
+        perms.set_mode(0o644);
+        temp_file.as_file().set_permissions(perms).unwrap();
+
+        // Should fail due to not executable
+        assert!(check_executable_permissions(temp_file.path()).is_err());
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_check_executable_permissions_windows() {
+        use tempfile::NamedTempFile;
+
+        // Test with non-exe file
+        let temp_file = NamedTempFile::new().unwrap();
+        assert!(check_executable_permissions(temp_file.path()).is_err());
+
+        // Test with exe file
+        let temp_dir = TempDir::new().unwrap();
+        let exe_path = temp_dir.path().join("test.exe");
+        fs::write(&exe_path, b"fake exe").unwrap();
+        assert!(check_executable_permissions(&exe_path).is_ok());
+
+        // Test with directory
+        assert!(check_executable_permissions(temp_dir.path()).is_err());
     }
 }

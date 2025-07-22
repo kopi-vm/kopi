@@ -6,7 +6,6 @@
 
 // Re-export modules
 pub mod file_ops;
-pub mod permissions;
 pub mod process;
 pub mod shell;
 pub mod shim;

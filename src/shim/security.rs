@@ -91,7 +91,7 @@ impl SecurityValidator {
     }
 
     pub fn check_permissions(&self, path: &Path) -> Result<(), KopiError> {
-        crate::platform::permissions::check_executable_permissions(path)
+        crate::platform::file_ops::check_executable_permissions(path)
     }
 
     pub fn validate_symlink(&self, symlink_path: &Path) -> Result<(), KopiError> {

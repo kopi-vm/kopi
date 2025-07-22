@@ -1,6 +1,6 @@
 use crate::config::KopiConfig;
 use crate::doctor::{CheckCategory, CheckResult, CheckStatus, DiagnosticCheck};
-use crate::platform::permissions::check_executable_permissions;
+use crate::platform::file_ops::check_executable_permissions;
 use crate::platform::{executable_extension, kopi_binary_name, shim_binary_name};
 use std::fs;
 use std::path::Path;

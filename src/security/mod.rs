@@ -1,6 +1,6 @@
 use crate::error::{KopiError, Result};
 use crate::models::package::ChecksumType;
-use crate::platform::permissions;
+use crate::platform::file_ops;
 use digest::{Digest, DynDigest};
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
@@ -111,7 +111,7 @@ pub fn audit_log(action: &str, details: &str) {
 }
 
 pub fn verify_file_permissions(path: &Path) -> Result<()> {
-    let is_secure = permissions::check_file_permissions(path)?;
+    let is_secure = file_ops::check_file_permissions(path)?;
 
     if !is_secure {
         return Err(KopiError::SecurityError(format!(
@@ -148,7 +148,7 @@ pub fn sanitize_path(path: &Path) -> Result<()> {
 /// Set file permissions to read-only for security
 /// This is especially important for JDK files after installation
 pub fn secure_file_permissions(path: &Path) -> Result<()> {
-    permissions::set_secure_permissions(path)?;
+    file_ops::set_secure_permissions(path)?;
 
     audit_log(
         "SECURE_PERMISSIONS",
