@@ -162,26 +162,24 @@ pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
                 use walkdir::WalkDir;
 
                 for entry in WalkDir::new(path).max_depth(2).into_iter().flatten() {
-                        let file_path = entry.path();
-                        if file_path.is_file() {
-                            // Try to open the file exclusively
-                            match std::fs::OpenOptions::new()
-                                .read(true)
-                                .write(true)
-                                .open(file_path)
-                            {
-                                Ok(_) => {
-                                    // File can be opened, it's not locked
-                                }
-                                Err(_) => {
-                                    files_in_use.push(format!(
-                                        "File may be in use: {}",
-                                        file_path.display()
-                                    ));
-                                }
+                    let file_path = entry.path();
+                    if file_path.is_file() {
+                        // Try to open the file exclusively
+                        match std::fs::OpenOptions::new()
+                            .read(true)
+                            .write(true)
+                            .open(file_path)
+                        {
+                            Ok(_) => {
+                                // File can be opened, it's not locked
+                            }
+                            Err(_) => {
+                                files_in_use
+                                    .push(format!("File may be in use: {}", file_path.display()));
                             }
                         }
                     }
+                }
             }
         }
     }
@@ -214,47 +212,44 @@ pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
                 use walkdir::WalkDir;
 
                 for entry in WalkDir::new(path).max_depth(2).into_iter().flatten() {
-                        let file_path = entry.path();
-                        if file_path.is_file() {
-                            // Try to open the file with exclusive access
-                            match std::fs::OpenOptions::new()
-                                .read(true)
-                                .write(true)
-                                .open(file_path)
-                            {
-                                Ok(file) => {
-                                    // Try to get an exclusive lock
-                                    use std::os::unix::io::AsRawFd;
-                                    let fd = file.as_raw_fd();
+                    let file_path = entry.path();
+                    if file_path.is_file() {
+                        // Try to open the file with exclusive access
+                        match std::fs::OpenOptions::new()
+                            .read(true)
+                            .write(true)
+                            .open(file_path)
+                        {
+                            Ok(file) => {
+                                // Try to get an exclusive lock
+                                use std::os::unix::io::AsRawFd;
+                                let fd = file.as_raw_fd();
 
-                                    let mut flock = libc::flock {
-                                        l_type: libc::F_WRLCK as i16,
-                                        l_whence: libc::SEEK_SET as i16,
-                                        l_start: 0,
-                                        l_len: 0,
-                                        l_pid: 0,
-                                    };
+                                let mut flock = libc::flock {
+                                    l_type: libc::F_WRLCK as i16,
+                                    l_whence: libc::SEEK_SET as i16,
+                                    l_start: 0,
+                                    l_len: 0,
+                                    l_pid: 0,
+                                };
 
-                                    let result =
-                                        unsafe { libc::fcntl(fd, libc::F_GETLK, &mut flock) };
+                                let result = unsafe { libc::fcntl(fd, libc::F_GETLK, &mut flock) };
 
-                                    if result != -1 && flock.l_type != libc::F_UNLCK as i16 {
-                                        files_in_use.push(format!(
-                                            "File may be locked by process {}: {}",
-                                            flock.l_pid,
-                                            file_path.display()
-                                        ));
-                                    }
-                                }
-                                Err(_) => {
+                                if result != -1 && flock.l_type != libc::F_UNLCK as i16 {
                                     files_in_use.push(format!(
-                                        "Cannot access file: {}",
+                                        "File may be locked by process {}: {}",
+                                        flock.l_pid,
                                         file_path.display()
                                     ));
                                 }
                             }
+                            Err(_) => {
+                                files_in_use
+                                    .push(format!("Cannot access file: {}", file_path.display()));
+                            }
                         }
                     }
+                }
             }
         }
     }
@@ -635,11 +630,11 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("test.txt");
         fs::write(&test_file, "test content").unwrap();
-        
+
         // Directory should be renameable when no files are open
         let files_in_use = check_files_in_use(temp_dir.path()).unwrap();
         assert!(files_in_use.is_empty());
-        
+
         // Note: Actually testing files in use would require keeping a file handle open
         // in another thread/process, which is complex for a unit test
     }
