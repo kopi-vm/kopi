@@ -233,14 +233,21 @@ pub fn prepare_for_removal(path: &Path) -> Result<()> {
 pub fn prepare_for_removal(path: &Path) -> Result<()> {
     debug!("Preparing {} for removal", path.display());
 
-    // Make all files writable
-    if let Err(e) = Command::new("chmod")
-        .arg("-R")
-        .arg("u+w")
-        .arg(path.display().to_string())
-        .output()
-    {
-        debug!("Failed to make files writable: {e}");
+    use walkdir::WalkDir;
+
+    // Make all files and directories writable recursively
+    for entry in WalkDir::new(path).contents_first(true) {
+        match entry {
+            Ok(entry) => {
+                let path = entry.path();
+                if let Err(e) = make_writable(path) {
+                    debug!("Failed to make {} writable: {}", path.display(), e);
+                }
+            }
+            Err(e) => {
+                debug!("Failed to access directory entry: {e}");
+            }
+        }
     }
 
     Ok(())
