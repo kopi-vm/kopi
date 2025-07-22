@@ -1,5 +1,26 @@
 # Kopi Troubleshooting Guide
 
+This guide helps you diagnose and fix common issues with kopi. For automated diagnostics, run `kopi doctor`.
+
+## Automated Diagnostics
+
+Before manually troubleshooting, run the doctor command for comprehensive diagnostics:
+
+```bash
+kopi doctor                    # Run all diagnostic checks
+kopi doctor --verbose         # Show detailed information
+kopi doctor --check network   # Check specific category
+kopi doctor --json           # Output in JSON format
+```
+
+The doctor command checks:
+- Installation integrity
+- Shell configuration
+- JDK installations
+- File permissions
+- Network connectivity
+- Cache status
+
 ## Enhanced Error Messages
 
 Kopi provides comprehensive error messages with helpful suggestions when something goes wrong:
@@ -164,16 +185,109 @@ Error: Security error: Path contains directory traversal
 - Ensure no malformed symlinks in kopi directories
 - Run `kopi shim verify --fix` to repair issues
 
+## Platform-Specific Issues
+
+### Windows
+
+#### PowerShell Execution Policy
+```bash
+Error: Scripts cannot execute in PowerShell
+```
+**Solution:**
+```powershell
+# Check current policy
+Get-ExecutionPolicy
+
+# Set policy for current user
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+#### Path Length Limitations
+```bash
+Error: Path too long
+```
+**Solution:**
+- Enable long path support (Windows 10+):
+  ```cmd
+  reg add HKLM\SYSTEM\CurrentControlSet\Control\FileSystem /v LongPathsEnabled /t REG_DWORD /d 1
+  ```
+- Restart computer
+
+### macOS
+
+#### Gatekeeper Issues
+```bash
+Error: "kopi" cannot be opened because the developer cannot be verified
+```
+**Solution:**
+```bash
+# Remove quarantine attribute
+xattr -d com.apple.quarantine ~/.kopi/bin/kopi
+```
+
+#### Shell Configuration
+- Ensure `.bash_profile` sources `.bashrc` if using bash
+- For zsh (default on macOS 10.15+), use `~/.zshrc`
+
+### Linux
+
+#### SELinux Contexts
+```bash
+Error: Permission denied (even with correct file permissions)
+```
+**Solution:**
+```bash
+# Check SELinux status
+sestatus
+
+# Set correct context
+restorecon -Rv ~/.kopi
+```
+
+## Shell Integration Problems
+
+### PATH Not Updated
+**Symptoms:**
+- `java -version` shows wrong version
+- `which java` doesn't point to kopi shims
+
+**Solutions:**
+1. Verify shims in PATH:
+   ```bash
+   echo $PATH | grep kopi/shims
+   ```
+
+2. Ensure correct PATH order:
+   ```bash
+   export PATH="$HOME/.kopi/shims:$PATH"
+   ```
+
+3. Run shell setup:
+   ```bash
+   kopi shell
+   ```
+
 ## Getting Help
 
 If you encounter issues not covered here:
 
-1. Run the command with verbose logging:
+1. Run comprehensive diagnostics:
+   ```bash
+   kopi doctor --verbose > kopi-diagnostics.txt
+   ```
+
+2. Run commands with verbose logging:
    ```bash
    kopi install 21 -vv
    ```
 
-2. Check the GitHub issues: https://github.com/anthropics/claude-code/issues
+3. Check the GitHub issues: https://github.com/anthropics/claude-code/issues
 
-3. For feedback or bug reports, please report the issue at:
+4. For feedback or bug reports, please report the issue at:
    https://github.com/anthropics/claude-code/issues
+
+   Include:
+   - Output from `kopi doctor`
+   - Your operating system and version
+   - Steps to reproduce the problem
+   - Any error messages

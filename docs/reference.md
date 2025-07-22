@@ -438,14 +438,45 @@ kopi search 21 --lts-only                # Only show LTS versions
 
 ### `kopi doctor`
 
-Diagnose kopi installation issues. (Not yet implemented)
+Run comprehensive diagnostics on your kopi installation to identify and fix common issues.
 
 **Usage:**
 ```bash
-kopi doctor                              # Diagnose kopi installation issues
+kopi doctor                              # Run all diagnostic checks
+kopi doctor --json                       # Output results in JSON format
+kopi doctor --verbose                    # Show detailed diagnostic information
+kopi doctor --check <category>           # Run only specific category of checks
 ```
 
-**Note:** This command is planned but not yet implemented. When available, it will check for common configuration issues, PATH setup, and installation problems.
+**Categories:**
+- `installation`: Check kopi binary, version, directories, and configuration
+- `shell`: Verify shell integration and PATH configuration
+- `jdks`: Validate installed JDK integrity and disk usage
+- `permissions`: Check file and directory permissions
+- `network`: Test API connectivity and proxy settings
+- `cache`: Validate cache files and check for staleness
+
+**Examples:**
+```bash
+kopi doctor                              # Run all checks with colored output
+kopi doctor --check network              # Check only network connectivity
+kopi doctor --json > doctor-report.json  # Save results as JSON
+kopi doctor --verbose                    # See detailed check information
+```
+
+**Exit Codes:**
+- `0`: All checks passed
+- `1`: One or more checks failed
+- `2`: Warnings detected (no failures)
+- `20`: Network error or timeout
+
+**Features:**
+- Parallel execution of independent checks for fast results
+- Progress indicator for long-running checks
+- Actionable suggestions for fixing detected issues
+- Platform-specific recommendations (Windows, macOS, Linux)
+- Performance optimization with caching of expensive operations
+- Total timeout protection (30 seconds maximum)
 
 ## Cache Management Commands
 
