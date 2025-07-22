@@ -18,9 +18,6 @@ use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 
 #[cfg(target_os = "windows")]
-use std::process::Command;
-
-#[cfg(target_os = "windows")]
 use winapi::um::fileapi::{GetFileAttributesW, INVALID_FILE_ATTRIBUTES, SetFileAttributesW};
 
 #[cfg(target_os = "windows")]
@@ -41,9 +38,6 @@ use winapi::um::handleapi::CloseHandle;
 
 #[cfg(target_os = "windows")]
 use std::ptr;
-
-#[cfg(not(target_os = "windows"))]
-use std::process::Command;
 
 /// Make a file executable (Unix only)
 #[cfg(unix)]
@@ -150,26 +144,45 @@ pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
 
     let mut files_in_use = Vec::new();
 
-    // Use handle.exe if available to check for open handles
-    if let Ok(output) = Command::new("handle.exe")
-        .arg("-u")
-        .arg(path.display().to_string())
-        .output()
-    {
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            if !stdout.trim().is_empty() {
-                files_in_use.push(format!("Files in use detected: {}", stdout.trim()));
+    // Try to rename the directory to test if it's in use
+    let temp_path = path.with_extension("kopi_test_temp");
+    match std::fs::rename(path, &temp_path) {
+        Ok(_) => {
+            // Rename back immediately
+            if let Err(e) = std::fs::rename(&temp_path, path) {
+                debug!("Warning: Failed to rename back from temporary name: {e}");
             }
         }
-    } else {
-        // Fallback: try to rename the directory to test if it's in use
-        let temp_name = format!("{}.test", path.display());
-        if std::fs::rename(path, &temp_name).is_ok() {
-            // Rename back immediately
-            let _ = std::fs::rename(&temp_name, path);
-        } else {
-            files_in_use.push("Directory appears to be in use".to_string());
+        Err(e) => {
+            debug!("Cannot rename directory: {e}");
+            files_in_use.push("Directory appears to be in use (cannot rename)".to_string());
+
+            // Additionally, try to check specific files
+            if path.is_dir() {
+                use walkdir::WalkDir;
+
+                for entry in WalkDir::new(path).max_depth(2).into_iter().flatten() {
+                        let file_path = entry.path();
+                        if file_path.is_file() {
+                            // Try to open the file exclusively
+                            match std::fs::OpenOptions::new()
+                                .read(true)
+                                .write(true)
+                                .open(file_path)
+                            {
+                                Ok(_) => {
+                                    // File can be opened, it's not locked
+                                }
+                                Err(_) => {
+                                    files_in_use.push(format!(
+                                        "File may be in use: {}",
+                                        file_path.display()
+                                    ));
+                                }
+                            }
+                        }
+                    }
+            }
         }
     }
 
@@ -183,16 +196,65 @@ pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
 
     let mut files_in_use = Vec::new();
 
-    // Use lsof to check for open files
-    if let Ok(output) = Command::new("lsof")
-        .arg("+D")
-        .arg(path.display().to_string())
-        .output()
-    {
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            if !stdout.trim().is_empty() {
-                files_in_use.push(format!("Open files detected: {}", stdout.trim()));
+    // Try to rename the directory to test if it's in use
+    let temp_path = path.with_extension("kopi_test_temp");
+    match std::fs::rename(path, &temp_path) {
+        Ok(_) => {
+            // Rename back immediately
+            if let Err(e) = std::fs::rename(&temp_path, path) {
+                debug!("Warning: Failed to rename back from temporary name: {e}");
+            }
+        }
+        Err(e) => {
+            debug!("Cannot rename directory: {e}");
+            files_in_use.push("Directory appears to be in use (cannot rename)".to_string());
+
+            // On Unix, we can also check if files are open by trying to get exclusive locks
+            if path.is_dir() {
+                use walkdir::WalkDir;
+
+                for entry in WalkDir::new(path).max_depth(2).into_iter().flatten() {
+                        let file_path = entry.path();
+                        if file_path.is_file() {
+                            // Try to open the file with exclusive access
+                            match std::fs::OpenOptions::new()
+                                .read(true)
+                                .write(true)
+                                .open(file_path)
+                            {
+                                Ok(file) => {
+                                    // Try to get an exclusive lock
+                                    use std::os::unix::io::AsRawFd;
+                                    let fd = file.as_raw_fd();
+
+                                    let mut flock = libc::flock {
+                                        l_type: libc::F_WRLCK as i16,
+                                        l_whence: libc::SEEK_SET as i16,
+                                        l_start: 0,
+                                        l_len: 0,
+                                        l_pid: 0,
+                                    };
+
+                                    let result =
+                                        unsafe { libc::fcntl(fd, libc::F_GETLK, &mut flock) };
+
+                                    if result != -1 && flock.l_type != libc::F_UNLCK as i16 {
+                                        files_in_use.push(format!(
+                                            "File may be locked by process {}: {}",
+                                            flock.l_pid,
+                                            file_path.display()
+                                        ));
+                                    }
+                                }
+                                Err(_) => {
+                                    files_in_use.push(format!(
+                                        "Cannot access file: {}",
+                                        file_path.display()
+                                    ));
+                                }
+                            }
+                        }
+                    }
             }
         }
     }
@@ -566,6 +628,20 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let files_in_use = check_files_in_use(temp_dir.path()).unwrap();
         assert!(files_in_use.is_empty());
+    }
+
+    #[test]
+    fn test_check_files_in_use_with_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("test.txt");
+        fs::write(&test_file, "test content").unwrap();
+        
+        // Directory should be renameable when no files are open
+        let files_in_use = check_files_in_use(temp_dir.path()).unwrap();
+        assert!(files_in_use.is_empty());
+        
+        // Note: Actually testing files in use would require keeping a file handle open
+        // in another thread/process, which is complex for a unit test
     }
 
     #[test]
