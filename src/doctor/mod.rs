@@ -77,7 +77,8 @@ impl CheckCategory {
     ) -> Vec<Box<dyn DiagnosticCheck + 'a>> {
         use crate::doctor::checks::{
             BinaryPermissionsCheck, ConfigFileCheck, DirectoryPermissionsCheck,
-            InstallationDirectoryCheck, KopiBinaryCheck, OwnershipCheck, PathCheck,
+            InstallationDirectoryCheck, JdkDiskSpaceCheck, JdkInstallationCheck, JdkIntegrityCheck,
+            JdkVersionConsistencyCheck, KopiBinaryCheck, OwnershipCheck, PathCheck,
             ShellConfigurationCheck, ShellDetectionCheck, ShimFunctionalityCheck, ShimsInPathCheck,
             VersionCheck,
         };
@@ -102,7 +103,10 @@ impl CheckCategory {
                 Box::new(ShimFunctionalityCheck::new(config)),
             ],
             CheckCategory::Jdks => vec![
-                // Phase 3: JDK installation checks will go here
+                Box::new(JdkInstallationCheck::new(config)) as Box<dyn DiagnosticCheck + 'a>,
+                Box::new(JdkIntegrityCheck::new(config)),
+                Box::new(JdkDiskSpaceCheck::new(config)),
+                Box::new(JdkVersionConsistencyCheck::new(config)),
             ],
             CheckCategory::Network => vec![
                 // Phase 3: Network connectivity checks will go here
