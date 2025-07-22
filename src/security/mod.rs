@@ -19,7 +19,8 @@ pub fn verify_checksum(
 
     if actual != expected_checksum {
         return Err(KopiError::ValidationError(format!(
-            "Checksum verification failed for {file_path:?}. Expected: {expected_checksum}, Actual: {actual}"
+            "Checksum verification failed for {file_path:?}. Expected: {expected_checksum}, \
+             Actual: {actual}"
         )));
     }
 

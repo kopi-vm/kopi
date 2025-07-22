@@ -182,7 +182,8 @@ pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)
         "md5" => ChecksumType::Md5,
         unsupported => {
             warn!(
-                "Unsupported checksum type '{unsupported}' received from foojay API. Defaulting to SHA256."
+                "Unsupported checksum type '{unsupported}' received from foojay API. Defaulting \
+                 to SHA256."
             );
             ChecksumType::Sha256 // Default to SHA256
         }

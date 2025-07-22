@@ -58,7 +58,8 @@ pub fn detect_shell() -> Result<(Shell, PathBuf)> {
                                 #[cfg(windows)]
                                 {
                                     return Err(KopiError::ShellDetectionError(format!(
-                                        "Parent process '{file_str}' is not a recognized shell. Please specify shell type with --shell option"
+                                        "Parent process '{file_str}' is not a recognized shell. \
+                                         Please specify shell type with --shell option"
                                     )));
                                 }
                                 // On Unix, continue to try other detection methods
@@ -72,7 +73,9 @@ pub fn detect_shell() -> Result<(Shell, PathBuf)> {
                 {
                     log::error!("Failed to get executable path for parent process");
                     return Err(KopiError::ShellDetectionError(
-                        "Cannot determine parent shell executable path. Please specify shell type with --shell option".to_string()
+                        "Cannot determine parent shell executable path. Please specify shell type \
+                         with --shell option"
+                            .to_string(),
                     ));
                 }
             }

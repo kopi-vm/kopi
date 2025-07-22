@@ -102,7 +102,8 @@ impl<'a> InstallCommand<'a> {
     ) -> Result<()> {
         info!("Installing JDK {version_spec}");
         debug!(
-            "Install options: force={force}, dry_run={dry_run}, no_progress={no_progress}, timeout={timeout_secs:?}, javafx_bundled={javafx_bundled}"
+            "Install options: force={force}, dry_run={dry_run}, no_progress={no_progress}, \
+             timeout={timeout_secs:?}, javafx_bundled={javafx_bundled}"
         );
 
         // Use config to parse version with additional distributions support
@@ -115,7 +116,9 @@ impl<'a> InstallCommand<'a> {
         // Install command requires a specific version
         let version = version_request.version.as_ref().ok_or_else(|| {
             KopiError::InvalidVersionFormat(
-                "Install command requires a specific version. Use 'kopi cache search' to browse available versions.".to_string()
+                "Install command requires a specific version. Use 'kopi cache search' to browse \
+                 available versions."
+                    .to_string(),
             )
         })?;
 

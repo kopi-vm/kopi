@@ -18,22 +18,36 @@ fn setup_test_jdk(kopi_home: &PathBuf, distribution: &str, version: &str) {
     let bin_dir = jdk_path.join("bin");
     fs::create_dir_all(&bin_dir).unwrap();
 
-    // Create test tools
-    for tool in &["java", "javac", "jar", "jshell"] {
-        let tool_path = if cfg!(windows) {
-            bin_dir.join(format!("{tool}.exe"))
-        } else {
-            bin_dir.join(tool)
-        };
-        fs::write(&tool_path, "#!/bin/sh\necho test").unwrap();
+    // Create multiple JDKs for testing
+    for (distribution, version) in &[
+        ("temurin", "21.0.5+11"),
+        ("temurin", "17.0.9+9"),
+        ("corretto", "21.0.1"),
+        ("corretto", "17.0.5"),
+        ("zulu", "11.0.25"),
+    ] {
+        let jdk_path = jdks_dir.join(format!("{distribution}-{version}"));
+        let bin_dir = jdk_path.join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
 
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let metadata = fs::metadata(&tool_path).unwrap();
-            let mut perms = metadata.permissions();
-            perms.set_mode(0o755);
-            fs::set_permissions(&tool_path, perms).unwrap();
+        // Create mock executables
+        for tool in &["java", "javac", "jar", "jshell"] {
+            let tool_path = if cfg!(windows) {
+                bin_dir.join(format!("{tool}.exe"))
+            } else {
+                bin_dir.join(tool)
+            };
+
+            fs::write(&tool_path, "#!/bin/sh\necho test").unwrap();
+
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let metadata = fs::metadata(&tool_path).unwrap();
+                let mut perms = metadata.permissions();
+                perms.set_mode(0o755);
+                fs::set_permissions(&tool_path, perms).unwrap();
+            }
         }
     }
 

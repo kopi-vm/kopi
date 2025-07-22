@@ -252,7 +252,8 @@ fn find_jdk_installation(
     // Find matching JDK
     for jdk in installed_jdks {
         log::debug!(
-            "Checking JDK: distribution={}, version={} against request: distribution={}, version={}",
+            "Checking JDK: distribution={}, version={} against request: distribution={}, \
+             version={}",
             jdk.distribution,
             jdk.version,
             distribution.id(),

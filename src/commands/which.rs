@@ -59,7 +59,8 @@ impl<'a> WhichCommand<'a> {
         } else {
             // Multiple matches - need disambiguation
             return Err(KopiError::ValidationError(format!(
-                "Multiple JDKs match version '{}'\n\nFound:\n  {}\n\nPlease specify the full version or distribution",
+                "Multiple JDKs match version '{}'\n\nFound:\n  {}\n\nPlease specify the full \
+                 version or distribution",
                 version_request.version_pattern,
                 matching_jdks
                     .iter()
@@ -378,6 +379,30 @@ mod tests {
             assert!(available_tools.contains(&"javac".to_string()));
         } else {
             panic!("Expected ToolNotFound error");
+        }
+    }
+
+    #[test]
+    fn test_get_tool_path_various_tools() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = create_test_jdk(&temp_dir, "temurin", "21.0.5");
+
+        let jdk = InstalledJdk {
+            distribution: "temurin".to_string(),
+            version: Version::from_str("21.0.5").unwrap(),
+            path: jdk_path,
+        };
+
+        // Test various JDK tools
+        for tool_name in &["javac", "jar", "jshell", "jps", "jstack", "jmap"] {
+            let tool_path = get_tool_path(&jdk, tool_name).unwrap();
+            assert!(tool_path.exists());
+            let expected_suffix = if cfg!(windows) {
+                format!("{tool_name}.exe")
+            } else {
+                tool_name.to_string()
+            };
+            assert!(tool_path.ends_with(&expected_suffix));
         }
     }
 

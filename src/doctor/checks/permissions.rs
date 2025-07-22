@@ -231,7 +231,8 @@ impl DiagnosticCheck for OwnershipCheck<'_> {
                                 start.elapsed(),
                             )
                             .with_details(format!(
-                                "Directory owned by UID {dir_uid}, current user is UID {current_uid}"
+                                "Directory owned by UID {dir_uid}, current user is UID \
+                                 {current_uid}"
                             ))
                             .with_suggestion(format!(
                                 "Transfer ownership: sudo chown -R {} {}",

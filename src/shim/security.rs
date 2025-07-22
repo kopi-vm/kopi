@@ -68,7 +68,8 @@ impl SecurityValidator {
 
         if !version.chars().all(valid_chars) {
             return Err(KopiError::ValidationError(format!(
-                "Version '{version}' contains invalid characters. Only alphanumeric and @.-_+ are allowed"
+                "Version '{version}' contains invalid characters. Only alphanumeric and @.-_+ are \
+                 allowed"
             )));
         }
 

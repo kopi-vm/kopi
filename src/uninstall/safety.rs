@@ -10,14 +10,16 @@ pub fn perform_safety_checks(distribution: &str, version: &str) -> Result<()> {
     // Check if JDK is currently active (global)
     if is_active_global_jdk(distribution, version)? {
         return Err(KopiError::ValidationError(format!(
-            "Cannot uninstall {distribution}@{version} - it is currently active globally. Use --force to override this check"
+            "Cannot uninstall {distribution}@{version} - it is currently active globally. Use \
+             --force to override this check"
         )));
     }
 
     // Check if JDK is currently active (local)
     if is_active_local_jdk(distribution, version)? {
         return Err(KopiError::ValidationError(format!(
-            "Cannot uninstall {distribution}@{version} - it is currently active in this project. Use --force to override this check"
+            "Cannot uninstall {distribution}@{version} - it is currently active in this project. \
+             Use --force to override this check"
         )));
     }
 

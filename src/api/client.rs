@@ -227,7 +227,8 @@ impl ApiClient {
                                     Ok(package)
                                 } else {
                                     Err(KopiError::MetadataFetch(format!(
-                                        "No package info found for ID: {package_id_copy} (API v{API_VERSION})"
+                                        "No package info found for ID: {package_id_copy} (API \
+                                         v{API_VERSION})"
                                     )))
                                 }
                             }
@@ -305,7 +306,8 @@ impl ApiClient {
                     Ok(resp) => resp,
                     Err(e) => {
                         let user_error = KopiError::MetadataFetch(format!(
-                            "Network error connecting to foojay.io API v{API_VERSION}: {e}. Please check your internet connection and try again."
+                            "Network error connecting to foojay.io API v{API_VERSION}: {e}. \
+                             Please check your internet connection and try again."
                         ));
 
                         if current_try < (MAX_RETRIES - 1) as u64 {
@@ -366,13 +368,16 @@ impl ApiClient {
                     } else {
                         match status.as_u16() {
                             404 => format!(
-                                "The requested resource was not found on foojay.io API v{API_VERSION}. The API endpoint may have changed."
+                                "The requested resource was not found on foojay.io API \
+                                 v{API_VERSION}. The API endpoint may have changed."
                             ),
                             500..=599 => format!(
-                                "Server error occurred on foojay.io API v{API_VERSION}. Please try again later."
+                                "Server error occurred on foojay.io API v{API_VERSION}. Please \
+                                 try again later."
                             ),
                             401 | 403 => format!(
-                                "Authentication failed for foojay.io API v{API_VERSION}. Please check your credentials."
+                                "Authentication failed for foojay.io API v{API_VERSION}. Please \
+                                 check your credentials."
                             ),
                             _ => format!(
                                 "HTTP error ({}) from foojay.io API v{API_VERSION}: {}",

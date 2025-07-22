@@ -173,7 +173,8 @@ fn resolve_kopi_home() -> Result<PathBuf> {
                 KopiError::ConfigError("Unable to determine home directory".to_string())
             })?;
             warn!(
-                "KOPI_HOME environment variable '{}' is not an absolute path. Ignoring and using default path: {}",
+                "KOPI_HOME environment variable '{}' is not an absolute path. Ignoring and using \
+                 default path: {}",
                 kopi_home,
                 default_path.display()
             );

@@ -347,7 +347,7 @@ mod tests {
                 .config
                 .jdks_dir()
                 .unwrap()
-                .join(format!(".{}.removing", name));
+                .join(format!(".{name}.removing"));
             fs::create_dir_all(&temp_path).unwrap();
             temp_path
         }
@@ -369,7 +369,7 @@ mod tests {
                 .config
                 .jdks_dir()
                 .unwrap()
-                .join(format!("{}.meta.json", name));
+                .join(format!("{name}.meta.json"));
             fs::write(
                 &metadata_path,
                 r#"{"version": "21.0.1", "distribution": "temurin"}"#,

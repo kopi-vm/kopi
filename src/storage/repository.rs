@@ -84,7 +84,8 @@ impl<'a> JdkRepository<'a> {
 
                 if jdk.distribution == distribution.id() {
                     debug!(
-                        "Distribution matches. Checking if search version {} matches installed version {}",
+                        "Distribution matches. Checking if search version {} matches installed \
+                         version {}",
                         version, jdk.version
                     );
 
@@ -100,7 +101,8 @@ impl<'a> JdkRepository<'a> {
                         return Ok(true);
                     } else {
                         debug!(
-                            "Version mismatch: installed version {} does not match search pattern {}",
+                            "Version mismatch: installed version {} does not match search pattern \
+                             {}",
                             jdk.version, version
                         );
                     }

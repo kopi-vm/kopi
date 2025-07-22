@@ -24,7 +24,10 @@ impl ProgressReporter for IndicatifProgressReporter {
             let pb = ProgressBar::new(total_bytes);
             pb.set_style(
                 ProgressStyle::default_bar()
-                    .template("{msg}\n{spinner:.green} [{elapsed_precise}] [{bar:25.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
+                    .template(
+                        "{msg}\n{spinner:.green} [{elapsed_precise}] [{bar:25.cyan/blue}] \
+                         {bytes}/{total_bytes} ({bytes_per_sec}, {eta})",
+                    )
                     .unwrap()
                     .progress_chars("█▓░"),
             );

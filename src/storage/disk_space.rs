@@ -37,7 +37,8 @@ impl DiskSpaceChecker {
 
         if available_mb < self.min_disk_space_mb {
             return Err(KopiError::DiskSpaceError(format!(
-                "Insufficient disk space at {target_dir:?}. Required: {}MB, Available: {available_mb}MB",
+                "Insufficient disk space at {target_dir:?}. Required: {}MB, Available: \
+                 {available_mb}MB",
                 self.min_disk_space_mb
             )));
         }
