@@ -1,11 +1,12 @@
-use kopi::cache::{DistributionCache, MetadataCache};
+use kopi::cache::PackageSearcher;
+use kopi::cache::{DistributionCache, MetadataCache, VersionSearchType};
 use kopi::config::KopiConfig;
 use kopi::models::distribution::Distribution;
 use kopi::models::metadata::JdkMetadata;
 use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
 use kopi::models::platform::{Architecture, OperatingSystem};
-use kopi::cache::{PackageSearcher, PlatformFilter};
 use kopi::version::Version;
+use kopi::version::parser::VersionParser;
 use std::str::FromStr;
 use std::time::Instant;
 
@@ -118,10 +119,12 @@ fn test_search_performance_by_version() {
     let cache = create_large_test_cache();
     let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
+    let parser = VersionParser::new(&config);
 
     // Measure search performance for version search
     let start = Instant::now();
-    let results = searcher.search("21").unwrap();
+    let parsed = parser.parse("21").unwrap();
+    let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
     let duration = start.elapsed();
 
     println!("Search for version '21' took: {duration:?}");
@@ -141,10 +144,12 @@ fn test_search_performance_by_distribution() {
     let cache = create_large_test_cache();
     let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
+    let parser = VersionParser::new(&config);
 
     // Measure search performance for distribution search
     let start = Instant::now();
-    let results = searcher.search("corretto").unwrap();
+    let parsed = parser.parse("corretto").unwrap();
+    let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
     let duration = start.elapsed();
 
     println!("Search for distribution 'corretto' took: {duration:?}");
@@ -164,10 +169,12 @@ fn test_search_performance_latest() {
     let cache = create_large_test_cache();
     let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
+    let parser = VersionParser::new(&config);
 
     // Measure search performance for latest versions
     let start = Instant::now();
-    let results = searcher.search("latest").unwrap();
+    let parsed = parser.parse("latest").unwrap();
+    let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
     let duration = start.elapsed();
 
     println!("Search for 'latest' took: {duration:?}");
@@ -190,16 +197,14 @@ fn test_search_performance_latest() {
 fn test_search_performance_with_platform_filter() {
     let cache = create_large_test_cache();
     let config = create_test_config();
-    let filter = PlatformFilter {
-        architecture: Some("x64".to_string()),
-        operating_system: Some("linux".to_string()),
-        lib_c_type: Some("glibc".to_string()),
-    };
-    let searcher = PackageSearcher::new(&cache, &config).with_platform_filter(filter);
+    // Note: Platform filtering is now done internally by PackageSearcher
+    let searcher = PackageSearcher::new(&cache, &config);
+    let parser = VersionParser::new(&config);
 
     // Measure search performance with platform filters
     let start = Instant::now();
-    let results = searcher.search("17").unwrap();
+    let parsed = parser.parse("17").unwrap();
+    let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
     let duration = start.elapsed();
 
     println!("Search with platform filter took: {duration:?}");
@@ -222,6 +227,7 @@ fn test_search_memory_usage() {
     let cache = create_large_test_cache();
     let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
+    let parser = VersionParser::new(&config);
 
     // Get initial memory usage (approximate)
     let package_count: usize = cache.distributions.values().map(|d| d.packages.len()).sum();
@@ -231,7 +237,8 @@ fn test_search_memory_usage() {
     // Perform multiple searches to check for memory leaks
     for i in 0..100 {
         let major_version = (i % 15) + 8; // Versions 8-22
-        let results = searcher.search(&major_version.to_string()).unwrap();
+        let parsed = parser.parse(&major_version.to_string()).unwrap();
+        let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
         assert!(
             !results.is_empty(),
             "Should find results for version {major_version}"
@@ -249,9 +256,11 @@ fn test_display_rendering_performance() {
     let cache = create_large_test_cache();
     let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
+    let parser = VersionParser::new(&config);
 
     // Search for results
-    let results = searcher.search("21").unwrap();
+    let parsed = parser.parse("21").unwrap();
+    let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
 
     // Measure table rendering time (simulated)
     let start = Instant::now();

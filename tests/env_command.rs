@@ -2,7 +2,6 @@ mod common;
 use assert_cmd::Command;
 use common::TestHomeGuard;
 use predicates::prelude::*;
-use std::env;
 use std::fs;
 use std::path::Path;
 
@@ -10,6 +9,10 @@ fn get_test_command(kopi_home: &Path) -> Command {
     let mut cmd = Command::cargo_bin("kopi").unwrap();
     cmd.env("KOPI_HOME", kopi_home.to_str().unwrap());
     cmd.env("HOME", kopi_home.parent().unwrap());
+    // Change to home directory to avoid picking up project's .kopi-version
+    cmd.current_dir(kopi_home.parent().unwrap());
+    // Clear KOPI_JAVA_VERSION to prevent it from overriding test setups
+    cmd.env_remove("KOPI_JAVA_VERSION");
     cmd
 }
 
@@ -25,7 +28,7 @@ fn test_env_basic_bash() {
     fs::create_dir_all(&jdk_path).unwrap();
 
     // Set a global version
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "temurin@21.0.1").unwrap();
 
     // Test env command
@@ -51,7 +54,7 @@ fn test_env_fish_shell() {
     fs::create_dir_all(&jdk_path).unwrap();
 
     // Set a global version
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "corretto@17.0.5").unwrap();
 
     // Test env command with fish shell
@@ -77,7 +80,7 @@ fn test_env_powershell() {
     fs::create_dir_all(&jdk_path).unwrap();
 
     // Set a global version
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "zulu@11.0.20").unwrap();
 
     // Test env command with PowerShell
@@ -103,7 +106,7 @@ fn test_env_cmd() {
     fs::create_dir_all(&jdk_path).unwrap();
 
     // Set a global version
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "microsoft@21.0.1").unwrap();
 
     // Test env command with CMD
@@ -129,7 +132,7 @@ fn test_env_no_export() {
     fs::create_dir_all(&jdk_path).unwrap();
 
     // Set a global version
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "temurin@17.0.8").unwrap();
 
     // Test env command without export
@@ -158,7 +161,7 @@ fn test_env_explicit_version() {
     fs::create_dir_all(&jdk21_path).unwrap();
 
     // Set global version to 17
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "temurin@17.0.8").unwrap();
 
     // Test env command with explicit version (should use 21)
@@ -184,7 +187,7 @@ fn test_env_kopi_version_file() {
     fs::create_dir_all(&jdk_path).unwrap();
 
     // Create a project directory with .kopi-version
-    let project_dir = test_home.temp_dir().path().join("project");
+    let project_dir = test_home.path().join("project");
     fs::create_dir_all(&project_dir).unwrap();
     fs::write(project_dir.join(".kopi-version"), "graalvm@22.0.1").unwrap();
 
@@ -212,7 +215,7 @@ fn test_env_quiet_flag() {
     fs::create_dir_all(&jdk_path).unwrap();
 
     // Set a global version
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "temurin@21.0.1").unwrap();
 
     // Test env command with quiet flag
@@ -235,7 +238,7 @@ fn test_env_jdk_not_installed() {
     let kopi_home = test_home.kopi_home();
 
     // Set a global version without installing the JDK
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "temurin@21.0.1").unwrap();
 
     // Test env command
@@ -273,7 +276,7 @@ fn test_env_path_with_spaces() {
     fs::create_dir_all(&jdk_path).unwrap();
 
     // Set a global version
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "temurin with spaces@21.0.1").unwrap();
 
     // Test env command handles spaces correctly
@@ -314,7 +317,7 @@ fn test_env_shell_detection() {
     fs::create_dir_all(&jdk_path).unwrap();
 
     // Set a global version
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "temurin@21.0.1").unwrap();
 
     // Test env command with different SHELL env vars
@@ -343,7 +346,7 @@ fn test_env_malformed_version_file() {
     let kopi_home = test_home.kopi_home();
 
     // Create a malformed global version file
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "invalid@@version").unwrap();
 
     // Test env command
@@ -368,7 +371,7 @@ fn test_env_with_kopi_java_version() {
     fs::create_dir_all(&jdk21_path).unwrap();
 
     // Set global version to 17
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "temurin@17.0.8").unwrap();
 
     // Test with KOPI_JAVA_VERSION environment variable (should override global)
@@ -395,7 +398,7 @@ fn test_env_version_resolution_hierarchy() {
     fs::create_dir_all(&jdk_path).unwrap();
 
     // Create nested project structure
-    let project_root = test_home.temp_dir().path().join("project");
+    let project_root = test_home.path().join("project");
     let sub_dir = project_root.join("src").join("main").join("java");
     fs::create_dir_all(&sub_dir).unwrap();
 
@@ -428,7 +431,7 @@ fn test_env_multiple_matching_jdks() {
     fs::create_dir_all(&jdk_new_path).unwrap();
 
     // Set a global version with just major version
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "temurin@21").unwrap();
 
     // Test env command (should use latest version)
@@ -454,7 +457,7 @@ fn test_env_stderr_messages() {
     fs::create_dir_all(&jdk_path).unwrap();
 
     // Set a global version
-    let global_version_file = kopi_home.join("global-version");
+    let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "temurin@21.0.1").unwrap();
 
     // Test without quiet flag (should show help message)

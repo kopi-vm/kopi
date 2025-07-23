@@ -2,6 +2,7 @@ mod common;
 use common::TestHomeGuard;
 use kopi::cache::{DistributionCache, MetadataCache};
 use kopi::commands::cache::CacheCommand;
+use kopi::config::KopiConfig;
 use kopi::models::distribution::Distribution;
 use kopi::models::metadata::JdkMetadata;
 use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
@@ -11,12 +12,13 @@ use std::env;
 use std::str::FromStr;
 
 /// Helper function to create a comprehensive test cache with various JDK versions and distributions
-fn create_comprehensive_test_cache() -> (TestHomeGuard, MetadataCache) {
+fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCache) {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
     unsafe {
         env::set_var("KOPI_HOME", test_home.kopi_home());
     }
+    let config = KopiConfig::new(test_home.kopi_home()).unwrap();
 
     let mut cache = MetadataCache::new();
 
@@ -196,12 +198,12 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, MetadataCache) {
     let cache_path = test_home.kopi_home().join("cache").join("metadata.json");
     cache.save(&cache_path).expect("Failed to save cache");
 
-    (test_home, cache)
+    (test_home, config, cache)
 }
 
 #[test]
 fn test_integration_compact_display_with_lts_filter() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Test compact display with LTS-only filter
     let cmd = CacheCommand::Search {
@@ -215,13 +217,13 @@ fn test_integration_compact_display_with_lts_filter() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // The test should show only LTS versions (21, 17, 11) in compact format
 }
 
 #[test]
 fn test_integration_detailed_display_with_distribution_search() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Test detailed display for specific distribution
     let cmd = CacheCommand::Search {
@@ -235,13 +237,13 @@ fn test_integration_detailed_display_with_distribution_search() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // The test should show all Corretto versions with detailed columns
 }
 
 #[test]
 fn test_integration_json_output_with_javafx_filter() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Test JSON output with JavaFX filter
     let cmd = CacheCommand::Search {
@@ -255,13 +257,13 @@ fn test_integration_json_output_with_javafx_filter() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // The test should output valid JSON containing only JavaFX bundled packages
 }
 
 #[test]
 fn test_integration_latest_search_with_lts_filter() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Test latest search combined with LTS filter
     let cmd = CacheCommand::Search {
@@ -275,13 +277,13 @@ fn test_integration_latest_search_with_lts_filter() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // Should show only the latest LTS version from each distribution
 }
 
 #[test]
 fn test_integration_version_specific_search_across_distributions() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Search for version 21 across all distributions
     let cmd = CacheCommand::Search {
@@ -295,13 +297,13 @@ fn test_integration_version_specific_search_across_distributions() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // Should show version 21 from both Temurin and Zulu
 }
 
 #[test]
 fn test_integration_multiple_filters_combined() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Test multiple filters: LTS + specific distribution
     let cmd = CacheCommand::Search {
@@ -315,13 +317,13 @@ fn test_integration_multiple_filters_combined() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // Should show only LTS Zulu versions with detailed display
 }
 
 #[test]
 fn test_integration_edge_case_no_matching_results() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Search for non-existent version
     let cmd = CacheCommand::Search {
@@ -336,12 +338,12 @@ fn test_integration_edge_case_no_matching_results() {
     };
 
     // Should execute successfully but show no results
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
 }
 
 #[test]
 fn test_integration_edge_case_conflicting_display_modes() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Test with both compact and detailed flags (detailed should take precedence)
     let cmd = CacheCommand::Search {
@@ -355,22 +357,22 @@ fn test_integration_edge_case_conflicting_display_modes() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // Should use detailed display mode
 }
 
 #[test]
 fn test_integration_list_distributions_with_package_counts() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     let cmd = CacheCommand::ListDistributions;
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // Should list all distributions with their package counts
 }
 
 #[test]
 fn test_integration_search_with_distribution_version_format() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Test distribution@version format
     let cmd = CacheCommand::Search {
@@ -384,13 +386,13 @@ fn test_integration_search_with_distribution_version_format() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // Should show only Temurin version 22
 }
 
 #[test]
 fn test_integration_backward_compatibility_default_behavior() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Test default search without any flags (should use compact mode)
     let cmd = CacheCommand::Search {
@@ -404,7 +406,7 @@ fn test_integration_backward_compatibility_default_behavior() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // Should show all packages in default (compact) format
 }
 
@@ -415,6 +417,7 @@ fn test_integration_platform_specific_filtering() {
     unsafe {
         env::set_var("KOPI_HOME", test_home.kopi_home());
     }
+    let config = KopiConfig::new(test_home.kopi_home()).unwrap();
 
     // Create cache with multiple platforms
     let mut cache = MetadataCache::new();
@@ -506,13 +509,13 @@ fn test_integration_platform_specific_filtering() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // Should show only packages for the current platform
 }
 
 #[test]
 fn test_integration_regression_old_search_patterns() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Test old-style version search still works
     let cmd = CacheCommand::Search {
@@ -526,7 +529,7 @@ fn test_integration_regression_old_search_patterns() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // Should find Corretto 17.0.12
 }
 
@@ -537,6 +540,7 @@ fn test_integration_empty_cache_handling() {
     unsafe {
         env::set_var("KOPI_HOME", test_home.kopi_home());
     }
+    let config = KopiConfig::new(test_home.kopi_home()).unwrap();
 
     // Create empty cache
     let cache = MetadataCache::new();
@@ -557,13 +561,13 @@ fn test_integration_empty_cache_handling() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // Should handle empty cache gracefully
 }
 
 #[test]
 fn test_integration_json_output_structure_validation() {
-    let (_test_home, _cache) = create_comprehensive_test_cache();
+    let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     // Capture JSON output for validation
     let cmd = CacheCommand::Search {
@@ -577,7 +581,7 @@ fn test_integration_json_output_structure_validation() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     // JSON output should be valid and contain expected fields
 }
 
@@ -588,6 +592,7 @@ fn test_integration_performance_large_cache() {
     unsafe {
         env::set_var("KOPI_HOME", test_home.kopi_home());
     }
+    let config = KopiConfig::new(test_home.kopi_home()).unwrap();
 
     // Create a large cache with many packages
     let mut cache = MetadataCache::new();
@@ -650,7 +655,7 @@ fn test_integration_performance_large_cache() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute().is_ok());
+    assert!(cmd.execute(&config).is_ok());
     let duration = start.elapsed();
 
     // Search should complete quickly even with large cache

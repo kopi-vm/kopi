@@ -121,15 +121,14 @@ impl<'a> PackageSearcher<'a> {
         request: &ParsedVersionRequest,
         version_type: VersionSearchType,
     ) -> Result<Vec<SearchResult>> {
-        let mut results = self.search_internal(
-            request,
-            version_type,
-            |dist_name, dist_cache, package| SearchResult {
-                distribution: dist_name.to_string(),
-                display_name: dist_cache.display_name.clone(),
-                package: package.clone(),
-            },
-        )?;
+        let mut results =
+            self.search_internal(request, version_type, |dist_name, dist_cache, package| {
+                SearchResult {
+                    distribution: dist_name.to_string(),
+                    display_name: dist_cache.display_name.clone(),
+                    package: package.clone(),
+                }
+            })?;
 
         // Sort by distribution and version
         results.sort_by(|a, b| match a.distribution.cmp(&b.distribution) {

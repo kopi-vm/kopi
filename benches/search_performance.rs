@@ -2,7 +2,6 @@ use criterion::{Criterion, black_box};
 use kopi::cache::{DistributionCache, MetadataCache};
 use kopi::cache::{PackageSearcher, VersionSearchType};
 use kopi::config::KopiConfig;
-use kopi::version::parser::VersionParser;
 use kopi::models::{
     distribution::Distribution,
     metadata::JdkMetadata,
@@ -10,6 +9,7 @@ use kopi::models::{
     platform::{Architecture, OperatingSystem},
 };
 use kopi::version::Version;
+use kopi::version::parser::VersionParser;
 use std::str::FromStr;
 
 fn create_realistic_cache() -> MetadataCache {
@@ -157,9 +157,9 @@ pub fn bench_search_performance(c: &mut Criterion) {
             results
                 .into_iter()
                 .filter(|r| {
-                    r.package.architecture.to_string() == "x64" &&
-                    r.package.operating_system.to_string() == "linux" &&
-                    r.package.lib_c_type.as_deref() == Some("glibc")
+                    r.package.architecture.to_string() == "x64"
+                        && r.package.operating_system.to_string() == "linux"
+                        && r.package.lib_c_type.as_deref() == Some("glibc")
                 })
                 .collect::<Vec<_>>()
         })

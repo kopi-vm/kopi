@@ -126,8 +126,7 @@ fn test_lookup() {
     let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
 
-    let package =
-        searcher.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
+    let package = searcher.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -353,8 +352,7 @@ fn test_lookup_single_match() {
     let config = create_test_config();
     let searcher = PackageSearcher::new(&cache, &config);
 
-    let package =
-        searcher.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
+    let package = searcher.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -554,9 +552,7 @@ fn test_search_by_distribution_version() {
         latest: false,
     };
 
-    let results = searcher
-        .search(&request, VersionSearchType::Auto)
-        .unwrap();
+    let results = searcher.search(&request, VersionSearchType::Auto).unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(
         results[0].package.distribution_version,
