@@ -36,8 +36,9 @@ fn create_mock_jdk(jdks_dir: &Path, name: &str, create_executables: bool) {
 
 #[test]
 fn test_jdk_checks_no_jdks() {
-    let _guard = TestHomeGuard::new("test_jdk_checks_no_jdks");
-    let config = KopiConfig::test_default();
+    let _guard = TestHomeGuard::new();
+    _guard.setup_kopi_structure();
+    let config = KopiConfig::new(_guard.kopi_home()).unwrap();
 
     // Ensure jdks directory exists but is empty
     let jdks_dir = config.jdks_dir().unwrap();
@@ -64,8 +65,9 @@ fn test_jdk_checks_no_jdks() {
 
 #[test]
 fn test_jdk_checks_with_valid_jdks() {
-    let _guard = TestHomeGuard::new("test_jdk_checks_with_valid_jdks");
-    let config = KopiConfig::test_default();
+    let _guard = TestHomeGuard::new();
+    _guard.setup_kopi_structure();
+    let config = KopiConfig::new(_guard.kopi_home()).unwrap();
 
     let jdks_dir = config.jdks_dir().unwrap();
     create_mock_jdk(&jdks_dir, "temurin-21.0.1", true);
@@ -103,8 +105,9 @@ fn test_jdk_checks_with_valid_jdks() {
 
 #[test]
 fn test_jdk_integrity_check_corrupted() {
-    let _guard = TestHomeGuard::new("test_jdk_integrity_check_corrupted");
-    let config = KopiConfig::test_default();
+    let _guard = TestHomeGuard::new();
+    _guard.setup_kopi_structure();
+    let config = KopiConfig::new(_guard.kopi_home()).unwrap();
 
     let jdks_dir = config.jdks_dir().unwrap();
     // Create one valid JDK
@@ -144,8 +147,9 @@ fn test_jdk_integrity_check_corrupted() {
 
 #[test]
 fn test_jdk_disk_space_analysis() {
-    let _guard = TestHomeGuard::new("test_jdk_disk_space_analysis");
-    let config = KopiConfig::test_default();
+    let _guard = TestHomeGuard::new();
+    _guard.setup_kopi_structure();
+    let config = KopiConfig::new(_guard.kopi_home()).unwrap();
 
     let jdks_dir = config.jdks_dir().unwrap();
     create_mock_jdk(&jdks_dir, "temurin-21.0.1", true);
@@ -174,8 +178,9 @@ fn test_jdk_disk_space_analysis() {
 
 #[test]
 fn test_jdk_checks_performance() {
-    let _guard = TestHomeGuard::new("test_jdk_checks_performance");
-    let config = KopiConfig::test_default();
+    let _guard = TestHomeGuard::new();
+    _guard.setup_kopi_structure();
+    let config = KopiConfig::new(_guard.kopi_home()).unwrap();
 
     let jdks_dir = config.jdks_dir().unwrap();
     // Create multiple JDKs to test performance
@@ -208,8 +213,9 @@ fn test_jdk_checks_performance() {
 
 #[test]
 fn test_jdk_version_consistency() {
-    let _guard = TestHomeGuard::new("test_jdk_version_consistency");
-    let config = KopiConfig::test_default();
+    let _guard = TestHomeGuard::new();
+    _guard.setup_kopi_structure();
+    let config = KopiConfig::new(_guard.kopi_home()).unwrap();
 
     let jdks_dir = config.jdks_dir().unwrap();
     let jdk_path = jdks_dir.join("temurin-21.0.1");
@@ -264,8 +270,9 @@ fi
 
 #[test]
 fn test_jdk_checks_with_non_standard_names() {
-    let _guard = TestHomeGuard::new("test_jdk_checks_non_standard");
-    let config = KopiConfig::test_default();
+    let _guard = TestHomeGuard::new();
+    _guard.setup_kopi_structure();
+    let config = KopiConfig::new(_guard.kopi_home()).unwrap();
 
     let jdks_dir = config.jdks_dir().unwrap();
 

@@ -2,15 +2,15 @@ mod common;
 
 use common::TestHomeGuard;
 use kopi::commands::doctor::DoctorCommand;
-use kopi::config::KopiConfig;
 use kopi::doctor::checks::{
-    ConfigFileCheck, DirectoryPermissionsCheck, InstallationDirectoryCheck, KopiBinaryCheck,
-    OwnershipCheck, ShimsInPathCheck, VersionCheck,
+    ConfigFileCheck, DirectoryPermissionsCheck, InstallationDirectoryCheck,
+    ShimsInPathCheck,
 };
+#[cfg(unix)]
+use kopi::doctor::checks::OwnershipCheck;
 use kopi::doctor::{CheckCategory, CheckStatus, DiagnosticCheck};
 use std::env;
 use std::fs;
-use std::path::PathBuf;
 use std::time::Instant;
 
 #[test]
