@@ -1,4 +1,4 @@
-use criterion::{Criterion, black_box};
+use criterion::{BenchmarkId, Criterion, black_box};
 use kopi::cache::{DistributionCache, MetadataCache};
 use kopi::cache::{PackageSearcher, VersionSearchType};
 use kopi::config::KopiConfig;
@@ -101,7 +101,53 @@ fn create_realistic_cache() -> MetadataCache {
     cache
 }
 
+fn create_cache_with_size(size: usize) -> MetadataCache {
+    let mut cache = MetadataCache::new();
+    let mut packages = Vec::new();
+
+    for i in 0..size {
+        let major = 8 + (i / 100) as u32;
+        let minor = (i / 10) as u32 % 10;
+        let patch = i as u32 % 10;
+        packages.push(JdkMetadata {
+            id: format!("pkg-{i}"),
+            distribution: "temurin".to_string(),
+            version: Version::new(major, minor, patch),
+            distribution_version: Version::new(major, minor, patch),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: format!("https://example.com/jdk-{major}.{minor}.{patch}.tar.gz"),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 100_000_000,
+            lib_c_type: Some("glibc".to_string()),
+            javafx_bundled: false,
+            term_of_support: if major == 8 || major == 11 || major == 17 || major == 21 {
+                Some("lts".to_string())
+            } else {
+                Some("sts".to_string())
+            },
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+        });
+    }
+
+    let dist_cache = DistributionCache {
+        distribution: Distribution::Temurin,
+        display_name: "Eclipse Temurin".to_string(),
+        packages,
+    };
+
+    cache
+        .distributions
+        .insert("temurin".to_string(), dist_cache);
+    cache
+}
+
 pub fn bench_search_performance(c: &mut Criterion) {
+    // Search performance benchmarks
     let mut group = c.benchmark_group("search_performance");
     let cache = create_realistic_cache();
     let config = KopiConfig::new(std::env::temp_dir()).expect("Failed to create config");
@@ -192,4 +238,78 @@ pub fn bench_search_performance(c: &mut Criterion) {
     });
 
     group.finish();
+
+    // Cache operations benchmarks
+    let mut cache_group = c.benchmark_group("cache_operations");
+
+    // Benchmark has_version with different cache sizes
+    let sizes = vec![100, 1000, 5000];
+    for size in sizes {
+        let cache = create_cache_with_size(size);
+
+        cache_group.bench_with_input(BenchmarkId::new("has_version", size), &cache, |b, cache| {
+            b.iter(|| cache.has_version(black_box("21")))
+        });
+    }
+
+    // Benchmark metadata conversion
+    cache_group.bench_function("convert_package_to_metadata", |b| {
+        let pkg = JdkMetadata {
+            id: "test-pkg".to_string(),
+            distribution: "temurin".to_string(),
+            version: Version::new(21, 0, 1),
+            distribution_version: Version::new(21, 0, 1),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: "https://example.com/jdk-21.0.1.tar.gz".to_string(),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 100_000_000,
+            lib_c_type: Some("glibc".to_string()),
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+        };
+        b.iter(|| {
+            // Simulate conversion by cloning
+            black_box(pkg.clone())
+        })
+    });
+
+    // Benchmark cache serialization (to JSON)
+    let small_cache = create_cache_with_size(100);
+    let medium_cache = create_cache_with_size(1000);
+
+    cache_group.bench_with_input(
+        BenchmarkId::new("serialize_cache", "small"),
+        &small_cache,
+        |b, cache| b.iter(|| serde_json::to_string(black_box(cache))),
+    );
+
+    cache_group.bench_with_input(
+        BenchmarkId::new("serialize_cache", "medium"),
+        &medium_cache,
+        |b, cache| b.iter(|| serde_json::to_string(black_box(cache))),
+    );
+
+    // Benchmark cache deserialization
+    let small_json = serde_json::to_string(&small_cache).unwrap();
+    let medium_json = serde_json::to_string(&medium_cache).unwrap();
+
+    cache_group.bench_with_input(
+        BenchmarkId::new("deserialize_cache", "small"),
+        &small_json,
+        |b, json| b.iter(|| serde_json::from_str::<MetadataCache>(black_box(json))),
+    );
+
+    cache_group.bench_with_input(
+        BenchmarkId::new("deserialize_cache", "medium"),
+        &medium_json,
+        |b, json| b.iter(|| serde_json::from_str::<MetadataCache>(black_box(json))),
+    );
+
+    cache_group.finish();
 }
