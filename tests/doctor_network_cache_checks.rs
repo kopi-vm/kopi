@@ -1,8 +1,7 @@
 mod common;
 
 use common::TestHomeGuard;
-use common::fixtures::TestJdkRepository;
-use kopi::cache::metadata_cache::MetadataCache;
+use kopi::cache::MetadataCache;
 use kopi::config::KopiConfig;
 use kopi::doctor::{CheckCategory, CheckStatus, DiagnosticEngine};
 use std::fs;
@@ -10,8 +9,9 @@ use std::time::Duration;
 
 #[test]
 fn test_network_checks_pass_with_connectivity() {
-    let _guard = TestHomeGuard::new();
-    let config = KopiConfig::load().expect("Failed to load config");
+    let guard = TestHomeGuard::new();
+    guard.setup_kopi_structure();
+    let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     let engine = DiagnosticEngine::new(&config);
     let results = engine.run_checks(Some(vec![CheckCategory::Network]));
@@ -37,8 +37,9 @@ fn test_network_checks_pass_with_connectivity() {
 
 #[test]
 fn test_cache_checks_with_no_cache() {
-    let _guard = TestHomeGuard::new();
-    let config = KopiConfig::load().expect("Failed to load config");
+    let guard = TestHomeGuard::new();
+    guard.setup_kopi_structure();
+    let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     // Ensure cache doesn't exist
     let cache_path = config.kopi_home().join("cache").join("metadata.json");
@@ -70,8 +71,9 @@ fn test_cache_checks_with_no_cache() {
 
 #[test]
 fn test_cache_checks_with_valid_cache() {
-    let _guard = TestHomeGuard::new();
-    let config = KopiConfig::load().expect("Failed to load config");
+    let guard = TestHomeGuard::new();
+    guard.setup_kopi_structure();
+    let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     // Create cache directory
     let cache_dir = config.kopi_home().join("cache");
@@ -117,8 +119,9 @@ fn test_cache_checks_with_valid_cache() {
 
 #[test]
 fn test_cache_checks_with_invalid_json() {
-    let _guard = TestHomeGuard::new();
-    let config = KopiConfig::load().expect("Failed to load config");
+    let guard = TestHomeGuard::new();
+    guard.setup_kopi_structure();
+    let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     // Create cache directory
     let cache_dir = config.kopi_home().join("cache");
@@ -145,8 +148,9 @@ fn test_cache_checks_with_invalid_json() {
 fn test_cache_permissions_on_unix() {
     use std::os::unix::fs::PermissionsExt;
 
-    let _guard = TestHomeGuard::new();
-    let config = KopiConfig::load().expect("Failed to load config");
+    let guard = TestHomeGuard::new();
+    guard.setup_kopi_structure();
+    let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     // Create cache
     let cache_dir = config.kopi_home().join("cache");
@@ -179,12 +183,15 @@ fn test_cache_permissions_on_unix() {
 
 #[test]
 fn test_proxy_environment_detection() {
-    let _guard = TestHomeGuard::new();
-    let config = KopiConfig::load().expect("Failed to load config");
+    let guard = TestHomeGuard::new();
+    guard.setup_kopi_structure();
+    let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     // Test with proxy environment variables
-    std::env::set_var("HTTP_PROXY", "http://proxy.example.com:8080");
-    std::env::set_var("HTTPS_PROXY", "https://proxy.example.com:8080");
+    unsafe {
+        std::env::set_var("HTTP_PROXY", "http://proxy.example.com:8080");
+        std::env::set_var("HTTPS_PROXY", "https://proxy.example.com:8080");
+    }
 
     let engine = DiagnosticEngine::new(&config);
     let results = engine.run_checks(Some(vec![CheckCategory::Network]));
@@ -197,14 +204,17 @@ fn test_proxy_environment_detection() {
     assert!(proxy_check.message.contains("Proxy configuration detected"));
 
     // Clean up
-    std::env::remove_var("HTTP_PROXY");
-    std::env::remove_var("HTTPS_PROXY");
+    unsafe {
+        std::env::remove_var("HTTP_PROXY");
+        std::env::remove_var("HTTPS_PROXY");
+    }
 }
 
 #[test]
 fn test_network_checks_performance() {
-    let _guard = TestHomeGuard::new();
-    let config = KopiConfig::load().expect("Failed to load config");
+    let guard = TestHomeGuard::new();
+    guard.setup_kopi_structure();
+    let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     let engine = DiagnosticEngine::new(&config);
     let start = std::time::Instant::now();
@@ -231,8 +241,9 @@ fn test_network_checks_performance() {
 
 #[test]
 fn test_cache_staleness_detection() {
-    let _guard = TestHomeGuard::new();
-    let config = KopiConfig::load().expect("Failed to load config");
+    let guard = TestHomeGuard::new();
+    guard.setup_kopi_structure();
+    let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     // Create cache directory
     let cache_dir = config.kopi_home().join("cache");
@@ -262,8 +273,9 @@ fn test_cache_staleness_detection() {
 
 #[test]
 fn test_all_network_and_cache_checks() {
-    let _guard = TestHomeGuard::new();
-    let config = KopiConfig::load().expect("Failed to load config");
+    let guard = TestHomeGuard::new();
+    guard.setup_kopi_structure();
+    let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     // Create a valid cache for cache checks
     let cache_dir = config.kopi_home().join("cache");

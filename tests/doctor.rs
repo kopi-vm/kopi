@@ -134,14 +134,15 @@ fn test_doctor_specific_category() {
 fn test_doctor_exit_codes() {
     let _guard = TestHomeGuard::new();
 
-    // In Phase 1, with no actual checks, it should exit with 0
+    // Doctor command might exit with 0 (all pass), 1 (warnings), or 2 (errors)
     let output = Command::new(env!("CARGO_BIN_EXE_kopi"))
         .args(["doctor"])
         .output()
         .expect("Failed to execute kopi doctor");
 
-    // Should exit with code 0 since no checks are implemented yet
-    assert_eq!(output.status.code(), Some(0));
+    // Should exit with code 0, 1, or 2 depending on check results
+    let exit_code = output.status.code().unwrap();
+    assert!(exit_code <= 2, "Exit code should be 0, 1, or 2, got: {}", exit_code);
 }
 
 #[test]
@@ -160,5 +161,6 @@ fn test_doctor_json_exit_code_field() {
 
     // JSON should include exit_code in summary
     assert!(json["summary"]["exit_code"].is_number());
-    assert_eq!(json["summary"]["exit_code"], 0);
+    let exit_code = json["summary"]["exit_code"].as_i64().unwrap();
+    assert!(exit_code <= 2, "Exit code should be 0, 1, or 2, got: {}", exit_code);
 }

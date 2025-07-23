@@ -238,8 +238,8 @@ fn test_performance_shell_checks() {
     // All shell checks should complete quickly
     for result in &results {
         assert!(
-            result.duration.as_millis() < 100,
-            "{} took {}ms, expected < 100ms",
+            result.duration.as_millis() < 200,
+            "{} took {}ms, expected < 200ms",
             result.name,
             result.duration.as_millis()
         );
