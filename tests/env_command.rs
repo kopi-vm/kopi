@@ -241,9 +241,9 @@ fn test_env_jdk_not_installed() {
     // Test env command
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("env");
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains("JDK temurin@21.0.1 is not installed"));
+    cmd.assert().failure().stderr(predicate::str::contains(
+        "JDK temurin@21.0.1 is not installed",
+    ));
 }
 
 /// Test env command with no version configured
@@ -467,7 +467,5 @@ fn test_env_stderr_messages() {
     // Test with quiet flag (should not show help message)
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("env").arg("--quiet");
-    cmd.assert()
-        .success()
-        .stderr(predicate::str::is_empty());
+    cmd.assert().success().stderr(predicate::str::is_empty());
 }
