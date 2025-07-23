@@ -221,22 +221,71 @@ Package {
 - ❌ Requires HTML parsing
 - ❌ Subject to page structure changes
 
+#### 7. joschi/java-metadata (Aggregated Metadata)
+
+**Characteristics**:
+- **Type**: Pre-collected metadata repository
+- **Coverage**: 30+ JDK distributions  
+- **Update Frequency**: Regular automated updates
+- **Access**: Static JSON files via GitHub Pages
+
+**Available Metadata Structure**:
+```json
+{
+    "vendor": "temurin",
+    "filename": "OpenJDK21U-jdk_x64_linux_hotspot_21.0.1_12.tar.gz",
+    "release_type": "ga",              // ga (stable) or ea (early access)
+    "version": "21.0.1+12",
+    "java_version": "21",
+    "jvm_impl": "hotspot",             // hotspot, openj9, graalvm
+    "os": "linux",
+    "architecture": "x64",
+    "file_type": "tar.gz",
+    "image_type": "jdk",               // jdk or jre
+    "features": [],                    // vendor-specific features
+    "url": "https://...",
+    "md5": "...",
+    "sha1": "...",
+    "sha256": "...",
+    "sha512": "...",
+    "size": 195837568
+}
+```
+
+**Access Methods**:
+1. **All Metadata**: `https://joschi.github.io/java-metadata/metadata/all.json`
+2. **Checksum Manifests**: `https://joschi.github.io/java-metadata/checksums/{vendor}/{filename}.{hash}`
+3. **GitHub Repository**: Direct access to collection scripts
+
+**Comparison with Foojay**:
+- ✅ No API rate limits
+- ✅ All checksums pre-calculated
+- ✅ Consistent format across all vendors
+- ✅ Includes vendors not in foojay
+- ❌ Not real-time (periodic updates)
+- ❌ No query/filtering capabilities
+- ❌ Static data requires full download
+- ❌ No version discovery API
+
 ### Metadata Completeness Comparison
 
-| Field | Foojay | Adoptium | Azul | Oracle | GraalVM | Corretto | Microsoft |
-|-------|---------|----------|------|--------|---------|----------|-----------|
-| Distribution Name | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Version String | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| OS/Platform | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Architecture | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Package Type | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Archive Type | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Direct Download URL | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Checksum (Direct) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| LTS/Support Info | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| libc Type | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Release Status | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| API Available | ✅ | ✅ | ✅ | Partial | ❌ | ❌ | ❌ |
+| Field | Foojay | Adoptium | Azul | Oracle | GraalVM | Corretto | Microsoft | joschi/java-metadata |
+|-------|---------|----------|------|--------|---------|----------|-----------|---------------------|
+| Distribution Name | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Version String | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| OS/Platform | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Architecture | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Package Type | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Archive Type | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Direct Download URL | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Checksum (All Types) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| LTS/Support Info | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| libc Type | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Release Status | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| JVM Implementation | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| API Available | ✅ | ✅ | ✅ | Partial | ❌ | ❌ | ❌ | Static |
+| Real-time Updates | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Query/Filter Support | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ## Rationale
 
@@ -286,12 +335,19 @@ Package {
    - Azul Metadata API for Zulu (has proper API)
    - GitHub releases for GraalVM and Corretto
 
-3. **Metadata Caching**: Enhance local caching to handle foojay.io outages:
+3. **Static Metadata Option**: Consider joschi/java-metadata as an emergency fallback:
+   - Pre-calculated checksums for all distributions
+   - No API rate limits or availability concerns
+   - Useful for offline scenarios or when APIs are unavailable
+   - Trade-off: Not real-time, requires periodic sync
+
+4. **Metadata Caching**: Enhance local caching to handle foojay.io outages:
    - Store complete metadata snapshots
    - Implement incremental updates
    - Add checksum verification for cached data
+   - Consider periodic sync with joschi/java-metadata for offline resilience
 
-4. **Future Considerations**:
+5. **Future Considerations**:
    - Monitor vendor API developments
    - Consider contributing to foojay.io for missing features
    - Implement health checks for metadata sources
@@ -301,7 +357,10 @@ Package {
 - Eclipse Adoptium API: https://api.adoptium.net/
 - Azul Metadata API: https://api.azul.com/metadata/v1/docs/
 - joschi/java-metadata: https://github.com/joschi/java-metadata
+- joschi/java-metadata All Metadata: https://joschi.github.io/java-metadata/metadata/all.json
 - Oracle JDK Downloads: https://www.oracle.com/java/technologies/downloads/
+- Oracle Script-Friendly URLs: https://www.oracle.com/java/technologies/jdk-script-friendly-urls/
 - GraalVM Releases: https://github.com/graalvm/graalvm-ce-builds/releases
 - Corretto Downloads: https://docs.aws.amazon.com/corretto/
 - Microsoft JDK: https://docs.microsoft.com/en-us/java/openjdk/download
+- Microsoft JDK Script-Friendly URLs: https://learn.microsoft.com/en-us/java/openjdk/download-major-urls
