@@ -99,9 +99,6 @@ Examples:
         /// Output export statements (default: true)
         #[arg(long, default_value = "true")]
         export: bool,
-        /// Suppress helpful messages on stderr
-        #[arg(short = 'q', long)]
-        quiet: bool,
     },
 
     /// Set the global default JDK version
@@ -259,10 +256,9 @@ fn main() {
                 version,
                 shell,
                 export,
-                quiet,
             } => {
                 let command = EnvCommand::new(&config)?;
-                command.execute(version.as_deref(), shell.as_deref(), export, quiet)
+                command.execute(version.as_deref(), shell.as_deref(), export)
             }
             Commands::Global { version } => {
                 let command = GlobalCommand::new(&config)?;

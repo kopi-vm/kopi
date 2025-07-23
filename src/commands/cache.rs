@@ -284,7 +284,7 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
         crate::cache::VersionSearchType::Auto
     };
 
-    let mut results = cache.search(&parsed_request, version_type, config)?;
+    let mut results = cache.search(&parsed_request, version_type)?;
 
     // Apply LTS filtering if requested
     if lts_only {

@@ -16,13 +16,7 @@ impl<'a> EnvCommand<'a> {
         Ok(Self { config })
     }
 
-    pub fn execute(
-        &self,
-        version: Option<&str>,
-        shell: Option<&str>,
-        export: bool,
-        quiet: bool,
-    ) -> Result<()> {
+    pub fn execute(&self, version: Option<&str>, shell: Option<&str>, export: bool) -> Result<()> {
         // Resolve version
         let (version_request, _source) = if let Some(ver) = version {
             // Version explicitly provided
@@ -71,12 +65,6 @@ impl<'a> EnvCommand<'a> {
         let mut stdout = std::io::stdout();
         stdout.write_all(output.as_bytes())?;
         stdout.flush()?;
-
-        // Show helpful message on stderr unless quiet
-        if !quiet {
-            eprintln!("# Run this command to configure your shell:");
-            eprintln!("# eval \"$(kopi env)\"");
-        }
 
         Ok(())
     }

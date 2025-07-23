@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
 
-use crate::config::KopiConfig;
 use crate::error::Result;
 use crate::models::distribution::Distribution as JdkDistribution;
 use crate::models::metadata::JdkMetadata;
@@ -86,7 +85,6 @@ impl MetadataCache {
         &self,
         request: &ParsedVersionRequest,
         version_type: VersionSearchType,
-        _config: &KopiConfig,
     ) -> Result<Vec<SearchResult>> {
         let platform_filter = PlatformFilter::default();
         let mut results = Vec::new();

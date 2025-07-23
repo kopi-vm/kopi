@@ -157,7 +157,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("search_major_version", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("21")).unwrap();
-            cache.search(&parsed, VersionSearchType::Auto, &config)
+            cache.search(&parsed, VersionSearchType::Auto)
         })
     });
 
@@ -165,7 +165,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("search_exact_version", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("21.0.1")).unwrap();
-            cache.search(&parsed, VersionSearchType::Auto, &config)
+            cache.search(&parsed, VersionSearchType::Auto)
         })
     });
 
@@ -173,7 +173,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("search_distribution", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("temurin")).unwrap();
-            cache.search(&parsed, VersionSearchType::Auto, &config)
+            cache.search(&parsed, VersionSearchType::Auto)
         })
     });
 
@@ -181,7 +181,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("search_distribution_version", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("temurin@21")).unwrap();
-            cache.search(&parsed, VersionSearchType::Auto, &config)
+            cache.search(&parsed, VersionSearchType::Auto)
         })
     });
 
@@ -189,7 +189,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("search_latest", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("latest")).unwrap();
-            cache.search(&parsed, VersionSearchType::Auto, &config)
+            cache.search(&parsed, VersionSearchType::Auto)
         })
     });
 
@@ -197,7 +197,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("search_with_platform_check", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("21")).unwrap();
-            let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
+            let results = cache.search(&parsed, VersionSearchType::Auto).unwrap();
             // Filter results manually to simulate platform filtering
             results
                 .into_iter()
@@ -214,7 +214,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("filter_lts_versions", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("temurin")).unwrap();
-            let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
+            let results = cache.search(&parsed, VersionSearchType::Auto).unwrap();
             results
                 .into_iter()
                 .filter(|result| result.package.term_of_support.as_deref() == Some("lts"))
@@ -226,7 +226,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("lookup", |b| {
         let dist = Distribution::Temurin;
         b.iter(|| {
-            searcher.lookup(
+            cache.lookup(
                 black_box(&dist),
                 black_box("21.0.0"),
                 black_box("x64"),

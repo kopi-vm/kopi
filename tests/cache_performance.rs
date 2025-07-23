@@ -122,9 +122,7 @@ fn test_search_performance_by_version() {
     // Measure search performance for version search
     let start = Instant::now();
     let parsed = parser.parse("21").unwrap();
-    let results = cache
-        .search(&parsed, VersionSearchType::Auto, &config)
-        .unwrap();
+    let results = cache.search(&parsed, VersionSearchType::Auto).unwrap();
     let duration = start.elapsed();
 
     println!("Search for version '21' took: {duration:?}");
@@ -148,9 +146,7 @@ fn test_search_performance_by_distribution() {
     // Measure search performance for distribution search
     let start = Instant::now();
     let parsed = parser.parse("corretto").unwrap();
-    let results = cache
-        .search(&parsed, VersionSearchType::Auto, &config)
-        .unwrap();
+    let results = cache.search(&parsed, VersionSearchType::Auto).unwrap();
     let duration = start.elapsed();
 
     println!("Search for distribution 'corretto' took: {duration:?}");
@@ -174,9 +170,7 @@ fn test_search_performance_latest() {
     // Measure search performance for latest versions
     let start = Instant::now();
     let parsed = parser.parse("latest").unwrap();
-    let results = cache
-        .search(&parsed, VersionSearchType::Auto, &config)
-        .unwrap();
+    let results = cache.search(&parsed, VersionSearchType::Auto).unwrap();
     let duration = start.elapsed();
 
     println!("Search for 'latest' took: {duration:?}");
@@ -205,9 +199,7 @@ fn test_search_performance_with_platform_filter() {
     // Measure search performance with platform filters
     let start = Instant::now();
     let parsed = parser.parse("17").unwrap();
-    let results = cache
-        .search(&parsed, VersionSearchType::Auto, &config)
-        .unwrap();
+    let results = cache.search(&parsed, VersionSearchType::Auto).unwrap();
     let duration = start.elapsed();
 
     println!("Search with platform filter took: {duration:?}");
@@ -240,9 +232,7 @@ fn test_search_memory_usage() {
     for i in 0..100 {
         let major_version = (i % 15) + 8; // Versions 8-22
         let parsed = parser.parse(&major_version.to_string()).unwrap();
-        let results = cache
-            .search(&parsed, VersionSearchType::Auto, &config)
-            .unwrap();
+        let results = cache.search(&parsed, VersionSearchType::Auto).unwrap();
         assert!(
             !results.is_empty(),
             "Should find results for version {major_version}"
@@ -263,9 +253,7 @@ fn test_display_rendering_performance() {
 
     // Search for results
     let parsed = parser.parse("21").unwrap();
-    let results = cache
-        .search(&parsed, VersionSearchType::Auto, &config)
-        .unwrap();
+    let results = cache.search(&parsed, VersionSearchType::Auto).unwrap();
 
     // Measure table rendering time (simulated)
     let start = Instant::now();
