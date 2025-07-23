@@ -8,6 +8,7 @@ use kopi::doctor::checks::{
     ConfigFileCheck, DirectoryPermissionsCheck, InstallationDirectoryCheck, ShimsInPathCheck,
 };
 use kopi::doctor::{CheckCategory, CheckStatus, DiagnosticCheck};
+use kopi::platform::path_separator;
 use std::env;
 use std::fs;
 use std::time::Instant;
@@ -121,6 +122,10 @@ fn test_shims_in_path_check_integration() {
 
     // Test without shims in PATH
     unsafe {
+        // Use platform-appropriate paths
+        #[cfg(windows)]
+        env::set_var("PATH", "C:\\Windows\\System32;C:\\Windows");
+        #[cfg(not(windows))]
         env::set_var("PATH", "/usr/bin:/bin");
     }
     let check = ShimsInPathCheck::new(&config);
@@ -131,7 +136,11 @@ fn test_shims_in_path_check_integration() {
 
     // Test with shims in PATH
     unsafe {
-        env::set_var("PATH", format!("{}:/usr/bin", shims_dir.display()));
+        let separator = path_separator();
+        #[cfg(windows)]
+        env::set_var("PATH", format!("{}{separator}C:\\Windows\\System32", shims_dir.display()));
+        #[cfg(not(windows))]
+        env::set_var("PATH", format!("{}{separator}/usr/bin", shims_dir.display()));
     }
     let check = ShimsInPathCheck::new(&config);
     let start = Instant::now();

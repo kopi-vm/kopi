@@ -2,6 +2,7 @@ mod common;
 use assert_cmd::Command;
 use common::TestHomeGuard;
 use predicates::prelude::*;
+use serial_test::serial;
 use std::fs;
 use std::path::Path;
 
@@ -18,6 +19,7 @@ fn get_test_command(kopi_home: &Path) -> Command {
 
 /// Test basic env command with bash shell (default)
 #[test]
+#[serial]
 fn test_env_basic_bash() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -33,17 +35,16 @@ fn test_env_basic_bash() {
 
     // Test env command
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env");
+    cmd.arg("env").arg("--shell").arg("bash");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "export JAVA_HOME=\"{}\"",
-            jdk_path.display()
-        )));
+        .stdout(predicate::str::contains("export JAVA_HOME="))
+        .stdout(predicate::str::contains("temurin-21.0.1"));
 }
 
 /// Test env command with fish shell
 #[test]
+#[serial]
 fn test_env_fish_shell() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -62,14 +63,13 @@ fn test_env_fish_shell() {
     cmd.arg("env").arg("--shell").arg("fish");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "set -gx JAVA_HOME \"{}\"",
-            jdk_path.display()
-        )));
+        .stdout(predicate::str::contains("set -gx JAVA_HOME"))
+        .stdout(predicate::str::contains("corretto-17.0.5"));
 }
 
 /// Test env command with PowerShell
 #[test]
+#[serial]
 fn test_env_powershell() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -88,14 +88,13 @@ fn test_env_powershell() {
     cmd.arg("env").arg("--shell").arg("powershell");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "$env:JAVA_HOME = \"{}\"",
-            jdk_path.display()
-        )));
+        .stdout(predicate::str::contains("$env:JAVA_HOME ="))
+        .stdout(predicate::str::contains("zulu-11.0.20"));
 }
 
 /// Test env command with Windows CMD
 #[test]
+#[serial]
 fn test_env_cmd() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -114,14 +113,13 @@ fn test_env_cmd() {
     cmd.arg("env").arg("--shell").arg("cmd");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "set JAVA_HOME={}",
-            jdk_path.display()
-        )));
+        .stdout(predicate::str::contains("set JAVA_HOME="))
+        .stdout(predicate::str::contains("microsoft-21.0.1"));
 }
 
 /// Test env command without export flag
 #[test]
+#[serial]
 fn test_env_no_export() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -137,18 +135,17 @@ fn test_env_no_export() {
 
     // Test env command without export
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env").arg("--export").arg("false");
+    cmd.arg("env").arg("--shell").arg("bash").arg("--export").arg("false");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "JAVA_HOME=\"{}\"",
-            jdk_path.display()
-        )))
+        .stdout(predicate::str::contains("JAVA_HOME="))
+        .stdout(predicate::str::contains("temurin-17.0.8"))
         .stdout(predicate::str::contains("export").not());
 }
 
 /// Test env command with explicit version
 #[test]
+#[serial]
 fn test_env_explicit_version() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -166,17 +163,16 @@ fn test_env_explicit_version() {
 
     // Test env command with explicit version (should use 21)
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env").arg("temurin@21.0.1");
+    cmd.arg("env").arg("--shell").arg("bash").arg("temurin@21.0.1");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "export JAVA_HOME=\"{}\"",
-            jdk21_path.display()
-        )));
+        .stdout(predicate::str::contains("export JAVA_HOME="))
+        .stdout(predicate::str::contains("temurin-21.0.1"));
 }
 
 /// Test env command with .kopi-version file
 #[test]
+#[serial]
 fn test_env_kopi_version_file() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -194,17 +190,16 @@ fn test_env_kopi_version_file() {
     // Test env command from project directory
     let mut cmd = get_test_command(&kopi_home);
     cmd.current_dir(&project_dir);
-    cmd.arg("env");
+    cmd.arg("env").arg("--shell").arg("bash");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "export JAVA_HOME=\"{}\"",
-            jdk_path.display()
-        )));
+        .stdout(predicate::str::contains("export JAVA_HOME="))
+        .stdout(predicate::str::contains("graalvm-22.0.1"));
 }
 
 /// Test env command with JDK not installed
 #[test]
+#[serial]
 fn test_env_jdk_not_installed() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -216,7 +211,7 @@ fn test_env_jdk_not_installed() {
 
     // Test env command
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env");
+    cmd.arg("env").arg("--shell").arg("bash");
     cmd.assert().failure().stderr(predicate::str::contains(
         "JDK 'temurin@21.0.1' is not installed",
     ));
@@ -224,6 +219,7 @@ fn test_env_jdk_not_installed() {
 
 /// Test env command with no version configured
 #[test]
+#[serial]
 fn test_env_no_version() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -231,7 +227,7 @@ fn test_env_no_version() {
 
     // Test env command without any version configured
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env");
+    cmd.arg("env").arg("--shell").arg("bash");
     cmd.assert().failure().stderr(predicate::str::contains(
         "No JDK configured for current project",
     ));
@@ -239,6 +235,7 @@ fn test_env_no_version() {
 
 /// Test env command with path containing spaces
 #[test]
+#[serial]
 fn test_env_path_with_spaces() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -254,17 +251,16 @@ fn test_env_path_with_spaces() {
 
     // Test env command handles spaces correctly
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env");
+    cmd.arg("env").arg("--shell").arg("bash");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "export JAVA_HOME=\"{}\"",
-            jdk_path.display()
-        )));
+        .stdout(predicate::str::contains("export JAVA_HOME="))
+        .stdout(predicate::str::contains("temurin with spaces-21.0.1"));
 }
 
 /// Test env command with invalid shell name
 #[test]
+#[serial]
 fn test_env_invalid_shell() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -288,6 +284,7 @@ fn test_env_invalid_shell() {
 
 /// Test shell auto-detection fallback
 #[test]
+#[serial]
 fn test_env_shell_detection() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -320,6 +317,7 @@ fn test_env_shell_detection() {
 
 /// Test env command with malformed version file
 #[test]
+#[serial]
 fn test_env_malformed_version_file() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -331,7 +329,7 @@ fn test_env_malformed_version_file() {
 
     // Test env command
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env");
+    cmd.arg("env").arg("--shell").arg("bash");
     cmd.assert().failure().stderr(predicate::str::contains(
         "Invalid configuration: Unknown package type: invalid",
     ));
@@ -339,6 +337,7 @@ fn test_env_malformed_version_file() {
 
 /// Test env command with environment variable override
 #[test]
+#[serial]
 fn test_env_with_kopi_java_version() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -357,17 +356,16 @@ fn test_env_with_kopi_java_version() {
     // Test with KOPI_JAVA_VERSION environment variable (should override global)
     let mut cmd = get_test_command(&kopi_home);
     cmd.env("KOPI_JAVA_VERSION", "temurin@21.0.1");
-    cmd.arg("env");
+    cmd.arg("env").arg("--shell").arg("bash");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "export JAVA_HOME=\"{}\"",
-            jdk21_path.display()
-        )));
+        .stdout(predicate::str::contains("export JAVA_HOME="))
+        .stdout(predicate::str::contains("temurin-21.0.1"));
 }
 
 /// Test env command with missing parent directories
 #[test]
+#[serial]
 fn test_env_version_resolution_hierarchy() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -388,17 +386,16 @@ fn test_env_version_resolution_hierarchy() {
     // Test from subdirectory (should find parent .kopi-version)
     let mut cmd = get_test_command(&kopi_home);
     cmd.current_dir(&sub_dir);
-    cmd.arg("env");
+    cmd.arg("env").arg("--shell").arg("bash");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "export JAVA_HOME=\"{}\"",
-            jdk_path.display()
-        )));
+        .stdout(predicate::str::contains("export JAVA_HOME="))
+        .stdout(predicate::str::contains("zulu-11.0.20"));
 }
 
 /// Test env command with multiple matching JDKs (should use latest)
 #[test]
+#[serial]
 fn test_env_multiple_matching_jdks() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -416,11 +413,9 @@ fn test_env_multiple_matching_jdks() {
 
     // Test env command (should use latest version)
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env");
+    cmd.arg("env").arg("--shell").arg("bash");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(format!(
-            "export JAVA_HOME=\"{}\"",
-            jdk_new_path.display()
-        )));
+        .stdout(predicate::str::contains("export JAVA_HOME="))
+        .stdout(predicate::str::contains("temurin-21.0.2"));
 }

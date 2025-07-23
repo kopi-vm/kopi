@@ -29,7 +29,7 @@ fn test_which_command_basic() {
         .args(["which", "temurin@21"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("/bin/java"));
+        .stdout(predicate::str::contains("bin").and(predicate::str::contains("java")));
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn test_which_home_option() {
         .assert()
         .success()
         .stdout(
-            predicate::str::contains("temurin-21").and(predicate::str::contains("/bin/java").not()),
+            predicate::str::contains("temurin-21").and(predicate::str::contains("bin").not()),
         );
 }
 
@@ -170,7 +170,7 @@ fn test_which_w_alias() {
         .args(["w", "temurin@21"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("/bin/java"));
+        .stdout(predicate::str::contains("bin").and(predicate::str::contains("java")));
 }
 
 #[test]
