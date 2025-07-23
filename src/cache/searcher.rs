@@ -1,4 +1,4 @@
-use crate::cache::{DistributionCache, MetadataCache};
+use crate::cache::MetadataCache;
 use crate::config::KopiConfig;
 use crate::error::Result;
 use crate::models::distribution::Distribution;
@@ -22,18 +22,12 @@ impl<'a> PackageSearcher<'a> {
         }
     }
 
-    fn search_internal<'b, F, R>(
-        &'b self,
+    pub fn search(
+        &self,
         request: &ParsedVersionRequest,
         version_type: VersionSearchType,
-        result_builder: F,
-    ) -> Result<Vec<R>>
-    where
-        'a: 'b,
-        F: Fn(&'b str, &'b DistributionCache, &'b JdkMetadata) -> R,
-    {
+    ) -> Result<Vec<SearchResult>> {
         let cache = self.cache;
-
         let mut results = Vec::new();
 
         // Pre-compute version string if needed to avoid repeated conversions
@@ -93,7 +87,11 @@ impl<'a> PackageSearcher<'a> {
                 }
 
                 if let Some(package) = latest_package {
-                    results.push(result_builder(dist_name, dist_cache, package));
+                    results.push(SearchResult {
+                        distribution: dist_name.to_string(),
+                        display_name: dist_cache.display_name.clone(),
+                        package: package.clone(),
+                    });
                 }
             } else {
                 // Regular search - include all matching versions
@@ -107,28 +105,14 @@ impl<'a> PackageSearcher<'a> {
                         continue;
                     }
 
-                    results.push(result_builder(dist_name, dist_cache, package));
+                    results.push(SearchResult {
+                        distribution: dist_name.to_string(),
+                        display_name: dist_cache.display_name.clone(),
+                        package: package.clone(),
+                    });
                 }
             }
         }
-
-        // Sort by distribution and version
-        Ok(results)
-    }
-
-    pub fn search(
-        &self,
-        request: &ParsedVersionRequest,
-        version_type: VersionSearchType,
-    ) -> Result<Vec<SearchResult>> {
-        let mut results =
-            self.search_internal(request, version_type, |dist_name, dist_cache, package| {
-                SearchResult {
-                    distribution: dist_name.to_string(),
-                    display_name: dist_cache.display_name.clone(),
-                    package: package.clone(),
-                }
-            })?;
 
         // Sort by distribution and version
         results.sort_by(|a, b| match a.distribution.cmp(&b.distribution) {
