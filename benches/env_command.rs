@@ -7,6 +7,7 @@ use kopi::commands::env::EnvCommand;
 use kopi::config::new_kopi_config;
 use std::env;
 use std::fs;
+use std::time::Duration;
 use tempfile::TempDir;
 
 /// Create a test configuration with a temporary home directory and set KOPI_HOME
@@ -256,16 +257,20 @@ fn benchmark_env_cold_start(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    env_benchmarks,
-    benchmark_env_global,
-    benchmark_env_project,
-    benchmark_env_explicit,
-    benchmark_env_deep_hierarchy,
-    benchmark_env_shells,
-    benchmark_env_errors,
-    benchmark_env_cold_start
-);
+criterion_group! {
+    name = env_benchmarks;
+    config = Criterion::default()
+        .sample_size(10)  // Minimum sample size
+        .measurement_time(Duration::from_secs(2))  // Shorter measurement time
+        .warm_up_time(Duration::from_millis(500));  // Shorter warm-up time
+    targets = benchmark_env_global,
+        benchmark_env_project,
+        benchmark_env_explicit,
+        benchmark_env_deep_hierarchy,
+        benchmark_env_shells,
+        benchmark_env_errors,
+        benchmark_env_cold_start
+}
 
 criterion_main!(env_benchmarks);
 
