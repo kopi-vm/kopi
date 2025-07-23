@@ -288,10 +288,10 @@ fn test_display_rendering_performance() {
 #[cfg_attr(not(feature = "perf-tests"), ignore)]
 #[test]
 fn test_real_cache_performance() {
+    use kopi::cache::VersionSearchType;
     use kopi::cache::load_cache;
     use kopi::config::new_kopi_config;
     use kopi::version::parser::VersionParser;
-    use kopi::cache::VersionSearchType;
 
     // This test only runs with real cache data
     let config = new_kopi_config().unwrap();

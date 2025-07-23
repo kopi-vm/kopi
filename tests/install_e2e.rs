@@ -505,7 +505,7 @@ fn test_install_and_verify_files() {
         java_exe.exists(),
         "Java executable should exist at {java_exe:?}"
     );
-    
+
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -513,11 +513,11 @@ fn test_install_and_verify_files() {
         let mode = metadata.permissions().mode();
         assert!(mode & 0o111 != 0, "java should be executable");
     }
-    
+
     // Check for JDK-specific executables (might not exist in JRE packages)
     let jdk_executables = vec!["javac", "jar", "javadoc"];
     let mut is_jdk = false;
-    
+
     for exe in &jdk_executables {
         let exe_path = bin_dir.join(format!("{exe}{exe_ext}"));
         if exe_path.exists() {
@@ -531,7 +531,7 @@ fn test_install_and_verify_files() {
             }
         }
     }
-    
+
     // Log whether this is a JDK or JRE
     eprintln!("Package type: {}", if is_jdk { "JDK" } else { "JRE" });
 

@@ -232,9 +232,9 @@ fn test_env_no_version() {
     // Test env command without any version configured
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("env");
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains("No JDK configured for current project"));
+    cmd.assert().failure().stderr(predicate::str::contains(
+        "No JDK configured for current project",
+    ));
 }
 
 /// Test env command with path containing spaces
@@ -281,9 +281,9 @@ fn test_env_invalid_shell() {
     // Test env command with invalid shell
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("env").arg("--shell").arg("invalid-shell");
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains("Shell 'invalid-shell' is not supported"));
+    cmd.assert().failure().stderr(predicate::str::contains(
+        "Shell 'invalid-shell' is not supported",
+    ));
 }
 
 /// Test shell auto-detection fallback
@@ -332,9 +332,9 @@ fn test_env_malformed_version_file() {
     // Test env command
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("env");
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains("Invalid configuration: Unknown package type: invalid"));
+    cmd.assert().failure().stderr(predicate::str::contains(
+        "Invalid configuration: Unknown package type: invalid",
+    ));
 }
 
 /// Test env command with environment variable override
@@ -424,4 +424,3 @@ fn test_env_multiple_matching_jdks() {
             jdk_new_path.display()
         )));
 }
-
