@@ -238,7 +238,7 @@ fn test_version_upgrade_scenario() {
     // Install newer version of same major
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("install")
-        .arg("17.0.9")
+        .arg("17.0.16")
         .arg("--dry-run")
         .assert()
         .success();

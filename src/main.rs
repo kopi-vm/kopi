@@ -97,7 +97,7 @@ Examples:
         #[arg(long)]
         shell: Option<String>,
         /// Output export statements (default: true)
-        #[arg(long, default_value = "true")]
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         export: bool,
     },
 

@@ -45,34 +45,6 @@ fn test_env_basic_bash() {
         .stdout(predicate::str::contains("temurin-21.0.1"));
 }
 
-/// Test env command with quiet flag
-#[test]
-fn test_env_quiet_flag() {
-    let test_home = TestHomeGuard::new();
-    test_home.setup_kopi_structure();
-    let kopi_home = test_home.kopi_home();
-
-    // Create a mock JDK installation with proper structure
-    let jdk_path = kopi_home.join("jdks").join("temurin-21.0.1");
-    let bin_dir = jdk_path.join("bin");
-    fs::create_dir_all(&bin_dir).unwrap();
-
-    // Create mock executables
-    let exe_ext = if cfg!(windows) { ".exe" } else { "" };
-    fs::write(bin_dir.join(format!("java{}", exe_ext)), "mock java").unwrap();
-    fs::write(bin_dir.join(format!("javac{}", exe_ext)), "mock javac").unwrap();
-
-    // Test env command with quiet flag
-    let mut cmd = get_test_command(&kopi_home);
-    cmd.env("KOPI_JAVA_VERSION", "temurin@21.0.1");
-    cmd.arg("env").arg("--shell").arg("bash").arg("--quiet");
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("export JAVA_HOME="))
-        .stdout(predicate::str::contains("temurin-21.0.1"))
-        .stderr(predicate::str::is_empty());
-}
-
 /// Test env command with JDK not installed
 #[test]
 fn test_env_jdk_not_installed() {

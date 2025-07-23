@@ -499,22 +499,41 @@ fn test_install_and_verify_files() {
 
     // Verify core executables exist
     let exe_ext = if cfg!(windows) { ".exe" } else { "" };
-    let core_executables = vec!["java", "javac", "jar", "javadoc"];
-
-    for exe in &core_executables {
+    // Java executable is always required
+    let java_exe = bin_dir.join(format!("java{exe_ext}"));
+    assert!(
+        java_exe.exists(),
+        "Java executable should exist at {java_exe:?}"
+    );
+    
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let metadata = fs::metadata(&java_exe).unwrap();
+        let mode = metadata.permissions().mode();
+        assert!(mode & 0o111 != 0, "java should be executable");
+    }
+    
+    // Check for JDK-specific executables (might not exist in JRE packages)
+    let jdk_executables = vec!["javac", "jar", "javadoc"];
+    let mut is_jdk = false;
+    
+    for exe in &jdk_executables {
         let exe_path = bin_dir.join(format!("{exe}{exe_ext}"));
-        assert!(
-            exe_path.exists(),
-            "Executable {exe} should exist at {exe_path:?}"
-        );
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let metadata = fs::metadata(&exe_path).unwrap();
-            let mode = metadata.permissions().mode();
-            assert!(mode & 0o111 != 0, "{exe} should be executable");
+        if exe_path.exists() {
+            is_jdk = true;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let metadata = fs::metadata(&exe_path).unwrap();
+                let mode = metadata.permissions().mode();
+                assert!(mode & 0o111 != 0, "{exe} should be executable");
+            }
         }
     }
+    
+    // Log whether this is a JDK or JRE
+    eprintln!("Package type: {}", if is_jdk { "JDK" } else { "JRE" });
 
     // Verify lib directory exists
     let lib_dir = jdk_dir.join("lib");

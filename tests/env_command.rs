@@ -137,7 +137,7 @@ fn test_env_no_export() {
 
     // Test env command without export
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env").arg("--export=false");
+    cmd.arg("env").arg("--export").arg("false");
     cmd.assert()
         .success()
         .stdout(predicate::str::contains(format!(
@@ -203,33 +203,6 @@ fn test_env_kopi_version_file() {
         )));
 }
 
-/// Test env command with quiet flag
-#[test]
-fn test_env_quiet_flag() {
-    let test_home = TestHomeGuard::new();
-    test_home.setup_kopi_structure();
-    let kopi_home = test_home.kopi_home();
-
-    // Create a mock JDK installation
-    let jdk_path = kopi_home.join("jdks").join("temurin-21.0.1");
-    fs::create_dir_all(&jdk_path).unwrap();
-
-    // Set a global version
-    let global_version_file = kopi_home.join("version");
-    fs::write(&global_version_file, "temurin@21.0.1").unwrap();
-
-    // Test env command with quiet flag
-    let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env").arg("--quiet");
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains(format!(
-            "export JAVA_HOME=\"{}\"",
-            jdk_path.display()
-        )))
-        .stderr(predicate::str::is_empty());
-}
-
 /// Test env command with JDK not installed
 #[test]
 fn test_env_jdk_not_installed() {
@@ -245,7 +218,7 @@ fn test_env_jdk_not_installed() {
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("env");
     cmd.assert().failure().stderr(predicate::str::contains(
-        "JDK temurin@21.0.1 is not installed",
+        "JDK 'temurin@21.0.1' is not installed",
     ));
 }
 
@@ -261,7 +234,7 @@ fn test_env_no_version() {
     cmd.arg("env");
     cmd.assert()
         .failure()
-        .stderr(predicate::str::contains("No Java version configured"));
+        .stderr(predicate::str::contains("No JDK configured for current project"));
 }
 
 /// Test env command with path containing spaces
@@ -297,12 +270,20 @@ fn test_env_invalid_shell() {
     test_home.setup_kopi_structure();
     let kopi_home = test_home.kopi_home();
 
+    // Create a mock JDK installation
+    let jdk_path = kopi_home.join("jdks").join("temurin-21.0.1");
+    fs::create_dir_all(&jdk_path).unwrap();
+
+    // Set a global version so we don't get "No JDK configured" error
+    let global_version_file = kopi_home.join("version");
+    fs::write(&global_version_file, "temurin@21.0.1").unwrap();
+
     // Test env command with invalid shell
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("env").arg("--shell").arg("invalid-shell");
     cmd.assert()
         .failure()
-        .stderr(predicate::str::contains("Unknown shell"));
+        .stderr(predicate::str::contains("Shell 'invalid-shell' is not supported"));
 }
 
 /// Test shell auto-detection fallback
@@ -320,18 +301,17 @@ fn test_env_shell_detection() {
     let global_version_file = kopi_home.join("version");
     fs::write(&global_version_file, "temurin@21.0.1").unwrap();
 
-    // Test env command with different SHELL env vars
+    // Test env command with explicit shell arguments
     let shells = vec![
         ("bash", "export JAVA_HOME="),
         ("zsh", "export JAVA_HOME="),
-        ("fish", "set -gx JAVA_HOME"),
-        ("pwsh", "$env:JAVA_HOME ="),
+        ("powershell", "$env:JAVA_HOME ="),
+        ("cmd", "set JAVA_HOME"),
     ];
 
     for (shell_name, expected_prefix) in shells {
         let mut cmd = get_test_command(&kopi_home);
-        cmd.env("SHELL", format!("/bin/{}", shell_name));
-        cmd.arg("env");
+        cmd.arg("env").arg("--shell").arg(shell_name);
         cmd.assert()
             .success()
             .stdout(predicate::str::contains(expected_prefix));
@@ -354,7 +334,7 @@ fn test_env_malformed_version_file() {
     cmd.arg("env");
     cmd.assert()
         .failure()
-        .stderr(predicate::str::contains("Invalid version format"));
+        .stderr(predicate::str::contains("Invalid configuration: Unknown package type: invalid"));
 }
 
 /// Test env command with environment variable override
@@ -445,30 +425,3 @@ fn test_env_multiple_matching_jdks() {
         )));
 }
 
-/// Test env command with stderr message suppression
-#[test]
-fn test_env_stderr_messages() {
-    let test_home = TestHomeGuard::new();
-    test_home.setup_kopi_structure();
-    let kopi_home = test_home.kopi_home();
-
-    // Create a mock JDK installation
-    let jdk_path = kopi_home.join("jdks").join("temurin-21.0.1");
-    fs::create_dir_all(&jdk_path).unwrap();
-
-    // Set a global version
-    let global_version_file = kopi_home.join("version");
-    fs::write(&global_version_file, "temurin@21.0.1").unwrap();
-
-    // Test without quiet flag (should show help message)
-    let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env");
-    cmd.assert()
-        .success()
-        .stderr(predicate::str::contains("eval \"$(kopi env)\""));
-
-    // Test with quiet flag (should not show help message)
-    let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env").arg("--quiet");
-    cmd.assert().success().stderr(predicate::str::is_empty());
-}

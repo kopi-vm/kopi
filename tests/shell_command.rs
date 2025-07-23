@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
+use serial_test::serial;
 use std::env;
 use tempfile::TempDir;
 
@@ -17,6 +18,7 @@ mod shell_command_tests {
     }
 
     #[test]
+    #[serial]
     #[ignore = "Requires JDK installation"]
     fn test_shell_command_with_installed_jdk() {
         let _temp_dir = setup_test_env();
@@ -41,6 +43,7 @@ mod shell_command_tests {
     }
 
     #[test]
+    #[serial]
     fn test_shell_command_with_uninstalled_jdk() {
         let _temp_dir = setup_test_env();
 
@@ -51,10 +54,11 @@ mod shell_command_tests {
             .env("KOPI_AUTO_INSTALL__PROMPT", "false")
             .assert()
             .failure()
-            .stderr(predicate::str::contains("Version not available"));
+            .stderr(predicate::str::contains("is not available"));
     }
 
     #[test]
+    #[serial]
     fn test_use_alias() {
         let _temp_dir = setup_test_env();
 
@@ -65,10 +69,11 @@ mod shell_command_tests {
             .env("KOPI_AUTO_INSTALL__PROMPT", "false")
             .assert()
             .failure()
-            .stderr(predicate::str::contains("Version not available"));
+            .stderr(predicate::str::contains("is not available"));
     }
 
     #[test]
+    #[serial]
     fn test_shell_override_option() {
         let _temp_dir = setup_test_env();
 
@@ -82,6 +87,7 @@ mod shell_command_tests {
     }
 
     #[test]
+    #[serial]
     fn test_shell_command_invalid_version() {
         let _temp_dir = setup_test_env();
 
@@ -95,6 +101,7 @@ mod shell_command_tests {
     }
 
     #[test]
+    #[serial]
     fn test_shell_command_with_distribution() {
         let _temp_dir = setup_test_env();
 
@@ -107,10 +114,11 @@ mod shell_command_tests {
             .env("KOPI_AUTO_INSTALL__PROMPT", "false")
             .assert()
             .failure()
-            .stderr(predicate::str::contains("Version not available"));
+            .stderr(predicate::str::contains("is not available"));
     }
 
     #[test]
+    #[serial]
     fn test_shell_help() {
         // Test shell command help
         Command::cargo_bin("kopi")
