@@ -165,9 +165,11 @@ mod tests {
     use super::*;
     use crate::config::KopiConfig;
     use std::fs;
-    use std::os::unix::fs::PermissionsExt;
     use std::str::FromStr;
     use tempfile::TempDir;
+
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
 
     fn create_test_jdk(temp_dir: &TempDir, distribution: &str, version: &str) -> PathBuf {
         let jdk_path = temp_dir
@@ -199,6 +201,20 @@ mod tests {
         jdk_path
     }
 
+    fn setup_test_environment(temp_dir: &TempDir, distribution: &str, version: &str) -> KopiConfig {
+        let jdk_path = create_test_jdk(temp_dir, distribution, version);
+
+        // Create version metadata file
+        let metadata = serde_json::json!({
+            "distribution": distribution,
+            "version": version,
+        });
+        let metadata_path = jdk_path.join("kopi-metadata.json");
+        fs::write(&metadata_path, serde_json::to_string(&metadata).unwrap()).unwrap();
+
+        KopiConfig::new(temp_dir.path().to_path_buf()).unwrap()
+    }
+
     #[test]
     fn test_version_request_from_str() {
         // Test simple version
@@ -222,13 +238,103 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_with_version() {
-        // This test would require mocking JdkRepository and filesystem
-        // For now, we just ensure the command can be created
+    fn test_which_specific_version() {
         let temp_dir = TempDir::new().unwrap();
+        let config = setup_test_environment(&temp_dir, "temurin", "21.0.5+11");
+
+        let command = WhichCommand::new(&config).unwrap();
+        let result = command.execute(Some("temurin@21"), "java", false, false);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_which_tool_not_found() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = setup_test_environment(&temp_dir, "temurin", "21.0.5+11");
+
+        let command = WhichCommand::new(&config).unwrap();
+        let result = command.execute(Some("temurin@21"), "nonexistent-tool", false, false);
+
+        match result {
+            Err(KopiError::ToolNotFound { tool, .. }) => {
+                assert_eq!(tool, "nonexistent-tool");
+            }
+            _ => panic!("Expected ToolNotFound error"),
+        }
+    }
+
+    #[test]
+    fn test_which_home_option() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = setup_test_environment(&temp_dir, "temurin", "21.0.5+11");
+
+        let command = WhichCommand::new(&config).unwrap();
+        // Home option should return JDK home directory
+        let result = command.execute(Some("temurin@21"), "java", true, false);
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_which_json_output() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = setup_test_environment(&temp_dir, "temurin", "21.0.5+11");
+
+        let command = WhichCommand::new(&config).unwrap();
+
+        // Capture stdout for JSON output test
+        let result = std::panic::catch_unwind(|| {
+            command
+                .execute(Some("temurin@21"), "javac", false, true)
+                .unwrap();
+        });
+
+        // JSON output would be printed to stdout
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_ambiguous_version() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create multiple JDKs with same major version
+        let _jdk1 = create_test_jdk(&temp_dir, "temurin", "21.0.5+11");
+        let _jdk2 = create_test_jdk(&temp_dir, "corretto", "21.0.7.6.1");
+
+        // Create metadata for both
+        let metadata1 = serde_json::json!({
+            "distribution": "temurin",
+            "version": "21.0.5+11",
+        });
+        let metadata2 = serde_json::json!({
+            "distribution": "corretto",
+            "version": "21.0.7.6.1",
+        });
+
+        fs::write(
+            _jdk1.join("kopi-metadata.json"),
+            serde_json::to_string(&metadata1).unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            _jdk2.join("kopi-metadata.json"),
+            serde_json::to_string(&metadata2).unwrap(),
+        )
+        .unwrap();
+
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let _command = WhichCommand::new(&config).unwrap();
-        // Actual execution would fail without installed JDKs
+        let command = WhichCommand::new(&config).unwrap();
+        let result = command.execute(Some("21"), "java", false, false);
+
+        match result {
+            Err(KopiError::ValidationError(msg)) => {
+                assert!(msg.contains("Multiple JDKs match"));
+                assert!(msg.contains("temurin@21"));
+                assert!(msg.contains("corretto@21"));
+            }
+            _ => panic!("Expected ValidationError for ambiguous version"),
+        }
     }
 
     #[test]
@@ -293,5 +399,21 @@ mod tests {
             format_source(&VersionSource::GlobalDefault(path)),
             "global default"
         );
+    }
+
+    #[test]
+    fn test_which_not_installed() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let command = WhichCommand::new(&config).unwrap();
+
+        let result = command.execute(Some("temurin@22"), "java", false, false);
+
+        match result {
+            Err(KopiError::JdkNotInstalled { jdk_spec, .. }) => {
+                assert_eq!(jdk_spec, "temurin@22");
+            }
+            _ => panic!("Expected JdkNotInstalled error"),
+        }
     }
 }

@@ -380,9 +380,9 @@ This document outlines the implementation plan for the `kopi which` command, whi
    }
    ```
 
-2. **Integration Tests** (`/tests/commands/which.rs`)
+2. **Integration Tests** (`/tests/which.rs`)
    ```rust
-   #[path = "../common/mod.rs"]
+   #[path = "common/mod.rs"]
    mod common;
 
    use common::{TestHomeGuard, run_kopi_command};
@@ -506,7 +506,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
    }
    ```
 
-3. **Platform-Specific Tests** (`/tests/commands/which_platform.rs`)
+3. **Platform-Specific Tests** (`/tests/which_platform.rs`)
    ```rust
    #[cfg(windows)]
    #[test]
