@@ -228,21 +228,69 @@ impl<'a> DiagnosticEngine<'a> {
         Self { config }
     }
 
-    pub fn run_checks(&self, categories: Option<Vec<CheckCategory>>) -> Vec<CheckResult> {
+    pub fn run_checks(
+        &self,
+        categories: Option<Vec<CheckCategory>>,
+        show_progress: bool,
+    ) -> Vec<CheckResult> {
         let mut results = Vec::new();
 
         // Determine which categories to run
         let categories_to_run = categories.unwrap_or_else(CheckCategory::all);
+
+        // Count total checks for progress bar
+        let total_checks: usize = categories_to_run
+            .iter()
+            .map(|cat| cat.create_checks(self.config).len())
+            .sum();
+
+        // Create progress bar if requested
+        let progress_bar = if show_progress {
+            // Add a newline before progress bar for better visibility
+            eprintln!();
+            Some(indicatif::ProgressBar::new(total_checks as u64))
+        } else {
+            None
+        };
+
+        if let Some(ref pb) = progress_bar {
+            pb.set_style(
+                indicatif::ProgressStyle::with_template(
+                    "{spinner:.green} [{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}",
+                )
+                .unwrap()
+                .progress_chars("##-")
+                .tick_chars("⣾⣽⣻⢿⡿⣟⣯⣷"),
+            );
+            pb.set_message("Starting diagnostic checks...");
+            pb.enable_steady_tick(std::time::Duration::from_millis(100));
+        }
 
         // Create checks for each category and run them
         for category in categories_to_run {
             let checks = category.create_checks(self.config);
 
             for check in checks {
+                // Update progress bar message
+                if let Some(ref pb) = progress_bar {
+                    pb.set_message(format!("{}: {}", category, check.name()));
+                }
+
                 let start = Instant::now();
                 let result = check.run(start, category);
                 results.push(result);
+
+                // Increment progress
+                if let Some(ref pb) = progress_bar {
+                    pb.inc(1);
+                }
             }
+        }
+
+        // Finish progress bar
+        if let Some(pb) = progress_bar {
+            pb.finish_with_message("All checks completed");
+            eprintln!(); // Add space after progress bar
         }
 
         results

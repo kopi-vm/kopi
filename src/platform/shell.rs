@@ -209,6 +209,72 @@ impl Shell {
             Shell::Unknown(name) => name,
         }
     }
+
+    /// Get the PATH configuration command for this shell
+    pub fn get_path_config_command(&self) -> String {
+        match self {
+            Shell::Bash | Shell::Zsh => "export PATH=\"$HOME/.kopi/shims:$PATH\"".to_string(),
+            Shell::Fish => "set -gx PATH $HOME/.kopi/shims $PATH".to_string(),
+            Shell::PowerShell => {
+                "$env:Path = \"$env:USERPROFILE\\.kopi\\shims;$env:Path\"".to_string()
+            }
+            Shell::Cmd => "set PATH=%USERPROFILE%\\.kopi\\shims;%PATH%".to_string(),
+            Shell::Unknown(_) => {
+                // Default to bash/zsh style
+                "export PATH=\"$HOME/.kopi/shims:$PATH\"".to_string()
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod shell_tests {
+    use super::*;
+
+    #[test]
+    fn test_path_config_commands() {
+        // Test bash command
+        let bash = Shell::Bash;
+        assert_eq!(
+            bash.get_path_config_command(),
+            "export PATH=\"$HOME/.kopi/shims:$PATH\""
+        );
+
+        // Test zsh command (same as bash)
+        let zsh = Shell::Zsh;
+        assert_eq!(
+            zsh.get_path_config_command(),
+            "export PATH=\"$HOME/.kopi/shims:$PATH\""
+        );
+
+        // Test fish command
+        let fish = Shell::Fish;
+        assert_eq!(
+            fish.get_path_config_command(),
+            "set -gx PATH $HOME/.kopi/shims $PATH"
+        );
+
+        // Test PowerShell command
+        let powershell = Shell::PowerShell;
+        assert_eq!(
+            powershell.get_path_config_command(),
+            "$env:Path = \"$env:USERPROFILE\\.kopi\\shims;$env:Path\""
+        );
+
+        // Test cmd command
+        let cmd = Shell::Cmd;
+        assert_eq!(
+            cmd.get_path_config_command(),
+            "set PATH=%USERPROFILE%\\.kopi\\shims;%PATH%"
+        );
+
+        // Test unknown shell (defaults to bash style)
+        let unknown = Shell::Unknown("mycustomshell".to_string());
+        assert_eq!(
+            unknown.get_path_config_command(),
+            "export PATH=\"$HOME/.kopi/shims:$PATH\""
+        );
+    }
 }
 
 /// Check if a directory is in PATH

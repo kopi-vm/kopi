@@ -86,9 +86,7 @@ fn test_which_home_option() {
         .args(["which", "--home", "temurin@21"])
         .assert()
         .success()
-        .stdout(
-            predicate::str::contains("temurin-21").and(predicate::str::contains("bin").not()),
-        );
+        .stdout(predicate::str::contains("temurin-21").and(predicate::str::contains("bin").not()));
 }
 
 #[test]

@@ -17,7 +17,7 @@ fn test_shell_checks_full_suite() {
     fs::create_dir_all(&shims_dir).unwrap();
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Shell]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Shell]), false);
 
     // Should have exactly 4 shell checks
     assert_eq!(results.len(), 4);
@@ -54,7 +54,7 @@ fn test_path_configuration_with_shims_in_path() {
     }
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Shell]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Shell]), false);
 
     // Find PATH configuration check
     let path_check = results
@@ -94,7 +94,7 @@ fn test_path_configuration_missing_shims() {
     }
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Shell]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Shell]), false);
 
     let path_check = results
         .iter()
@@ -118,7 +118,7 @@ fn test_shell_detection() {
     let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Shell]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Shell]), false);
 
     let shell_check = results
         .iter()
@@ -145,7 +145,7 @@ fn test_shim_functionality_no_directory() {
     }
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Shell]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Shell]), false);
 
     let shim_check = results
         .iter()
@@ -184,7 +184,7 @@ fn test_shim_functionality_with_shims() {
     }
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Shell]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Shell]), false);
 
     let shim_check = results
         .iter()
@@ -202,7 +202,7 @@ fn test_shell_configuration_check() {
     let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Shell]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Shell]), false);
 
     let config_check = results
         .iter()
@@ -232,7 +232,7 @@ fn test_performance_shell_checks() {
     let engine = DiagnosticEngine::new(&config);
 
     let start = Instant::now();
-    let results = engine.run_checks(Some(vec![CheckCategory::Shell]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Shell]), false);
     let total_duration = start.elapsed();
 
     // All shell checks should complete quickly

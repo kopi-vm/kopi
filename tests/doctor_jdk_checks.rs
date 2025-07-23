@@ -45,7 +45,7 @@ fn test_jdk_checks_no_jdks() {
     fs::create_dir_all(&jdks_dir).unwrap();
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]), false);
 
     // Should have 4 checks: installation, integrity, disk space, version consistency
     assert_eq!(results.len(), 4);
@@ -74,7 +74,7 @@ fn test_jdk_checks_with_valid_jdks() {
     create_mock_jdk(&jdks_dir, "corretto-17.0.9", true);
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]), false);
 
     assert_eq!(results.len(), 4);
 
@@ -121,7 +121,7 @@ fn test_jdk_integrity_check_corrupted() {
     create_mock_jdk(&jdks_dir, "zulu-11.0.21", false);
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]), false);
 
     // Find integrity check result
     let integrity_check = results
@@ -160,7 +160,7 @@ fn test_jdk_disk_space_analysis() {
     fs::write(lib_dir.join("rt.jar"), vec![0u8; 1024 * 1024]).unwrap(); // 1MB file
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]), false);
 
     let disk_check = results
         .iter()
@@ -190,7 +190,7 @@ fn test_jdk_checks_performance() {
 
     let start = std::time::Instant::now();
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]), false);
     let elapsed = start.elapsed();
 
     // All checks should complete quickly
@@ -252,7 +252,7 @@ fi
     }
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]), false);
 
     let version_check = results
         .iter()
@@ -287,7 +287,7 @@ fn test_jdk_checks_with_non_standard_names() {
     fs::write(jdks_dir.join("not-a-directory.txt"), "file").unwrap();
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Jdks]), false);
 
     let install_check = &results[0];
     assert_eq!(install_check.status, CheckStatus::Pass);

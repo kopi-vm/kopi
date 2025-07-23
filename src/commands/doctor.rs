@@ -37,8 +37,8 @@ impl<'a> DoctorCommand<'a> {
         // Create diagnostic engine with config - all checks are initialized internally
         let engine = DiagnosticEngine::new(self.config);
 
-        // Run checks
-        let results = engine.run_checks(categories);
+        // Run checks with progress display (only when not in JSON mode)
+        let results = engine.run_checks(categories, !json);
 
         let total_duration = start.elapsed();
         let summary = DiagnosticSummary::from_results(&results, total_duration);

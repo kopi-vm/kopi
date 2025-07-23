@@ -138,9 +138,15 @@ fn test_shims_in_path_check_integration() {
     unsafe {
         let separator = path_separator();
         #[cfg(windows)]
-        env::set_var("PATH", format!("{}{separator}C:\\Windows\\System32", shims_dir.display()));
+        env::set_var(
+            "PATH",
+            format!("{}{separator}C:\\Windows\\System32", shims_dir.display()),
+        );
         #[cfg(not(windows))]
-        env::set_var("PATH", format!("{}{separator}/usr/bin", shims_dir.display()));
+        env::set_var(
+            "PATH",
+            format!("{}{separator}/usr/bin", shims_dir.display()),
+        );
     }
     let check = ShimsInPathCheck::new(&config);
     let start = Instant::now();

@@ -135,7 +135,11 @@ fn test_env_no_export() {
 
     // Test env command without export
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env").arg("--shell").arg("bash").arg("--export").arg("false");
+    cmd.arg("env")
+        .arg("--shell")
+        .arg("bash")
+        .arg("--export")
+        .arg("false");
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("JAVA_HOME="))
@@ -163,7 +167,10 @@ fn test_env_explicit_version() {
 
     // Test env command with explicit version (should use 21)
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("env").arg("--shell").arg("bash").arg("temurin@21.0.1");
+    cmd.arg("env")
+        .arg("--shell")
+        .arg("bash")
+        .arg("temurin@21.0.1");
     cmd.assert()
         .success()
         .stdout(predicate::str::contains("export JAVA_HOME="))

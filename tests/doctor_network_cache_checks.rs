@@ -14,7 +14,7 @@ fn test_network_checks_pass_with_connectivity() {
     let config = KopiConfig::new(guard.kopi_home()).unwrap();
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Network]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Network]), false);
 
     // We should have 4 network checks
     assert_eq!(results.len(), 4);
@@ -48,7 +48,7 @@ fn test_cache_checks_with_no_cache() {
     }
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Cache]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Cache]), false);
 
     // We should have 5 cache checks
     assert_eq!(results.len(), 5);
@@ -85,7 +85,7 @@ fn test_cache_checks_with_valid_cache() {
     cache.save(&cache_path).expect("Failed to save cache");
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Cache]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Cache]), false);
 
     // Find each check by name
     let file_check = results
@@ -132,7 +132,7 @@ fn test_cache_checks_with_invalid_json() {
     fs::write(&cache_path, "{ invalid json }").expect("Failed to write invalid cache");
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Cache]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Cache]), false);
 
     // Find format check
     let format_check = results
@@ -166,7 +166,7 @@ fn test_cache_permissions_on_unix() {
     fs::set_permissions(&cache_path, perms).expect("Failed to set permissions");
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Cache]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Cache]), false);
 
     // Permission check should fail
     let perm_check = results
@@ -194,7 +194,7 @@ fn test_proxy_environment_detection() {
     }
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Network]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Network]), false);
 
     let proxy_check = results
         .iter()
@@ -218,7 +218,7 @@ fn test_network_checks_performance() {
 
     let engine = DiagnosticEngine::new(&config);
     let start = std::time::Instant::now();
-    let results = engine.run_checks(Some(vec![CheckCategory::Network]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Network]), false);
     let total_duration = start.elapsed();
 
     // Network checks should complete within reasonable time
@@ -260,7 +260,7 @@ fn test_cache_staleness_detection() {
     cache.save(&cache_path).expect("Failed to save cache");
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Cache]));
+    let results = engine.run_checks(Some(vec![CheckCategory::Cache]), false);
 
     let stale_check = results
         .iter()
@@ -286,7 +286,10 @@ fn test_all_network_and_cache_checks() {
         .expect("Failed to save cache");
 
     let engine = DiagnosticEngine::new(&config);
-    let results = engine.run_checks(Some(vec![CheckCategory::Network, CheckCategory::Cache]));
+    let results = engine.run_checks(
+        Some(vec![CheckCategory::Network, CheckCategory::Cache]),
+        false,
+    );
 
     // We should have 4 network + 5 cache = 9 total checks
     assert_eq!(results.len(), 9);

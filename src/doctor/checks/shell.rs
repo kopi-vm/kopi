@@ -77,10 +77,15 @@ impl<'a> DiagnosticCheck for PathCheck<'a> {
                 start.elapsed(),
             )
             .with_details("Kopi shims directory must be in your PATH for automatic JDK switching")
-            .with_suggestion(format!(
-                "Add this line to your shell configuration:\nexport PATH=\"{}:$PATH\"",
-                shims_dir.display()
-            ));
+            .with_suggestion({
+                let shell_cmd = if let Ok((shell, _)) = detect_shell() {
+                    shell.get_path_config_command()
+                } else {
+                    // Default to bash/zsh style if detection fails
+                    format!("export PATH=\"{}:$PATH\"", shims_dir.display())
+                };
+                format!("Add this line to your shell configuration:\n{shell_cmd}")
+            });
         }
 
         // Check PATH priority
@@ -200,8 +205,9 @@ impl DiagnosticCheck for ShellConfigurationCheck {
                 start.elapsed(),
             )
             .with_suggestion(format!(
-                "Create the file or run 'kopi shell {}' to set up shell integration",
-                shell.get_shell_name()
+                "Create {} and add:\n{}",
+                config_file.display(),
+                shell.get_path_config_command()
             ));
         }
 
@@ -229,8 +235,9 @@ impl DiagnosticCheck for ShellConfigurationCheck {
                         start.elapsed(),
                     )
                     .with_suggestion(format!(
-                        "Run 'kopi shell {}' to add kopi to your shell configuration",
-                        shell.get_shell_name()
+                        "Add to {}:\n{}",
+                        config_file.display(),
+                        shell.get_path_config_command()
                     ))
                 }
             }
