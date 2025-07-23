@@ -1,4 +1,5 @@
 mod conversion;
+mod metadata_cache;
 mod models;
 mod searcher;
 mod storage;
@@ -6,12 +7,9 @@ mod storage;
 #[cfg(test)]
 mod tests;
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use log::warn;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::Path;
-use std::time::Duration;
+use std::str::FromStr;
 
 use crate::api::ApiClient;
 use crate::config::KopiConfig;
@@ -24,6 +22,9 @@ use crate::models::package::ChecksumType;
 pub use models::{PlatformFilter, SearchResult, SearchResultRef, VersionSearchType};
 pub use searcher::PackageSearcher;
 
+// Re-export metadata cache types
+pub use metadata_cache::{DistributionCache, MetadataCache};
+
 // Re-export platform functions from the main platform module for convenience
 pub use crate::platform::{get_current_architecture, get_current_os, get_current_platform};
 
@@ -32,75 +33,6 @@ pub use conversion::{convert_api_to_cache, convert_package_to_jdk_metadata};
 
 // Re-export storage functions
 pub use storage::{load_cache, save_cache};
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct MetadataCache {
-    pub version: u32,
-    pub last_updated: DateTime<Utc>,
-    pub distributions: HashMap<String, DistributionCache>,
-    /// Maps distribution synonyms to their canonical api_parameter names
-    #[serde(default)]
-    pub synonym_map: HashMap<String, String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct DistributionCache {
-    pub distribution: JdkDistribution,
-    pub display_name: String,
-    pub packages: Vec<JdkMetadata>,
-}
-
-impl MetadataCache {
-    pub fn new() -> Self {
-        Self {
-            version: 1,
-            last_updated: Utc::now(),
-            distributions: HashMap::new(),
-            synonym_map: HashMap::new(),
-        }
-    }
-}
-
-impl Default for MetadataCache {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MetadataCache {
-    /// Check if the cache is stale based on the given maximum age
-    pub fn is_stale(&self, max_age: Duration) -> bool {
-        let now = Utc::now();
-        let elapsed = now.signed_duration_since(self.last_updated);
-
-        // Convert chrono::Duration to std::time::Duration for comparison
-        match elapsed.to_std() {
-            Ok(std_duration) => std_duration > max_age,
-            Err(_) => true, // If time went backwards or conversion failed, consider stale
-        }
-    }
-
-    pub fn has_version(&self, version: &str) -> bool {
-        for dist in self.distributions.values() {
-            for package in &dist.packages {
-                if package.version.to_string() == version {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
-    pub fn save(&self, path: &Path) -> Result<()> {
-        storage::save_cache(self, path)
-    }
-
-    /// Get the canonical name for a distribution from the synonym map
-    /// Returns None if not found
-    pub fn get_canonical_name(&self, name: &str) -> Option<&str> {
-        self.synonym_map.get(name).map(|s| s.as_str())
-    }
-}
 
 // Helper functions for metadata operations
 
@@ -158,8 +90,6 @@ pub fn fetch_and_cache_distribution(
     javafx_bundled: bool,
     config: &KopiConfig,
 ) -> Result<MetadataCache> {
-    use std::str::FromStr;
-
     // Get current platform info
     let (current_arch, current_os, current_libc) = get_current_platform();
 
