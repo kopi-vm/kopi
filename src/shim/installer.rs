@@ -81,10 +81,6 @@ impl ShimInstaller {
             if path.is_file() {
                 if let Some(name) = path.file_stem() {
                     if let Some(name_str) = name.to_str() {
-                        // On Windows, strip .exe extension
-                        #[cfg(windows)]
-                        let name_str = name_str.strip_suffix(".exe").unwrap_or(name_str);
-
                         shims.push(name_str.to_string());
                     }
                 }

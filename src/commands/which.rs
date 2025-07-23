@@ -1,5 +1,6 @@
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
+use crate::platform::{executable_extension, with_executable_extension};
 use crate::storage::{InstalledJdk, JdkRepository};
 use crate::version::VersionRequest;
 use crate::version::resolver::{VersionResolver, VersionSource};
@@ -99,12 +100,7 @@ fn format_source(source: &VersionSource) -> String {
 }
 
 fn get_tool_path(installation: &InstalledJdk, tool: &str) -> Result<PathBuf> {
-    let tool_name = if cfg!(windows) {
-        format!("{tool}.exe")
-    } else {
-        tool.to_string()
-    };
-
+    let tool_name = with_executable_extension(tool);
     let tool_path = installation.path.join("bin").join(&tool_name);
 
     if !tool_path.exists() {
@@ -117,9 +113,11 @@ fn get_tool_path(installation: &InstalledJdk, tool: &str) -> Result<PathBuf> {
                 if let Ok(file_type) = entry.file_type() {
                     if file_type.is_file() || file_type.is_symlink() {
                         if let Some(name) = entry.file_name().to_str() {
-                            // Remove .exe extension on Windows for cleaner listing
-                            let tool_name = if cfg!(windows) && name.ends_with(".exe") {
-                                &name[..name.len() - 4]
+                            // Remove executable extension for cleaner listing
+                            let tool_name = if !executable_extension().is_empty()
+                                && name.ends_with(executable_extension())
+                            {
+                                &name[..name.len() - executable_extension().len()]
                             } else {
                                 name
                             };
@@ -184,11 +182,7 @@ mod tests {
 
         // Create test tools
         for tool in &["java", "javac", "jar", "jshell"] {
-            let tool_path = if cfg!(windows) {
-                bin_dir.join(format!("{tool}.exe"))
-            } else {
-                bin_dir.join(tool)
-            };
+            let tool_path = bin_dir.join(with_executable_extension(tool));
             fs::write(&tool_path, "#!/bin/sh\necho test").unwrap();
 
             #[cfg(unix)]
@@ -398,11 +392,7 @@ mod tests {
         for tool_name in &["java", "javac", "jar", "jshell"] {
             let tool_path = get_tool_path(&jdk, tool_name).unwrap();
             assert!(tool_path.exists());
-            let expected_suffix = if cfg!(windows) {
-                format!("{tool_name}.exe")
-            } else {
-                tool_name.to_string()
-            };
+            let expected_suffix = with_executable_extension(tool_name);
             assert!(tool_path.ends_with(&expected_suffix));
         }
     }

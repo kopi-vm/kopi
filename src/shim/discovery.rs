@@ -51,19 +51,10 @@ pub fn discover_jdk_tools(jdk_path: &Path) -> Result<Vec<String>> {
             continue;
         }
 
-        // Get the file name without extension
-        let file_name = if cfg!(windows) {
-            // On Windows, strip .exe extension if present
-            match path.file_stem() {
-                Some(name) => name.to_string_lossy().to_string(),
-                None => continue,
-            }
-        } else {
-            // On Unix, use the full file name
-            match path.file_name() {
-                Some(name) => name.to_string_lossy().to_string(),
-                None => continue,
-            }
+        // Get the file name without extension for tool lookup
+        let file_name = match path.file_stem() {
+            Some(name) => name.to_string_lossy().to_string(),
+            None => continue,
         };
 
         // Check if this is an executable

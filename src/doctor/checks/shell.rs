@@ -1,7 +1,7 @@
 use crate::config::KopiConfig;
 use crate::doctor::{CheckCategory, CheckResult, CheckStatus, DiagnosticCheck};
-use crate::platform::path_separator;
 use crate::platform::shell::{detect_shell, is_in_path};
+use crate::platform::{path_separator, with_executable_extension};
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -38,10 +38,7 @@ impl<'a> PathCheck<'a> {
                     && system_java_index.is_none()
                 {
                     // Check if this directory contains java executable
-                    let java_path = Path::new(path).join("java");
-                    #[cfg(windows)]
-                    let java_path = java_path.with_extension("exe");
-
+                    let java_path = Path::new(path).join(with_executable_extension("java"));
                     if java_path.exists() {
                         system_java_index = Some(index);
                     }

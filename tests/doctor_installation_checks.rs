@@ -2,12 +2,11 @@ mod common;
 
 use common::TestHomeGuard;
 use kopi::commands::doctor::DoctorCommand;
-use kopi::doctor::checks::{
-    ConfigFileCheck, DirectoryPermissionsCheck, InstallationDirectoryCheck,
-    ShimsInPathCheck,
-};
 #[cfg(unix)]
 use kopi::doctor::checks::OwnershipCheck;
+use kopi::doctor::checks::{
+    ConfigFileCheck, DirectoryPermissionsCheck, InstallationDirectoryCheck, ShimsInPathCheck,
+};
 use kopi::doctor::{CheckCategory, CheckStatus, DiagnosticCheck};
 use std::env;
 use std::fs;
@@ -53,14 +52,18 @@ fn test_installation_directory_check_missing_subdirs() {
     // Note: The config methods (jdks_dir(), etc.) automatically create directories
     // when called, so we can't easily test the missing subdirectories case.
     // This is a design decision in the KopiConfig implementation.
-    
+
     let check = InstallationDirectoryCheck::new(&config);
     let start = Instant::now();
     let result = check.run(start, CheckCategory::Installation);
 
     // The directories are auto-created by the config methods, so this should pass
     assert_eq!(result.status, CheckStatus::Pass);
-    assert!(result.message.contains("Installation directory structure is valid"));
+    assert!(
+        result
+            .message
+            .contains("Installation directory structure is valid")
+    );
 
     unsafe {
         env::remove_var("KOPI_HOME");
