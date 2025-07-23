@@ -96,8 +96,8 @@ fn benchmark_env_global(c: &mut Criterion) {
             // Create config and run command
             let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
-            // Use quiet=true (last parameter) to suppress output during benchmarking
-            let _ = black_box(cmd.execute(None, Some("bash"), true, true));
+            // Use export=true to include export statements during benchmarking
+            let _ = black_box(cmd.execute(None, None, true));
         });
     });
 }
@@ -125,7 +125,7 @@ fn benchmark_env_project(c: &mut Criterion) {
         b.iter(|| {
             let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
-            let _ = black_box(cmd.execute(None, Some("bash"), true, true));
+            let _ = black_box(cmd.execute(None, None, true));
         });
 
         // Restore original directory
@@ -149,7 +149,7 @@ fn benchmark_env_explicit(c: &mut Criterion) {
         b.iter(|| {
             let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
-            let _ = black_box(cmd.execute(Some("temurin@17"), Some("bash"), true, true));
+            let _ = black_box(cmd.execute(Some("temurin@17"), None, true));
         });
     });
 }
@@ -186,7 +186,7 @@ fn benchmark_env_deep_hierarchy(c: &mut Criterion) {
         b.iter(|| {
             let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
-            let _ = black_box(cmd.execute(None, Some("bash"), true, true));
+            let _ = black_box(cmd.execute(None, None, true));
         });
 
         // Restore original directory
@@ -215,7 +215,7 @@ fn benchmark_env_shells(c: &mut Criterion) {
             b.iter(|| {
                 let config = new_kopi_config().unwrap();
                 let cmd = EnvCommand::new(&config).unwrap();
-                let _ = black_box(cmd.execute(None, Some(shell), true, true));
+                let _ = black_box(cmd.execute(None, Some(shell), true));
             });
         });
     }
@@ -231,7 +231,7 @@ fn benchmark_env_errors(c: &mut Criterion) {
         b.iter(|| {
             let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
-            let _ = black_box(cmd.execute(Some("temurin@99"), Some("bash"), true, true));
+            let _ = black_box(cmd.execute(Some("temurin@99"), None, true));
         });
     });
 }
@@ -251,7 +251,7 @@ fn benchmark_env_cold_start(c: &mut Criterion) {
 
             let config = new_kopi_config().unwrap();
             let cmd = EnvCommand::new(&config).unwrap();
-            let _ = black_box(cmd.execute(None, Some("bash"), true, true));
+            let _ = black_box(cmd.execute(None, None, true));
         });
     });
 }
