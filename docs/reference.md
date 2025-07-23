@@ -125,7 +125,6 @@ kopi env <version>                       # Output environment variables for spec
 **Options:**
 - `--shell <shell>`: Override shell detection (bash, zsh, fish, powershell, cmd)
 - `--export`: Include export statement (default: true)
-- `-q, --quiet`: Suppress helpful messages on stderr
 
 **Version Resolution:**
 The command resolves the JDK version in the following order:
@@ -152,12 +151,9 @@ FOR /F "tokens=*" %i IN ('kopi env --shell cmd') DO %i
 # Without export statement (just the value)
 kopi env --export=false
 
-# Quiet mode (no helper messages)
-eval "$(kopi env --quiet)"
-
 # Use in shell hooks (.bashrc/.zshrc)
 if command -v kopi &> /dev/null; then
-    eval "$(kopi env --quiet)"
+    eval "$(kopi env)"
 fi
 ```
 
@@ -277,17 +273,31 @@ kopi current --json
 
 ### `kopi which`
 
-Show installation path for a JDK version. (Not yet implemented)
+Show installation path for a JDK version or specific JDK tool.
 
 **Usage:**
 ```bash
 kopi which                               # Show path to current java executable
 kopi which <version>                     # Show path for specific JDK version
+kopi which --tool <tool>                 # Show path for specific tool (default: java)
+kopi which --home                        # Show JDK home directory instead of executable path
 ```
 
 **Alias:** `w`
 
-**Note:** This command is not yet implemented.
+**Options:**
+- `--tool <tool>`: Show path for specific JDK tool (default: java)
+- `--home`: Show JDK home directory instead of executable path
+- `--json`: Output in JSON format for scripting
+
+**Examples:**
+```bash
+kopi which                               # /home/user/.kopi/jdks/temurin-21.0.5+11/bin/java
+kopi which 17                            # /home/user/.kopi/jdks/temurin-17.0.13+11/bin/java
+kopi which --tool javac                  # /home/user/.kopi/jdks/temurin-21.0.5+11/bin/javac
+kopi which --home                        # /home/user/.kopi/jdks/temurin-21.0.5+11
+kopi which corretto@21 --json           # {"path":"/home/user/.kopi/jdks/corretto-21.0.5.12.1/bin/java",...}
+```
 
 ## Setup and Maintenance Commands
 
@@ -444,8 +454,10 @@ Run comprehensive diagnostics on your kopi installation to identify and fix comm
 ```bash
 kopi doctor                              # Run all diagnostic checks
 kopi doctor --json                       # Output results in JSON format
-kopi doctor --verbose                    # Show detailed diagnostic information
 kopi doctor --check <category>           # Run only specific category of checks
+
+# Use global verbose flag for detailed output
+kopi -v doctor                           # Show detailed diagnostic information
 ```
 
 **Categories:**
@@ -461,7 +473,7 @@ kopi doctor --check <category>           # Run only specific category of checks
 kopi doctor                              # Run all checks with colored output
 kopi doctor --check network              # Check only network connectivity
 kopi doctor --json > doctor-report.json  # Save results as JSON
-kopi doctor --verbose                    # See detailed check information
+kopi -v doctor                           # See detailed check information
 ```
 
 **Exit Codes:**
@@ -576,6 +588,11 @@ Remove all cached metadata.
 ```bash
 kopi cache clear                         # Delete the cache file
 ```
+
+**Notes:**
+- The cache is automatically updated when needed during install operations
+- Use `kopi refresh` as a shortcut for `kopi cache refresh`
+- The `kopi cache update` command has been replaced with `kopi cache refresh`
 
 ## Supported Distributions
 
