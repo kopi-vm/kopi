@@ -2,7 +2,6 @@ use crate::cache::MetadataCache;
 use crate::config::KopiConfig;
 use crate::doctor::{CheckCategory, CheckResult, CheckStatus, DiagnosticCheck};
 use std::fs;
-use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 const MAX_CACHE_SIZE_MB: u64 = 50; // Warn if cache is larger than 50MB
@@ -15,10 +14,6 @@ impl<'a> CacheFileCheck<'a> {
     pub fn new(config: &'a KopiConfig) -> Self {
         Self { config }
     }
-
-    fn get_cache_path(&self) -> PathBuf {
-        self.config.kopi_home().join("cache").join("metadata.json")
-    }
 }
 
 impl<'a> DiagnosticCheck for CacheFileCheck<'a> {
@@ -28,7 +23,18 @@ impl<'a> DiagnosticCheck for CacheFileCheck<'a> {
 
     fn run(&self, start: Instant, category: CheckCategory) -> CheckResult {
         let duration = start.elapsed();
-        let cache_path = self.get_cache_path();
+        let cache_path = match self.config.metadata_cache_path() {
+            Ok(path) => path,
+            Err(e) => {
+                return CheckResult::new(
+                    self.name(),
+                    category,
+                    CheckStatus::Fail,
+                    format!("Failed to get cache path: {e}"),
+                    duration,
+                )
+            }
+        };
 
         if cache_path.exists() {
             match fs::metadata(&cache_path) {
@@ -52,7 +58,7 @@ impl<'a> DiagnosticCheck for CacheFileCheck<'a> {
                         )
                         .with_details(format!("Path: {}", cache_path.display()))
                         .with_suggestion(
-                            "Remove the directory and run 'kopi cache update' to recreate cache",
+                            "Remove the directory and run 'kopi refresh' to recreate cache",
                         )
                     }
                 }
@@ -74,7 +80,7 @@ impl<'a> DiagnosticCheck for CacheFileCheck<'a> {
                 duration,
             )
             .with_details(format!("Expected at: {}", cache_path.display()))
-            .with_suggestion("Run 'kopi cache update' to create cache")
+            .with_suggestion("Run 'kopi refresh' to create cache")
         }
     }
 }
@@ -87,10 +93,6 @@ impl<'a> CachePermissionsCheck<'a> {
     pub fn new(config: &'a KopiConfig) -> Self {
         Self { config }
     }
-
-    fn get_cache_path(&self) -> PathBuf {
-        self.config.kopi_home().join("cache").join("metadata.json")
-    }
 }
 
 impl<'a> DiagnosticCheck for CachePermissionsCheck<'a> {
@@ -100,7 +102,18 @@ impl<'a> DiagnosticCheck for CachePermissionsCheck<'a> {
 
     fn run(&self, start: Instant, category: CheckCategory) -> CheckResult {
         let duration = start.elapsed();
-        let cache_path = self.get_cache_path();
+        let cache_path = match self.config.metadata_cache_path() {
+            Ok(path) => path,
+            Err(e) => {
+                return CheckResult::new(
+                    self.name(),
+                    category,
+                    CheckStatus::Fail,
+                    format!("Failed to get cache path: {e}"),
+                    duration,
+                )
+            }
+        };
 
         if !cache_path.exists() {
             return CheckResult::new(
@@ -169,10 +182,6 @@ impl<'a> CacheFormatCheck<'a> {
     pub fn new(config: &'a KopiConfig) -> Self {
         Self { config }
     }
-
-    fn get_cache_path(&self) -> PathBuf {
-        self.config.kopi_home().join("cache").join("metadata.json")
-    }
 }
 
 impl<'a> DiagnosticCheck for CacheFormatCheck<'a> {
@@ -182,7 +191,18 @@ impl<'a> DiagnosticCheck for CacheFormatCheck<'a> {
 
     fn run(&self, start: Instant, category: CheckCategory) -> CheckResult {
         let duration = start.elapsed();
-        let cache_path = self.get_cache_path();
+        let cache_path = match self.config.metadata_cache_path() {
+            Ok(path) => path,
+            Err(e) => {
+                return CheckResult::new(
+                    self.name(),
+                    category,
+                    CheckStatus::Fail,
+                    format!("Failed to get cache path: {e}"),
+                    duration,
+                )
+            }
+        };
 
         if !cache_path.exists() {
             return CheckResult::new(
@@ -221,7 +241,7 @@ impl<'a> DiagnosticCheck for CacheFormatCheck<'a> {
                     duration,
                 )
                 .with_details(format!("Parse error: {e}"))
-                .with_suggestion("Delete cache and run 'kopi cache update' to regenerate"),
+                .with_suggestion("Delete cache and run 'kopi refresh' to regenerate"),
             },
             Err(e) => CheckResult::new(
                 self.name(),
@@ -242,10 +262,6 @@ impl<'a> CacheStalenessCheck<'a> {
     pub fn new(config: &'a KopiConfig) -> Self {
         Self { config }
     }
-
-    fn get_cache_path(&self) -> PathBuf {
-        self.config.kopi_home().join("cache").join("metadata.json")
-    }
 }
 
 impl<'a> DiagnosticCheck for CacheStalenessCheck<'a> {
@@ -255,7 +271,18 @@ impl<'a> DiagnosticCheck for CacheStalenessCheck<'a> {
 
     fn run(&self, start: Instant, category: CheckCategory) -> CheckResult {
         let duration = start.elapsed();
-        let cache_path = self.get_cache_path();
+        let cache_path = match self.config.metadata_cache_path() {
+            Ok(path) => path,
+            Err(e) => {
+                return CheckResult::new(
+                    self.name(),
+                    category,
+                    CheckStatus::Fail,
+                    format!("Failed to get cache path: {e}"),
+                    duration,
+                )
+            }
+        };
 
         if !cache_path.exists() {
             return CheckResult::new(
@@ -290,7 +317,7 @@ impl<'a> DiagnosticCheck for CacheStalenessCheck<'a> {
                             "Last updated: {}",
                             cache.last_updated.format("%Y-%m-%d %H:%M:%S UTC")
                         ))
-                        .with_suggestion("Run 'kopi cache update' to refresh cache")
+                        .with_suggestion("Run 'kopi refresh' to refresh cache")
                     } else {
                         let age_days = chrono::Utc::now()
                             .signed_duration_since(cache.last_updated)
@@ -337,10 +364,6 @@ impl<'a> CacheSizeCheck<'a> {
     pub fn new(config: &'a KopiConfig) -> Self {
         Self { config }
     }
-
-    fn get_cache_path(&self) -> PathBuf {
-        self.config.kopi_home().join("cache").join("metadata.json")
-    }
 }
 
 impl<'a> DiagnosticCheck for CacheSizeCheck<'a> {
@@ -350,7 +373,18 @@ impl<'a> DiagnosticCheck for CacheSizeCheck<'a> {
 
     fn run(&self, start: Instant, category: CheckCategory) -> CheckResult {
         let duration = start.elapsed();
-        let cache_path = self.get_cache_path();
+        let cache_path = match self.config.metadata_cache_path() {
+            Ok(path) => path,
+            Err(e) => {
+                return CheckResult::new(
+                    self.name(),
+                    category,
+                    CheckStatus::Fail,
+                    format!("Failed to get cache path: {e}"),
+                    duration,
+                )
+            }
+        };
 
         if !cache_path.exists() {
             return CheckResult::new(
@@ -376,9 +410,7 @@ impl<'a> DiagnosticCheck for CacheSizeCheck<'a> {
                         duration,
                     )
                     .with_details(format!("Size: {size_bytes} bytes"))
-                    .with_suggestion(
-                        "Consider clearing and regenerating cache with 'kopi cache update'",
-                    )
+                    .with_suggestion("Consider clearing and regenerating cache with 'kopi refresh'")
                 } else {
                     CheckResult::new(
                         self.name(),
