@@ -290,6 +290,8 @@ fn test_display_rendering_performance() {
 fn test_real_cache_performance() {
     use kopi::cache::load_cache;
     use kopi::config::new_kopi_config;
+    use kopi::version::parser::VersionParser;
+    use kopi::cache::VersionSearchType;
 
     // This test only runs with real cache data
     let config = new_kopi_config().unwrap();
@@ -300,13 +302,15 @@ fn test_real_cache_performance() {
     }
 
     let cache = load_cache(&cache_path).unwrap();
+    let parser = VersionParser::new(&config);
 
     // Benchmark common search patterns
     let queries = vec!["21", "17", "corretto", "temurin@21", "latest"];
 
     for query in queries {
         let start = Instant::now();
-        let results = searcher.search(query).unwrap();
+        let parsed = parser.parse(query).unwrap();
+        let results = cache.search(&parsed, VersionSearchType::Auto).unwrap();
         let duration = start.elapsed();
 
         println!(
