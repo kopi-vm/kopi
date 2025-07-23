@@ -165,6 +165,7 @@ fn output_json(
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
+    use crate::version::Version;
     use std::fs;
     use std::str::FromStr;
     use tempfile::TempDir;
@@ -393,8 +394,8 @@ mod tests {
             path: jdk_path,
         };
 
-        // Test various JDK tools
-        for tool_name in &["javac", "jar", "jshell", "jps", "jstack", "jmap"] {
+        // Test various JDK tools that are created by create_test_jdk
+        for tool_name in &["java", "javac", "jar", "jshell"] {
             let tool_path = get_tool_path(&jdk, tool_name).unwrap();
             assert!(tool_path.exists());
             let expected_suffix = if cfg!(windows) {

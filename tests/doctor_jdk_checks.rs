@@ -1,4 +1,3 @@
-#[path = "../common/mod.rs"]
 mod common;
 
 use common::TestHomeGuard;
@@ -89,13 +88,15 @@ fn test_jdk_checks_with_valid_jdks() {
     // Check integrity
     let integrity_check = &results[1];
     assert_eq!(integrity_check.status, CheckStatus::Pass);
-    assert!(integrity_check.message.contains("All 2 JDK installations are intact"));
+    assert!(
+        integrity_check
+            .message
+            .contains("All 2 JDK installations are intact")
+    );
 
     // Check disk space (should pass or warn, not fail)
     let disk_check = &results[2];
-    assert!(
-        disk_check.status == CheckStatus::Pass || disk_check.status == CheckStatus::Warning
-    );
+    assert!(disk_check.status == CheckStatus::Pass || disk_check.status == CheckStatus::Warning);
     assert!(disk_check.message.contains("JDKs using"));
     assert!(disk_check.details.is_some());
 }
@@ -108,11 +109,11 @@ fn test_jdk_integrity_check_corrupted() {
     let jdks_dir = config.jdks_dir().unwrap();
     // Create one valid JDK
     create_mock_jdk(&jdks_dir, "temurin-21.0.1", true);
-    
+
     // Create corrupted JDKs
     // Missing bin directory
     fs::create_dir_all(jdks_dir.join("corretto-17.0.9")).unwrap();
-    
+
     // Missing executables
     create_mock_jdk(&jdks_dir, "zulu-11.0.21", false);
 
@@ -126,7 +127,11 @@ fn test_jdk_integrity_check_corrupted() {
         .unwrap();
 
     assert_eq!(integrity_check.status, CheckStatus::Fail);
-    assert!(integrity_check.message.contains("2 of 3 JDK installations have issues"));
+    assert!(
+        integrity_check
+            .message
+            .contains("2 of 3 JDK installations have issues")
+    );
     assert!(integrity_check.details.is_some());
     assert!(integrity_check.suggestion.is_some());
 
@@ -158,9 +163,7 @@ fn test_jdk_disk_space_analysis() {
         .find(|r| r.name == "JDK Disk Space Analysis")
         .unwrap();
 
-    assert!(
-        disk_check.status == CheckStatus::Pass || disk_check.status == CheckStatus::Warning
-    );
+    assert!(disk_check.status == CheckStatus::Pass || disk_check.status == CheckStatus::Warning);
     assert!(disk_check.message.contains("JDKs using"));
     assert!(disk_check.message.contains("available"));
     assert!(disk_check.details.is_some());
@@ -186,7 +189,11 @@ fn test_jdk_checks_performance() {
     let elapsed = start.elapsed();
 
     // All checks should complete quickly
-    assert!(elapsed.as_secs() < 5, "JDK checks took too long: {:?}", elapsed);
+    assert!(
+        elapsed.as_secs() < 5,
+        "JDK checks took too long: {:?}",
+        elapsed
+    );
 
     // Each individual check should be fast
     for result in &results {
@@ -212,7 +219,7 @@ fn test_jdk_version_consistency() {
     // Create a mock java executable that outputs version info
     let java_exe = if cfg!(windows) { "java.exe" } else { "java" };
     let java_path = bin_dir.join(java_exe);
-    
+
     #[cfg(unix)]
     {
         let java_script = r#"#!/bin/sh
@@ -224,7 +231,7 @@ if [ "$1" = "-version" ]; then
 fi
 "#;
         fs::write(&java_path, java_script).unwrap();
-        
+
         use std::os::unix::fs::PermissionsExt;
         let mut perms = fs::metadata(&java_path).unwrap().permissions();
         perms.set_mode(0o755);
@@ -249,9 +256,9 @@ fi
     // On Unix, it should pass if our mock script works
     // On Windows, it will likely show a warning or handle gracefully
     assert!(
-        version_check.status == CheckStatus::Pass 
-        || version_check.status == CheckStatus::Warning
-        || version_check.status == CheckStatus::Skip
+        version_check.status == CheckStatus::Pass
+            || version_check.status == CheckStatus::Warning
+            || version_check.status == CheckStatus::Skip
     );
 }
 
@@ -261,12 +268,12 @@ fn test_jdk_checks_with_non_standard_names() {
     let config = KopiConfig::test_default();
 
     let jdks_dir = config.jdks_dir().unwrap();
-    
+
     // Create JDKs with various naming patterns
     create_mock_jdk(&jdks_dir, "graalvm-ce-21.0.1", true);
     create_mock_jdk(&jdks_dir, "liberica-21.0.1-13", true);
     create_mock_jdk(&jdks_dir, "temurin-22-ea", true);
-    
+
     // Create invalid directories that should be ignored
     fs::create_dir_all(jdks_dir.join(".tmp")).unwrap();
     fs::create_dir_all(jdks_dir.join("invalid-name")).unwrap();
@@ -278,11 +285,11 @@ fn test_jdk_checks_with_non_standard_names() {
     let install_check = &results[0];
     assert_eq!(install_check.status, CheckStatus::Pass);
     assert!(install_check.message.contains("3 JDKs installed"));
-    
+
     // Verify the details contain the valid JDKs but not invalid entries
     let details = install_check.details.as_ref().unwrap();
     assert!(details.contains("graalvm-ce-21.0.1"));
-    assert!(details.contains("liberica-21.0.1-13")); 
+    assert!(details.contains("liberica-21.0.1-13"));
     assert!(details.contains("temurin-22-ea"));
     assert!(!details.contains("invalid-name"));
     assert!(!details.contains(".tmp"));

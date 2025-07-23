@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 const NETWORK_TIMEOUT: Duration = Duration::from_secs(5);
 
 fn get_api_health_check_url() -> String {
-    format!("{}/{}", FOOJAY_API_BASE, API_VERSION)
+    format!("{FOOJAY_API_BASE}/{API_VERSION}")
 }
 
 pub struct ApiConnectivityCheck;
@@ -27,7 +27,7 @@ impl DiagnosticCheck for ApiConnectivityCheck {
             concat!("kopi-doctor/", env!("CARGO_PKG_VERSION")),
         );
 
-        match session.get(&get_api_health_check_url()).send() {
+        match session.get(get_api_health_check_url()).send() {
             Ok(response) => {
                 if response.is_success() {
                     CheckResult::new(
@@ -225,7 +225,7 @@ impl DiagnosticCheck for TlsVerificationCheck {
             concat!("kopi-doctor/", env!("CARGO_PKG_VERSION")),
         );
 
-        match client.head(&get_api_health_check_url()).send() {
+        match client.head(get_api_health_check_url()).send() {
             Ok(_) => CheckResult::new(
                 self.name(),
                 category,

@@ -1,4 +1,3 @@
-#[path = "../common/mod.rs"]
 mod common;
 
 use common::TestHomeGuard;
@@ -15,8 +14,12 @@ fn test_doctor_command_basic() {
         .expect("Failed to execute kopi doctor");
 
     // Should complete without panic
-    assert!(output.status.success() || output.status.code() == Some(1) || output.status.code() == Some(2));
-    
+    assert!(
+        output.status.success()
+            || output.status.code() == Some(1)
+            || output.status.code() == Some(2)
+    );
+
     // Should output human-readable format
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("Kopi Doctor Report"));
@@ -34,12 +37,16 @@ fn test_doctor_json_output() {
         .expect("Failed to execute kopi doctor --json");
 
     // Should complete successfully or with warning/error
-    assert!(output.status.success() || output.status.code() == Some(1) || output.status.code() == Some(2));
+    assert!(
+        output.status.success()
+            || output.status.code() == Some(1)
+            || output.status.code() == Some(2)
+    );
 
     // Should output valid JSON
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json: serde_json::Value = serde_json::from_str(&stdout)
-        .expect("Output should be valid JSON");
+    let json: serde_json::Value =
+        serde_json::from_str(&stdout).expect("Output should be valid JSON");
 
     // Verify JSON structure
     assert!(json["version"].is_string());
@@ -59,8 +66,12 @@ fn test_doctor_verbose_flag() {
         .expect("Failed to execute kopi doctor --verbose");
 
     // Should complete without panic
-    assert!(output.status.success() || output.status.code() == Some(1) || output.status.code() == Some(2));
-    
+    assert!(
+        output.status.success()
+            || output.status.code() == Some(1)
+            || output.status.code() == Some(2)
+    );
+
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("Kopi Doctor Report"));
 }
@@ -77,7 +88,7 @@ fn test_doctor_invalid_category() {
 
     // Should fail with error
     assert!(!output.status.success());
-    
+
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("Invalid check category"));
     assert!(stderr.contains("Valid categories"));
@@ -88,17 +99,31 @@ fn test_doctor_specific_category() {
     let _guard = TestHomeGuard::new();
 
     // Test each valid category
-    let categories = ["installation", "shell", "jdks", "permissions", "network", "cache"];
-    
+    let categories = [
+        "installation",
+        "shell",
+        "jdks",
+        "permissions",
+        "network",
+        "cache",
+    ];
+
     for category in &categories {
         let output = Command::new(env!("CARGO_BIN_EXE_kopi"))
             .args(["doctor", "--check", category])
             .output()
-            .expect(&format!("Failed to execute kopi doctor --check {}", category));
+            .expect(&format!(
+                "Failed to execute kopi doctor --check {}",
+                category
+            ));
 
         // Should complete without panic
-        assert!(output.status.success() || output.status.code() == Some(1) || output.status.code() == Some(2));
-        
+        assert!(
+            output.status.success()
+                || output.status.code() == Some(1)
+                || output.status.code() == Some(2)
+        );
+
         // Output should still have proper format
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(stdout.contains("Kopi Doctor Report"));
@@ -130,8 +155,8 @@ fn test_doctor_json_exit_code_field() {
         .expect("Failed to execute kopi doctor --json");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json: serde_json::Value = serde_json::from_str(&stdout)
-        .expect("Output should be valid JSON");
+    let json: serde_json::Value =
+        serde_json::from_str(&stdout).expect("Output should be valid JSON");
 
     // JSON should include exit_code in summary
     assert!(json["summary"]["exit_code"].is_number());
