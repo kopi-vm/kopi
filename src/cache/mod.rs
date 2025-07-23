@@ -19,7 +19,7 @@ use crate::models::metadata::JdkMetadata;
 use crate::models::package::ChecksumType;
 
 // Re-export commonly used types from search functionality
-pub use models::{PlatformFilter, SearchResult, SearchResultRef, VersionSearchType};
+pub use models::{PlatformFilter, SearchResult, VersionSearchType};
 pub use searcher::PackageSearcher;
 
 // Re-export metadata cache types

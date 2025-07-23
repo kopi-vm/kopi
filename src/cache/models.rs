@@ -26,10 +26,3 @@ pub struct SearchResult {
     pub display_name: String,
     pub package: JdkMetadata,
 }
-
-#[derive(Debug)]
-pub struct SearchResultRef<'a> {
-    pub distribution: &'a str,
-    pub display_name: &'a str,
-    pub package: &'a JdkMetadata,
-}
