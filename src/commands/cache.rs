@@ -1,5 +1,5 @@
 use crate::cache;
-use crate::cache::{PackageSearcher, get_current_platform};
+use crate::cache::get_current_platform;
 use crate::config::KopiConfig;
 use crate::error::Result;
 use crate::version::parser::VersionParser;
@@ -275,9 +275,6 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
         }
     }
 
-    // Use the shared searcher with config for additional distributions
-    let searcher = PackageSearcher::new(&cache, config);
-
     // Determine version search type based on flags
     let version_type = if force_java_version {
         crate::cache::VersionSearchType::JavaVersion
@@ -287,7 +284,7 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
         crate::cache::VersionSearchType::Auto
     };
 
-    let mut results = searcher.search(&parsed_request, version_type)?;
+    let mut results = cache.search(&parsed_request, version_type, config)?;
 
     // Apply LTS filtering if requested
     if lts_only {

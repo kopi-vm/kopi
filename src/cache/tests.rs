@@ -1,5 +1,4 @@
 use crate::cache::models::VersionSearchType;
-use crate::cache::searcher::PackageSearcher;
 use crate::cache::{DistributionCache, MetadataCache};
 use crate::config::KopiConfig;
 use crate::models::distribution::Distribution;
@@ -74,12 +73,11 @@ fn create_test_cache() -> MetadataCache {
 fn test_search_by_major_version() {
     let cache = create_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].package.version.major(), 21);
@@ -89,12 +87,11 @@ fn test_search_by_major_version() {
 fn test_search_with_distribution() {
     let cache = create_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("temurin@17").unwrap();
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].package.version.major(), 17);
@@ -107,12 +104,11 @@ fn test_search_with_platform_filter() {
     let config = create_test_config();
     // Since with_platform_filter was removed, we'll test that platform filtering is properly handled
     // by verifying that the results match the expected platform
-    let searcher = PackageSearcher::new(&cache, &config);
 
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("17").unwrap();
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert_eq!(results.len(), 1);
     // Verify the result matches our test platform
@@ -123,10 +119,8 @@ fn test_search_with_platform_filter() {
 #[test]
 fn test_lookup() {
     let cache = create_test_cache();
-    let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
-    let package = searcher.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
+    let package = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -136,7 +130,6 @@ fn test_lookup() {
 fn test_search_distribution_only() {
     let cache = create_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     let parsed_request = ParsedVersionRequest {
         version: None,
@@ -145,8 +138,8 @@ fn test_search_distribution_only() {
         latest: false,
     };
 
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert_eq!(results.len(), 2);
     assert!(results.iter().all(|r| r.distribution == "temurin"));
@@ -156,7 +149,6 @@ fn test_search_distribution_only() {
 fn test_search_latest() {
     let cache = create_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     let parsed_request = ParsedVersionRequest {
         version: None,
@@ -165,8 +157,8 @@ fn test_search_latest() {
         latest: true,
     };
 
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert_eq!(results.len(), 1); // Only one distribution in test cache
     assert_eq!(results[0].package.version.major(), 21); // 21 is newer than 17
@@ -176,7 +168,6 @@ fn test_search_latest() {
 fn test_search_latest_with_distribution() {
     let cache = create_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     let parsed_request = ParsedVersionRequest {
         version: None,
@@ -185,8 +176,8 @@ fn test_search_latest_with_distribution() {
         latest: true,
     };
 
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].package.version.major(), 21);
@@ -197,7 +188,6 @@ fn test_search_latest_with_distribution() {
 fn test_search_with_package_type_filter() {
     let cache = create_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     let parsed_request = ParsedVersionRequest {
         version: None,
@@ -206,8 +196,8 @@ fn test_search_with_package_type_filter() {
         latest: false,
     };
 
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert!(
         results
@@ -220,12 +210,11 @@ fn test_search_with_package_type_filter() {
 fn test_search_no_cache() {
     let config = create_test_config();
     let cache = MetadataCache::new();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert_eq!(results.len(), 0);
 }
@@ -243,12 +232,11 @@ fn test_search_invalid_version() {
 fn test_search_non_existent_distribution() {
     let cache = create_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("corretto@21").unwrap();
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert_eq!(results.len(), 0);
 }
@@ -257,12 +245,11 @@ fn test_search_non_existent_distribution() {
 fn test_search_non_existent_version() {
     let cache = create_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("99").unwrap();
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert_eq!(results.len(), 0);
 }
@@ -271,14 +258,13 @@ fn test_search_non_existent_version() {
 fn test_platform_filter_no_match() {
     let cache = create_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     // Since we can't set platform filter, we verify that our test cache
     // doesn't have arm64 packages, so searching returns no results
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     // Our test cache only has x64/linux packages, so if we had arm64 filter, we'd get 0 results
     // Since we can't filter, we'll just verify the packages are x64
@@ -293,13 +279,12 @@ fn test_platform_filter_no_match() {
 fn test_platform_filter_lib_c_mismatch() {
     let cache = create_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     // Verify our test cache has glibc packages, not musl
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert!(
         results
@@ -321,11 +306,10 @@ fn test_platform_filter_missing_lib_c() {
         dist_cache.packages.push(package);
     }
 
-    let searcher = PackageSearcher::new(&cache, &config);
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     // We should find both packages (with and without lib_c_type)
     assert_eq!(results.len(), 2);
@@ -349,10 +333,8 @@ fn test_platform_filter_missing_lib_c() {
 #[test]
 fn test_lookup_single_match() {
     let cache = create_test_cache();
-    let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
-    let package = searcher.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
+    let package = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -361,7 +343,6 @@ fn test_lookup_single_match() {
 #[test]
 fn test_lookup_multiple_packages() {
     let mut cache = create_test_cache();
-    let config = create_test_config();
 
     // Add JRE package with same version
     if let Some(dist_cache) = cache.distributions.get_mut("temurin") {
@@ -371,10 +352,8 @@ fn test_lookup_multiple_packages() {
         dist_cache.packages.push(jre_package);
     }
 
-    let searcher = PackageSearcher::new(&cache, &config);
-
     // lookup with no package type filter should find the first match
-    let jdk_package = searcher.lookup(
+    let jdk_package = cache.lookup(
         &Distribution::Temurin,
         "21.0.1",
         "x64",
@@ -384,7 +363,7 @@ fn test_lookup_multiple_packages() {
     assert!(jdk_package.is_some());
     assert_eq!(jdk_package.unwrap().package_type, PackageType::Jdk);
 
-    let jre_package = searcher.lookup(
+    let jre_package = cache.lookup(
         &Distribution::Temurin,
         "21.0.1",
         "x64",
@@ -398,7 +377,6 @@ fn test_lookup_multiple_packages() {
 #[test]
 fn test_lookup_with_requested_type() {
     let mut cache = create_test_cache();
-    let config = create_test_config();
 
     // Add JRE package
     if let Some(dist_cache) = cache.distributions.get_mut("temurin") {
@@ -408,10 +386,8 @@ fn test_lookup_with_requested_type() {
         dist_cache.packages.push(jre_package);
     }
 
-    let searcher = PackageSearcher::new(&cache, &config);
-
     // Request JRE specifically
-    let package = searcher.lookup(
+    let package = cache.lookup(
         &Distribution::Temurin,
         "21.0.1",
         "x64",
@@ -427,16 +403,15 @@ fn test_lookup_with_requested_type() {
 fn test_empty_cache() {
     let cache = MetadataCache::new();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert_eq!(results.len(), 0);
 
-    let exact = searcher.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
+    let exact = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
     assert!(exact.is_none());
 }
 
@@ -460,8 +435,6 @@ fn test_latest_with_version_filter() {
         dist_cache.packages.push(v22);
     }
 
-    let searcher = PackageSearcher::new(&cache, &config);
-
     // Request latest with version filter
     let parsed_request = ParsedVersionRequest {
         version: Some(Version::from_str("21").unwrap()),
@@ -470,8 +443,8 @@ fn test_latest_with_version_filter() {
         latest: true,
     };
 
-    let results = searcher
-        .search(&parsed_request, VersionSearchType::Auto)
+    let results = cache
+        .search(&parsed_request, VersionSearchType::Auto, &config)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].package.version.to_string(), "21.0.2");
@@ -481,41 +454,41 @@ fn test_latest_with_version_filter() {
 fn test_detect_version_type() {
     // Standard Java versions should be detected as JavaVersion
     assert_eq!(
-        PackageSearcher::detect_version_type("21"),
+        MetadataCache::detect_version_type("21"),
         VersionSearchType::JavaVersion
     );
     assert_eq!(
-        PackageSearcher::detect_version_type("21.0"),
+        MetadataCache::detect_version_type("21.0"),
         VersionSearchType::JavaVersion
     );
     assert_eq!(
-        PackageSearcher::detect_version_type("21.0.1"),
+        MetadataCache::detect_version_type("21.0.1"),
         VersionSearchType::JavaVersion
     );
     assert_eq!(
-        PackageSearcher::detect_version_type("21.0.1+7"),
+        MetadataCache::detect_version_type("21.0.1+7"),
         VersionSearchType::JavaVersion
     );
 
     // Extended versions should be detected as DistributionVersion
     assert_eq!(
-        PackageSearcher::detect_version_type("21.0.7.6"),
+        MetadataCache::detect_version_type("21.0.7.6"),
         VersionSearchType::DistributionVersion
     );
     assert_eq!(
-        PackageSearcher::detect_version_type("21.0.7.6.1"),
+        MetadataCache::detect_version_type("21.0.7.6.1"),
         VersionSearchType::DistributionVersion
     );
     assert_eq!(
-        PackageSearcher::detect_version_type("21.0.7.0.7.6"),
+        MetadataCache::detect_version_type("21.0.7.0.7.6"),
         VersionSearchType::DistributionVersion
     );
     assert_eq!(
-        PackageSearcher::detect_version_type("21.0.1+9.1"),
+        MetadataCache::detect_version_type("21.0.1+9.1"),
         VersionSearchType::DistributionVersion
     );
     assert_eq!(
-        PackageSearcher::detect_version_type("21.0.1+LTS"),
+        MetadataCache::detect_version_type("21.0.1+LTS"),
         VersionSearchType::DistributionVersion
     );
 }
@@ -542,7 +515,6 @@ fn test_search_by_distribution_version() {
     }
 
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     // Test auto-detection for 4-component version
     let request = ParsedVersionRequest {
@@ -552,7 +524,9 @@ fn test_search_by_distribution_version() {
         latest: false,
     };
 
-    let results = searcher.search(&request, VersionSearchType::Auto).unwrap();
+    let results = cache
+        .search(&request, VersionSearchType::Auto, &config)
+        .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(
         results[0].package.distribution_version,
@@ -560,8 +534,8 @@ fn test_search_by_distribution_version() {
     );
 
     // Test explicit distribution_version search
-    let results = searcher
-        .search(&request, VersionSearchType::DistributionVersion)
+    let results = cache
+        .search(&request, VersionSearchType::DistributionVersion, &config)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(
@@ -577,8 +551,8 @@ fn test_search_by_distribution_version() {
         latest: false,
     };
 
-    let results = searcher
-        .search(&request, VersionSearchType::DistributionVersion)
+    let results = cache
+        .search(&request, VersionSearchType::DistributionVersion, &config)
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(
@@ -600,7 +574,6 @@ fn test_search_forced_java_version() {
     }
 
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     // Search with a pattern that would normally match distribution_version
     let request = ParsedVersionRequest {
@@ -611,8 +584,8 @@ fn test_search_forced_java_version() {
     };
 
     // Force java_version search - should find both packages
-    let results = searcher
-        .search(&request, VersionSearchType::JavaVersion)
+    let results = cache
+        .search(&request, VersionSearchType::JavaVersion, &config)
         .unwrap();
     assert_eq!(results.len(), 2); // Both have java_version 21.0.1
 }
@@ -662,7 +635,6 @@ fn test_distribution_version_boundary_matching() {
     }
 
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     // Search for "21.0.7" should match "21.0.7" and "21.0.7.1" but not "21.0.71"
     let request = ParsedVersionRequest {
@@ -672,8 +644,8 @@ fn test_distribution_version_boundary_matching() {
         latest: false,
     };
 
-    let results = searcher
-        .search(&request, VersionSearchType::DistributionVersion)
+    let results = cache
+        .search(&request, VersionSearchType::DistributionVersion, &config)
         .unwrap();
     assert_eq!(results.len(), 2);
     assert!(

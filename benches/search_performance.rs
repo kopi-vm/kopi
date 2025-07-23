@@ -1,6 +1,6 @@
 use criterion::{BenchmarkId, Criterion, black_box};
+use kopi::cache::VersionSearchType;
 use kopi::cache::{DistributionCache, MetadataCache};
-use kopi::cache::{PackageSearcher, VersionSearchType};
 use kopi::config::KopiConfig;
 use kopi::models::{
     distribution::Distribution,
@@ -151,14 +151,13 @@ pub fn bench_search_performance(c: &mut Criterion) {
     let mut group = c.benchmark_group("search_performance");
     let cache = create_realistic_cache();
     let config = KopiConfig::new(std::env::temp_dir()).expect("Failed to create config");
-    let searcher = PackageSearcher::new(&cache, &config);
     let parser = VersionParser::new(&config);
 
     // Benchmark simple version search
     group.bench_function("search_major_version", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("21")).unwrap();
-            searcher.search(&parsed, VersionSearchType::Auto)
+            cache.search(&parsed, VersionSearchType::Auto, &config)
         })
     });
 
@@ -166,7 +165,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("search_exact_version", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("21.0.1")).unwrap();
-            searcher.search(&parsed, VersionSearchType::Auto)
+            cache.search(&parsed, VersionSearchType::Auto, &config)
         })
     });
 
@@ -174,7 +173,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("search_distribution", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("temurin")).unwrap();
-            searcher.search(&parsed, VersionSearchType::Auto)
+            cache.search(&parsed, VersionSearchType::Auto, &config)
         })
     });
 
@@ -182,7 +181,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("search_distribution_version", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("temurin@21")).unwrap();
-            searcher.search(&parsed, VersionSearchType::Auto)
+            cache.search(&parsed, VersionSearchType::Auto, &config)
         })
     });
 
@@ -190,7 +189,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
     group.bench_function("search_latest", |b| {
         b.iter(|| {
             let parsed = parser.parse(black_box("latest")).unwrap();
-            searcher.search(&parsed, VersionSearchType::Auto)
+            cache.search(&parsed, VersionSearchType::Auto, &config)
         })
     });
 

@@ -1,4 +1,3 @@
-use kopi::cache::PackageSearcher;
 use kopi::cache::{DistributionCache, MetadataCache, VersionSearchType};
 use kopi::config::KopiConfig;
 use kopi::models::distribution::Distribution;
@@ -118,13 +117,14 @@ fn create_large_test_cache() -> MetadataCache {
 fn test_search_performance_by_version() {
     let cache = create_large_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
     let parser = VersionParser::new(&config);
 
     // Measure search performance for version search
     let start = Instant::now();
     let parsed = parser.parse("21").unwrap();
-    let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
+    let results = cache
+        .search(&parsed, VersionSearchType::Auto, &config)
+        .unwrap();
     let duration = start.elapsed();
 
     println!("Search for version '21' took: {duration:?}");
@@ -143,13 +143,14 @@ fn test_search_performance_by_version() {
 fn test_search_performance_by_distribution() {
     let cache = create_large_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
     let parser = VersionParser::new(&config);
 
     // Measure search performance for distribution search
     let start = Instant::now();
     let parsed = parser.parse("corretto").unwrap();
-    let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
+    let results = cache
+        .search(&parsed, VersionSearchType::Auto, &config)
+        .unwrap();
     let duration = start.elapsed();
 
     println!("Search for distribution 'corretto' took: {duration:?}");
@@ -168,13 +169,14 @@ fn test_search_performance_by_distribution() {
 fn test_search_performance_latest() {
     let cache = create_large_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
     let parser = VersionParser::new(&config);
 
     // Measure search performance for latest versions
     let start = Instant::now();
     let parsed = parser.parse("latest").unwrap();
-    let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
+    let results = cache
+        .search(&parsed, VersionSearchType::Auto, &config)
+        .unwrap();
     let duration = start.elapsed();
 
     println!("Search for 'latest' took: {duration:?}");
@@ -198,13 +200,14 @@ fn test_search_performance_with_platform_filter() {
     let cache = create_large_test_cache();
     let config = create_test_config();
     // Note: Platform filtering is now done internally by PackageSearcher
-    let searcher = PackageSearcher::new(&cache, &config);
     let parser = VersionParser::new(&config);
 
     // Measure search performance with platform filters
     let start = Instant::now();
     let parsed = parser.parse("17").unwrap();
-    let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
+    let results = cache
+        .search(&parsed, VersionSearchType::Auto, &config)
+        .unwrap();
     let duration = start.elapsed();
 
     println!("Search with platform filter took: {duration:?}");
@@ -226,7 +229,6 @@ fn test_search_performance_with_platform_filter() {
 fn test_search_memory_usage() {
     let cache = create_large_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
     let parser = VersionParser::new(&config);
 
     // Get initial memory usage (approximate)
@@ -238,7 +240,9 @@ fn test_search_memory_usage() {
     for i in 0..100 {
         let major_version = (i % 15) + 8; // Versions 8-22
         let parsed = parser.parse(&major_version.to_string()).unwrap();
-        let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
+        let results = cache
+            .search(&parsed, VersionSearchType::Auto, &config)
+            .unwrap();
         assert!(
             !results.is_empty(),
             "Should find results for version {major_version}"
@@ -255,12 +259,13 @@ fn test_display_rendering_performance() {
 
     let cache = create_large_test_cache();
     let config = create_test_config();
-    let searcher = PackageSearcher::new(&cache, &config);
     let parser = VersionParser::new(&config);
 
     // Search for results
     let parsed = parser.parse("21").unwrap();
-    let results = searcher.search(&parsed, VersionSearchType::Auto).unwrap();
+    let results = cache
+        .search(&parsed, VersionSearchType::Auto, &config)
+        .unwrap();
 
     // Measure table rendering time (simulated)
     let start = Instant::now();
@@ -307,7 +312,6 @@ fn test_real_cache_performance() {
     }
 
     let cache = load_cache(&cache_path).unwrap();
-    let searcher = PackageSearcher::new(&cache, &config);
 
     // Benchmark common search patterns
     let queries = vec!["21", "17", "corretto", "temurin@21", "latest"];

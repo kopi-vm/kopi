@@ -1,7 +1,6 @@
 mod conversion;
 mod metadata_cache;
 mod models;
-mod searcher;
 mod storage;
 
 #[cfg(test)]
@@ -20,7 +19,6 @@ use crate::models::package::ChecksumType;
 
 // Re-export commonly used types from search functionality
 pub use models::{PlatformFilter, SearchResult, VersionSearchType};
-pub use searcher::PackageSearcher;
 
 // Re-export metadata cache types
 pub use metadata_cache::{DistributionCache, MetadataCache};

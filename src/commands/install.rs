@@ -1,6 +1,5 @@
 use crate::api::ApiClient;
 use crate::archive::extract_archive;
-use crate::cache::PackageSearcher;
 use crate::cache::{self, MetadataCache};
 use crate::config::KopiConfig;
 use crate::download::download_jdk;
@@ -324,10 +323,8 @@ impl<'a> InstallCommand<'a> {
         let mut cache = self.ensure_fresh_cache()?;
 
         // Search in cache
-        let searcher = PackageSearcher::new(&cache, self.config);
-
         // First try exact match
-        if let Some(jdk_metadata) = searcher.lookup(
+        if let Some(jdk_metadata) = cache.lookup(
             distribution,
             &version.to_string(),
             &arch,
@@ -352,8 +349,7 @@ impl<'a> InstallCommand<'a> {
                     cache.save(&cache_path)?;
 
                     // Search again in fresh cache
-                    let searcher = PackageSearcher::new(&cache, self.config);
-                    if let Some(jdk_metadata) = searcher.lookup(
+                    if let Some(jdk_metadata) = cache.lookup(
                         distribution,
                         &version.to_string(),
                         &arch,
