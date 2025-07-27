@@ -235,7 +235,7 @@ fn test_verify_shims() {
 
     // Debug: Verify the kopi-shim binary that will be used as source
     eprintln!("\n=== Verifying source kopi-shim ===");
-    eprintln!("Source kopi-shim path: {:?}", shim_binary_path);
+    eprintln!("Source kopi-shim path: {shim_binary_path:?}");
     if shim_binary_path.exists() {
         let metadata = fs::metadata(&shim_binary_path).unwrap();
         eprintln!("Source kopi-shim size: {} bytes", metadata.len());
@@ -249,8 +249,7 @@ fn test_verify_shims() {
         .to_path_buf();
     let expected_kopi_shim = current_exe_dir.join(kopi::platform::shim_binary_name());
     eprintln!(
-        "Installer will look for kopi-shim at: {:?}",
-        expected_kopi_shim
+        "Installer will look for kopi-shim at: {expected_kopi_shim:?}"
     );
     if expected_kopi_shim.exists() {
         let metadata = fs::metadata(&expected_kopi_shim).unwrap();
@@ -264,7 +263,7 @@ fn test_verify_shims() {
     // Debug: Check what was created
     let java_shim = tool_path(installer.shims_dir(), "java");
     eprintln!("\n=== Verifying created shim ===");
-    eprintln!("Java shim path: {:?}", java_shim);
+    eprintln!("Java shim path: {java_shim:?}");
     eprintln!("Java shim exists: {}", java_shim.exists());
     if java_shim.exists() {
         let metadata = fs::metadata(&java_shim).unwrap();
@@ -286,7 +285,7 @@ fn test_verify_shims() {
     eprintln!("\n=== Running verify_shims ===");
     let broken = installer.verify_shims().unwrap();
     if !broken.is_empty() {
-        eprintln!("Broken shims found: {:?}", broken);
+        eprintln!("Broken shims found: {broken:?}");
     }
     assert!(
         broken.is_empty(),
@@ -301,7 +300,7 @@ fn test_verify_shims() {
 
     // Verify again - should find broken shim
     let broken = installer.verify_shims().unwrap();
-    eprintln!("Broken shims found after corruption: {:?}", broken);
+    eprintln!("Broken shims found after corruption: {broken:?}");
     assert_eq!(
         broken.len(),
         1,

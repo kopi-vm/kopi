@@ -373,10 +373,7 @@ JAVA_RUNTIME_VERSION="{version}"
 
         // Perform force recovery
         let result = handler.recover_from_failures(true);
-        assert!(
-            result.is_ok(),
-            "Force recovery should succeed: {result:?}"
-        );
+        assert!(result.is_ok(), "Force recovery should succeed: {result:?}");
 
         // Verify cleanup
         assert!(!partial_jdk.exists(), "Partial JDK should be force-cleaned");

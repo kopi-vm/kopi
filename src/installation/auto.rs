@@ -278,7 +278,7 @@ mod tests {
         #[cfg(windows)]
         let cmd = {
             let mut c = std::process::Command::new("cmd");
-            c.args(&["/c", "exit 0"]);
+            c.args(["/c", "exit 0"]);
             c
         };
 
