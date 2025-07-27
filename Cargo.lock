@@ -1416,6 +1416,7 @@ dependencies = [
  "mockito",
  "predicates",
  "rand 0.8.5",
+ "regex",
  "retry",
  "serde",
  "serde_json",

@@ -32,8 +32,8 @@ fn test_env_basic_bash() {
 
     // Create mock executables
     let exe_ext = if cfg!(windows) { ".exe" } else { "" };
-    fs::write(bin_dir.join(format!("java{}", exe_ext)), "mock java").unwrap();
-    fs::write(bin_dir.join(format!("javac{}", exe_ext)), "mock javac").unwrap();
+    fs::write(bin_dir.join(format!("java{exe_ext}")), "mock java").unwrap();
+    fs::write(bin_dir.join(format!("javac{exe_ext}")), "mock javac").unwrap();
 
     // Test env command
     let mut cmd = get_test_command(&kopi_home);

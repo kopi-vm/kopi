@@ -32,7 +32,7 @@ fn run_kopi(args: &[&str]) -> (String, String, bool) {
 fn create_mock_jdk(kopi_home: &Path, distribution: &str, version: &str) {
     let jdk_path = kopi_home
         .join("jdks")
-        .join(format!("{}-{}", distribution, version));
+        .join(format!("{distribution}-{version}"));
 
     // Create directory structure
     fs::create_dir_all(&jdk_path).unwrap();
@@ -102,7 +102,7 @@ fn test_uninstall_dry_run() {
     let kopi_home = temp_dir.path();
 
     // Create a mock JDK
-    create_mock_jdk(&kopi_home, "temurin", "21.0.5+11");
+    create_mock_jdk(kopi_home, "temurin", "21.0.5+11");
 
     let (stdout, _, success) = run_kopi_with_home(
         &["uninstall", "temurin@21.0.5+11", "--dry-run"],
@@ -123,7 +123,7 @@ fn test_uninstall_force() {
     let kopi_home = temp_dir.path();
 
     // Create a mock JDK
-    create_mock_jdk(&kopi_home, "corretto", "17.0.13.11.1");
+    create_mock_jdk(kopi_home, "corretto", "17.0.13.11.1");
 
     let (stdout, _, success) = run_kopi_with_home(
         &["uninstall", "corretto@17.0.13.11.1", "--force"],
@@ -143,8 +143,8 @@ fn test_uninstall_multiple_matches_error() {
     let kopi_home = temp_dir.path();
 
     // Create multiple JDKs with same major version
-    create_mock_jdk(&kopi_home, "temurin", "21.0.5+11");
-    create_mock_jdk(&kopi_home, "corretto", "21.0.13.11.1");
+    create_mock_jdk(kopi_home, "temurin", "21.0.5+11");
+    create_mock_jdk(kopi_home, "corretto", "21.0.13.11.1");
 
     let (_, stderr, success) =
         run_kopi_with_home(&["uninstall", "21"], kopi_home.to_str().unwrap());
@@ -168,9 +168,9 @@ fn test_uninstall_all_flag() {
     let kopi_home = temp_dir.path();
 
     // Create multiple versions of same distribution
-    create_mock_jdk(&kopi_home, "temurin", "21.0.5+11");
-    create_mock_jdk(&kopi_home, "temurin", "17.0.9+9");
-    create_mock_jdk(&kopi_home, "corretto", "21.0.13.11.1");
+    create_mock_jdk(kopi_home, "temurin", "21.0.5+11");
+    create_mock_jdk(kopi_home, "temurin", "17.0.9+9");
+    create_mock_jdk(kopi_home, "corretto", "21.0.13.11.1");
 
     let (stdout, _, success) = run_kopi_with_home(
         &["uninstall", "temurin", "--all", "--force"],
@@ -199,8 +199,8 @@ fn test_uninstall_all_dry_run() {
     let kopi_home = temp_dir.path();
 
     // Create multiple versions
-    create_mock_jdk(&kopi_home, "zulu", "11.0.25+9");
-    create_mock_jdk(&kopi_home, "zulu", "8.0.422+5");
+    create_mock_jdk(kopi_home, "zulu", "11.0.25+9");
+    create_mock_jdk(kopi_home, "zulu", "8.0.422+5");
 
     let (stdout, _, success) = run_kopi_with_home(
         &["uninstall", "zulu", "--all", "--dry-run"],
@@ -223,7 +223,7 @@ fn test_uninstall_with_version_only() {
     let kopi_home = temp_dir.path();
 
     // Create a single JDK
-    create_mock_jdk(&kopi_home, "temurin", "17.0.9+9");
+    create_mock_jdk(kopi_home, "temurin", "17.0.9+9");
 
     let (stdout, _, success) =
         run_kopi_with_home(&["uninstall", "17", "--force"], kopi_home.to_str().unwrap());
@@ -241,7 +241,7 @@ fn test_uninstall_exit_codes() {
 
     // Test JDK not found (exit code 4)
     let output = Command::new(env!("CARGO_BIN_EXE_kopi"))
-        .args(&["uninstall", "nonexistent@1.0.0"])
+        .args(["uninstall", "nonexistent@1.0.0"])
         .env("KOPI_HOME", kopi_home)
         .output()
         .unwrap();
@@ -249,7 +249,7 @@ fn test_uninstall_exit_codes() {
 
     // Test invalid arguments (exit code 2)
     let output2 = Command::new(env!("CARGO_BIN_EXE_kopi"))
-        .args(&["uninstall"])
+        .args(["uninstall"])
         .env("KOPI_HOME", kopi_home)
         .output()
         .unwrap();

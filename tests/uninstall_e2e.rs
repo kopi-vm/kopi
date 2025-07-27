@@ -40,7 +40,7 @@ mod e2e_tests {
                 .config
                 .jdks_dir()
                 .unwrap()
-                .join(format!("{}-{}", distribution, version));
+                .join(format!("{distribution}-{version}"));
             fs::create_dir_all(&jdk_path).expect("Failed to create JDK directory");
 
             // Create a complete JDK structure
@@ -52,13 +52,12 @@ mod e2e_tests {
         fn create_jdk_structure(&self, jdk_path: &Path, version: &str) {
             // Create release file
             let release_content = format!(
-                r#"JAVA_VERSION="{}"
+                r#"JAVA_VERSION="{version}"
 JAVA_VERSION_DATE="2024-01-16"
 JAVA_VENDOR="Eclipse Adoptium"
 IMPLEMENTOR="Eclipse Adoptium"
-JAVA_RUNTIME_VERSION="{}"
-"#,
-                version, version
+JAVA_RUNTIME_VERSION="{version}"
+"#
             );
             fs::write(jdk_path.join("release"), release_content)
                 .expect("Failed to write release file");
@@ -124,13 +123,13 @@ JAVA_RUNTIME_VERSION="{}"
                 .config
                 .jdks_dir()
                 .unwrap()
-                .join(format!("{}-{}", distribution, version));
+                .join(format!("{distribution}-{version}"));
             fs::create_dir_all(&jdk_path).expect("Failed to create JDK directory");
 
             // Create only partial structure (missing bin/java)
             fs::write(
                 jdk_path.join("release"),
-                format!("JAVA_VERSION=\"{}\"", version),
+                format!("JAVA_VERSION=\"{version}\""),
             )
             .expect("Failed to write release file");
 
@@ -142,7 +141,7 @@ JAVA_RUNTIME_VERSION="{}"
         }
 
         fn create_temp_removal_dir(&self, distribution: &str, version: &str) -> std::path::PathBuf {
-            let temp_name = format!(".{}-{}.removing", distribution, version);
+            let temp_name = format!(".{distribution}-{version}.removing");
             let temp_path = self.config.jdks_dir().unwrap().join(temp_name);
             fs::create_dir_all(&temp_path).expect("Failed to create temp removal directory");
 
@@ -193,7 +192,7 @@ JAVA_RUNTIME_VERSION="{}"
 
         // Perform uninstall
         let result = handler.uninstall_jdk("temurin@21.0.5+11", false);
-        assert!(result.is_ok(), "Uninstall should succeed: {:?}", result);
+        assert!(result.is_ok(), "Uninstall should succeed: {result:?}");
 
         // Verify complete removal
         setup.verify_complete_removal(&jdk_path);
@@ -216,7 +215,7 @@ JAVA_RUNTIME_VERSION="{}"
 
         // Perform dry run
         let result = handler.uninstall_jdk("corretto@17.0.9", true);
-        assert!(result.is_ok(), "Dry run should succeed: {:?}", result);
+        assert!(result.is_ok(), "Dry run should succeed: {result:?}");
 
         // Verify JDK still exists
         assert!(jdk_path.exists(), "JDK should still exist after dry run");
@@ -250,8 +249,7 @@ JAVA_RUNTIME_VERSION="{}"
         let result = handler.uninstall_jdk("temurin@21.0.1", false);
         assert!(
             result.is_ok(),
-            "Specific uninstall should succeed: {:?}",
-            result
+            "Specific uninstall should succeed: {result:?}"
         );
 
         // Verify only the specific JDK was removed
@@ -275,7 +273,7 @@ JAVA_RUNTIME_VERSION="{}"
             kopi::error::KopiError::JdkNotInstalled { .. } => {
                 // Expected error type
             }
-            other => panic!("Unexpected error type: {:?}", other),
+            other => panic!("Unexpected error type: {other:?}"),
         }
     }
 
@@ -295,7 +293,7 @@ JAVA_RUNTIME_VERSION="{}"
 
         // Perform recovery
         let result = handler.recover_from_failures(false);
-        assert!(result.is_ok(), "Recovery should succeed: {:?}", result);
+        assert!(result.is_ok(), "Recovery should succeed: {result:?}");
 
         // Verify cleanup
         assert!(!partial_jdk.exists(), "Partial JDK should be cleaned up");
@@ -377,8 +375,7 @@ JAVA_RUNTIME_VERSION="{}"
         let result = handler.recover_from_failures(true);
         assert!(
             result.is_ok(),
-            "Force recovery should succeed: {:?}",
-            result
+            "Force recovery should succeed: {result:?}"
         );
 
         // Verify cleanup
@@ -448,8 +445,7 @@ JAVA_RUNTIME_VERSION="{}"
         let result = handler.uninstall_jdk("temurin@21.0.1", false);
         assert!(
             result.is_ok(),
-            "Platform-specific uninstall should succeed: {:?}",
-            result
+            "Platform-specific uninstall should succeed: {result:?}"
         );
 
         // Verify complete removal including platform-specific cleanup
@@ -487,7 +483,7 @@ JAVA_RUNTIME_VERSION="{}"
 
         // Add more large files to exceed 100MB threshold for progress bar
         for i in 0..12 {
-            let large_file = jdk_path.join(format!("large_{}.dat", i));
+            let large_file = jdk_path.join(format!("large_{i}.dat"));
             let content = vec![0u8; 10 * 1024 * 1024]; // 10MB each
             fs::write(large_file, content).unwrap();
         }
@@ -501,8 +497,7 @@ JAVA_RUNTIME_VERSION="{}"
         let result = handler.uninstall_jdk("temurin@21.0.1", false);
         assert!(
             result.is_ok(),
-            "Large JDK uninstall should succeed: {:?}",
-            result
+            "Large JDK uninstall should succeed: {result:?}"
         );
 
         // Verify complete removal

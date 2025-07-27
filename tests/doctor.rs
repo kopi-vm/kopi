@@ -112,10 +112,7 @@ fn test_doctor_specific_category() {
         let output = Command::new(env!("CARGO_BIN_EXE_kopi"))
             .args(["doctor", "--check", category])
             .output()
-            .expect(&format!(
-                "Failed to execute kopi doctor --check {}",
-                category
-            ));
+            .unwrap_or_else(|_| panic!("Failed to execute kopi doctor --check {category}"));
 
         // Should complete without panic
         assert!(
@@ -144,8 +141,7 @@ fn test_doctor_exit_codes() {
     let exit_code = output.status.code().unwrap();
     assert!(
         exit_code <= 2,
-        "Exit code should be 0, 1, or 2, got: {}",
-        exit_code
+        "Exit code should be 0, 1, or 2, got: {exit_code}"
     );
 }
 
@@ -168,7 +164,6 @@ fn test_doctor_json_exit_code_field() {
     let exit_code = json["summary"]["exit_code"].as_i64().unwrap();
     assert!(
         exit_code <= 2,
-        "Exit code should be 0, 1, or 2, got: {}",
-        exit_code
+        "Exit code should be 0, 1, or 2, got: {exit_code}"
     );
 }

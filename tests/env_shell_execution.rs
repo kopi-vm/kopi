@@ -70,8 +70,7 @@ fn test_bash_shell_execution() {
         // It's okay if no JDK is configured
         assert!(
             stderr.contains("No local version") || stderr.contains("not installed"),
-            "Unexpected error: {}",
-            stderr
+            "Unexpected error: {stderr}"
         );
     }
 }
@@ -111,8 +110,7 @@ fn test_zsh_shell_execution() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
             stderr.contains("No local version") || stderr.contains("not installed"),
-            "Unexpected error: {}",
-            stderr
+            "Unexpected error: {stderr}"
         );
     }
 }
@@ -152,8 +150,7 @@ fn test_fish_shell_execution() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
             stderr.contains("No local version") || stderr.contains("not installed"),
-            "Unexpected error: {}",
-            stderr
+            "Unexpected error: {stderr}"
         );
     }
 }
@@ -194,7 +191,7 @@ fn test_powershell_shell_execution() {
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         // PowerShell might have different error formats
-        eprintln!("PowerShell stderr: {}", stderr);
+        eprintln!("PowerShell stderr: {stderr}");
     }
 }
 
@@ -241,7 +238,7 @@ echo %JAVA_HOME%
         }
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("CMD stderr: {}", stderr);
+        eprintln!("CMD stderr: {stderr}");
     }
 }
 
@@ -290,8 +287,8 @@ fn test_shell_execution_with_spaces_in_path() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    println!("stdout: {}", stdout);
-    println!("stderr: {}", stderr);
+    println!("stdout: {stdout}");
+    println!("stderr: {stderr}");
 
     // The test passes if either:
     // 1. JAVA_HOME is properly set and the directory exists

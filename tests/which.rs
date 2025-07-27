@@ -4,7 +4,6 @@ mod common;
 use assert_cmd::Command as AssertCommand;
 use common::{TestHomeGuard, fixtures};
 use predicates::prelude::*;
-use serde_json;
 use std::process::Command;
 
 #[test]
