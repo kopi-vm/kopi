@@ -32,7 +32,7 @@ impl<'a> DiagnosticCheck for CacheFileCheck<'a> {
                     CheckStatus::Fail,
                     format!("Failed to get cache path: {e}"),
                     duration,
-                )
+                );
             }
         };
 
@@ -111,7 +111,7 @@ impl<'a> DiagnosticCheck for CachePermissionsCheck<'a> {
                     CheckStatus::Fail,
                     format!("Failed to get cache path: {e}"),
                     duration,
-                )
+                );
             }
         };
 
@@ -200,7 +200,7 @@ impl<'a> DiagnosticCheck for CacheFormatCheck<'a> {
                     CheckStatus::Fail,
                     format!("Failed to get cache path: {e}"),
                     duration,
-                )
+                );
             }
         };
 
@@ -280,7 +280,7 @@ impl<'a> DiagnosticCheck for CacheStalenessCheck<'a> {
                     CheckStatus::Fail,
                     format!("Failed to get cache path: {e}"),
                     duration,
-                )
+                );
             }
         };
 
@@ -382,7 +382,7 @@ impl<'a> DiagnosticCheck for CacheSizeCheck<'a> {
                     CheckStatus::Fail,
                     format!("Failed to get cache path: {e}"),
                     duration,
-                )
+                );
             }
         };
 

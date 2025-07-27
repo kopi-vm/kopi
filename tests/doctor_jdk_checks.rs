@@ -16,7 +16,7 @@ fn create_mock_jdk(jdks_dir: &Path, name: &str, create_executables: bool) {
         // Create mock executables
         for exe in &["java", "javac", "jar", "javadoc"] {
             let exe_name = if cfg!(windows) {
-                format!("{}.exe", exe)
+                format!("{exe}.exe")
             } else {
                 exe.to_string()
             };
@@ -58,8 +58,8 @@ fn test_jdk_checks_no_jdks() {
     assert!(install_check.suggestion.is_some());
 
     // Other checks should skip when no JDKs are installed
-    for i in 1..4 {
-        assert_eq!(results[i].status, CheckStatus::Skip);
+    for result in results.iter().skip(1) {
+        assert_eq!(result.status, CheckStatus::Skip);
     }
 }
 
@@ -185,7 +185,7 @@ fn test_jdk_checks_performance() {
     let jdks_dir = config.jdks_dir().unwrap();
     // Create multiple JDKs to test performance
     for i in 1..=5 {
-        create_mock_jdk(&jdks_dir, &format!("temurin-21.0.{}", i), true);
+        create_mock_jdk(&jdks_dir, &format!("temurin-21.0.{i}"), true);
     }
 
     let start = std::time::Instant::now();
@@ -196,17 +196,16 @@ fn test_jdk_checks_performance() {
     // All checks should complete quickly
     assert!(
         elapsed.as_secs() < 5,
-        "JDK checks took too long: {:?}",
-        elapsed
+        "JDK checks took too long: {elapsed:?}"
     );
 
     // Each individual check should be fast
     for result in &results {
+        let name = &result.name;
+        let duration = result.duration;
         assert!(
             result.duration.as_millis() < 1000,
-            "Check '{}' took too long: {:?}",
-            result.name,
-            result.duration
+            "Check '{name}' took too long: {duration:?}"
         );
     }
 }

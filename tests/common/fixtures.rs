@@ -61,6 +61,7 @@ pub fn create_test_jdk_collection() -> Vec<InstalledJdk> {
 ///
 /// # Returns
 /// The path to the created JDK directory
+#[allow(dead_code)]
 pub fn create_test_jdk_fs(kopi_home: &Path, distribution: &str, version: &str) -> PathBuf {
     let jdk_path = kopi_home
         .join("jdks")

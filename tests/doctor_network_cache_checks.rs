@@ -224,17 +224,16 @@ fn test_network_checks_performance() {
     // Network checks should complete within reasonable time
     assert!(
         total_duration < Duration::from_secs(10),
-        "Network checks took too long: {:?}",
-        total_duration
+        "Network checks took too long: {total_duration:?}"
     );
 
     // Each individual check should be reasonably fast
     for result in results {
+        let name = &result.name;
+        let duration = result.duration;
         assert!(
             result.duration < Duration::from_secs(6),
-            "Check '{}' took too long: {:?}",
-            result.name,
-            result.duration
+            "Check '{name}' took too long: {duration:?}"
         );
     }
 }
