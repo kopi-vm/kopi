@@ -1,0 +1,226 @@
+# Core Architecture
+
+## Core Abstraction
+
+Based on the adopted Option 3 and synchronous I/O decision, here are the core components:
+
+```rust
+use crate::models::metadata::JdkMetadata;
+use crate::error::Result;
+
+/// Trait for metadata sources (synchronous)
+pub trait MetadataSource: Send + Sync {
+    /// Get a unique identifier for this source
+    fn id(&self) -> &str;
+    
+    /// Get a human-readable name for this source
+    fn name(&self) -> &str;
+    
+    /// Check if the source is available and can be accessed
+    fn is_available(&self) -> Result<bool>;
+    
+    /// Fetch all available metadata from this source
+    /// For foojay: returns metadata with is_complete=false
+    /// For local/GitHub: returns metadata with is_complete=true
+    fn fetch_all(&self) -> Result<Vec<JdkMetadata>>;
+    
+    /// Fetch metadata for a specific distribution
+    fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>>;
+    
+    /// Fetch complete details for a specific package (used by MetadataResolver)
+    /// Only needed for sources that return incomplete metadata
+    fn fetch_package_details(&self, package_id: &str) -> Result<PackageDetails>;
+    
+    /// Get the last update time of the source (if applicable)
+    fn last_updated(&self) -> Result<Option<chrono::DateTime<chrono::Utc>>>;
+}
+
+/// Details fetched for lazy-loaded fields
+#[derive(Debug, Clone)]
+pub struct PackageDetails {
+    pub download_url: String,
+    pub checksum: Option<String>,
+    pub checksum_type: Option<ChecksumType>,
+}
+```
+
+## Metadata Provider and Resolver
+
+```rust
+/// Manages multiple metadata sources
+pub struct MetadataProvider {
+    sources: HashMap<String, Box<dyn MetadataSource>>,
+    primary_source: String,
+    fallback_source: String,
+    cache: MetadataCache,
+    config: MetadataConfig,
+    resolver: MetadataResolver,
+}
+
+impl MetadataProvider {
+    /// Create a new provider with configured sources
+    pub fn new(config: MetadataConfig) -> Result<Self> {
+        // Initialize sources based on configuration
+    }
+    
+    /// Get metadata from the primary source, with fallback to others
+    pub fn get_metadata(&self) -> Result<MetadataCache> {
+        // Try primary source first, then fallbacks
+    }
+    
+    /// Refresh metadata from all configured sources
+    pub fn refresh(&mut self) -> Result<()> {
+        // Refresh from all sources and merge
+    }
+    
+    /// Search for packages across all sources
+    pub fn search(&self, query: &SearchQuery) -> Result<Vec<SearchResult>> {
+        // Search across all available sources
+    }
+    
+    /// Get a resolver for loading lazy fields
+    pub fn resolver(&self) -> &MetadataResolver {
+        &self.resolver
+    }
+}
+
+/// Resolver for fetching missing fields (Option 3 implementation)
+pub struct MetadataResolver {
+    sources: HashMap<String, Arc<dyn MetadataSource>>,
+}
+
+impl MetadataResolver {
+    /// Ensure metadata has all required fields
+    pub fn ensure_complete(&self, metadata: &mut JdkMetadata) -> Result<()> {
+        if !metadata.is_complete {
+            // Find the source that provided this metadata
+            if let Some(source) = self.sources.get(&metadata.distribution) {
+                let details = source.fetch_package_details(&metadata.id)?;
+                metadata.download_url = Some(details.download_url);
+                metadata.checksum = details.checksum;
+                metadata.checksum_type = details.checksum_type;
+                metadata.is_complete = true;
+            }
+        }
+        Ok(())
+    }
+    
+    /// Batch resolve multiple metadata entries
+    pub fn ensure_complete_batch(&self, metadata_list: &mut [JdkMetadata]) -> Result<()> {
+        // Group by source for efficient batch loading
+        let mut by_source: HashMap<&str, Vec<&mut JdkMetadata>> = HashMap::new();
+        
+        for metadata in metadata_list.iter_mut() {
+            if !metadata.is_complete {
+                by_source.entry(&metadata.distribution)
+                    .or_default()
+                    .push(metadata);
+            }
+        }
+        
+        // Batch load from each source
+        for (distribution, items) in by_source {
+            if let Some(source) = self.sources.get(distribution) {
+                // Implementation depends on source capabilities
+                for item in items {
+                    self.ensure_complete(item)?;
+                }
+            }
+        }
+        
+        Ok(())
+    }
+}
+```
+
+## Metadata Format
+
+All sources must provide metadata in the standard `JdkMetadata` format (based on adopted Option 3):
+
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JdkMetadata {
+    pub id: String,
+    pub distribution: String,
+    pub version: Version,
+    pub distribution_version: Version,
+    pub architecture: Architecture,
+    pub operating_system: OperatingSystem,
+    pub package_type: PackageType,
+    pub archive_type: ArchiveType,
+    
+    // Lazy-loaded fields (may be None if not yet loaded from foojay)
+    pub download_url: Option<String>,
+    pub checksum: Option<String>,
+    pub checksum_type: Option<ChecksumType>,
+    
+    pub size: u64,
+    pub lib_c_type: Option<String>,
+    pub javafx_bundled: bool,
+    pub term_of_support: Option<String>,
+    pub release_status: Option<String>,
+    pub latest_build_available: Option<bool>,
+    
+    // Tracks whether lazy fields have been loaded
+    #[serde(skip)]
+    pub is_complete: bool,
+}
+```
+
+## Error Handling
+
+```rust
+#[derive(Error, Debug)]
+pub enum MetadataSourceError {
+    #[error("Source '{0}' is not available")]
+    SourceUnavailable(String),
+    
+    #[error("Failed to parse metadata: {0}")]
+    ParseError(String),
+    
+    #[error("Network error: {0}")]
+    NetworkError(String),
+    
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
+    
+    #[error(transparent)]
+    Other(#[from] Box<dyn std::error::Error + Send + Sync>),
+}
+```
+
+## Usage Example
+
+```rust
+// In commands or other components
+pub fn get_available_jdks(config: &KopiConfig) -> Result<Vec<JdkMetadata>> {
+    let provider = MetadataProvider::from_config(config)?;
+    let cache = provider.get_metadata()?;
+    
+    // Use metadata as before
+    let results = cache.search(&search_query)?;
+    Ok(results)
+}
+
+// Loading lazy fields when needed
+pub fn download_jdk(config: &KopiConfig, package_id: &str) -> Result<()> {
+    let provider = MetadataProvider::from_config(config)?;
+    let mut metadata = provider.find_package(package_id)?;
+    
+    // Ensure download_url is loaded
+    provider.resolver().ensure_complete(&mut metadata)?;
+    
+    let download_url = metadata.download_url
+        .ok_or_else(|| KopiError::MissingField("download_url"))?;
+    
+    // Proceed with download...
+}
+```
+
+## Key Design Decisions
+
+1. **Synchronous I/O**: Matches existing codebase, avoids async complexity
+2. **Trait-based Design**: Clean abstraction for different source types
+3. **Lazy Loading**: Optional fields with resolver pattern (Option 3)
+4. **Source Management**: MetadataProvider handles multiple sources with fallback
+5. **Error Propagation**: Consistent error handling across all sources
