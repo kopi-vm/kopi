@@ -58,9 +58,9 @@ fn create_realistic_cache() -> MetadataCache {
                                 } else {
                                     ArchiveType::TarGz
                                 },
-                                download_url: format!(
+                                download_url: Some(format!(
                                     "https://example.com/{dist_id}-{major}.0.{patch}.tar.gz"
-                                ),
+                                )),
                                 checksum: None,
                                 checksum_type: Some(ChecksumType::Sha256),
                                 size: 100_000_000 + (major as u64 * 1_000_000),
@@ -81,6 +81,7 @@ fn create_realistic_cache() -> MetadataCache {
                                 },
                                 release_status: Some("ga".to_string()),
                                 latest_build_available: Some(true),
+                                is_complete: true,
                             });
                         }
                     }
@@ -118,7 +119,9 @@ fn create_cache_with_size(size: usize) -> MetadataCache {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
-            download_url: format!("https://example.com/jdk-{major}.{minor}.{patch}.tar.gz"),
+            download_url: Some(format!(
+                "https://example.com/jdk-{major}.{minor}.{patch}.tar.gz"
+            )),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 100_000_000,
@@ -131,6 +134,7 @@ fn create_cache_with_size(size: usize) -> MetadataCache {
             },
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         });
     }
 
@@ -262,7 +266,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
-            download_url: "https://example.com/jdk-21.0.1.tar.gz".to_string(),
+            download_url: Some("https://example.com/jdk-21.0.1.tar.gz".to_string()),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 100_000_000,
@@ -271,6 +275,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         };
         b.iter(|| {
             // Simulate conversion by cloning

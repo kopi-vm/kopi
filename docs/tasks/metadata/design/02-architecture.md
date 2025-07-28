@@ -44,7 +44,7 @@ pub struct PackageDetails {
 }
 ```
 
-## Metadata Provider and Resolver
+## Metadata Provider
 
 ```rust
 /// Manages multiple metadata sources
@@ -54,7 +54,6 @@ pub struct MetadataProvider {
     fallback_source: String,
     cache: MetadataCache,
     config: MetadataConfig,
-    resolver: MetadataResolver,
 }
 
 impl MetadataProvider {
@@ -78,19 +77,7 @@ impl MetadataProvider {
         // Search across all available sources
     }
     
-    /// Get a resolver for loading lazy fields
-    pub fn resolver(&self) -> &MetadataResolver {
-        &self.resolver
-    }
-}
-
-/// Resolver for fetching missing fields (Option 3 implementation)
-pub struct MetadataResolver {
-    sources: HashMap<String, Arc<dyn MetadataSource>>,
-}
-
-impl MetadataResolver {
-    /// Ensure metadata has all required fields
+    /// Ensure metadata has all required fields (lazy loading)
     pub fn ensure_complete(&self, metadata: &mut JdkMetadata) -> Result<()> {
         if !metadata.is_complete {
             // Find the source that provided this metadata
@@ -208,7 +195,7 @@ pub fn download_jdk(config: &KopiConfig, package_id: &str) -> Result<()> {
     let mut metadata = provider.find_package(package_id)?;
     
     // Ensure download_url is loaded
-    provider.resolver().ensure_complete(&mut metadata)?;
+    provider.ensure_complete(&mut metadata)?;
     
     let download_url = metadata.download_url
         .ok_or_else(|| KopiError::MissingField("download_url"))?;

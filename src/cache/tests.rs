@@ -26,7 +26,7 @@ fn create_test_cache() -> MetadataCache {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
-            download_url: "https://example.com/jdk21.tar.gz".to_string(),
+            download_url: Some("https://example.com/jdk21.tar.gz".to_string()),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 100_000_000,
@@ -35,6 +35,7 @@ fn create_test_cache() -> MetadataCache {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         },
         JdkMetadata {
             id: "test-17".to_string(),
@@ -45,7 +46,7 @@ fn create_test_cache() -> MetadataCache {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
-            download_url: "https://example.com/jdk17.tar.gz".to_string(),
+            download_url: Some("https://example.com/jdk17.tar.gz".to_string()),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 90_000_000,
@@ -54,6 +55,7 @@ fn create_test_cache() -> MetadataCache {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         },
     ];
 
@@ -596,7 +598,7 @@ fn test_distribution_version_boundary_matching() {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
-            download_url: "https://example.com/jdk.tar.gz".to_string(),
+            download_url: Some("https://example.com/jdk.tar.gz".to_string()),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 100_000_000,
@@ -605,6 +607,7 @@ fn test_distribution_version_boundary_matching() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         };
 
         let mut pkg1 = base_pkg.clone();

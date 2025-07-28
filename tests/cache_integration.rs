@@ -88,7 +88,7 @@ fn test_cache_offline_mode() {
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
         archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/download".to_string(),
+        download_url: Some("https://example.com/download".to_string()),
         checksum: None,
         checksum_type: Some(ChecksumType::Sha256),
         size: 100000000,
@@ -97,6 +97,7 @@ fn test_cache_offline_mode() {
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
+        is_complete: true,
     };
 
     let dist = DistributionCache {
@@ -154,7 +155,7 @@ fn test_find_package_in_cache() {
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
         archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/download".to_string(),
+        download_url: Some("https://example.com/download".to_string()),
         checksum: None,
         checksum_type: Some(ChecksumType::Sha256),
         size: 100000000,
@@ -163,6 +164,7 @@ fn test_find_package_in_cache() {
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
+        is_complete: true,
     };
 
     let dist = DistributionCache {
@@ -235,7 +237,7 @@ fn test_cache_with_install_command() {
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
         archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/temurin-21.tar.gz".to_string(),
+        download_url: Some("https://example.com/temurin-21.tar.gz".to_string()),
         checksum: Some("abc123def456".to_string()),
         checksum_type: Some(ChecksumType::Sha256),
         size: 200000000,
@@ -244,6 +246,7 @@ fn test_cache_with_install_command() {
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
+        is_complete: true,
     };
 
     let dist = DistributionCache {

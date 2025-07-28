@@ -907,7 +907,7 @@ mod tests {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
-            download_url: "https://example.com/sap-download".to_string(),
+            download_url: Some("https://example.com/sap-download".to_string()),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 100000000,
@@ -916,6 +916,7 @@ mod tests {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: None,
+            is_complete: true,
         };
 
         let dist = DistributionCache {

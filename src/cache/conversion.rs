@@ -71,7 +71,7 @@ pub fn convert_package_to_jdk_metadata(
         operating_system,
         package_type,
         archive_type,
-        download_url: api_package.links.pkg_download_redirect,
+        download_url: Some(api_package.links.pkg_download_redirect),
         checksum: None, // TODO: Fetch from API if available
         checksum_type: Some(ChecksumType::Sha256),
         size: api_package.size,
@@ -80,6 +80,7 @@ pub fn convert_package_to_jdk_metadata(
         term_of_support: api_package.term_of_support,
         release_status: api_package.release_status,
         latest_build_available: api_package.latest_build_available,
+        is_complete: true, // API package includes download URL, so it's complete
     };
 
     Ok(jdk_metadata)

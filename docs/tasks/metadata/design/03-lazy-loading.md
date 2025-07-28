@@ -123,16 +123,13 @@ pub struct JdkMetadata {
     pub is_complete: bool,
 }
 
-/// Resolver for fetching missing fields
-pub struct MetadataResolver {
-    source: Arc<dyn MetadataSource>,
-}
-
-impl MetadataResolver {
+// Methods integrated into MetadataProvider instead of separate resolver
+impl MetadataProvider {
     /// Ensure metadata has all required fields
-    pub async fn ensure_complete(&self, metadata: &mut JdkMetadata) -> Result<()> {
+    pub fn ensure_complete(&self, metadata: &mut JdkMetadata) -> Result<()> {
         if !metadata.is_complete {
-            let details = self.source.fetch_package_details(&metadata.id).await?;
+            let source = self.get_source_for_metadata(metadata)?;
+            let details = source.fetch_package_details(&metadata.id)?;
             metadata.download_url = Some(details.download_url);
             metadata.checksum = details.checksum;
             metadata.checksum_type = details.checksum_type;
@@ -142,7 +139,7 @@ impl MetadataResolver {
     }
     
     /// Batch resolve multiple metadata entries
-    pub async fn ensure_complete_batch(&self, metadata_list: &mut [JdkMetadata]) -> Result<()> {
+    pub fn ensure_complete_batch(&self, metadata_list: &mut [JdkMetadata]) -> Result<()> {
         let incomplete_ids: Vec<String> = metadata_list
             .iter()
             .filter(|m| !m.is_complete)
@@ -150,8 +147,8 @@ impl MetadataResolver {
             .collect();
             
         if !incomplete_ids.is_empty() {
-            let details = self.source.fetch_package_details_batch(&incomplete_ids).await?;
-            // Update metadata with fetched details
+            // Process by source for efficiency
+            // Implementation depends on source capabilities
         }
         Ok(())
     }
@@ -321,7 +318,7 @@ The implementation would be:
 - **FoojayMetadataSource**: Returns metadata with `is_complete: false`, loads details on demand
 - **LocalDirectorySource**: Returns metadata with `is_complete: true`, all fields populated
 - **HttpMetadataSource**: Returns metadata with `is_complete: true`, all fields populated
-- **MetadataResolver**: Checks `is_complete` flag and only fetches missing data when needed
+- **MetadataProvider**: Provides `ensure_complete()` method that checks `is_complete` flag and only fetches missing data when needed
 
 ## Async I/O Consideration
 

@@ -8,6 +8,7 @@ pub mod download;
 pub mod error;
 pub mod installation;
 pub mod logging;
+pub mod metadata;
 pub mod models;
 pub mod platform;
 pub mod security;

@@ -27,7 +27,9 @@ pub use metadata_cache::{DistributionCache, MetadataCache};
 pub use crate::platform::{get_current_architecture, get_current_os, get_current_platform};
 
 // Re-export conversion functions
-pub use conversion::{convert_api_to_cache, convert_package_to_jdk_metadata};
+pub use conversion::{
+    convert_api_to_cache, convert_package_to_jdk_metadata, parse_architecture_from_filename,
+};
 
 // Re-export storage functions
 pub use storage::{load_cache, save_cache};

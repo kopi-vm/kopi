@@ -248,9 +248,7 @@ fn test_verify_shims() {
         .unwrap()
         .to_path_buf();
     let expected_kopi_shim = current_exe_dir.join(kopi::platform::shim_binary_name());
-    eprintln!(
-        "Installer will look for kopi-shim at: {expected_kopi_shim:?}"
-    );
+    eprintln!("Installer will look for kopi-shim at: {expected_kopi_shim:?}");
     if expected_kopi_shim.exists() {
         let metadata = fs::metadata(&expected_kopi_shim).unwrap();
         eprintln!("Expected kopi-shim size: {} bytes", metadata.len());

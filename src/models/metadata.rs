@@ -14,13 +14,20 @@ pub struct JdkMetadata {
     pub operating_system: OperatingSystem,
     pub package_type: PackageType,
     pub archive_type: ArchiveType,
-    pub download_url: String,
+
+    // Lazy-loaded fields (may be None if not yet loaded from foojay)
+    pub download_url: Option<String>,
     pub checksum: Option<String>,
     pub checksum_type: Option<ChecksumType>,
+
     pub size: u64,
     pub lib_c_type: Option<String>,
     pub javafx_bundled: bool,
     pub term_of_support: Option<String>,
     pub release_status: Option<String>,
     pub latest_build_available: Option<bool>,
+
+    // Tracks whether lazy fields have been loaded
+    #[serde(skip)]
+    pub is_complete: bool,
 }

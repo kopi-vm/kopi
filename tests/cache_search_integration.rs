@@ -34,7 +34,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             package_type: PackageType::Jdk,
             lib_c_type: Some("glibc".to_string()),
             archive_type: ArchiveType::TarGz,
-            download_url: "https://test.com/temurin-21.tar.gz".to_string(),
+            download_url: Some("https://test.com/temurin-21.tar.gz".to_string()),
             checksum: Some("abc123".to_string()),
             checksum_type: Some(ChecksumType::Sha256),
             size: 195_000_000,
@@ -42,6 +42,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         },
         JdkMetadata {
             id: "temurin-22-sts".to_string(),
@@ -53,7 +54,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             package_type: PackageType::Jdk,
             lib_c_type: Some("glibc".to_string()),
             archive_type: ArchiveType::TarGz,
-            download_url: "https://test.com/temurin-22.tar.gz".to_string(),
+            download_url: Some("https://test.com/temurin-22.tar.gz".to_string()),
             checksum: Some("def456".to_string()),
             checksum_type: Some(ChecksumType::Sha256),
             size: 198_000_000,
@@ -61,6 +62,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("sts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         },
         JdkMetadata {
             id: "temurin-23-ea".to_string(),
@@ -72,7 +74,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             package_type: PackageType::Jdk,
             lib_c_type: Some("glibc".to_string()),
             archive_type: ArchiveType::TarGz,
-            download_url: "https://test.com/temurin-23.tar.gz".to_string(),
+            download_url: Some("https://test.com/temurin-23.tar.gz".to_string()),
             checksum: Some("ghi789".to_string()),
             checksum_type: Some(ChecksumType::Sha256),
             size: 200_000_000,
@@ -80,6 +82,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("sts".to_string()),
             release_status: Some("ea".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         },
     ];
 
@@ -104,7 +107,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             package_type: PackageType::Jdk,
             lib_c_type: Some("glibc".to_string()),
             archive_type: ArchiveType::TarGz,
-            download_url: "https://test.com/corretto-17.tar.gz".to_string(),
+            download_url: Some("https://test.com/corretto-17.tar.gz".to_string()),
             checksum: Some("jkl012".to_string()),
             checksum_type: Some(ChecksumType::Sha256),
             size: 180_000_000,
@@ -112,6 +115,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         },
         JdkMetadata {
             id: "corretto-11-lts".to_string(),
@@ -123,7 +127,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             package_type: PackageType::Jdk,
             lib_c_type: Some("glibc".to_string()),
             archive_type: ArchiveType::TarGz,
-            download_url: "https://test.com/corretto-11.tar.gz".to_string(),
+            download_url: Some("https://test.com/corretto-11.tar.gz".to_string()),
             checksum: Some("mno345".to_string()),
             checksum_type: Some(ChecksumType::Sha256),
             size: 170_000_000,
@@ -131,6 +135,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(false),
+            is_complete: true,
         },
     ];
 
@@ -155,7 +160,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             package_type: PackageType::Jdk,
             lib_c_type: Some("glibc".to_string()),
             archive_type: ArchiveType::TarGz,
-            download_url: "https://test.com/zulu-21-fx.tar.gz".to_string(),
+            download_url: Some("https://test.com/zulu-21-fx.tar.gz".to_string()),
             checksum: Some("pqr678".to_string()),
             checksum_type: Some(ChecksumType::Sha256),
             size: 220_000_000,
@@ -163,6 +168,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         },
         JdkMetadata {
             id: "zulu-21".to_string(),
@@ -174,7 +180,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             package_type: PackageType::Jdk,
             lib_c_type: Some("glibc".to_string()),
             archive_type: ArchiveType::TarGz,
-            download_url: "https://test.com/zulu-21.tar.gz".to_string(),
+            download_url: Some("https://test.com/zulu-21.tar.gz".to_string()),
             checksum: Some("stu901".to_string()),
             checksum_type: Some(ChecksumType::Sha256),
             size: 190_000_000,
@@ -182,6 +188,7 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         },
     ];
 
@@ -433,7 +440,7 @@ fn test_integration_platform_specific_filtering() {
             package_type: PackageType::Jdk,
             lib_c_type: Some("glibc".to_string()),
             archive_type: ArchiveType::TarGz,
-            download_url: "https://test.com/21-linux.tar.gz".to_string(),
+            download_url: Some("https://test.com/21-linux.tar.gz".to_string()),
             checksum: Some("linux123".to_string()),
             checksum_type: Some(ChecksumType::Sha256),
             size: 195_000_000,
@@ -441,6 +448,7 @@ fn test_integration_platform_specific_filtering() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         },
         JdkMetadata {
             id: "temurin-21-windows".to_string(),
@@ -452,7 +460,7 @@ fn test_integration_platform_specific_filtering() {
             package_type: PackageType::Jdk,
             lib_c_type: None,
             archive_type: ArchiveType::Zip,
-            download_url: "https://test.com/21-windows.zip".to_string(),
+            download_url: Some("https://test.com/21-windows.zip".to_string()),
             checksum: Some("win123".to_string()),
             checksum_type: Some(ChecksumType::Sha256),
             size: 200_000_000,
@@ -460,6 +468,7 @@ fn test_integration_platform_specific_filtering() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         },
         JdkMetadata {
             id: "temurin-21-mac".to_string(),
@@ -471,7 +480,7 @@ fn test_integration_platform_specific_filtering() {
             package_type: PackageType::Jdk,
             lib_c_type: None,
             archive_type: ArchiveType::TarGz,
-            download_url: "https://test.com/21-mac.tar.gz".to_string(),
+            download_url: Some("https://test.com/21-mac.tar.gz".to_string()),
             checksum: Some("mac123".to_string()),
             checksum_type: Some(ChecksumType::Sha256),
             size: 198_000_000,
@@ -479,6 +488,7 @@ fn test_integration_platform_specific_filtering() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+            is_complete: true,
         },
     ];
 
@@ -611,7 +621,7 @@ fn test_integration_performance_large_cache() {
                 package_type: PackageType::Jdk,
                 lib_c_type: Some("glibc".to_string()),
                 archive_type: ArchiveType::TarGz,
-                download_url: format!("https://test.com/{major}-{minor}.tar.gz"),
+                download_url: Some(format!("https://test.com/{major}-{minor}.tar.gz")),
                 checksum: Some(format!("checksum{major}_{minor}")),
                 checksum_type: Some(ChecksumType::Sha256),
                 size: 190_000_000 + (major * 1_000_000) as u64,
@@ -623,6 +633,7 @@ fn test_integration_performance_large_cache() {
                 },
                 release_status: Some("ga".to_string()),
                 latest_build_available: Some(minor == 4),
+                is_complete: true,
             });
         }
     }

@@ -18,7 +18,12 @@ pub fn download_jdk(
     timeout_secs: Option<u64>,
 ) -> Result<DownloadResult> {
     // Security validation
-    crate::security::verify_https_security(&package.download_url)?;
+    let download_url = package.download_url.as_ref().ok_or_else(|| {
+        crate::error::KopiError::InvalidConfig(
+            "Missing download URL in package metadata".to_string(),
+        )
+    })?;
+    crate::security::verify_https_security(download_url)?;
 
     // Create HTTP file downloader
     let mut downloader = HttpFileDownloader::new();
@@ -48,15 +53,11 @@ pub fn download_jdk(
 
     // Determine download path
     let temp_dir = tempfile::tempdir()?;
-    let file_name = package
-        .download_url
-        .split('/')
-        .next_back()
-        .unwrap_or("jdk.tar.gz");
+    let file_name = download_url.split('/').next_back().unwrap_or("jdk.tar.gz");
     let download_path = temp_dir.path().join(file_name);
 
     // Download the file
-    let result_path = downloader.download(&package.download_url, &download_path, &options)?;
+    let result_path = downloader.download(download_url, &download_path, &options)?;
 
     Ok(DownloadResult::new(result_path, temp_dir))
 }

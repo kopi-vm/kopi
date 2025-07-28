@@ -208,7 +208,10 @@ impl<'a> InstallCommand<'a> {
         // Download JDK
         info!(
             "Downloading from {}",
-            jdk_metadata_with_checksum.download_url
+            jdk_metadata_with_checksum
+                .download_url
+                .as_ref()
+                .unwrap_or(&"<URL not available>".to_string())
         );
         let download_result = download_jdk(&jdk_metadata_with_checksum, no_progress, timeout_secs)?;
         let download_path = download_result.path();
@@ -437,7 +440,7 @@ impl<'a> InstallCommand<'a> {
             operating_system: crate::models::platform::OperatingSystem::from_str(&os)?,
             package_type: crate::models::package::PackageType::from_str(&package.package_type)?,
             archive_type: crate::models::package::ArchiveType::from_str(&package.archive_type)?,
-            download_url: package.links.pkg_download_redirect,
+            download_url: Some(package.links.pkg_download_redirect),
             checksum: None, // Foojay API doesn't provide checksums directly
             checksum_type: None,
             size: package.size,
@@ -446,6 +449,7 @@ impl<'a> InstallCommand<'a> {
             term_of_support: package.term_of_support,
             release_status: package.release_status,
             latest_build_available: package.latest_build_available,
+            is_complete: true, // We have the download URL from the API package
         })
     }
     fn convert_metadata_to_package(&self, metadata: &JdkMetadata) -> crate::models::api::Package {
@@ -470,7 +474,7 @@ impl<'a> InstallCommand<'a> {
                 metadata.archive_type.extension()
             ),
             links: crate::models::api::Links {
-                pkg_download_redirect: metadata.download_url.clone(),
+                pkg_download_redirect: metadata.download_url.clone().unwrap_or_default(),
                 pkg_info_uri: Some(pkg_info_uri),
             },
             free_use_in_production: true,
@@ -561,7 +565,7 @@ mod tests {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
-            download_url: "https://example.com/download".to_string(),
+            download_url: Some("https://example.com/download".to_string()),
             checksum: Some("abc123".to_string()),
             checksum_type: Some(ChecksumType::Sha256),
             size: 100000000,
@@ -570,6 +574,7 @@ mod tests {
             term_of_support: None,
             release_status: None,
             latest_build_available: None,
+            is_complete: true,
         };
 
         let package = cmd.convert_metadata_to_package(&metadata);
