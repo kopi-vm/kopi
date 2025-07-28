@@ -352,11 +352,13 @@ impl MetadataGenerator {
         for path in sorted_keys {
             let mut jdks = grouped.remove(&path).unwrap();
 
-            // Sort JdkMetadata entries by version (descending) as primary key, id as secondary key
-            jdks.sort_by(|a, b| match b.version.cmp(&a.version) {
-                std::cmp::Ordering::Equal => a.id.cmp(&b.id),
-                other => other,
-            });
+            // Sort JdkMetadata entries by distribution_version (descending) as primary key, id as secondary key
+            jdks.sort_by(
+                |a, b| match b.distribution_version.cmp(&a.distribution_version) {
+                    std::cmp::Ordering::Equal => a.id.cmp(&b.id),
+                    other => other,
+                },
+            );
 
             // Extract platform and distribution from path
             // e.g., "linux-x64-glibc/temurin.json"
