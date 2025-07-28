@@ -46,9 +46,9 @@ enum Commands {
         #[arg(long = "no-minify")]
         no_minify: bool,
 
-        /// Resume interrupted generation (skip already completed files)
+        /// Force fresh generation, ignoring any existing state files
         #[arg(long)]
-        resume: bool,
+        force: bool,
     },
 
     /// Update existing metadata (not implemented yet)
@@ -82,7 +82,7 @@ fn main() {
             parallel,
             dry_run,
             no_minify,
-            resume,
+            force,
         } => {
             // Parse distributions
             let dist_list =
@@ -112,7 +112,7 @@ fn main() {
                 parallel_requests: parallel,
                 dry_run,
                 minify_json: !no_minify,
-                resume,
+                force,
             };
 
             let generator = MetadataGenerator::new(config);
@@ -126,7 +126,7 @@ fn main() {
                 parallel_requests: 4,
                 dry_run: false,
                 minify_json: true,
-                resume: false, // Update doesn't need resume support
+                force: false,
             };
             let generator = MetadataGenerator::new(config);
             generator.update(&input, &output)
@@ -139,7 +139,7 @@ fn main() {
                 parallel_requests: 1,
                 dry_run: false,
                 minify_json: true,
-                resume: false, // Validate doesn't need resume support
+                force: false,
             };
             let generator = MetadataGenerator::new(config);
             generator.validate(&input)

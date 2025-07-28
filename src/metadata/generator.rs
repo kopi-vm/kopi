@@ -83,7 +83,7 @@ pub struct GeneratorConfig {
     pub parallel_requests: usize,
     pub dry_run: bool,
     pub minify_json: bool,
-    pub resume: bool,
+    pub force: bool,
 }
 
 /// Metadata for a file to be written
@@ -502,6 +502,25 @@ impl MetadataGenerator {
         }
     }
 
+    /// Detect if there are any .state files in the output directory
+    fn detect_resume_state(&self, output_dir: &Path) -> bool {
+        use walkdir::WalkDir;
+
+        if !output_dir.exists() {
+            return false;
+        }
+
+        // Check for any .state files
+        for entry in WalkDir::new(output_dir).max_depth(3).into_iter().flatten() {
+            let path = entry.path();
+            if path.extension() == Some(OsStr::new("state")) {
+                return true;
+            }
+        }
+
+        false
+    }
+
     /// Cleanup state files after successful generation
     fn cleanup_state_files(&self, output_dir: &Path) -> Result<()> {
         use walkdir::WalkDir;
@@ -538,7 +557,25 @@ impl MetadataGenerator {
         // Create output directory
         fs::create_dir_all(output_dir)?;
 
-        if self.config.resume {
+        // Check if resume is needed based on .state files
+        let has_state_files = self.detect_resume_state(output_dir);
+        let should_resume = if self.config.force {
+            // Force flag overrides any resume behavior
+            if has_state_files {
+                println!(
+                    "⚠️  Found existing state files, but --force was specified. Starting fresh generation..."
+                );
+                // Clean up old state files when forcing
+                let _ = self.cleanup_state_files(output_dir);
+            }
+            false
+        } else {
+            has_state_files
+        };
+
+        if should_resume {
+            println!("🔄 Found incomplete generation state files. Automatically resuming...");
+            println!("   (Use --force to start fresh and ignore existing state)");
             // Use state-based writing with resume support
             self.write_output_with_state(output_dir, index, files)
         } else {
