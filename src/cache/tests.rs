@@ -5,6 +5,7 @@ use crate::models::distribution::Distribution;
 use crate::models::metadata::JdkMetadata;
 use crate::models::package::{ArchiveType, ChecksumType, PackageType};
 use crate::models::platform::{Architecture, OperatingSystem};
+use crate::platform::{get_current_architecture, get_current_os, get_foojay_libc_type};
 use crate::version::Version;
 use crate::version::parser::{ParsedVersionRequest, VersionParser};
 use std::str::FromStr;
@@ -13,8 +14,25 @@ fn create_test_config() -> KopiConfig {
     KopiConfig::new(std::env::temp_dir()).expect("Failed to create test config")
 }
 
+// Helper function to get current platform values for tests
+fn get_test_platform() -> (String, String) {
+    (get_current_architecture(), get_current_os())
+}
+
 fn create_test_cache() -> MetadataCache {
     let mut cache = MetadataCache::new();
+
+    // Use current platform values for testing
+    let current_arch = get_current_architecture();
+    let current_os = get_current_os();
+    let current_libc = get_foojay_libc_type();
+    
+    // Determine archive type based on platform
+    let archive_type = if current_os == "windows" {
+        ArchiveType::Zip
+    } else {
+        ArchiveType::TarGz
+    };
 
     let packages = vec![
         JdkMetadata {
@@ -22,15 +40,15 @@ fn create_test_cache() -> MetadataCache {
             distribution: "temurin".to_string(),
             version: Version::new(21, 0, 1),
             distribution_version: Version::from_str("21.0.1").unwrap(),
-            architecture: Architecture::X64,
-            operating_system: OperatingSystem::Linux,
+            architecture: Architecture::from_str(&current_arch).unwrap_or(Architecture::X64),
+            operating_system: OperatingSystem::from_str(&current_os).unwrap_or(OperatingSystem::Linux),
             package_type: PackageType::Jdk,
-            archive_type: ArchiveType::TarGz,
+            archive_type,
             download_url: Some("https://example.com/jdk21.tar.gz".to_string()),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 100_000_000,
-            lib_c_type: Some("glibc".to_string()),
+            lib_c_type: Some(current_libc.to_string()),
             javafx_bundled: false,
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
@@ -42,15 +60,15 @@ fn create_test_cache() -> MetadataCache {
             distribution: "temurin".to_string(),
             version: Version::new(17, 0, 9),
             distribution_version: Version::from_str("17.0.9").unwrap(),
-            architecture: Architecture::X64,
-            operating_system: OperatingSystem::Linux,
+            architecture: Architecture::from_str(&current_arch).unwrap_or(Architecture::X64),
+            operating_system: OperatingSystem::from_str(&current_os).unwrap_or(OperatingSystem::Linux),
             package_type: PackageType::Jdk,
-            archive_type: ArchiveType::TarGz,
+            archive_type,
             download_url: Some("https://example.com/jdk17.tar.gz".to_string()),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 90_000_000,
-            lib_c_type: Some("glibc".to_string()),
+            lib_c_type: Some(current_libc.to_string()),
             javafx_bundled: false,
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
@@ -114,15 +132,17 @@ fn test_search_with_platform_filter() {
         .unwrap();
     assert_eq!(results.len(), 1);
     // Verify the result matches our test platform
-    assert_eq!(results[0].package.architecture.to_string(), "x64");
-    assert_eq!(results[0].package.operating_system.to_string(), "linux");
+    let (test_arch, test_os) = get_test_platform();
+    assert_eq!(results[0].package.architecture.to_string(), test_arch);
+    assert_eq!(results[0].package.operating_system.to_string(), test_os);
 }
 
 #[test]
 fn test_lookup() {
     let cache = create_test_cache();
+    let (test_arch, test_os) = get_test_platform();
 
-    let package = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None, None);
+    let package = cache.lookup(&Distribution::Temurin, "21.0.1", &test_arch, &test_os, None, None);
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -264,12 +284,14 @@ fn test_platform_filter_no_match() {
     let results = cache
         .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
-    // Our test cache only has x64/linux packages, so if we had arm64 filter, we'd get 0 results
-    // Since we can't filter, we'll just verify the packages are x64
+    // Our test cache only has packages for the current platform's architecture
+    // Verify all packages match the current architecture
+    let current_arch = get_current_architecture();
+    let expected_arch = Architecture::from_str(&current_arch).unwrap_or(Architecture::X64);
     assert!(
         results
             .iter()
-            .all(|r| r.package.architecture == Architecture::X64)
+            .all(|r| r.package.architecture == expected_arch)
     );
 }
 
@@ -278,7 +300,8 @@ fn test_platform_filter_lib_c_mismatch() {
     let cache = create_test_cache();
     let config = create_test_config();
 
-    // Verify our test cache has glibc packages, not musl
+    // Verify our test cache has packages with the correct lib_c_type for current platform
+    let current_libc = get_foojay_libc_type();
     let parser = VersionParser::new(&config);
     let parsed_request = parser.parse("21").unwrap();
     let results = cache
@@ -287,7 +310,7 @@ fn test_platform_filter_lib_c_mismatch() {
     assert!(
         results
             .iter()
-            .all(|r| r.package.lib_c_type == Some("glibc".to_string()))
+            .all(|r| r.package.lib_c_type == Some(current_libc.to_string()))
     );
 }
 
@@ -331,8 +354,9 @@ fn test_platform_filter_missing_lib_c() {
 #[test]
 fn test_lookup_single_match() {
     let cache = create_test_cache();
+    let (test_arch, test_os) = get_test_platform();
 
-    let package = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None, None);
+    let package = cache.lookup(&Distribution::Temurin, "21.0.1", &test_arch, &test_os, None, None);
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -351,11 +375,12 @@ fn test_lookup_multiple_packages() {
     }
 
     // lookup with no package type filter should find the first match
+    let (test_arch, test_os) = get_test_platform();
     let jdk_package = cache.lookup(
         &Distribution::Temurin,
         "21.0.1",
-        "x64",
-        "linux",
+        &test_arch,
+        &test_os,
         Some(&PackageType::Jdk),
         None,
     );
@@ -365,8 +390,8 @@ fn test_lookup_multiple_packages() {
     let jre_package = cache.lookup(
         &Distribution::Temurin,
         "21.0.1",
-        "x64",
-        "linux",
+        &test_arch,
+        &test_os,
         Some(&PackageType::Jre),
         None,
     );
@@ -387,11 +412,12 @@ fn test_lookup_with_requested_type() {
     }
 
     // Request JRE specifically
+    let (test_arch, test_os) = get_test_platform();
     let package = cache.lookup(
         &Distribution::Temurin,
         "21.0.1",
-        "x64",
-        "linux",
+        &test_arch,
+        &test_os,
         Some(&PackageType::Jre),
         None,
     );
@@ -411,8 +437,9 @@ fn test_empty_cache() {
         .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 0);
-
-    let exact = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None, None);
+    
+    let (test_arch, test_os) = get_test_platform();
+    let exact = cache.lookup(&Distribution::Temurin, "21.0.1", &test_arch, &test_os, None, None);
     assert!(exact.is_none());
 }
 
@@ -453,6 +480,18 @@ fn test_latest_with_version_filter() {
 #[test]
 fn test_lookup_with_javafx_filter() {
     let mut cache = MetadataCache::new();
+    
+    // Use current platform values for testing
+    let current_arch = get_current_architecture();
+    let current_os = get_current_os();
+    let current_libc = get_foojay_libc_type();
+    
+    // Determine archive type based on platform
+    let archive_type = if current_os == "windows" {
+        ArchiveType::Zip
+    } else {
+        ArchiveType::TarGz
+    };
 
     // Create two packages: one with JavaFX, one without
     let packages = vec![
@@ -461,15 +500,15 @@ fn test_lookup_with_javafx_filter() {
             distribution: "liberica".to_string(),
             version: Version::new(21, 0, 1),
             distribution_version: Version::from_str("21.0.1").unwrap(),
-            architecture: Architecture::X64,
-            operating_system: OperatingSystem::Linux,
+            architecture: Architecture::from_str(&current_arch).unwrap_or(Architecture::X64),
+            operating_system: OperatingSystem::from_str(&current_os).unwrap_or(OperatingSystem::Linux),
             package_type: PackageType::Jdk,
-            archive_type: ArchiveType::TarGz,
+            archive_type,
             download_url: Some("https://example.com/liberica-21.tar.gz".to_string()),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 200_000_000,
-            lib_c_type: Some("glibc".to_string()),
+            lib_c_type: Some(current_libc.to_string()),
             javafx_bundled: false,
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
@@ -481,15 +520,15 @@ fn test_lookup_with_javafx_filter() {
             distribution: "liberica".to_string(),
             version: Version::new(21, 0, 1),
             distribution_version: Version::from_str("21.0.1").unwrap(),
-            architecture: Architecture::X64,
-            operating_system: OperatingSystem::Linux,
+            architecture: Architecture::from_str(&current_arch).unwrap_or(Architecture::X64),
+            operating_system: OperatingSystem::from_str(&current_os).unwrap_or(OperatingSystem::Linux),
             package_type: PackageType::Jdk,
-            archive_type: ArchiveType::TarGz,
+            archive_type,
             download_url: Some("https://example.com/liberica-21-fx.tar.gz".to_string()),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 250_000_000, // JavaFX version is larger
-            lib_c_type: Some("glibc".to_string()),
+            lib_c_type: Some(current_libc.to_string()),
             javafx_bundled: true,
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
@@ -505,13 +544,15 @@ fn test_lookup_with_javafx_filter() {
     };
 
     cache.distributions.insert("liberica".to_string(), dist);
+    
+    let (test_arch, test_os) = get_test_platform();
 
     // Test 1: Request package WITHOUT JavaFX
     let without_fx = cache.lookup(
         &Distribution::Liberica,
         "21.0.1",
-        "x64",
-        "linux",
+        &test_arch,
+        &test_os,
         None,
         Some(false),
     );
@@ -523,8 +564,8 @@ fn test_lookup_with_javafx_filter() {
     let with_fx = cache.lookup(
         &Distribution::Liberica,
         "21.0.1",
-        "x64",
-        "linux",
+        &test_arch,
+        &test_os,
         None,
         Some(true),
     );
@@ -536,8 +577,8 @@ fn test_lookup_with_javafx_filter() {
     let no_preference = cache.lookup(
         &Distribution::Liberica,
         "21.0.1",
-        "x64",
-        "linux",
+        &test_arch,
+        &test_os,
         None,
         None,
     );
@@ -687,20 +728,32 @@ fn test_distribution_version_boundary_matching() {
     if let Some(dist_cache) = cache.distributions.get_mut("temurin") {
         dist_cache.packages.clear();
 
+        // Use current platform values for testing
+        let current_arch = get_current_architecture();
+        let current_os = get_current_os();
+        let current_libc = get_foojay_libc_type();
+        
+        // Determine archive type based on platform
+        let archive_type = if current_os == "windows" {
+            ArchiveType::Zip
+        } else {
+            ArchiveType::TarGz
+        };
+
         let base_pkg = JdkMetadata {
             id: "test".to_string(),
             distribution: "corretto".to_string(),
             version: Version::new(21, 0, 7),
             distribution_version: Version::from_str("21.0.7").unwrap(),
-            architecture: Architecture::X64,
-            operating_system: OperatingSystem::Linux,
+            architecture: Architecture::from_str(&current_arch).unwrap_or(Architecture::X64),
+            operating_system: OperatingSystem::from_str(&current_os).unwrap_or(OperatingSystem::Linux),
             package_type: PackageType::Jdk,
-            archive_type: ArchiveType::TarGz,
+            archive_type,
             download_url: Some("https://example.com/jdk.tar.gz".to_string()),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 100_000_000,
-            lib_c_type: Some("glibc".to_string()),
+            lib_c_type: Some(current_libc.to_string()),
             javafx_bundled: false,
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
