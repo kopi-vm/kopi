@@ -26,7 +26,7 @@ fn create_test_cache() -> MetadataCache {
     let current_arch = get_current_architecture();
     let current_os = get_current_os();
     let current_libc = get_foojay_libc_type();
-    
+
     // Determine archive type based on platform
     let archive_type = if current_os == "windows" {
         ArchiveType::Zip
@@ -41,7 +41,8 @@ fn create_test_cache() -> MetadataCache {
             version: Version::new(21, 0, 1),
             distribution_version: Version::from_str("21.0.1").unwrap(),
             architecture: Architecture::from_str(&current_arch).unwrap_or(Architecture::X64),
-            operating_system: OperatingSystem::from_str(&current_os).unwrap_or(OperatingSystem::Linux),
+            operating_system: OperatingSystem::from_str(&current_os)
+                .unwrap_or(OperatingSystem::Linux),
             package_type: PackageType::Jdk,
             archive_type,
             download_url: Some("https://example.com/jdk21.tar.gz".to_string()),
@@ -61,7 +62,8 @@ fn create_test_cache() -> MetadataCache {
             version: Version::new(17, 0, 9),
             distribution_version: Version::from_str("17.0.9").unwrap(),
             architecture: Architecture::from_str(&current_arch).unwrap_or(Architecture::X64),
-            operating_system: OperatingSystem::from_str(&current_os).unwrap_or(OperatingSystem::Linux),
+            operating_system: OperatingSystem::from_str(&current_os)
+                .unwrap_or(OperatingSystem::Linux),
             package_type: PackageType::Jdk,
             archive_type,
             download_url: Some("https://example.com/jdk17.tar.gz".to_string()),
@@ -142,7 +144,14 @@ fn test_lookup() {
     let cache = create_test_cache();
     let (test_arch, test_os) = get_test_platform();
 
-    let package = cache.lookup(&Distribution::Temurin, "21.0.1", &test_arch, &test_os, None, None);
+    let package = cache.lookup(
+        &Distribution::Temurin,
+        "21.0.1",
+        &test_arch,
+        &test_os,
+        None,
+        None,
+    );
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -356,7 +365,14 @@ fn test_lookup_single_match() {
     let cache = create_test_cache();
     let (test_arch, test_os) = get_test_platform();
 
-    let package = cache.lookup(&Distribution::Temurin, "21.0.1", &test_arch, &test_os, None, None);
+    let package = cache.lookup(
+        &Distribution::Temurin,
+        "21.0.1",
+        &test_arch,
+        &test_os,
+        None,
+        None,
+    );
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -437,9 +453,16 @@ fn test_empty_cache() {
         .search(&parsed_request, VersionSearchType::Auto)
         .unwrap();
     assert_eq!(results.len(), 0);
-    
+
     let (test_arch, test_os) = get_test_platform();
-    let exact = cache.lookup(&Distribution::Temurin, "21.0.1", &test_arch, &test_os, None, None);
+    let exact = cache.lookup(
+        &Distribution::Temurin,
+        "21.0.1",
+        &test_arch,
+        &test_os,
+        None,
+        None,
+    );
     assert!(exact.is_none());
 }
 
@@ -480,12 +503,12 @@ fn test_latest_with_version_filter() {
 #[test]
 fn test_lookup_with_javafx_filter() {
     let mut cache = MetadataCache::new();
-    
+
     // Use current platform values for testing
     let current_arch = get_current_architecture();
     let current_os = get_current_os();
     let current_libc = get_foojay_libc_type();
-    
+
     // Determine archive type based on platform
     let archive_type = if current_os == "windows" {
         ArchiveType::Zip
@@ -501,7 +524,8 @@ fn test_lookup_with_javafx_filter() {
             version: Version::new(21, 0, 1),
             distribution_version: Version::from_str("21.0.1").unwrap(),
             architecture: Architecture::from_str(&current_arch).unwrap_or(Architecture::X64),
-            operating_system: OperatingSystem::from_str(&current_os).unwrap_or(OperatingSystem::Linux),
+            operating_system: OperatingSystem::from_str(&current_os)
+                .unwrap_or(OperatingSystem::Linux),
             package_type: PackageType::Jdk,
             archive_type,
             download_url: Some("https://example.com/liberica-21.tar.gz".to_string()),
@@ -521,7 +545,8 @@ fn test_lookup_with_javafx_filter() {
             version: Version::new(21, 0, 1),
             distribution_version: Version::from_str("21.0.1").unwrap(),
             architecture: Architecture::from_str(&current_arch).unwrap_or(Architecture::X64),
-            operating_system: OperatingSystem::from_str(&current_os).unwrap_or(OperatingSystem::Linux),
+            operating_system: OperatingSystem::from_str(&current_os)
+                .unwrap_or(OperatingSystem::Linux),
             package_type: PackageType::Jdk,
             archive_type,
             download_url: Some("https://example.com/liberica-21-fx.tar.gz".to_string()),
@@ -544,7 +569,7 @@ fn test_lookup_with_javafx_filter() {
     };
 
     cache.distributions.insert("liberica".to_string(), dist);
-    
+
     let (test_arch, test_os) = get_test_platform();
 
     // Test 1: Request package WITHOUT JavaFX
@@ -732,7 +757,7 @@ fn test_distribution_version_boundary_matching() {
         let current_arch = get_current_architecture();
         let current_os = get_current_os();
         let current_libc = get_foojay_libc_type();
-        
+
         // Determine archive type based on platform
         let archive_type = if current_os == "windows" {
             ArchiveType::Zip
@@ -746,7 +771,8 @@ fn test_distribution_version_boundary_matching() {
             version: Version::new(21, 0, 7),
             distribution_version: Version::from_str("21.0.7").unwrap(),
             architecture: Architecture::from_str(&current_arch).unwrap_or(Architecture::X64),
-            operating_system: OperatingSystem::from_str(&current_os).unwrap_or(OperatingSystem::Linux),
+            operating_system: OperatingSystem::from_str(&current_os)
+                .unwrap_or(OperatingSystem::Linux),
             package_type: PackageType::Jdk,
             archive_type,
             download_url: Some("https://example.com/jdk.tar.gz".to_string()),

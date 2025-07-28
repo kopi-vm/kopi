@@ -215,13 +215,14 @@ impl MetadataCache {
         package_type: Option<&PackageType>,
         javafx_bundled: Option<bool>,
     ) -> Option<JdkMetadata> {
+        use crate::models::package::ArchiveType;
         // Look up distribution by its API name, resolving synonyms
         let canonical_name = self
             .get_canonical_name(distribution.id())
             .unwrap_or(distribution.id());
         let dist_cache = self.distributions.get(canonical_name)?;
 
-        // Find exact match
+        // Find exact match, filtering for supported archive types only
         dist_cache
             .packages
             .iter()
@@ -232,6 +233,7 @@ impl MetadataCache {
                     && (package_type.is_none() || Some(&pkg.package_type) == package_type)
                     && (javafx_bundled.is_none() || Some(pkg.javafx_bundled) == javafx_bundled)
                     && self.matches_platform_libc(&pkg.lib_c_type)
+                    && matches!(pkg.archive_type, ArchiveType::TarGz | ArchiveType::Zip)
             })
             .cloned()
     }

@@ -94,6 +94,75 @@ impl MetadataSource for FoojayMetadataSource {
 
 ## API Characteristics
 
+### Archive Type Filtering
+
+The Foojay API provides packages in various archive formats. Kopi filters API requests to only retrieve supported formats.
+
+#### Investigation Results (2025-07-28)
+
+**1. Tar Format Availability**
+
+Query: `https://api.foojay.io/disco/v3.0/packages?archive_type=tar`  
+Result: **0 packages found**
+
+The Foojay API does not provide any packages in uncompressed tar format across all platforms.
+
+**2. Linux x64 Archive Type Distribution**
+
+```
+Archive Type | Count  | Percentage
+-------------|--------|------------
+tar.gz       | 5,044  | 52%
+rpm          | 1,886  | 19%
+deb          | 1,834  | 19%
+apk          | 383    | 4%
+zip          | 309    | 3%
+bin          | 152    | 2%
+tar.xz       | 75     | 1%
+-------------|--------|------------
+Total        | 9,683  | 100%
+```
+
+**3. Kopi Supported Formats Coverage**
+
+Kopi supports the following archive types:
+- tar.gz (maps from both "tar.gz" and "tgz")
+- zip
+
+Coverage analysis:
+- Total packages: 9,683
+- Supported formats (tar.gz + zip): 5,353
+- Coverage: 55%
+
+The remaining 45% consists primarily of package manager formats (rpm, deb, apk) which are not intended for direct JDK installation via Kopi.
+
+**4. Archive Type Usage by Platform**
+
+Windows:
+- zip: 5,442 (primary format)
+- msi: 4,230
+- tar.gz: 530
+- exe: 495
+
+macOS:
+- tar.gz: 4,721 (primary format)
+- pkg: 2,907
+- dmg: 2,719
+- zip: 2,620
+
+**5. Code Consistency**
+
+Previously, the code had an inconsistency where FoojayMetadataSource included "tar" in archive_types filter, but:
+- The ArchiveType enum did not have a Tar variant
+- Archive extraction only supported TarGz and Zip
+- No packages exist with archive_type="tar"
+
+This has been resolved by removing "tar" from the archive_types filter in FoojayMetadataSource.
+
+**Future Considerations:**
+- tar.xz format is used exclusively by RedHat distribution (75 packages)
+- Could be added to expand coverage for enterprise users
+
 ### Two-Phase Loading
 
 The Foojay API requires two separate calls:
