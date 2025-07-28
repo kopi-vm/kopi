@@ -128,6 +128,15 @@ pub enum KopiError {
 
     #[error("Cache not found")]
     CacheNotFound,
+
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    #[error("Thread panic: {0}")]
+    ThreadPanic(String),
+
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
 }
 
 pub type Result<T> = std::result::Result<T, KopiError>;

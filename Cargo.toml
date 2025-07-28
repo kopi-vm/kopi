@@ -97,6 +97,10 @@ harness = false
 name = "kopi-shim"
 path = "src/bin/kopi-shim.rs"
 
+[[bin]]
+name = "kopi-metadata-gen"
+path = "src/bin/kopi-metadata-gen.rs"
+
 [lints.rust]
 unused_variables = "deny"
 

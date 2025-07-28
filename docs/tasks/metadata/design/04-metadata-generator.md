@@ -317,10 +317,8 @@ parallel_requests = 4
 
 # Output settings
 [output]
-# Organize files by date
-use_date_suffix = true
-# Compress JSON files
-minify_json = false
+# Compress JSON files (default: true)
+minify_json = true
 ```
 
 ## Features
@@ -335,48 +333,300 @@ minify_json = false
 8. **Dry Run Mode**: Preview what would be generated
 9. **Diff Report**: Show changes between versions
 
+## Update Command Details
+
+The `update` command provides incremental updates to existing metadata, optimizing API calls for periodic synchronization.
+
+### How It Works
+
+The Foojay API requires two types of API calls:
+1. **List API** (`/packages`): Returns basic metadata (without `download_url` and `checksum`)
+2. **Detail API** (`/packages/{id}`): Returns complete package information
+
+The update process:
+```rust
+// 1. Load existing metadata from input directory
+let existing_metadata = load_existing_metadata(input_dir)?;
+
+// 2. Fetch current list from API (unavoidable)
+let current_list = api_client.get_packages()?;  // e.g., 1000 JDKs
+
+// 3. Compare and detect changes using basic metadata
+let updates_needed = detect_changes(&existing_metadata, &current_list);
+
+// 4. Fetch details only for changed items
+for jdk in updates_needed {  // e.g., only 10 JDKs
+    let details = api_client.get_package_by_id(&jdk.id)?;
+    // ... update metadata
+}
+```
+
+### API Call Optimization
+
+| Command | List API Calls | Detail API Calls | Total |
+|---------|----------------|------------------|-------|
+| Generate | 1 | All JDKs (e.g., 1000) | 1001 |
+| Update | 1 | Only changed (e.g., 10) | 11 |
+
+**Note**: The list API call cannot be avoided as we need to check all available JDKs for changes.
+
+### Change Detection Criteria
+
+Changes are detected using fields available in the list API response:
+- **New JDK**: ID not present in existing metadata
+- **Updated JDK**: Changes in:
+  - `distribution_version` (patch releases)
+  - `size` (file updates)
+  - `latest_build_available` flag
+  - `release_status` (e.g., EA → GA)
+
+### Generate vs Update
+
+| Aspect | Generate | Update |
+|--------|----------|---------|
+| Purpose | Full metadata creation | Incremental synchronization |
+| Existing data | Not required | Required |
+| API efficiency | Fetches all details | Fetches only changes |
+| Use case | Initial setup, full refresh | Periodic updates, CI/CD |
+| Output | Complete metadata set | Updated metadata set |
+
+### Benefits
+
+- **Reduced API calls**: Typically 90%+ reduction in detail API calls
+- **Faster execution**: Only process changed JDKs
+- **Lower bandwidth**: Minimal data transfer
+- **CI/CD friendly**: Efficient for automated weekly/daily updates
+
 ## Output Structure
 
 ```
 metadata/
 ├── index.json
-├── jdks/
-│   ├── temurin-linux-x64-glibc-2024-01.json
-│   ├── temurin-linux-aarch64-glibc-2024-01.json
-│   ├── temurin-windows-x64-2024-01.json
-│   ├── temurin-macos-x64-2024-01.json
-│   ├── temurin-macos-aarch64-2024-01.json
-│   ├── corretto-linux-x64-glibc-2024-01.json
+├── linux-x64-glibc/
+│   ├── temurin.json
+│   ├── corretto.json
+│   ├── zulu.json
 │   └── ...
-└── metadata-gen.log
+├── linux-aarch64-glibc/
+│   ├── temurin.json
+│   ├── corretto.json
+│   └── ...
+├── windows-x64/
+│   ├── temurin.json
+│   ├── corretto.json
+│   └── ...
+├── macos-x64/
+│   ├── temurin.json
+│   └── ...
+└── macos-aarch64/
+    ├── temurin.json
+    └── ...
 ```
 
 ## Metadata Grouping Strategy
 
 The generator organizes metadata files to optimize for:
-1. **Platform-specific downloads**: Each file contains only relevant platforms
-2. **Distribution grouping**: Easy to find all versions for a distribution
-3. **File size optimization**: Balance between file count and size
+1. **Platform-specific directories**: Each platform has its own directory
+2. **Distribution files**: Each distribution gets a separate JSON file within the platform directory
+3. **Efficient loading**: Applications can load only the distributions they need for a specific platform
 
 ```rust
 fn organize_metadata(&self, metadata: Vec<JdkMetadata>) -> HashMap<String, Vec<JdkMetadata>> {
     let mut grouped = HashMap::new();
     
     for jdk in metadata {
-        // Group by: distribution-os-arch-libc-YYYY-MM
-        let key = format!(
-            "{}-{}-{}-{}-{}",
-            jdk.distribution,
-            jdk.operating_system,
-            jdk.architecture,
-            jdk.lib_c_type.as_deref().unwrap_or("none"),
-            Utc::now().format("%Y-%m")
-        );
+        // Create platform directory name
+        let platform_dir = if let Some(libc) = &jdk.lib_c_type {
+            format!("{}-{}-{}", jdk.operating_system, jdk.architecture, libc)
+        } else {
+            format!("{}-{}", jdk.operating_system, jdk.architecture)
+        };
+        
+        // Group by platform/distribution
+        let key = format!("{}/{}.json", platform_dir, jdk.distribution);
         
         grouped.entry(key).or_insert_with(Vec::new).push(jdk);
     }
     
     grouped
+}
+```
+
+## Resume Support Implementation
+
+The Resume Support feature allows the generator to continue from interruptions without re-fetching already completed metadata. This is crucial for handling network failures, API rate limits, or manual interruptions.
+
+### State File Design
+
+Instead of a single global state file, the system creates individual `.state` files for each JSON file being generated. This design avoids lock contention in multi-threaded execution.
+
+**State File Locations:**
+- `metadata/index.json.state` - Tracks index.json generation
+- `metadata/linux-x64-glibc/temurin.json.state` - Tracks individual metadata file generation
+- Each JSON file has a corresponding `.state` file in the same directory
+
+### State File Structure
+
+```rust
+#[derive(Serialize, Deserialize)]
+struct FileState {
+    status: FileStatus,
+    started_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    attempts: u32,
+    error: Option<String>,
+    // Checksum of completed file for validation
+    checksum: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+enum FileStatus {
+    InProgress,
+    Completed,
+    Failed,
+}
+```
+
+### Generation Workflow with State Management
+
+```rust
+impl MetadataGenerator {
+    fn process_metadata_file(&self, path: &Path, metadata: &[JdkMetadata]) -> Result<()> {
+        let state_path = PathBuf::from(format!("{}.state", path.display()));
+        
+        // 1. Create .state file at work start
+        let state = FileState {
+            status: FileStatus::InProgress,
+            started_at: Utc::now(),
+            updated_at: Utc::now(),
+            attempts: 1,
+            error: None,
+            checksum: None,
+        };
+        fs::write(&state_path, serde_json::to_string(&state)?)?;
+        
+        // 2. Perform actual processing
+        match self.write_metadata_json(path, metadata) {
+            Ok(_) => {
+                // 3. Update .state on success
+                let mut state = state;
+                state.status = FileStatus::Completed;
+                state.updated_at = Utc::now();
+                state.checksum = Some(calculate_file_checksum(path)?);
+                fs::write(&state_path, serde_json::to_string(&state)?)?;
+                Ok(())
+            }
+            Err(e) => {
+                // Update .state on failure
+                let mut state = state;
+                state.status = FileStatus::Failed;
+                state.error = Some(e.to_string());
+                state.updated_at = Utc::now();
+                fs::write(&state_path, serde_json::to_string(&state)?)?;
+                Err(e)
+            }
+        }
+    }
+}
+```
+
+### Resume Logic
+
+When `--resume` flag is provided:
+
+```rust
+fn should_skip_file(&self, json_path: &Path) -> bool {
+    let state_path = PathBuf::from(format!("{}.state", json_path.display()));
+    
+    if let Ok(content) = fs::read_to_string(&state_path) {
+        if let Ok(state) = serde_json::from_str::<FileState>(&content) {
+            match state.status {
+                FileStatus::Completed => {
+                    // Validate the file still exists and matches checksum
+                    if let Some(checksum) = state.checksum {
+                        if json_path.exists() {
+                            if let Ok(current_checksum) = calculate_file_checksum(json_path) {
+                                return current_checksum == checksum;
+                            }
+                        }
+                    }
+                    false
+                }
+                FileStatus::InProgress => {
+                    // Check if the process is stale (e.g., > 1 hour old)
+                    let age = Utc::now() - state.updated_at;
+                    age.num_hours() > 1
+                }
+                FileStatus::Failed => false,
+            }
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+```
+
+### Cleanup Process
+
+After all metadata files are successfully generated:
+
+```rust
+fn cleanup_state_files(&self, output_dir: &Path) -> Result<()> {
+    // 1. Remove all .state files in subdirectories
+    for entry in walkdir::WalkDir::new(output_dir) {
+        let entry = entry?;
+        let path = entry.path();
+        
+        // Skip index.json.state for now
+        if path.extension() == Some(OsStr::new("state")) 
+            && path != output_dir.join("index.json.state") {
+            fs::remove_file(path)?;
+        }
+    }
+    
+    // 2. Finally remove index.json.state
+    let index_state = output_dir.join("index.json.state");
+    if index_state.exists() {
+        fs::remove_file(index_state)?;
+    }
+    
+    Ok(())
+}
+```
+
+### Benefits of This Design
+
+1. **Lock-free concurrency**: Each thread works with independent state files
+2. **Fine-grained recovery**: Failed files can be regenerated individually
+3. **Progress visibility**: File system shows real-time progress
+4. **Atomic operations**: Each file generation is an independent atomic operation
+5. **Validation support**: Checksums ensure file integrity on resume
+
+### Multi-threaded Execution
+
+The state file design enables safe parallel execution:
+
+```rust
+fn generate_parallel(&self, tasks: Vec<GenerationTask>) -> Result<()> {
+    let results: Vec<_> = tasks
+        .into_par_iter()
+        .map(|task| {
+            // Each thread checks/creates its own state file
+            if self.should_skip_file(&task.output_path) {
+                return Ok(());
+            }
+            self.process_metadata_file(&task.output_path, &task.metadata)
+        })
+        .collect();
+    
+    // Check all results
+    for result in results {
+        result?;
+    }
+    
+    Ok(())
 }
 ```
 
@@ -418,7 +668,13 @@ tar czf metadata-$(date +%Y-%m).tar.gz -C ./metadata .
 # Dry run to see what would be generated
 kopi-metadata-gen generate --output ./metadata --dry-run
 
-# Update with diff report
+# Generate with pretty-printed JSON (default is minified)
+kopi-metadata-gen generate --output ./metadata --no-minify
+
+# Update existing metadata (efficient for periodic updates)
+kopi-metadata-gen update --input ./metadata --output ./metadata-updated
+
+# Update with diff report (not implemented yet)
 kopi-metadata-gen update --input ./metadata --output ./metadata-new --show-diff
 
 # Validate existing metadata
@@ -457,9 +713,17 @@ jobs:
       - uses: actions-rs/toolchain@v1
       - name: Build metadata generator
         run: cargo build --release --bin kopi-metadata-gen
-      - name: Generate metadata
+      - name: Update metadata
         run: |
-          ./target/release/kopi-metadata-gen generate --output ./metadata
+          # First time: use generate
+          if [ ! -d ./metadata ]; then
+            ./target/release/kopi-metadata-gen generate --output ./metadata
+          else
+            # Subsequent runs: use update for efficiency
+            ./target/release/kopi-metadata-gen update --input ./metadata --output ./metadata-new
+            rm -rf ./metadata
+            mv ./metadata-new ./metadata
+          fi
       - name: Create PR
         uses: peter-evans/create-pull-request@v5
         with:
