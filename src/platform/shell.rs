@@ -283,8 +283,21 @@ pub fn is_in_path(dir: &Path) -> bool {
         let separator = platform::path_separator();
         let paths = path_var.split(separator);
 
+        // Try to canonicalize the target directory for comparison
+        let canonical_dir = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
+
         for path in paths {
-            if Path::new(path) == dir {
+            let path_buf = PathBuf::from(path);
+
+            // Try to canonicalize the PATH entry
+            let canonical_path = path_buf.canonicalize().unwrap_or_else(|_| path_buf.clone());
+
+            // Compare both original and canonical paths
+            if path_buf == dir
+                || canonical_path == canonical_dir
+                || path_buf == canonical_dir
+                || canonical_path == dir
+            {
                 return true;
             }
         }
