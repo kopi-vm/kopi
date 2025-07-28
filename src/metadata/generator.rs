@@ -344,8 +344,20 @@ impl MetadataGenerator {
             grouped.entry(key).or_default().push(jdk);
         }
 
-        // Create file metadata for each group
-        for (path, jdks) in grouped {
+        // Sort the keys to ensure deterministic order
+        let mut sorted_keys: Vec<_> = grouped.keys().cloned().collect();
+        sorted_keys.sort();
+
+        // Create file metadata for each group in sorted order
+        for path in sorted_keys {
+            let mut jdks = grouped.remove(&path).unwrap();
+
+            // Sort JdkMetadata entries by version (descending) as primary key, id as secondary key
+            jdks.sort_by(|a, b| match b.version.cmp(&a.version) {
+                std::cmp::Ordering::Equal => a.id.cmp(&b.id),
+                other => other,
+            });
+
             // Extract platform and distribution from path
             // e.g., "linux-x64-glibc/temurin.json"
             let parts: Vec<&str> = path.splitn(2, '/').collect();
@@ -386,7 +398,12 @@ impl MetadataGenerator {
     fn create_index(&self, files: &HashMap<String, FileMetadata>) -> Result<IndexFile> {
         let mut entries = Vec::new();
 
-        for (path, metadata) in files {
+        // Sort file paths to ensure deterministic order
+        let mut sorted_paths: Vec<_> = files.keys().cloned().collect();
+        sorted_paths.sort();
+
+        for path in sorted_paths {
+            let metadata = &files[&path];
             entries.push(IndexFileEntry {
                 path: path.clone(),
                 distribution: metadata.distribution.clone(),
@@ -601,9 +618,13 @@ impl MetadataGenerator {
         fs::write(&index_path, &index_json)?;
         self.report_progress(&format!("Wrote index.json ({} bytes)", index_json.len()));
 
-        // Write metadata files
-        for (path, metadata) in files {
-            let file_path = output_dir.join(path);
+        // Write metadata files in sorted order
+        let mut sorted_paths: Vec<_> = files.keys().cloned().collect();
+        sorted_paths.sort();
+
+        for path in sorted_paths {
+            let metadata = &files[&path];
+            let file_path = output_dir.join(&path);
             if let Some(parent) = file_path.parent() {
                 fs::create_dir_all(parent)?;
             }
@@ -629,9 +650,13 @@ impl MetadataGenerator {
         let mut skipped = 0;
         let mut written = 0;
 
-        // Process metadata files first
-        for (path, metadata) in files {
-            let file_path = output_dir.join(path);
+        // Process metadata files first in sorted order
+        let mut sorted_paths: Vec<_> = files.keys().cloned().collect();
+        sorted_paths.sort();
+
+        for path in sorted_paths {
+            let metadata = &files[&path];
+            let file_path = output_dir.join(&path);
 
             // Check if should skip this file
             if self.should_skip_file(&file_path) {
@@ -748,7 +773,12 @@ impl MetadataGenerator {
         println!("\n📋 Dry run - would create the following files:");
         println!("  index.json ({} entries)", index.files.len());
 
-        for (path, metadata) in files {
+        // Sort file paths for consistent output
+        let mut sorted_paths: Vec<_> = files.keys().cloned().collect();
+        sorted_paths.sort();
+
+        for path in sorted_paths {
+            let metadata = &files[&path];
             println!("  {} ({} bytes)", path, metadata.content.len());
         }
 
