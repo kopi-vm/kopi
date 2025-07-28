@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use kopi::error::{KopiError, format_error_with_color, get_exit_code};
+use kopi::error::{format_error_with_color, get_exit_code};
 use kopi::metadata::{GeneratorConfig, MetadataGenerator, Platform};
 use std::io::IsTerminal;
 use std::path::PathBuf;
@@ -112,9 +112,18 @@ fn main() {
             let generator = MetadataGenerator::new(config);
             generator.generate(&output)
         }
-        Commands::Update { .. } => Err(KopiError::NotImplemented(
-            "Update command not implemented yet".to_string(),
-        )),
+        Commands::Update { input, output } => {
+            let config = GeneratorConfig {
+                distributions: None, // Use same filters as existing metadata
+                platforms: None,
+                javafx_bundled: false,
+                parallel_requests: 4,
+                dry_run: false,
+                minify_json: true,
+            };
+            let generator = MetadataGenerator::new(config);
+            generator.update(&input, &output)
+        }
         Commands::Validate { input } => {
             let config = GeneratorConfig {
                 distributions: None,

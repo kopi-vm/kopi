@@ -517,6 +517,214 @@ impl MetadataGenerator {
         Ok(())
     }
 
+    /// Update existing metadata - efficient incremental synchronization
+    pub fn update(&self, input_dir: &Path, output_dir: &Path) -> Result<()> {
+        println!("🚀 Starting metadata update...");
+
+        // Step 1: Load existing metadata from input directory
+        self.report_progress("Loading existing metadata...");
+        let existing_metadata = self.load_existing_metadata(input_dir)?;
+        let existing_by_id: HashMap<String, JdkMetadata> = existing_metadata
+            .iter()
+            .map(|jdk| (jdk.id.clone(), jdk.clone()))
+            .collect();
+        println!("  Found {} existing JDK packages", existing_metadata.len());
+
+        // Step 2: Fetch current list from API (unavoidable)
+        self.report_progress("Fetching current metadata list from foojay API...");
+        let source = FoojayMetadataSource::new();
+        let current_list = source.fetch_all()?;
+        println!("  Found {} JDK packages in API", current_list.len());
+
+        // Step 3: Filter by configuration (same as generate)
+        let filtered_by_dist = self.filter_by_distribution(current_list);
+        let filtered_by_platform = self.filter_by_platform(filtered_by_dist);
+        let filtered_final = self.filter_by_javafx(filtered_by_platform);
+        println!("  After filters: {} packages", filtered_final.len());
+
+        // Step 4: Compare and detect changes
+        self.report_progress("Detecting changes...");
+        let (updates_needed, unchanged) = self.detect_changes(&existing_by_id, filtered_final);
+        println!(
+            "  Changes detected: {} packages need updates",
+            updates_needed.len()
+        );
+        println!("  Unchanged: {} packages", unchanged.len());
+
+        if updates_needed.is_empty() && unchanged.len() == existing_by_id.len() {
+            println!("✅ Metadata is already up to date!");
+
+            // If output_dir is different from input_dir, copy the existing metadata
+            if input_dir != output_dir {
+                self.report_progress("Copying unchanged metadata to output directory...");
+                copy_metadata_directory(input_dir, output_dir)?;
+            }
+            return Ok(());
+        }
+
+        // Store info for dry run summary before moving updates_needed
+        let updates_info: Vec<_> = if self.config.dry_run {
+            updates_needed
+                .iter()
+                .map(|jdk| {
+                    (
+                        jdk.id.clone(),
+                        jdk.distribution.clone(),
+                        jdk.version.to_string(),
+                        jdk.architecture.to_string(),
+                    )
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        // Step 5: Fetch complete details only for changed items
+        self.report_progress("Fetching details for changed packages...");
+        let updated_metadata = self.fetch_complete_metadata(updates_needed)?;
+
+        // Step 6: Combine updated and unchanged metadata
+        let mut all_metadata = updated_metadata;
+        all_metadata.extend(unchanged);
+
+        // Step 7: Organize and write output (same as generate)
+        let organized_files = self.organize_metadata(all_metadata)?;
+        println!("  Organized into {} files", organized_files.len());
+
+        let index = self.create_index(&organized_files)?;
+
+        if self.config.dry_run {
+            self.show_dry_run_output(&index, &organized_files);
+            self.show_update_summary_from_info(&updates_info, &existing_by_id);
+        } else {
+            self.write_output(output_dir, &index, &organized_files)?;
+            println!(
+                "✅ Successfully updated metadata in {}",
+                output_dir.display()
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Load existing metadata from directory
+    fn load_existing_metadata(&self, input_dir: &Path) -> Result<Vec<JdkMetadata>> {
+        let mut all_metadata = Vec::new();
+
+        // First, validate the directory structure
+        let index_path = input_dir.join("index.json");
+        if !index_path.exists() {
+            return Err(KopiError::NotFound(format!(
+                "index.json not found in {}",
+                input_dir.display()
+            )));
+        }
+
+        // Parse index.json
+        let index_content = fs::read_to_string(&index_path)?;
+        let index: IndexFile = serde_json::from_str(&index_content)
+            .map_err(|e| KopiError::InvalidConfig(format!("Invalid index.json: {e}")))?;
+
+        // Load each metadata file
+        for entry in index.files {
+            let file_path = input_dir.join(&entry.path);
+            if file_path.exists() {
+                let content = fs::read_to_string(&file_path)?;
+                match serde_json::from_str::<Vec<JdkMetadata>>(&content) {
+                    Ok(jdks) => {
+                        all_metadata.extend(jdks);
+                    }
+                    Err(e) => {
+                        eprintln!("⚠️  Warning: Failed to parse {}: {}", entry.path, e);
+                    }
+                }
+            } else {
+                eprintln!("⚠️  Warning: File not found: {}", entry.path);
+            }
+        }
+
+        Ok(all_metadata)
+    }
+
+    /// Detect changes between existing and current metadata
+    fn detect_changes(
+        &self,
+        existing_by_id: &HashMap<String, JdkMetadata>,
+        current_list: Vec<JdkMetadata>,
+    ) -> (Vec<JdkMetadata>, Vec<JdkMetadata>) {
+        let mut updates_needed = Vec::new();
+        let mut unchanged = Vec::new();
+
+        for current_jdk in current_list {
+            if let Some(existing_jdk) = existing_by_id.get(&current_jdk.id) {
+                // Check if update is needed
+                if self.needs_update(existing_jdk, &current_jdk) {
+                    updates_needed.push(current_jdk);
+                } else {
+                    // Use existing metadata which has complete details
+                    unchanged.push(existing_jdk.clone());
+                }
+            } else {
+                // New JDK not in existing metadata
+                updates_needed.push(current_jdk);
+            }
+        }
+
+        (updates_needed, unchanged)
+    }
+
+    /// Check if a JDK needs to be updated
+    fn needs_update(&self, existing: &JdkMetadata, current: &JdkMetadata) -> bool {
+        // Check fields available in the list API response
+        existing.distribution_version != current.distribution_version
+            || existing.size != current.size
+            || existing.latest_build_available != current.latest_build_available
+            || existing.release_status != current.release_status
+            || existing.term_of_support != current.term_of_support
+            || !existing.is_complete // If existing metadata is incomplete, update it
+    }
+
+
+    /// Show update summary in dry run mode
+    fn show_update_summary_from_info(
+        &self,
+        updates_info: &[(String, String, String, String)], // (id, distribution, version, architecture)
+        existing_by_id: &HashMap<String, JdkMetadata>,
+    ) {
+        println!("\n📊 Update Summary:");
+
+        let mut new_jdks = Vec::new();
+        let mut updated_jdks = Vec::new();
+
+        for (id, distribution, version, architecture) in updates_info {
+            if existing_by_id.contains_key(id) {
+                updated_jdks.push((distribution, version, architecture));
+            } else {
+                new_jdks.push((distribution, version, architecture));
+            }
+        }
+
+        if !new_jdks.is_empty() {
+            println!("\n  New JDKs:");
+            for (distribution, version, architecture) in new_jdks.iter().take(10) {
+                println!("    - {distribution} {version} {architecture}");
+            }
+            if new_jdks.len() > 10 {
+                println!("    ... and {} more", new_jdks.len() - 10);
+            }
+        }
+
+        if !updated_jdks.is_empty() {
+            println!("\n  Updated JDKs:");
+            for (distribution, version, architecture) in updated_jdks.iter().take(10) {
+                println!("    - {distribution} {version} {architecture}");
+            }
+            if updated_jdks.len() > 10 {
+                println!("    ... and {} more", updated_jdks.len() - 10);
+            }
+        }
+    }
+
     /// Report progress
     fn report_progress(&self, message: &str) {
         println!("📦 {message}");
@@ -533,4 +741,29 @@ impl MetadataGenerator {
         );
         pb
     }
+}
+
+/// Copy metadata directory when output differs from input
+fn copy_metadata_directory(from: &Path, to: &Path) -> Result<()> {
+    use std::fs;
+
+    // Create target directory
+    fs::create_dir_all(to)?;
+
+    // Copy all files and subdirectories
+    for entry in fs::read_dir(from)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let source = entry.path();
+        let file_name = entry.file_name();
+        let target = to.join(&file_name);
+
+        if file_type.is_dir() {
+            copy_metadata_directory(&source, &target)?;
+        } else if file_type.is_file() {
+            fs::copy(&source, &target)?;
+        }
+    }
+
+    Ok(())
 }
