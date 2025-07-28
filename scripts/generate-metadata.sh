@@ -13,6 +13,9 @@ PLATFORMS="${PLATFORMS:-}"
 JAVAFX="${JAVAFX:-false}"
 PARALLEL="${PARALLEL:-4}"
 ARCHIVE_NAME="${ARCHIVE_NAME:-}"
+DRY_RUN="${DRY_RUN:-false}"
+NO_MINIFY="${NO_MINIFY:-false}"
+FORCE="${FORCE:-false}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -47,6 +50,9 @@ OPTIONS:
     -j, --javafx            Include JavaFX bundled versions
     -t, --parallel NUM      Number of parallel API requests (default: 4)
     -a, --archive NAME      Create archive with specified name after generation
+    --dry-run               Show what would be generated without actually writing files
+    --no-minify             Don't minify JSON output (default is to minify)
+    --force                 Force fresh generation, ignoring any existing state files
     -h, --help              Show this help message
 
 EXAMPLES:
@@ -61,6 +67,12 @@ EXAMPLES:
 
     # Generate and create archive
     $0 --archive metadata-\$(date +%Y-%m).tar.gz
+
+    # Dry-run to see what would be generated
+    $0 --dry-run --distributions temurin
+
+    # Force fresh generation with unminified output
+    $0 --force --no-minify
 
     # CI/CD usage with environment variables
     DISTRIBUTIONS=temurin,corretto PLATFORMS=linux-x64-glibc $0
@@ -93,6 +105,18 @@ while [[ $# -gt 0 ]]; do
         -a|--archive)
             ARCHIVE_NAME="$2"
             shift 2
+            ;;
+        --dry-run)
+            DRY_RUN="true"
+            shift
+            ;;
+        --no-minify)
+            NO_MINIFY="true"
+            shift
+            ;;
+        --force)
+            FORCE="true"
+            shift
             ;;
         -h|--help)
             usage
@@ -145,6 +169,18 @@ if [[ "$JAVAFX" == "true" ]]; then
     CMD_ARGS+=("--javafx")
 fi
 
+if [[ "$DRY_RUN" == "true" ]]; then
+    CMD_ARGS+=("--dry-run")
+fi
+
+if [[ "$NO_MINIFY" == "true" ]]; then
+    CMD_ARGS+=("--no-minify")
+fi
+
+if [[ "$FORCE" == "true" ]]; then
+    CMD_ARGS+=("--force")
+fi
+
 # Run metadata generation
 print_info "Starting metadata generation..."
 print_info "Output directory: $OUTPUT_DIR"
@@ -157,10 +193,28 @@ if [[ -n "$PLATFORMS" ]]; then
     print_info "Platforms: $PLATFORMS"
 fi
 
+if [[ "$DRY_RUN" == "true" ]]; then
+    print_info "Mode: DRY RUN (no files will be written)"
+fi
+
+if [[ "$FORCE" == "true" ]]; then
+    print_info "Mode: FORCE (ignoring existing state files)"
+fi
+
+if [[ "$NO_MINIFY" == "true" ]]; then
+    print_info "JSON output: NOT MINIFIED"
+fi
+
 # Execute the generator
 if ! "$METADATA_GEN" "${CMD_ARGS[@]}"; then
     print_error "Metadata generation failed"
     exit 1
+fi
+
+# Skip validation and archive creation in dry-run mode
+if [[ "$DRY_RUN" == "true" ]]; then
+    print_info "Dry-run completed successfully!"
+    exit 0
 fi
 
 # Validate the generated metadata
@@ -203,8 +257,8 @@ fi
 # Summary
 print_info "Metadata generation completed successfully!"
 
-# Show some statistics
-if [[ -f "$OUTPUT_DIR/index.json" ]]; then
+# Show some statistics (skip in dry-run mode)
+if [[ "$DRY_RUN" != "true" ]] && [[ -f "$OUTPUT_DIR/index.json" ]]; then
     FILE_COUNT=$(find "$OUTPUT_DIR" -name "*.json" | wc -l)
     INDEX_SIZE=$(du -h "$OUTPUT_DIR/index.json" | cut -f1)
     TOTAL_SIZE=$(du -sh "$OUTPUT_DIR" | cut -f1)
@@ -216,7 +270,7 @@ if [[ -f "$OUTPUT_DIR/index.json" ]]; then
 fi
 
 # GitHub Actions output
-if [[ -n "$GITHUB_OUTPUT" ]]; then
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
     echo "output_dir=$OUTPUT_DIR" >> "$GITHUB_OUTPUT"
     if [[ -n "$ARCHIVE_NAME" ]]; then
         echo "archive_name=$ARCHIVE_NAME" >> "$GITHUB_OUTPUT"
