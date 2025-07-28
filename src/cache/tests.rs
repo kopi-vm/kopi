@@ -122,7 +122,7 @@ fn test_search_with_platform_filter() {
 fn test_lookup() {
     let cache = create_test_cache();
 
-    let package = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
+    let package = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None, None);
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -332,7 +332,7 @@ fn test_platform_filter_missing_lib_c() {
 fn test_lookup_single_match() {
     let cache = create_test_cache();
 
-    let package = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
+    let package = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None, None);
 
     assert!(package.is_some());
     assert_eq!(package.unwrap().version.to_string(), "21.0.1");
@@ -357,6 +357,7 @@ fn test_lookup_multiple_packages() {
         "x64",
         "linux",
         Some(&PackageType::Jdk),
+        None,
     );
     assert!(jdk_package.is_some());
     assert_eq!(jdk_package.unwrap().package_type, PackageType::Jdk);
@@ -367,6 +368,7 @@ fn test_lookup_multiple_packages() {
         "x64",
         "linux",
         Some(&PackageType::Jre),
+        None,
     );
     assert!(jre_package.is_some());
     assert_eq!(jre_package.unwrap().package_type, PackageType::Jre);
@@ -391,6 +393,7 @@ fn test_lookup_with_requested_type() {
         "x64",
         "linux",
         Some(&PackageType::Jre),
+        None,
     );
 
     assert!(package.is_some());
@@ -409,7 +412,7 @@ fn test_empty_cache() {
         .unwrap();
     assert_eq!(results.len(), 0);
 
-    let exact = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None);
+    let exact = cache.lookup(&Distribution::Temurin, "21.0.1", "x64", "linux", None, None);
     assert!(exact.is_none());
 }
 
@@ -445,6 +448,101 @@ fn test_latest_with_version_filter() {
         .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].package.version.to_string(), "21.0.2");
+}
+
+#[test]
+fn test_lookup_with_javafx_filter() {
+    let mut cache = MetadataCache::new();
+
+    // Create two packages: one with JavaFX, one without
+    let packages = vec![
+        JdkMetadata {
+            id: "liberica-21-no-fx".to_string(),
+            distribution: "liberica".to_string(),
+            version: Version::new(21, 0, 1),
+            distribution_version: Version::from_str("21.0.1").unwrap(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: Some("https://example.com/liberica-21.tar.gz".to_string()),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 200_000_000,
+            lib_c_type: Some("glibc".to_string()),
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+            is_complete: true,
+        },
+        JdkMetadata {
+            id: "liberica-21-with-fx".to_string(),
+            distribution: "liberica".to_string(),
+            version: Version::new(21, 0, 1),
+            distribution_version: Version::from_str("21.0.1").unwrap(),
+            architecture: Architecture::X64,
+            operating_system: OperatingSystem::Linux,
+            package_type: PackageType::Jdk,
+            archive_type: ArchiveType::TarGz,
+            download_url: Some("https://example.com/liberica-21-fx.tar.gz".to_string()),
+            checksum: None,
+            checksum_type: Some(ChecksumType::Sha256),
+            size: 250_000_000, // JavaFX version is larger
+            lib_c_type: Some("glibc".to_string()),
+            javafx_bundled: true,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+            is_complete: true,
+        },
+    ];
+
+    let dist = DistributionCache {
+        distribution: Distribution::Liberica,
+        display_name: "BellSoft Liberica".to_string(),
+        packages,
+    };
+
+    cache.distributions.insert("liberica".to_string(), dist);
+
+    // Test 1: Request package WITHOUT JavaFX
+    let without_fx = cache.lookup(
+        &Distribution::Liberica,
+        "21.0.1",
+        "x64",
+        "linux",
+        None,
+        Some(false),
+    );
+    assert!(without_fx.is_some());
+    assert_eq!(without_fx.as_ref().unwrap().id, "liberica-21-no-fx");
+    assert!(!without_fx.unwrap().javafx_bundled);
+
+    // Test 2: Request package WITH JavaFX
+    let with_fx = cache.lookup(
+        &Distribution::Liberica,
+        "21.0.1",
+        "x64",
+        "linux",
+        None,
+        Some(true),
+    );
+    assert!(with_fx.is_some());
+    assert_eq!(with_fx.as_ref().unwrap().id, "liberica-21-with-fx");
+    assert!(with_fx.unwrap().javafx_bundled);
+
+    // Test 3: Request without specifying JavaFX preference (should find first match)
+    let no_preference = cache.lookup(
+        &Distribution::Liberica,
+        "21.0.1",
+        "x64",
+        "linux",
+        None,
+        None,
+    );
+    assert!(no_preference.is_some());
+    // It will return one of them (order depends on vector order)
 }
 
 #[test]

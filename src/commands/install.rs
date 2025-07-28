@@ -1,4 +1,3 @@
-use crate::api::ApiClient;
 use crate::archive::extract_archive;
 use crate::cache::{self, MetadataCache};
 use crate::config::KopiConfig;
@@ -19,19 +18,16 @@ use std::str::FromStr;
 use std::time::Duration;
 
 pub struct InstallCommand<'a> {
-    api_client: ApiClient,
     config: &'a KopiConfig,
 }
 
 impl<'a> InstallCommand<'a> {
     pub fn new(config: &'a KopiConfig) -> Result<Self> {
-        let api_client = ApiClient::new();
-
-        Ok(Self { api_client, config })
+        Ok(Self { config })
     }
 
     /// Ensure we have a fresh cache, refreshing if necessary
-    fn ensure_fresh_cache(&self) -> Result<MetadataCache> {
+    fn ensure_fresh_cache(&self, javafx_bundled: bool) -> Result<MetadataCache> {
         let cache_path = self.config.metadata_cache_path()?;
         let max_age = Duration::from_secs(self.config.cache.max_age_hours * 3600);
 
@@ -58,12 +54,8 @@ impl<'a> InstallCommand<'a> {
         // Refresh if needed
         if should_refresh && self.config.cache.auto_refresh {
             info!("Refreshing package cache...");
-            match self.api_client.fetch_all_metadata() {
-                Ok(metadata) => {
-                    let cache = self.convert_api_metadata_to_cache(metadata)?;
-                    cache.save(&cache_path)?;
-                    Ok(cache)
-                }
+            match cache::fetch_and_cache_metadata(javafx_bundled, self.config) {
+                Ok(cache) => Ok(cache),
                 Err(e) => {
                     // If refresh fails and we have an existing cache, use it with warning
                     if cache_path.exists() {
@@ -82,14 +74,6 @@ impl<'a> InstallCommand<'a> {
         }
     }
 
-    /// Convert API metadata to cache format
-    fn convert_api_metadata_to_cache(
-        &self,
-        api_metadata: crate::models::api::ApiMetadata,
-    ) -> Result<MetadataCache> {
-        // Use the existing conversion function from cache module
-        cache::convert_api_to_cache(api_metadata)
-    }
 
     pub fn execute(
         &self,
@@ -319,14 +303,14 @@ impl<'a> InstallCommand<'a> {
         distribution: &Distribution,
         version: &crate::version::Version,
         version_request: &crate::version::parser::ParsedVersionRequest,
-        _javafx_bundled: bool,
+        javafx_bundled: bool,
     ) -> Result<crate::models::api::Package> {
         // Build query parameters
         let arch = get_current_architecture();
         let os = get_current_os();
 
         // Always ensure we have a fresh cache
-        let mut cache = self.ensure_fresh_cache()?;
+        let mut cache = self.ensure_fresh_cache(javafx_bundled)?;
 
         // Search in cache
         // First try exact match
@@ -336,6 +320,7 @@ impl<'a> InstallCommand<'a> {
             &arch,
             &os,
             version_request.package_type.as_ref(),
+            Some(javafx_bundled),
         ) {
             debug!(
                 "Found exact package match: {} {}",
@@ -348,11 +333,9 @@ impl<'a> InstallCommand<'a> {
         // If not found and refresh_on_miss is enabled, try refreshing cache once
         if self.config.cache.refresh_on_miss {
             info!("Package not found in cache, refreshing...");
-            match self.api_client.fetch_all_metadata() {
-                Ok(metadata) => {
-                    cache = self.convert_api_metadata_to_cache(metadata)?;
-                    let cache_path = self.config.metadata_cache_path()?;
-                    cache.save(&cache_path)?;
+            match cache::fetch_and_cache_metadata(javafx_bundled, self.config) {
+                Ok(new_cache) => {
+                    cache = new_cache;
 
                     // Search again in fresh cache
                     if let Some(jdk_metadata) = cache.lookup(
@@ -361,6 +344,7 @@ impl<'a> InstallCommand<'a> {
                         &arch,
                         &os,
                         version_request.package_type.as_ref(),
+                        Some(javafx_bundled),
                     ) {
                         debug!(
                             "Found package after refresh: {} {}",

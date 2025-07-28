@@ -24,7 +24,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
         archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/temurin-21.tar.gz".to_string(),
+        download_url: Some("https://example.com/temurin-21.tar.gz".to_string()),
         checksum: None,
         checksum_type: Some(ChecksumType::Sha256),
         size: 200000000,
@@ -33,6 +33,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         term_of_support: Some("lts".to_string()),
         release_status: Some("ga".to_string()),
         latest_build_available: Some(true),
+        is_complete: true,
     };
 
     // Add STS version (22)
@@ -45,7 +46,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
         archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/temurin-22.tar.gz".to_string(),
+        download_url: Some("https://example.com/temurin-22.tar.gz".to_string()),
         checksum: None,
         checksum_type: Some(ChecksumType::Sha256),
         size: 210000000,
@@ -54,6 +55,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         term_of_support: Some("sts".to_string()),
         release_status: Some("ga".to_string()),
         latest_build_available: Some(true),
+        is_complete: true,
     };
 
     // Add EA version (23)
@@ -66,7 +68,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
         archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/temurin-23.tar.gz".to_string(),
+        download_url: Some("https://example.com/temurin-23.tar.gz".to_string()),
         checksum: None,
         checksum_type: Some(ChecksumType::Sha256),
         size: 215000000,
@@ -75,6 +77,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         term_of_support: Some("sts".to_string()),
         release_status: Some("ea".to_string()),
         latest_build_available: Some(true),
+        is_complete: true,
     };
 
     // Add JRE package
@@ -87,7 +90,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jre,
         archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/temurin-21-jre.tar.gz".to_string(),
+        download_url: Some("https://example.com/temurin-21-jre.tar.gz".to_string()),
         checksum: None,
         checksum_type: Some(ChecksumType::Sha256),
         size: 90000000,
@@ -96,6 +99,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         term_of_support: Some("lts".to_string()),
         release_status: Some("ga".to_string()),
         latest_build_available: Some(true),
+        is_complete: true,
     };
 
     // Add JavaFX bundled package
@@ -108,7 +112,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
         archive_type: ArchiveType::TarGz,
-        download_url: "https://example.com/liberica-21-javafx.tar.gz".to_string(),
+        download_url: Some("https://example.com/liberica-21-javafx.tar.gz".to_string()),
         checksum: None,
         checksum_type: Some(ChecksumType::Sha256),
         size: 250000000,
@@ -117,6 +121,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         term_of_support: Some("lts".to_string()),
         release_status: Some("ga".to_string()),
         latest_build_available: Some(true),
+        is_complete: true,
     };
 
     // Create distribution caches
@@ -269,7 +274,7 @@ fn test_compact_mode_deduplication() {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
-            download_url: format!("https://example.com/zulu-21-{arch}.tar.gz"),
+            download_url: Some(format!("https://example.com/zulu-21-{arch}.tar.gz")),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 200000000,
@@ -278,6 +283,7 @@ fn test_compact_mode_deduplication() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+        is_complete: true,
         });
     }
 
@@ -322,7 +328,7 @@ fn test_detailed_mode_deduplication_keeps_smallest() {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
-            download_url: format!("https://example.com/temurin-21-{i}.tar.gz"),
+            download_url: Some(format!("https://example.com/temurin-21-{i}.tar.gz")),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: *size,
@@ -331,6 +337,7 @@ fn test_detailed_mode_deduplication_keeps_smallest() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
+        is_complete: true,
         });
     }
 

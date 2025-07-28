@@ -10,9 +10,10 @@ use chrono::Utc;
 use log::warn;
 use std::str::FromStr;
 
-use crate::api::ApiClient;
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
+use crate::metadata::foojay::FoojayMetadataSource;
+use crate::metadata::provider::MetadataProvider;
 use crate::models::distribution::Distribution as JdkDistribution;
 use crate::models::metadata::JdkMetadata;
 use crate::models::package::ChecksumType;
@@ -68,14 +69,42 @@ pub fn fetch_and_cache_metadata(
     javafx_bundled: bool,
     config: &KopiConfig,
 ) -> Result<MetadataCache> {
-    // Fetch metadata from API
-    let api_client = ApiClient::new();
-    let metadata = api_client
-        .fetch_all_metadata_with_options(javafx_bundled)
+    // Create metadata provider with Foojay source
+    let foojay_source = Box::new(FoojayMetadataSource::new());
+    let provider = MetadataProvider::new_with_source(foojay_source);
+    
+    // Fetch all metadata
+    let mut metadata = provider.fetch_all()
         .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch metadata from API: {e}")))?;
-
-    // Convert API response to cache format
-    let new_cache = conversion::convert_api_to_cache(metadata)?;
+    
+    // Filter by javafx_bundled if needed
+    if javafx_bundled {
+        metadata.retain(|jdk| jdk.javafx_bundled);
+    }
+    
+    // Convert metadata to cache format
+    let mut new_cache = MetadataCache::new();
+    
+    // Group metadata by distribution
+    let mut distributions: std::collections::HashMap<String, Vec<JdkMetadata>> = std::collections::HashMap::new();
+    for jdk in metadata {
+        distributions.entry(jdk.distribution.clone())
+            .or_default()
+            .push(jdk);
+    }
+    
+    // Create distribution caches
+    for (dist_name, packages) in distributions {
+        let dist_cache = DistributionCache {
+            distribution: JdkDistribution::from_str(&dist_name)
+                .unwrap_or(JdkDistribution::Other(dist_name.clone())),
+            display_name: dist_name.clone(), // For now, use dist name as display name
+            packages,
+        };
+        new_cache.distributions.insert(dist_name, dist_cache);
+    }
+    
+    new_cache.last_updated = Utc::now();
 
     // Save to cache
     let cache_path = config.metadata_cache_path()?;
@@ -90,9 +119,6 @@ pub fn fetch_and_cache_distribution(
     javafx_bundled: bool,
     config: &KopiConfig,
 ) -> Result<MetadataCache> {
-    // Get current platform info
-    let (current_arch, current_os, current_libc) = get_current_platform();
-
     // Load existing cache if available or create new one
     let cache_path = config.metadata_cache_path()?;
     let mut result_cache = if cache_path.exists() {
@@ -101,53 +127,27 @@ pub fn fetch_and_cache_distribution(
         MetadataCache::new()
     };
 
-    // Fetch metadata from API for the specific distribution
-    let api_client = ApiClient::new();
+    // Create metadata provider with Foojay source
+    let foojay_source = Box::new(FoojayMetadataSource::new());
+    let provider = MetadataProvider::new_with_source(foojay_source);
 
-    // Check if distribution exists first
-    let distributions = api_client
-        .get_distributions()
-        .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch distributions: {e}")))?;
-
-    let dist_info = distributions
-        .iter()
-        .find(|d| d.api_parameter == distribution_name)
-        .ok_or_else(|| {
-            KopiError::InvalidConfig(format!("Unknown distribution: {distribution_name}"))
-        })?;
-
-    // Create package query for this distribution
-    let query = crate::api::PackageQuery {
-        distribution: Some(distribution_name.to_string()),
-        version: None,
-        architecture: Some(current_arch.clone()),
-        package_type: None,
-        operating_system: Some(current_os.clone()),
-        lib_c_type: Some(current_libc),
-        archive_types: None,
-        javafx_bundled: Some(javafx_bundled),
-        directly_downloadable: Some(true),
-        latest: None,
-    };
-
-    let packages = api_client.get_packages(Some(query)).map_err(|e| {
-        KopiError::MetadataFetch(format!(
+    // Fetch metadata for the specific distribution
+    let mut packages = provider.fetch_distribution(distribution_name)
+        .map_err(|e| KopiError::MetadataFetch(format!(
             "Failed to fetch packages for {distribution_name}: {e}"
-        ))
-    })?;
+        )))?;
 
-    // Convert packages to JdkMetadata
-    let jdk_packages: Vec<JdkMetadata> = packages
-        .into_iter()
-        .filter_map(|pkg| conversion::convert_package_to_jdk_metadata(pkg).ok())
-        .collect();
+    // Filter by javafx_bundled if needed
+    if javafx_bundled {
+        packages.retain(|jdk| jdk.javafx_bundled);
+    }
 
     // Create DistributionCache
     let dist_cache = DistributionCache {
         distribution: JdkDistribution::from_str(distribution_name)
             .unwrap_or(JdkDistribution::Other(distribution_name.to_string())),
-        display_name: dist_info.name.clone(),
-        packages: jdk_packages,
+        display_name: distribution_name.to_string(), // For now, use dist name as display name
+        packages,
     };
 
     // Update cache with this distribution
@@ -164,32 +164,49 @@ pub fn fetch_and_cache_distribution(
 
 /// Fetch checksum for a specific JDK package
 pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)> {
-    let api_client = ApiClient::new();
-    let package_info = api_client
-        .get_package_by_id(package_id)
-        .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch package checksum: {e}")))?;
-
-    // Check if checksum is empty
-    if package_info.checksum.is_empty() {
-        return Err(KopiError::MetadataFetch(format!(
-            "No checksum available for package ID: {package_id}"
-        )));
-    }
-
-    // Parse checksum type
-    let checksum_type = match package_info.checksum_type.to_lowercase().as_str() {
-        "sha1" => ChecksumType::Sha1,
-        "sha256" => ChecksumType::Sha256,
-        "sha512" => ChecksumType::Sha512,
-        "md5" => ChecksumType::Md5,
-        unsupported => {
-            warn!(
-                "Unsupported checksum type '{unsupported}' received from foojay API. Defaulting \
-                 to SHA256."
-            );
-            ChecksumType::Sha256 // Default to SHA256
-        }
+    // Create metadata provider with Foojay source
+    let foojay_source = Box::new(FoojayMetadataSource::new());
+    let provider = MetadataProvider::new_with_source(foojay_source);
+    
+    // Create a minimal metadata with just the package ID to fetch details
+    let mut metadata = JdkMetadata {
+        id: package_id.to_string(),
+        distribution: String::new(),
+        version: crate::version::Version::new(0, 0, 0),
+        distribution_version: crate::version::Version::new(0, 0, 0),
+        architecture: crate::models::platform::Architecture::X64,
+        operating_system: crate::models::platform::OperatingSystem::Linux,
+        package_type: crate::models::package::PackageType::Jdk,
+        archive_type: crate::models::package::ArchiveType::TarGz,
+        download_url: None,
+        checksum: None,
+        checksum_type: None,
+        size: 0,
+        lib_c_type: None,
+        javafx_bundled: false,
+        term_of_support: None,
+        release_status: None,
+        latest_build_available: None,
+        is_complete: false,
     };
-
-    Ok((package_info.checksum, checksum_type))
+    
+    // Fetch the complete details
+    provider.ensure_complete(&mut metadata)
+        .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch package checksum: {e}")))?;
+    
+    // Extract checksum and type
+    let checksum = metadata.checksum
+        .ok_or_else(|| KopiError::MetadataFetch(format!(
+            "No checksum available for package ID: {package_id}"
+        )))?;
+    
+    let checksum_type = metadata.checksum_type
+        .unwrap_or_else(|| {
+            warn!(
+                "No checksum type available for package ID: {package_id}. Defaulting to SHA256."
+            );
+            ChecksumType::Sha256
+        });
+    
+    Ok((checksum, checksum_type))
 }

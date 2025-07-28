@@ -65,9 +65,9 @@ fn create_large_test_cache() -> MetadataCache {
                                     } else {
                                         ArchiveType::TarGz
                                     },
-                                    download_url: format!(
+                                    download_url: Some(format!(
                                         "https://example.com/{dist_id}/jdk-{major}.{minor}.{patch}.tar.gz"
-                                    ),
+                                    )),
                                     checksum: None,
                                     checksum_type: Some(ChecksumType::Sha256),
                                     size: 100_000_000 + (*major as u64 * 1_000_000),
@@ -92,6 +92,7 @@ fn create_large_test_cache() -> MetadataCache {
                                         Some("ea".to_string())
                                     },
                                     latest_build_available: Some(patch == 10),
+                                    is_complete: true,
                                 });
                             }
                         }

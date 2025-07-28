@@ -213,6 +213,7 @@ impl MetadataCache {
         architecture: &str,
         operating_system: &str,
         package_type: Option<&PackageType>,
+        javafx_bundled: Option<bool>,
     ) -> Option<JdkMetadata> {
         // Look up distribution by its API name, resolving synonyms
         let canonical_name = self
@@ -229,6 +230,7 @@ impl MetadataCache {
                     && pkg.architecture.to_string() == architecture
                     && pkg.operating_system.to_string() == operating_system
                     && (package_type.is_none() || Some(&pkg.package_type) == package_type)
+                    && (javafx_bundled.is_none() || Some(pkg.javafx_bundled) == javafx_bundled)
             })
             .cloned()
     }
