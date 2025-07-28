@@ -3,11 +3,13 @@ use crate::metadata::index::{IndexFile, IndexFileEntry};
 use crate::metadata::{FoojayMetadataSource, MetadataSource};
 use crate::models::metadata::JdkMetadata;
 use crate::models::platform::{Architecture, OperatingSystem};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use indicatif::{ProgressBar, ProgressStyle};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -81,6 +83,7 @@ pub struct GeneratorConfig {
     pub parallel_requests: usize,
     pub dry_run: bool,
     pub minify_json: bool,
+    pub resume: bool,
 }
 
 /// Metadata for a file to be written
@@ -90,6 +93,25 @@ pub struct FileMetadata {
     pub architecture: String,
     pub libc: Option<String>,
     pub content: String,
+}
+
+/// State of a file being generated
+#[derive(Serialize, Deserialize, Debug)]
+struct FileState {
+    status: FileStatus,
+    started_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    attempts: u32,
+    error: Option<String>,
+    checksum: Option<String>,
+}
+
+/// Status of file generation
+#[derive(Serialize, Deserialize, Debug)]
+enum FileStatus {
+    InProgress,
+    Completed,
+    Failed,
 }
 
 /// Metadata generator for creating metadata files from foojay API
@@ -392,6 +414,120 @@ impl MetadataGenerator {
         format!("{:x}", hasher.finalize())
     }
 
+    /// Calculate SHA256 checksum of a file
+    fn calculate_file_checksum(&self, path: &Path) -> Result<String> {
+        use sha2::{Digest, Sha256};
+        let content = fs::read(path)?;
+        let mut hasher = Sha256::new();
+        hasher.update(&content);
+        Ok(format!("{:x}", hasher.finalize()))
+    }
+
+    /// Process a single metadata file with state management
+    fn process_metadata_file(&self, path: &Path, metadata: &[JdkMetadata]) -> Result<()> {
+        let state_path = PathBuf::from(format!("{}.state", path.display()));
+
+        // 1. Create .state file at work start
+        let state = FileState {
+            status: FileStatus::InProgress,
+            started_at: Utc::now(),
+            updated_at: Utc::now(),
+            attempts: 1,
+            error: None,
+            checksum: None,
+        };
+        fs::write(&state_path, serde_json::to_string(&state)?)?;
+
+        // 2. Perform actual processing
+        let content = if self.config.minify_json {
+            serde_json::to_string(metadata)?
+        } else {
+            serde_json::to_string_pretty(metadata)?
+        };
+
+        match fs::write(path, &content) {
+            Ok(_) => {
+                // 3. Update .state on success
+                let mut state = state;
+                state.status = FileStatus::Completed;
+                state.updated_at = Utc::now();
+                state.checksum = Some(self.calculate_file_checksum(path)?);
+                fs::write(&state_path, serde_json::to_string(&state)?)?;
+                Ok(())
+            }
+            Err(e) => {
+                // Update .state on failure
+                let mut state = state;
+                state.status = FileStatus::Failed;
+                state.error = Some(e.to_string());
+                state.updated_at = Utc::now();
+                fs::write(&state_path, serde_json::to_string(&state)?)?;
+                Err(e.into())
+            }
+        }
+    }
+
+    /// Check if a file should be skipped based on its state file
+    fn should_skip_file(&self, json_path: &Path) -> bool {
+        let state_path = PathBuf::from(format!("{}.state", json_path.display()));
+
+        if let Ok(content) = fs::read_to_string(&state_path) {
+            if let Ok(state) = serde_json::from_str::<FileState>(&content) {
+                match state.status {
+                    FileStatus::Completed => {
+                        // Validate the file still exists and matches checksum
+                        if let Some(checksum) = state.checksum {
+                            if json_path.exists() {
+                                if let Ok(current_checksum) =
+                                    self.calculate_file_checksum(json_path)
+                                {
+                                    return current_checksum == checksum;
+                                }
+                            }
+                        }
+                        false
+                    }
+                    FileStatus::InProgress => {
+                        // Check if the process is stale (e.g., > 1 hour old)
+                        let age = Utc::now() - state.updated_at;
+                        age.num_hours() > 1
+                    }
+                    FileStatus::Failed => false,
+                }
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    /// Cleanup state files after successful generation
+    fn cleanup_state_files(&self, output_dir: &Path) -> Result<()> {
+        use walkdir::WalkDir;
+
+        // 1. Remove all .state files in subdirectories
+        for entry in WalkDir::new(output_dir) {
+            let entry = entry?;
+            let path = entry.path();
+
+            // Skip index.json.state for now
+            if path.extension() == Some(OsStr::new("state"))
+                && path != output_dir.join("index.json.state")
+            {
+                fs::remove_file(path)?;
+            }
+        }
+
+        // 2. Finally remove index.json.state
+        let index_state = output_dir.join("index.json.state");
+        if index_state.exists() {
+            fs::remove_file(index_state)?;
+        }
+
+        Ok(())
+    }
+
     /// Write output files
     fn write_output(
         &self,
@@ -402,6 +538,22 @@ impl MetadataGenerator {
         // Create output directory
         fs::create_dir_all(output_dir)?;
 
+        if self.config.resume {
+            // Use state-based writing with resume support
+            self.write_output_with_state(output_dir, index, files)
+        } else {
+            // Use traditional writing without state management
+            self.write_output_without_state(output_dir, index, files)
+        }
+    }
+
+    /// Write output files without state management (traditional approach)
+    fn write_output_without_state(
+        &self,
+        output_dir: &Path,
+        index: &IndexFile,
+        files: &HashMap<String, FileMetadata>,
+    ) -> Result<()> {
         // Write index.json
         let index_path = output_dir.join("index.json");
         let index_json = if self.config.minify_json {
@@ -424,6 +576,131 @@ impl MetadataGenerator {
                 path,
                 metadata.content.len()
             ));
+        }
+
+        Ok(())
+    }
+
+    /// Write output files with state management for resume support
+    fn write_output_with_state(
+        &self,
+        output_dir: &Path,
+        index: &IndexFile,
+        files: &HashMap<String, FileMetadata>,
+    ) -> Result<()> {
+        let mut errors = Vec::new();
+        let mut skipped = 0;
+        let mut written = 0;
+
+        // Process metadata files first
+        for (path, metadata) in files {
+            let file_path = output_dir.join(path);
+
+            // Check if should skip this file
+            if self.should_skip_file(&file_path) {
+                self.report_progress(&format!("Skipping {path} (already completed)"));
+                skipped += 1;
+                continue;
+            }
+
+            // Create parent directory if needed
+            if let Some(parent) = file_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+
+            // Parse JSON to get JdkMetadata for process_metadata_file
+            match serde_json::from_str::<Vec<JdkMetadata>>(&metadata.content) {
+                Ok(jdk_metadata) => match self.process_metadata_file(&file_path, &jdk_metadata) {
+                    Ok(_) => {
+                        self.report_progress(&format!(
+                            "Wrote {} ({} bytes)",
+                            path,
+                            metadata.content.len()
+                        ));
+                        written += 1;
+                    }
+                    Err(e) => {
+                        errors.push(format!("Failed to write {path}: {e}"));
+                    }
+                },
+                Err(e) => {
+                    errors.push(format!("Failed to parse metadata for {path}: {e}"));
+                }
+            }
+        }
+
+        // Process index.json last
+        let index_path = output_dir.join("index.json");
+        let index_state_path = PathBuf::from(format!("{}.state", index_path.display()));
+
+        if !self.should_skip_file(&index_path) {
+            // Create state for index.json
+            let state = FileState {
+                status: FileStatus::InProgress,
+                started_at: Utc::now(),
+                updated_at: Utc::now(),
+                attempts: 1,
+                error: None,
+                checksum: None,
+            };
+            fs::write(&index_state_path, serde_json::to_string(&state)?)?;
+
+            let index_json = if self.config.minify_json {
+                serde_json::to_string(index)?
+            } else {
+                serde_json::to_string_pretty(index)?
+            };
+
+            match fs::write(&index_path, &index_json) {
+                Ok(_) => {
+                    // Update state on success
+                    let mut state = state;
+                    state.status = FileStatus::Completed;
+                    state.updated_at = Utc::now();
+                    state.checksum = Some(self.calculate_file_checksum(&index_path)?);
+                    fs::write(&index_state_path, serde_json::to_string(&state)?)?;
+                    self.report_progress(&format!("Wrote index.json ({} bytes)", index_json.len()));
+                    written += 1;
+                }
+                Err(e) => {
+                    // Update state on failure
+                    let mut state = state;
+                    state.status = FileStatus::Failed;
+                    state.error = Some(e.to_string());
+                    state.updated_at = Utc::now();
+                    fs::write(&index_state_path, serde_json::to_string(&state)?)?;
+                    errors.push(format!("Failed to write index.json: {e}"));
+                }
+            }
+        } else {
+            self.report_progress("Skipping index.json (already completed)");
+            skipped += 1;
+        }
+
+        // Report summary
+        if skipped > 0 {
+            println!("📊 Skipped {skipped} already completed files");
+        }
+        if written > 0 {
+            println!("✏️  Wrote {written} new files");
+        }
+
+        // Handle errors
+        if !errors.is_empty() {
+            eprintln!("\n❌ Errors during write:");
+            for error in &errors {
+                eprintln!("  - {error}");
+            }
+            return Err(KopiError::GenerationFailed(format!(
+                "{} files failed to write",
+                errors.len()
+            )));
+        }
+
+        // Clean up state files on complete success
+        if errors.is_empty() {
+            self.cleanup_state_files(output_dir)?;
+            println!("🧹 Cleaned up state files");
         }
 
         Ok(())
@@ -683,7 +960,6 @@ impl MetadataGenerator {
             || existing.term_of_support != current.term_of_support
             || !existing.is_complete // If existing metadata is incomplete, update it
     }
-
 
     /// Show update summary in dry run mode
     fn show_update_summary_from_info(

@@ -137,6 +137,9 @@ pub enum KopiError {
 
     #[error("Not implemented: {0}")]
     NotImplemented(String),
+
+    #[error("Metadata generation failed: {0}")]
+    GenerationFailed(String),
 }
 
 pub type Result<T> = std::result::Result<T, KopiError>;
