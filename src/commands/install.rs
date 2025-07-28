@@ -74,7 +74,6 @@ impl<'a> InstallCommand<'a> {
         }
     }
 
-
     pub fn execute(
         &self,
         version_spec: &str,
@@ -314,7 +313,7 @@ impl<'a> InstallCommand<'a> {
 
         // Search in cache
         // First try exact match
-        if let Some(jdk_metadata) = cache.lookup(
+        if let Some(mut jdk_metadata) = cache.lookup(
             distribution,
             &version.to_string(),
             &arch,
@@ -327,6 +326,15 @@ impl<'a> InstallCommand<'a> {
                 distribution.name(),
                 version
             );
+
+            // Ensure metadata is complete before using it
+            if !jdk_metadata.is_complete {
+                debug!("Metadata is incomplete, fetching package details...");
+                let foojay_source = Box::new(crate::metadata::FoojayMetadataSource::new());
+                let provider = crate::metadata::MetadataProvider::new_with_source(foojay_source);
+                provider.ensure_complete(&mut jdk_metadata)?;
+            }
+
             return Ok(self.convert_metadata_to_package(&jdk_metadata));
         }
 
@@ -338,7 +346,7 @@ impl<'a> InstallCommand<'a> {
                     cache = new_cache;
 
                     // Search again in fresh cache
-                    if let Some(jdk_metadata) = cache.lookup(
+                    if let Some(mut jdk_metadata) = cache.lookup(
                         distribution,
                         &version.to_string(),
                         &arch,
@@ -351,6 +359,17 @@ impl<'a> InstallCommand<'a> {
                             distribution.name(),
                             version
                         );
+
+                        // Ensure metadata is complete before using it
+                        if !jdk_metadata.is_complete {
+                            debug!("Metadata is incomplete, fetching package details...");
+                            let foojay_source =
+                                Box::new(crate::metadata::FoojayMetadataSource::new());
+                            let provider =
+                                crate::metadata::MetadataProvider::new_with_source(foojay_source);
+                            provider.ensure_complete(&mut jdk_metadata)?;
+                        }
+
                         return Ok(self.convert_metadata_to_package(&jdk_metadata));
                     }
                 }

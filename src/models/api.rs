@@ -14,7 +14,7 @@ pub struct Package {
     pub links: Links,
     pub free_use_in_production: bool,
     pub tck_tested: String,
-    pub size: u64,
+    pub size: i64,
     pub operating_system: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lib_c_type: Option<String>,

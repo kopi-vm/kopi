@@ -231,8 +231,17 @@ impl MetadataCache {
                     && pkg.operating_system.to_string() == operating_system
                     && (package_type.is_none() || Some(&pkg.package_type) == package_type)
                     && (javafx_bundled.is_none() || Some(pkg.javafx_bundled) == javafx_bundled)
+                    && self.matches_platform_libc(&pkg.lib_c_type)
             })
             .cloned()
+    }
+
+    /// Check if the package's lib_c_type is compatible with the current platform
+    fn matches_platform_libc(&self, lib_c_type: &Option<String>) -> bool {
+        match lib_c_type {
+            None => true, // If no lib_c_type specified, assume it's compatible
+            Some(libc) => crate::platform::matches_foojay_libc_type(libc),
+        }
     }
 
     fn matches_package(
@@ -291,6 +300,11 @@ impl MetadataCache {
                 }
             } else {
                 // Package doesn't specify lib_c_type, skip it if we're filtering
+                return false;
+            }
+        } else {
+            // No explicit lib_c_type filter, but we should still check platform compatibility
+            if !self.matches_platform_libc(&package.lib_c_type) {
                 return false;
             }
         }

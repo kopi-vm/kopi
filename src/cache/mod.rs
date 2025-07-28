@@ -72,27 +72,30 @@ pub fn fetch_and_cache_metadata(
     // Create metadata provider with Foojay source
     let foojay_source = Box::new(FoojayMetadataSource::new());
     let provider = MetadataProvider::new_with_source(foojay_source);
-    
+
     // Fetch all metadata
-    let mut metadata = provider.fetch_all()
+    let mut metadata = provider
+        .fetch_all()
         .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch metadata from API: {e}")))?;
-    
+
     // Filter by javafx_bundled if needed
     if javafx_bundled {
         metadata.retain(|jdk| jdk.javafx_bundled);
     }
-    
+
     // Convert metadata to cache format
     let mut new_cache = MetadataCache::new();
-    
+
     // Group metadata by distribution
-    let mut distributions: std::collections::HashMap<String, Vec<JdkMetadata>> = std::collections::HashMap::new();
+    let mut distributions: std::collections::HashMap<String, Vec<JdkMetadata>> =
+        std::collections::HashMap::new();
     for jdk in metadata {
-        distributions.entry(jdk.distribution.clone())
+        distributions
+            .entry(jdk.distribution.clone())
             .or_default()
             .push(jdk);
     }
-    
+
     // Create distribution caches
     for (dist_name, packages) in distributions {
         let dist_cache = DistributionCache {
@@ -103,7 +106,7 @@ pub fn fetch_and_cache_metadata(
         };
         new_cache.distributions.insert(dist_name, dist_cache);
     }
-    
+
     new_cache.last_updated = Utc::now();
 
     // Save to cache
@@ -132,10 +135,13 @@ pub fn fetch_and_cache_distribution(
     let provider = MetadataProvider::new_with_source(foojay_source);
 
     // Fetch metadata for the specific distribution
-    let mut packages = provider.fetch_distribution(distribution_name)
-        .map_err(|e| KopiError::MetadataFetch(format!(
-            "Failed to fetch packages for {distribution_name}: {e}"
-        )))?;
+    let mut packages = provider
+        .fetch_distribution(distribution_name)
+        .map_err(|e| {
+            KopiError::MetadataFetch(format!(
+                "Failed to fetch packages for {distribution_name}: {e}"
+            ))
+        })?;
 
     // Filter by javafx_bundled if needed
     if javafx_bundled {
@@ -167,7 +173,7 @@ pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)
     // Create metadata provider with Foojay source
     let foojay_source = Box::new(FoojayMetadataSource::new());
     let provider = MetadataProvider::new_with_source(foojay_source);
-    
+
     // Create a minimal metadata with just the package ID to fetch details
     let mut metadata = JdkMetadata {
         id: package_id.to_string(),
@@ -189,24 +195,23 @@ pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)
         latest_build_available: None,
         is_complete: false,
     };
-    
+
     // Fetch the complete details
-    provider.ensure_complete(&mut metadata)
+    provider
+        .ensure_complete(&mut metadata)
         .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch package checksum: {e}")))?;
-    
+
     // Extract checksum and type
-    let checksum = metadata.checksum
-        .ok_or_else(|| KopiError::MetadataFetch(format!(
+    let checksum = metadata.checksum.ok_or_else(|| {
+        KopiError::MetadataFetch(format!(
             "No checksum available for package ID: {package_id}"
-        )))?;
-    
-    let checksum_type = metadata.checksum_type
-        .unwrap_or_else(|| {
-            warn!(
-                "No checksum type available for package ID: {package_id}. Defaulting to SHA256."
-            );
-            ChecksumType::Sha256
-        });
-    
+        ))
+    })?;
+
+    let checksum_type = metadata.checksum_type.unwrap_or_else(|| {
+        warn!("No checksum type available for package ID: {package_id}. Defaulting to SHA256.");
+        ChecksumType::Sha256
+    });
+
     Ok((checksum, checksum_type))
 }

@@ -510,7 +510,11 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
                         format!("{}", package.version.major())
                     };
 
-                    let size_mb = package.size / (1024 * 1024);
+                    let size_display = if package.size < 0 {
+                        "Unknown".to_string()
+                    } else {
+                        format!("{} MB", package.size / (1024 * 1024))
+                    };
 
                     // Determine LTS status
                     let lts_display = package
@@ -606,7 +610,7 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
                             Cell::new(package.package_type.to_string()),
                             Cell::new(os_arch),
                             Cell::new(package.lib_c_type.as_deref().unwrap_or("-")),
-                            Cell::new(format!("{size_mb} MB")),
+                            Cell::new(size_display.clone()),
                         ]
                     } else {
                         // Compact mode (default)

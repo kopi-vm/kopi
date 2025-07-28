@@ -70,7 +70,7 @@ fn create_large_test_cache() -> MetadataCache {
                                     )),
                                     checksum: None,
                                     checksum_type: Some(ChecksumType::Sha256),
-                                    size: 100_000_000 + (*major as u64 * 1_000_000),
+                                    size: 100_000_000 + (*major as i64 * 1_000_000),
                                     lib_c_type: if *os == OperatingSystem::Linux {
                                         Some("glibc".to_string())
                                     } else {

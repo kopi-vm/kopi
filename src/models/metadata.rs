@@ -20,7 +20,7 @@ pub struct JdkMetadata {
     pub checksum: Option<String>,
     pub checksum_type: Option<ChecksumType>,
 
-    pub size: u64,
+    pub size: i64,
     pub lib_c_type: Option<String>,
     pub javafx_bundled: bool,
     pub term_of_support: Option<String>,

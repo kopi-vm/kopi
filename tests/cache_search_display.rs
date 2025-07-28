@@ -283,7 +283,7 @@ fn test_compact_mode_deduplication() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-        is_complete: true,
+            is_complete: true,
         });
     }
 
@@ -337,7 +337,7 @@ fn test_detailed_mode_deduplication_keeps_smallest() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-        is_complete: true,
+            is_complete: true,
         });
     }
 

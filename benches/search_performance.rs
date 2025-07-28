@@ -236,6 +236,7 @@ pub fn bench_search_performance(c: &mut Criterion) {
                 black_box("x64"),
                 black_box("linux"),
                 black_box(Some(&PackageType::Jdk)),
+                black_box(None),
             )
         })
     });

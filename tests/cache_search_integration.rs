@@ -624,7 +624,7 @@ fn test_integration_performance_large_cache() {
                 download_url: Some(format!("https://test.com/{major}-{minor}.tar.gz")),
                 checksum: Some(format!("checksum{major}_{minor}")),
                 checksum_type: Some(ChecksumType::Sha256),
-                size: 190_000_000 + (major * 1_000_000) as u64,
+                size: 190_000_000 + (major * 1_000_000) as i64,
                 javafx_bundled: false,
                 term_of_support: if major == 8 || major == 11 || major == 17 || major == 21 {
                     Some("lts".to_string())
