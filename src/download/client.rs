@@ -1,4 +1,5 @@
 use crate::error::Result;
+use crate::user_agent;
 use attohttpc::{Response, Session};
 use std::io::{self, Read};
 use std::time::Duration;
@@ -28,7 +29,7 @@ impl AttohttpcClient {
     pub fn new() -> Self {
         Self {
             timeout: DEFAULT_TIMEOUT,
-            user_agent: "kopi/0.1.0".to_string(),
+            user_agent: user_agent::download_client(),
         }
     }
 }

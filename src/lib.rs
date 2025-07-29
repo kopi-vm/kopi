@@ -17,4 +17,5 @@ pub mod storage;
 #[cfg(test)]
 pub mod test;
 pub mod uninstall;
+pub mod user_agent;
 pub mod version;

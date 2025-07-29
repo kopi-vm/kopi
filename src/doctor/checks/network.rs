@@ -1,5 +1,6 @@
 use crate::api::client::{API_VERSION, FOOJAY_API_BASE};
 use crate::doctor::{CheckCategory, CheckResult, CheckStatus, DiagnosticCheck};
+use crate::user_agent;
 use std::env;
 use std::time::{Duration, Instant};
 
@@ -22,10 +23,7 @@ impl DiagnosticCheck for ApiConnectivityCheck {
         // Create HTTP client with timeout
         let mut session = attohttpc::Session::new();
         session.timeout(NETWORK_TIMEOUT);
-        session.header(
-            "User-Agent",
-            concat!("kopi-doctor/", env!("CARGO_PKG_VERSION")),
-        );
+        session.header("User-Agent", user_agent::doctor_client());
 
         match session.get(get_api_health_check_url()).send() {
             Ok(response) => {
@@ -220,10 +218,7 @@ impl DiagnosticCheck for TlsVerificationCheck {
         // Test TLS connection with certificate verification
         let mut client = attohttpc::Session::new();
         client.timeout(NETWORK_TIMEOUT);
-        client.header(
-            "User-Agent",
-            concat!("kopi-doctor/", env!("CARGO_PKG_VERSION")),
-        );
+        client.header("User-Agent", user_agent::doctor_client());
 
         match client.head(get_api_health_check_url()).send() {
             Ok(_) => CheckResult::new(
