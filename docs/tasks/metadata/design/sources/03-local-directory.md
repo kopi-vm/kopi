@@ -10,13 +10,26 @@ After installation, the bundled metadata is extracted to:
 
 ```
 ${KOPI_HOME}/bundled-metadata/
-├── index.json                                    # Lists all metadata files with version info
-├── jdks/
-│   ├── temurin-linux-x64-glibc-2024-01.json    
-│   ├── temurin-linux-aarch64-glibc-2024-01.json
-│   ├── temurin-windows-x64-2024-01.json
-│   ├── corretto-linux-x64-glibc-2024-01.json
+├── index.json                    # Lists all metadata files with version info
+├── linux-x64-glibc/
+│   ├── temurin.json
+│   ├── corretto.json
+│   ├── zulu.json
 │   └── ...
+├── linux-aarch64-glibc/
+│   ├── temurin.json
+│   ├── corretto.json
+│   └── ...
+├── windows-x64/
+│   ├── temurin.json
+│   ├── corretto.json
+│   └── ...
+├── macos-x64/
+│   ├── temurin.json
+│   └── ...
+└── macos-aarch64/
+    ├── temurin.json
+    └── ...
 ```
 
 ## Implementation
@@ -48,15 +61,20 @@ impl LocalDirectorySource {
         let current_os = crate::platform::get_current_os();
         let current_libc = crate::platform::get_foojay_libc_type();
         
+        // Build platform directory name
+        let platform_dir = if current_os == "linux" {
+            format!("{}-{}-{}", current_os, current_arch, current_libc)
+        } else {
+            format!("{}-{}", current_os, current_arch)
+        };
+        
         // Filter files for current platform
         let platform_files = self.filter_files_for_platform(
             index.files,
-            &current_arch,
-            &current_os,
-            &current_libc
+            &platform_dir
         );
         
-        // Read only the needed metadata files
+        // Read metadata files from the platform directory
         let mut all_metadata = Vec::new();
         for file_info in platform_files {
             let file_path = self.directory.join(&file_info.path);
@@ -83,31 +101,12 @@ impl LocalDirectorySource {
     fn filter_files_for_platform(
         &self, 
         files: Vec<IndexFileEntry>, 
-        arch: &str, 
-        os: &str, 
-        libc: &str
+        platform_dir: &str
     ) -> Vec<IndexFileEntry> {
         files.into_iter()
             .filter(|entry| {
-                // Same filtering logic as HTTP source
-                if let Some(ref archs) = entry.architectures {
-                    if !archs.contains(&arch.to_string()) {
-                        return false;
-                    }
-                }
-                if let Some(ref oses) = entry.operating_systems {
-                    if !oses.contains(&os.to_string()) {
-                        return false;
-                    }
-                }
-                if os == "linux" {
-                    if let Some(ref lib_c_types) = entry.lib_c_types {
-                        if !lib_c_types.contains(&libc.to_string()) {
-                            return false;
-                        }
-                    }
-                }
-                true
+                // Check if the file path starts with our platform directory
+                entry.path.starts_with(&format!("{}/", platform_dir))
             })
             .collect()
     }
@@ -204,8 +203,13 @@ tar xzf kopi-metadata-YYYY-MM.tar.gz -C "${KOPI_HOME}/bundled-metadata/"
 # Result: Ready-to-use directory structure
 ${KOPI_HOME}/bundled-metadata/
 ├── index.json
-└── jdks/
-    └── *.json
+├── linux-x64-glibc/
+│   ├── temurin.json
+│   └── ...
+├── windows-x64/
+│   ├── temurin.json
+│   └── ...
+└── ...
 ```
 
 ## Configuration
