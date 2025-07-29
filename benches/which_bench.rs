@@ -117,7 +117,7 @@ fn bench_which_different_tools(c: &mut Criterion) {
     let (_temp_dir, config) = setup_test_environment();
 
     c.bench_function("which_different_tools", |b| {
-        let tools = vec!["java", "javac", "jar", "jshell"];
+        let tools = ["java", "javac", "jar", "jshell"];
         let mut tool_index = 0;
 
         b.iter(|| {

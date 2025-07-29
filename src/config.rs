@@ -37,6 +37,81 @@ pub struct KopiConfig {
 
     #[serde(default)]
     pub cache: CacheConfig,
+
+    #[serde(default)]
+    pub metadata: MetadataConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetadataConfig {
+    #[serde(default)]
+    pub cache: MetadataCacheConfig,
+
+    #[serde(default = "default_metadata_sources")]
+    pub sources: Vec<SourceConfig>,
+}
+
+impl Default for MetadataConfig {
+    fn default() -> Self {
+        Self {
+            cache: MetadataCacheConfig::default(),
+            sources: default_metadata_sources(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetadataCacheConfig {
+    #[serde(default = "default_metadata_cache_max_age_hours")]
+    pub max_age_hours: u64,
+
+    #[serde(default = "default_true")]
+    pub auto_refresh: bool,
+}
+
+impl Default for MetadataCacheConfig {
+    fn default() -> Self {
+        Self {
+            max_age_hours: default_metadata_cache_max_age_hours(),
+            auto_refresh: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum SourceConfig {
+    #[serde(rename = "http")]
+    Http {
+        name: String,
+        #[serde(default = "default_true")]
+        enabled: bool,
+        base_url: String,
+        #[serde(default = "default_true")]
+        cache_locally: bool,
+        #[serde(default = "default_timeout_secs")]
+        timeout_secs: u64,
+    },
+    #[serde(rename = "local")]
+    Local {
+        name: String,
+        #[serde(default = "default_true")]
+        enabled: bool,
+        directory: String,
+        #[serde(default = "default_archive_pattern")]
+        archive_pattern: String,
+        #[serde(default = "default_true")]
+        cache_extracted: bool,
+    },
+    #[serde(rename = "foojay")]
+    Foojay {
+        name: String,
+        #[serde(default = "default_false")]
+        enabled: bool,
+        base_url: String,
+        #[serde(default = "default_timeout_secs")]
+        timeout_secs: u64,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -153,6 +228,51 @@ fn default_distribution() -> String {
 
 fn default_cache_max_age_hours() -> u64 {
     720 // 30 days
+}
+
+fn default_metadata_sources() -> Vec<SourceConfig> {
+    vec![
+        SourceConfig::Http {
+            name: "primary-http".to_string(),
+            enabled: true,
+            base_url: default_http_base_url(),
+            cache_locally: true,
+            timeout_secs: 30,
+        },
+        SourceConfig::Local {
+            name: "local-fallback".to_string(),
+            enabled: true,
+            directory: default_local_directory(),
+            archive_pattern: default_archive_pattern(),
+            cache_extracted: true,
+        },
+        SourceConfig::Foojay {
+            name: "foojay-api".to_string(),
+            enabled: false,
+            base_url: default_foojay_base_url(),
+            timeout_secs: 30,
+        },
+    ]
+}
+
+fn default_metadata_cache_max_age_hours() -> u64 {
+    720 // 30 days
+}
+
+fn default_http_base_url() -> String {
+    "https://kopi-vm.github.io/metadata".to_string()
+}
+
+fn default_local_directory() -> String {
+    "${KOPI_HOME}/bundled-metadata".to_string()
+}
+
+fn default_archive_pattern() -> String {
+    "*.tar.gz".to_string()
+}
+
+fn default_foojay_base_url() -> String {
+    "https://api.foojay.io/disco".to_string()
 }
 
 /// Create a new KopiConfig with automatic home directory resolution
