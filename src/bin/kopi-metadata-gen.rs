@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use kopi::error::{format_error_with_color, get_exit_code};
-use kopi::metadata::{GeneratorConfig, MetadataGenerator, Platform};
+use kopi::metadata::{GeneratorConfig, MetadataGenConfigFile, MetadataGenerator, Platform};
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -49,6 +49,10 @@ enum Commands {
         /// Force fresh generation, ignoring any existing state files
         #[arg(long)]
         force: bool,
+
+        /// Configuration file path (TOML format)
+        #[arg(long)]
+        config: Option<PathBuf>,
     },
 
     /// Update existing metadata
@@ -72,6 +76,10 @@ enum Commands {
         /// Override parallel requests setting
         #[arg(long)]
         parallel: Option<usize>,
+
+        /// Configuration file path (TOML format)
+        #[arg(long)]
+        config: Option<PathBuf>,
     },
 
     /// Validate metadata structure
@@ -80,6 +88,32 @@ enum Commands {
         #[arg(short, long)]
         input: PathBuf,
     },
+
+    /// Generate example configuration file
+    GenerateConfig {
+        /// Output path for configuration file
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+}
+
+/// Load and apply configuration file to the generator config
+fn load_and_apply_config(config_path: Option<PathBuf>, generator_config: &mut GeneratorConfig) {
+    if let Some(config_path) = config_path {
+        match MetadataGenConfigFile::load(&config_path) {
+            Ok(config_file) => {
+                if let Err(e) = config_file.apply_to_config(generator_config) {
+                    eprintln!("Error applying configuration: {e}");
+                    std::process::exit(get_exit_code(&e));
+                }
+                println!("📄 Loaded configuration from {}", config_path.display());
+            }
+            Err(e) => {
+                eprintln!("Error loading configuration file: {e}");
+                std::process::exit(get_exit_code(&e));
+            }
+        }
+    }
 }
 
 fn main() {
@@ -95,6 +129,7 @@ fn main() {
             dry_run,
             no_minify,
             force,
+            config,
         } => {
             // Parse distributions
             let dist_list =
@@ -117,7 +152,7 @@ fn main() {
                 None
             };
 
-            let config = GeneratorConfig {
+            let mut generator_config = GeneratorConfig {
                 distributions: dist_list,
                 platforms: platform_list,
                 javafx_bundled: javafx,
@@ -127,7 +162,10 @@ fn main() {
                 force,
             };
 
-            let generator = MetadataGenerator::new(config);
+            // Load and apply configuration file if provided
+            load_and_apply_config(config, &mut generator_config);
+
+            let generator = MetadataGenerator::new(generator_config);
             generator.generate(&output)
         }
         Commands::Update {
@@ -136,6 +174,7 @@ fn main() {
             dry_run,
             force,
             parallel,
+            config,
         } => {
             // Load the existing index.json to get the original generator config
             let index_path = input.join("index.json");
@@ -162,7 +201,7 @@ fn main() {
             };
 
             // Use the generator config from index.json if available, otherwise use defaults
-            let config = if let Some(mut saved_config) = index.generator_config {
+            let mut generator_config = if let Some(mut saved_config) = index.generator_config {
                 // Apply runtime flags and overrides
                 saved_config.dry_run = dry_run;
                 saved_config.force = force;
@@ -183,7 +222,10 @@ fn main() {
                 }
             };
 
-            let generator = MetadataGenerator::new(config);
+            // Load and apply configuration file if provided
+            load_and_apply_config(config, &mut generator_config);
+
+            let generator = MetadataGenerator::new(generator_config);
             generator.update(&input, &output)
         }
         Commands::Validate { input } => {
@@ -199,6 +241,24 @@ fn main() {
             let generator = MetadataGenerator::new(config);
             generator.validate(&input)
         }
+        Commands::GenerateConfig { output } => (|| -> kopi::error::Result<()> {
+            let example_config = MetadataGenConfigFile::default_example();
+            let toml_content = toml::to_string_pretty(&example_config).map_err(|e| {
+                kopi::error::KopiError::InvalidConfig(format!("Failed to serialize config: {e}"))
+            })?;
+
+            std::fs::write(&output, toml_content)?;
+
+            println!(
+                "\u{2705} Generated example configuration file at {}",
+                output.display()
+            );
+            println!(
+                "\n\u{1f527} Usage: kopi-metadata-gen generate --config {} --output ./metadata",
+                output.display()
+            );
+            Ok(())
+        })(),
     };
 
     if let Err(e) = result {

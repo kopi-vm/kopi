@@ -16,6 +16,7 @@ ARCHIVE_NAME="${ARCHIVE_NAME:-}"
 DRY_RUN="${DRY_RUN:-false}"
 NO_MINIFY="${NO_MINIFY:-false}"
 FORCE="${FORCE:-false}"
+CONFIG_FILE="${CONFIG_FILE:-}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -49,6 +50,7 @@ OPTIONS:
     -p, --platforms LIST     Comma-separated list of platforms (format: os-arch-libc)
     -j, --javafx            Include JavaFX bundled versions
     -t, --parallel NUM      Number of parallel API requests (default: 4)
+    -c, --config FILE       Configuration file (TOML format)
     -a, --archive NAME      Create archive with specified name after generation
     --dry-run               Show what would be generated without actually writing files
     --no-minify             Don't minify JSON output (default is to minify)
@@ -65,6 +67,9 @@ EXAMPLES:
     # Generate metadata for specific platforms
     $0 --platforms linux-x64-glibc,macos-aarch64
 
+    # Generate metadata using configuration file
+    $0 --config metadata-gen.toml
+
     # Generate and create archive
     $0 --archive metadata-\$(date +%Y-%m).tar.gz
 
@@ -76,6 +81,9 @@ EXAMPLES:
 
     # CI/CD usage with environment variables
     DISTRIBUTIONS=temurin,corretto PLATFORMS=linux-x64-glibc $0
+    
+    # Generate example configuration file
+    kopi-metadata-gen generate-config --output metadata-gen.toml
 EOF
 }
 
@@ -100,6 +108,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -t|--parallel)
             PARALLEL="$2"
+            shift 2
+            ;;
+        -c|--config)
+            CONFIG_FILE="$2"
             shift 2
             ;;
         -a|--archive)
@@ -157,6 +169,14 @@ print_info "Using metadata generator: $METADATA_GEN"
 # Build command arguments
 CMD_ARGS=("generate" "--output" "$OUTPUT_DIR" "--parallel" "$PARALLEL")
 
+if [[ -n "$CONFIG_FILE" ]]; then
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        print_error "Configuration file not found: $CONFIG_FILE"
+        exit 1
+    fi
+    CMD_ARGS+=("--config" "$CONFIG_FILE")
+fi
+
 if [[ -n "$DISTRIBUTIONS" ]]; then
     CMD_ARGS+=("--distributions" "$DISTRIBUTIONS")
 fi
@@ -184,6 +204,10 @@ fi
 # Run metadata generation
 print_info "Starting metadata generation..."
 print_info "Output directory: $OUTPUT_DIR"
+
+if [[ -n "$CONFIG_FILE" ]]; then
+    print_info "Configuration file: $CONFIG_FILE"
+fi
 
 if [[ -n "$DISTRIBUTIONS" ]]; then
     print_info "Distributions: $DISTRIBUTIONS"

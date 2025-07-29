@@ -3,6 +3,7 @@ use crate::metadata::index::{IndexFile, IndexFileEntry};
 use crate::metadata::{FoojayMetadataSource, MetadataSource};
 use crate::models::metadata::JdkMetadata;
 use crate::models::platform::{Architecture, OperatingSystem};
+use crate::storage::formatting::format_size;
 use chrono::{DateTime, Utc};
 use indicatif::{ProgressBar, ProgressStyle};
 use serde::{Deserialize, Serialize};
@@ -96,6 +97,24 @@ pub struct FileMetadata {
     pub architecture: String,
     pub libc: Option<String>,
     pub content: String,
+}
+
+/// Information about a JDK update
+#[derive(Debug)]
+struct JdkUpdateInfo {
+    _id: String,
+    distribution: String,
+    version: String,
+    architecture: String,
+    update_type: UpdateType,
+    changes: Vec<String>,
+}
+
+/// Type of update for a JDK
+#[derive(Debug, PartialEq)]
+enum UpdateType {
+    New,
+    Modified,
 }
 
 /// State of a file being generated
@@ -894,7 +913,7 @@ impl MetadataGenerator {
 
         // Step 4: Compare and detect changes
         self.report_progress("Detecting changes...");
-        let (updates_needed, unchanged) = self.detect_changes(&existing_by_id, filtered_final);
+        let (updates_needed, unchanged) = self.detect_changes(&existing_by_id, &filtered_final);
         println!(
             "  Changes detected: {} packages need updates",
             updates_needed.len()
@@ -912,19 +931,9 @@ impl MetadataGenerator {
             return Ok(());
         }
 
-        // Store info for dry run summary before moving updates_needed
-        let updates_info: Vec<_> = if self.config.dry_run {
-            updates_needed
-                .iter()
-                .map(|jdk| {
-                    (
-                        jdk.id.clone(),
-                        jdk.distribution.clone(),
-                        jdk.version.to_string(),
-                        jdk.architecture.to_string(),
-                    )
-                })
-                .collect()
+        // Store detailed change info for dry run summary
+        let detailed_changes = if self.config.dry_run {
+            self.detect_detailed_changes(&existing_by_id, &filtered_final)
         } else {
             Vec::new()
         };
@@ -945,7 +954,7 @@ impl MetadataGenerator {
 
         if self.config.dry_run {
             self.show_dry_run_output(&index, &organized_files);
-            self.show_update_summary_from_info(&updates_info, &existing_by_id);
+            self.show_detailed_update_summary(&detailed_changes);
         } else {
             self.write_output(output_dir, &index, &organized_files)?;
             println!(
@@ -1000,27 +1009,107 @@ impl MetadataGenerator {
     fn detect_changes(
         &self,
         existing_by_id: &HashMap<String, JdkMetadata>,
-        current_list: Vec<JdkMetadata>,
+        current_list: &[JdkMetadata],
     ) -> (Vec<JdkMetadata>, Vec<JdkMetadata>) {
         let mut updates_needed = Vec::new();
         let mut unchanged = Vec::new();
 
-        for current_jdk in current_list {
+        for current_jdk in current_list.iter() {
             if let Some(existing_jdk) = existing_by_id.get(&current_jdk.id) {
                 // Check if update is needed
-                if self.needs_update(existing_jdk, &current_jdk) {
-                    updates_needed.push(current_jdk);
+                if self.needs_update(existing_jdk, current_jdk) {
+                    updates_needed.push(current_jdk.clone());
                 } else {
                     // Use existing metadata which has complete details
                     unchanged.push(existing_jdk.clone());
                 }
             } else {
                 // New JDK not in existing metadata
-                updates_needed.push(current_jdk);
+                updates_needed.push(current_jdk.clone());
             }
         }
 
         (updates_needed, unchanged)
+    }
+
+    /// Detect detailed changes between existing and current metadata
+    fn detect_detailed_changes(
+        &self,
+        existing_by_id: &HashMap<String, JdkMetadata>,
+        current_list: &[JdkMetadata],
+    ) -> Vec<JdkUpdateInfo> {
+        let mut changes = Vec::new();
+
+        for current_jdk in current_list {
+            if let Some(existing_jdk) = existing_by_id.get(&current_jdk.id) {
+                let mut change_details = Vec::new();
+
+                if existing_jdk.distribution_version != current_jdk.distribution_version {
+                    change_details.push(format!(
+                        "version: {} → {}",
+                        existing_jdk.distribution_version, current_jdk.distribution_version
+                    ));
+                }
+
+                if existing_jdk.size != current_jdk.size {
+                    change_details.push(format!(
+                        "size: {} → {}",
+                        format_size(existing_jdk.size as u64),
+                        format_size(current_jdk.size as u64)
+                    ));
+                }
+
+                if existing_jdk.latest_build_available != current_jdk.latest_build_available {
+                    change_details.push(format!(
+                        "latest_build: {} → {}",
+                        existing_jdk
+                            .latest_build_available
+                            .map_or("N/A".to_string(), |v| v.to_string()),
+                        current_jdk
+                            .latest_build_available
+                            .map_or("N/A".to_string(), |v| v.to_string())
+                    ));
+                }
+
+                if existing_jdk.release_status != current_jdk.release_status {
+                    change_details.push(format!(
+                        "status: {} → {}",
+                        existing_jdk.release_status.as_deref().unwrap_or("N/A"),
+                        current_jdk.release_status.as_deref().unwrap_or("N/A")
+                    ));
+                }
+
+                if existing_jdk.term_of_support != current_jdk.term_of_support {
+                    change_details.push(format!(
+                        "support: {} → {}",
+                        existing_jdk.term_of_support.as_deref().unwrap_or("N/A"),
+                        current_jdk.term_of_support.as_deref().unwrap_or("N/A")
+                    ));
+                }
+
+                if !change_details.is_empty() {
+                    changes.push(JdkUpdateInfo {
+                        _id: current_jdk.id.clone(),
+                        distribution: current_jdk.distribution.clone(),
+                        version: current_jdk.version.to_string(),
+                        architecture: current_jdk.architecture.to_string(),
+                        update_type: UpdateType::Modified,
+                        changes: change_details,
+                    });
+                }
+            } else {
+                changes.push(JdkUpdateInfo {
+                    _id: current_jdk.id.clone(),
+                    distribution: current_jdk.distribution.clone(),
+                    version: current_jdk.version.to_string(),
+                    architecture: current_jdk.architecture.to_string(),
+                    update_type: UpdateType::New,
+                    changes: vec![],
+                });
+            }
+        }
+
+        changes
     }
 
     /// Check if a JDK needs to be updated
@@ -1033,29 +1122,27 @@ impl MetadataGenerator {
             || existing.term_of_support != current.term_of_support
     }
 
-    /// Show update summary in dry run mode
-    fn show_update_summary_from_info(
-        &self,
-        updates_info: &[(String, String, String, String)], // (id, distribution, version, architecture)
-        existing_by_id: &HashMap<String, JdkMetadata>,
-    ) {
+    /// Show detailed update summary in dry run mode
+    fn show_detailed_update_summary(&self, changes: &[JdkUpdateInfo]) {
         println!("\n📊 Update Summary:");
 
-        let mut new_jdks = Vec::new();
-        let mut updated_jdks = Vec::new();
+        let new_jdks: Vec<_> = changes
+            .iter()
+            .filter(|c| c.update_type == UpdateType::New)
+            .collect();
 
-        for (id, distribution, version, architecture) in updates_info {
-            if existing_by_id.contains_key(id) {
-                updated_jdks.push((distribution, version, architecture));
-            } else {
-                new_jdks.push((distribution, version, architecture));
-            }
-        }
+        let updated_jdks: Vec<_> = changes
+            .iter()
+            .filter(|c| c.update_type == UpdateType::Modified)
+            .collect();
 
         if !new_jdks.is_empty() {
-            println!("\n  New JDKs:");
-            for (distribution, version, architecture) in new_jdks.iter().take(10) {
-                println!("    - {distribution} {version} {architecture}");
+            println!("\n  🆕 New JDKs ({}):", new_jdks.len());
+            for jdk in new_jdks.iter().take(10) {
+                println!(
+                    "    - {} {} {}",
+                    jdk.distribution, jdk.version, jdk.architecture
+                );
             }
             if new_jdks.len() > 10 {
                 println!("    ... and {} more", new_jdks.len() - 10);
@@ -1063,14 +1150,30 @@ impl MetadataGenerator {
         }
 
         if !updated_jdks.is_empty() {
-            println!("\n  Updated JDKs:");
-            for (distribution, version, architecture) in updated_jdks.iter().take(10) {
-                println!("    - {distribution} {version} {architecture}");
+            println!("\n  🔄 Updated JDKs ({}):", updated_jdks.len());
+            for jdk in updated_jdks.iter().take(10) {
+                println!(
+                    "    - {} {} {}",
+                    jdk.distribution, jdk.version, jdk.architecture
+                );
+                for change in &jdk.changes {
+                    println!("        • {change}");
+                }
             }
             if updated_jdks.len() > 10 {
                 println!("    ... and {} more", updated_jdks.len() - 10);
             }
         }
+
+        if new_jdks.is_empty() && updated_jdks.is_empty() {
+            println!("\n  ✨ No changes detected");
+        }
+
+        // Summary statistics
+        println!("\n  📈 Summary:");
+        println!("    • Total packages checked: {}", changes.len());
+        println!("    • New packages: {}", new_jdks.len());
+        println!("    • Updated packages: {}", updated_jdks.len());
     }
 
     /// Report progress
