@@ -1031,7 +1031,6 @@ impl MetadataGenerator {
             || existing.latest_build_available != current.latest_build_available
             || existing.release_status != current.release_status
             || existing.term_of_support != current.term_of_support
-            || !existing.is_complete // If existing metadata is incomplete, update it
     }
 
     /// Show update summary in dry run mode
