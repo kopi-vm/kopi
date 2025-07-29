@@ -1,5 +1,19 @@
 # Core Architecture
 
+## Current Implementation Structure
+
+The metadata module is organized as follows:
+
+```
+src/metadata/
+├── mod.rs              # Module exports
+├── source.rs           # MetadataSource trait definition
+├── provider.rs         # MetadataProvider implementation
+├── foojay.rs          # FoojayMetadataSource implementation
+├── generator.rs       # MetadataGenerator for kopi-metadata-gen
+└── index.rs           # IndexFile structures for metadata files
+```
+
 ## Core Abstraction
 
 Based on the adopted Option 3 and synchronous I/O decision, here are the core components:
@@ -44,79 +58,81 @@ pub struct PackageDetails {
 }
 ```
 
-## Metadata Provider
+## Metadata Provider (Current Implementation)
+
+The current implementation is simpler than the full design, supporting only a single source at a time:
 
 ```rust
 /// Manages multiple metadata sources
 pub struct MetadataProvider {
     sources: HashMap<String, Box<dyn MetadataSource>>,
     primary_source: String,
-    fallback_source: String,
-    cache: MetadataCache,
-    config: MetadataConfig,
 }
 
 impl MetadataProvider {
-    /// Create a new provider with configured sources
-    pub fn new(config: MetadataConfig) -> Result<Self> {
-        // Initialize sources based on configuration
+    /// Create a new provider with a single source
+    pub fn new_with_source(source: Box<dyn MetadataSource>) -> Self {
+        let source_id = source.id().to_string();
+        let mut sources = HashMap::new();
+        sources.insert(source_id.clone(), source);
+        
+        Self {
+            sources,
+            primary_source: source_id,
+        }
     }
     
-    /// Get metadata from the primary source, with fallback to others
-    pub fn get_metadata(&self) -> Result<MetadataCache> {
-        // Try primary source first, then fallbacks
+    /// Get metadata from the primary source
+    pub fn fetch_all(&self) -> Result<Vec<JdkMetadata>> {
+        let source = self.sources.get(&self.primary_source).ok_or_else(|| {
+            KopiError::InvalidConfig(format!(
+                "Primary source '{}' not found",
+                self.primary_source
+            ))
+        })?;
+        
+        source.fetch_all()
     }
     
-    /// Refresh metadata from all configured sources
-    pub fn refresh(&mut self) -> Result<()> {
-        // Refresh from all sources and merge
-    }
-    
-    /// Search for packages across all sources
-    pub fn search(&self, query: &SearchQuery) -> Result<Vec<SearchResult>> {
-        // Search across all available sources
+    /// Fetch metadata for a specific distribution
+    pub fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>> {
+        let source = self.sources.get(&self.primary_source).ok_or_else(|| {
+            KopiError::InvalidConfig(format!(
+                "Primary source '{}' not found",
+                self.primary_source
+            ))
+        })?;
+        
+        source.fetch_distribution(distribution)
     }
     
     /// Ensure metadata has all required fields (lazy loading)
     pub fn ensure_complete(&self, metadata: &mut JdkMetadata) -> Result<()> {
         if !metadata.is_complete {
-            // Find the source that provided this metadata
-            if let Some(source) = self.sources.get(&metadata.distribution) {
-                let details = source.fetch_package_details(&metadata.id)?;
-                metadata.download_url = Some(details.download_url);
-                metadata.checksum = details.checksum;
-                metadata.checksum_type = details.checksum_type;
-                metadata.is_complete = true;
-            }
+            let source = self.sources.get(&self.primary_source).ok_or_else(|| {
+                KopiError::InvalidConfig(format!(
+                    "Primary source '{}' not found",
+                    self.primary_source
+                ))
+            })?;
+            
+            let details = source.fetch_package_details(&metadata.id)?;
+            metadata.download_url = Some(details.download_url);
+            metadata.checksum = details.checksum;
+            metadata.checksum_type = details.checksum_type;
+            metadata.is_complete = true;
         }
         Ok(())
     }
     
     /// Batch resolve multiple metadata entries
     pub fn ensure_complete_batch(&self, metadata_list: &mut [JdkMetadata]) -> Result<()> {
-        // Group by source for efficient batch loading
-        let mut by_source: HashMap<&str, Vec<&mut JdkMetadata>> = HashMap::new();
-        
+        // For now, process each item individually
+        // Future optimization: group by source and batch load
         for metadata in metadata_list.iter_mut() {
-            if !metadata.is_complete {
-                by_source.entry(&metadata.distribution)
-                    .or_default()
-                    .push(metadata);
-            }
+            self.ensure_complete(metadata)?;
         }
-        
-        // Batch load from each source
-        for (distribution, items) in by_source {
-            if let Some(source) = self.sources.get(distribution) {
-                // Implementation depends on source capabilities
-                for item in items {
-                    self.ensure_complete(item)?;
-                }
-            }
-        }
-        
         Ok(())
-    }
 }
 ```
 

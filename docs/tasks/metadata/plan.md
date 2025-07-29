@@ -76,9 +76,11 @@ The implementation follows a bottom-up approach, starting with core abstractions
 4. Implement index.json generation
 5. Add progress reporting
 6. Implement validate command
-7. Create release script for CI/CD
-8. Test with real foojay API
-9. Generate test metadata archives
+7. Add configuration file support (toml) for default settings
+8. Implement diff reporting for update command
+9. Create release script for CI/CD
+10. Test with real foojay API
+11. Generate test metadata archives
 
 ---
 **/clear**

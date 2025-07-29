@@ -31,14 +31,29 @@ kopi-metadata-gen generate --output ./metadata --distributions temurin,corretto
 # Generate for specific platforms only
 kopi-metadata-gen generate --output ./metadata --platforms linux-x64-glibc,macos-aarch64
 
-# Generate metadata files only
-kopi-metadata-gen generate --output ./metadata
+# Include JavaFX bundled versions
+kopi-metadata-gen generate --output ./metadata --javafx
 
-# Create archive using standard tools
-tar czf metadata-2024-01.tar.gz -C ./metadata .
+# Control parallel API requests (default: 4)
+kopi-metadata-gen generate --output ./metadata --parallel 8
+
+# Dry run - see what would be generated without writing files
+kopi-metadata-gen generate --output ./metadata --dry-run
+
+# Generate with pretty-printed JSON (default is minified)
+kopi-metadata-gen generate --output ./metadata --no-minify
+
+# Force fresh generation, ignoring any existing state files
+kopi-metadata-gen generate --output ./metadata --force
 
 # Update existing metadata (incremental)
 kopi-metadata-gen update --input ./metadata --output ./metadata-updated
+
+# Update with dry run
+kopi-metadata-gen update --input ./metadata --output ./metadata-updated --dry-run
+
+# Update with custom parallel setting
+kopi-metadata-gen update --input ./metadata --output ./metadata-updated --parallel 8
 
 # Validate metadata structure
 kopi-metadata-gen validate --input ./metadata
@@ -46,14 +61,19 @@ kopi-metadata-gen validate --input ./metadata
 
 ## Design
 
+### CLI Structure (Actual Implementation)
+
 ```rust
 use clap::{Parser, Subcommand};
-use crate::api::ApiClient;
-use crate::models::metadata::JdkMetadata;
+use kopi::error::{format_error_with_color, get_exit_code};
+use kopi::metadata::{GeneratorConfig, MetadataGenerator, Platform};
+use std::path::PathBuf;
+use std::str::FromStr;
 
 #[derive(Parser)]
 #[command(name = "kopi-metadata-gen")]
 #[command(about = "Generate metadata files from foojay API")]
+#[command(version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -75,7 +95,6 @@ enum Commands {
         #[arg(long)]
         platforms: Option<String>,
         
-        
         /// Include JavaFX bundled versions
         #[arg(long)]
         javafx: bool,
@@ -83,6 +102,18 @@ enum Commands {
         /// Number of parallel API requests
         #[arg(long, default_value = "4")]
         parallel: usize,
+        
+        /// Dry run - show what would be generated without actually writing files
+        #[arg(long)]
+        dry_run: bool,
+        
+        /// Don't minify JSON output (default is to minify)
+        #[arg(long = "no-minify")]
+        no_minify: bool,
+        
+        /// Force fresh generation, ignoring any existing state files
+        #[arg(long)]
+        force: bool,
     },
     
     /// Update existing metadata
@@ -94,6 +125,18 @@ enum Commands {
         /// Output directory for updated metadata
         #[arg(short, long)]
         output: PathBuf,
+        
+        /// Dry run - show what would be updated without actually writing files
+        #[arg(long)]
+        dry_run: bool,
+        
+        /// Force fresh generation, ignoring any existing state files
+        #[arg(long)]
+        force: bool,
+        
+        /// Override parallel requests setting
+        #[arg(long)]
+        parallel: Option<usize>,
     },
     
     /// Validate metadata structure
@@ -103,53 +146,121 @@ enum Commands {
         input: PathBuf,
     },
 }
+```
 
-struct MetadataGenerator {
-    api_client: ApiClient,
+### Core Types
+
+```rust
+/// Platform specification for filtering
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Platform {
+    pub os: OperatingSystem,
+    pub arch: Architecture,
+    pub libc: Option<String>,
+}
+
+impl FromStr for Platform {
+    type Err = KopiError;
+    
+    fn from_str(s: &str) -> Result<Self> {
+        let parts: Vec<&str> = s.split('-').collect();
+        if parts.len() < 2 {
+            return Err(KopiError::InvalidConfig(format!(
+                "Invalid platform format: {s}. Expected: os-arch[-libc]"
+            )));
+        }
+        
+        let os = OperatingSystem::from_str(parts[0])?;
+        let arch = Architecture::from_str(parts[1])?;
+        let libc = if parts.len() > 2 {
+            Some(parts[2].to_string())
+        } else {
+            None
+        };
+        
+        Ok(Platform { os, arch, libc })
+    }
+}
+
+/// Configuration for metadata generator
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GeneratorConfig {
+    pub distributions: Option<Vec<String>>,
+    pub platforms: Option<Vec<Platform>>,
+    pub javafx_bundled: bool,
+    pub parallel_requests: usize,
+    #[serde(skip)]
+    pub dry_run: bool,
+    pub minify_json: bool,
+    #[serde(skip)]
+    pub force: bool,
+}
+
+/// Metadata generator for creating metadata files from foojay API
+pub struct MetadataGenerator {
     config: GeneratorConfig,
 }
 
-struct GeneratorConfig {
-    distributions: Option<Vec<String>>,
-    platforms: Option<Vec<Platform>>,
-    javafx_bundled: bool,
-    parallel_requests: usize,
-}
-
-#[derive(Clone)]
-struct Platform {
-    os: String,
-    arch: String,
-    libc: Option<String>,
-}
-
 impl MetadataGenerator {
-    fn new(config: GeneratorConfig) -> Self {
-        Self {
-            api_client: ApiClient::new(),
-            config,
-        }
+    pub fn new(config: GeneratorConfig) -> Self {
+        Self { config }
     }
     
     /// Generate metadata files
-    fn generate(&self, output_dir: &Path) -> Result<()> {
-        // Step 1: Fetch all distributions
-        let distributions = self.fetch_distributions()?;
+    pub fn generate(&self, output_dir: &Path) -> Result<()> {
+        println!("🚀 Starting metadata generation...");
         
-        // Step 2: Collect all platform combinations
-        let platforms = self.collect_platforms(&distributions)?;
+        // Step 1: Fetch all metadata from foojay
+        self.report_progress("Fetching metadata from foojay API...");
+        let source = FoojayMetadataSource::new();
+        let all_metadata = source.fetch_all()?;
+        println!("  Found {} JDK packages", all_metadata.len());
         
-        // Step 3: Fetch metadata for each platform
-        let metadata_by_platform = self.fetch_metadata_parallel(&platforms)?;
+        // Step 2: Filter by distribution if specified
+        let filtered_by_dist = self.filter_by_distribution(all_metadata);
+        println!(
+            "  After distribution filter: {} packages",
+            filtered_by_dist.len()
+        );
         
-        // Step 4: Organize metadata by distribution and platform
-        let organized_files = self.organize_metadata(metadata_by_platform)?;
+        // Step 3: Filter by platform if specified
+        let filtered_by_platform = self.filter_by_platform(filtered_by_dist);
+        println!(
+            "  After platform filter: {} packages",
+            filtered_by_platform.len()
+        );
         
-        // Step 5: Create index.json
+        // Step 4: Filter by JavaFX if specified
+        let filtered_final = self.filter_by_javafx(filtered_by_platform);
+        println!("  After JavaFX filter: {} packages", filtered_final.len());
+        
+        if filtered_final.is_empty() {
+            return Err(KopiError::NotFound(
+                "No packages match the specified filters".to_string(),
+            ));
+        }
+        
+        // Step 5: Fetch complete details for each package
+        self.report_progress("Fetching package details...");
+        let complete_metadata = self.fetch_complete_metadata(filtered_final)?;
+        
+        // Step 6: Organize metadata by distribution and platform
+        let organized_files = self.organize_metadata(complete_metadata)?;
+        println!("  Organized into {} files", organized_files.len());
+        
+        // Step 7: Create index.json
         let index = self.create_index(&organized_files)?;
         
-        // Step 6: Write files
-        self.write_output(output_dir, &index, &organized_files)?;
+        // Step 8: Write files (or show dry run output)
+        if self.config.dry_run {
+            self.show_dry_run_output(&index, &organized_files);
+        } else {
+            self.write_output(output_dir, &index, &organized_files)?;
+            println!(
+                "✅ Successfully generated metadata in {}",
+                output_dir.display()
+            );
+        }
         
         Ok(())
     }
@@ -291,7 +402,32 @@ impl MetadataGenerator {
 }
 ```
 
-## Configuration File Support
+## Implementation Status
+
+### Currently Implemented Features
+- ✅ Basic metadata generation from foojay API
+- ✅ Distribution filtering (`--distributions`)
+- ✅ Platform filtering (`--platforms`)
+- ✅ JavaFX bundled filtering (`--javafx`)
+- ✅ Parallel API requests (`--parallel`)
+- ✅ Dry run mode (`--dry-run`)
+- ✅ JSON minification control (`--no-minify`)
+- ✅ Force fresh generation (`--force`)
+- ✅ Update command with incremental logic
+- ✅ Validate command
+- ✅ Error handling with proper exit codes
+- ✅ Progress reporting with indicatif
+- ✅ **Resume support with state files** (automatic detection)
+- ✅ **Per-file state tracking** for fine-grained recovery
+- ✅ **Automatic state cleanup** on successful completion
+
+### Not Yet Implemented
+- ❌ Configuration file support (toml)
+- ❌ Diff reporting for updates
+- ❌ Automated retry logic for failed requests
+- ❌ Rate limit handling with backoff
+
+## Configuration File Support (Planned)
 
 ```toml
 # metadata-gen.toml
@@ -454,7 +590,15 @@ fn organize_metadata(&self, metadata: Vec<JdkMetadata>) -> HashMap<String, Vec<J
 
 ## Resume Support Implementation
 
+✅ **Resume support has been implemented and automatically detects interrupted generations.**
+
 The Resume Support feature allows the generator to continue from interruptions without re-fetching already completed metadata. This is crucial for handling network failures, API rate limits, or manual interruptions.
+
+### Key Features:
+- **Automatic detection**: No `--resume` flag needed - automatically detects `.state` files
+- **Per-file tracking**: Each JSON file has its own `.state` file for fine-grained recovery
+- **Force flag**: Use `--force` to ignore existing state and start fresh
+- **Auto-cleanup**: State files are automatically removed upon successful completion
 
 ### State File Design
 
@@ -465,21 +609,20 @@ Instead of a single global state file, the system creates individual `.state` fi
 - `metadata/linux-x64-glibc/temurin.json.state` - Tracks individual metadata file generation
 - Each JSON file has a corresponding `.state` file in the same directory
 
-### State File Structure
+### State File Structure (Actual Implementation)
 
 ```rust
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct FileState {
     status: FileStatus,
     started_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     attempts: u32,
     error: Option<String>,
-    // Checksum of completed file for validation
-    checksum: Option<String>,
+    checksum: Option<String>,  // Checksum of completed file for validation
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 enum FileStatus {
     InProgress,
     Completed,
@@ -530,11 +673,12 @@ impl MetadataGenerator {
 }
 ```
 
-### Resume Logic
+### Resume Logic (Actual Implementation)
 
-When `--resume` flag is provided:
+Resume is **automatically enabled** - no flag is needed. The system detects existing `.state` files:
 
 ```rust
+/// Check if a file should be skipped based on its state file
 fn should_skip_file(&self, json_path: &Path) -> bool {
     let state_path = PathBuf::from(format!("{}.state", json_path.display()));
     
@@ -545,7 +689,7 @@ fn should_skip_file(&self, json_path: &Path) -> bool {
                     // Validate the file still exists and matches checksum
                     if let Some(checksum) = state.checksum {
                         if json_path.exists() {
-                            if let Ok(current_checksum) = calculate_file_checksum(json_path) {
+                            if let Ok(current_checksum) = self.calculate_file_checksum(json_path) {
                                 return current_checksum == checksum;
                             }
                         }
@@ -553,7 +697,7 @@ fn should_skip_file(&self, json_path: &Path) -> bool {
                     false
                 }
                 FileStatus::InProgress => {
-                    // Check if the process is stale (e.g., > 1 hour old)
+                    // Check if the process is stale (> 1 hour old)
                     let age = Utc::now() - state.updated_at;
                     age.num_hours() > 1
                 }
@@ -565,6 +709,19 @@ fn should_skip_file(&self, json_path: &Path) -> bool {
     } else {
         false
     }
+}
+
+/// Detect if there are any .state files in the output directory
+fn detect_resume_state(&self, output_dir: &Path) -> bool {
+    for entry in walkdir::WalkDir::new(output_dir) {
+        if let Ok(entry) = entry {
+            let path = entry.path();
+            if path.extension() == Some(OsStr::new("state")) {
+                return true;
+            }
+        }
+    }
+    false
 }
 ```
 
@@ -606,29 +763,37 @@ fn cleanup_state_files(&self, output_dir: &Path) -> Result<()> {
 
 ### Multi-threaded Execution
 
-The state file design enables safe parallel execution:
+The implementation automatically chooses between state-based and traditional writing:
 
 ```rust
-fn generate_parallel(&self, tasks: Vec<GenerationTask>) -> Result<()> {
-    let results: Vec<_> = tasks
-        .into_par_iter()
-        .map(|task| {
-            // Each thread checks/creates its own state file
-            if self.should_skip_file(&task.output_path) {
-                return Ok(());
-            }
-            self.process_metadata_file(&task.output_path, &task.metadata)
-        })
-        .collect();
-    
-    // Check all results
-    for result in results {
-        result?;
+// In write_output method
+let has_state_files = self.detect_resume_state(output_dir);
+let should_resume = if self.config.force {
+    // Force flag overrides any resume behavior
+    if has_state_files {
+        println!(
+            "⚠️  Found existing state files, but --force was specified. Starting fresh generation..."
+        );
+        // Clean up old state files when forcing
+        let _ = self.cleanup_state_files(output_dir);
     }
-    
-    Ok(())
+    false
+} else {
+    has_state_files
+};
+
+if should_resume {
+    println!("🔄 Found incomplete generation state files. Automatically resuming...");
+    println!("   (Use --force to start fresh and ignore existing state)");
+    // Use state-based writing with resume support
+    self.write_output_with_state(output_dir, index, files)
+} else {
+    // Use traditional writing without state management
+    self.write_output_without_state(output_dir, index, files)
 }
 ```
+
+The state file design enables safe parallel execution with independent state tracking for each file.
 
 ## Error Handling
 
@@ -683,8 +848,12 @@ kopi-metadata-gen validate --input ./metadata
 # Generate with custom config
 kopi-metadata-gen generate --output ./metadata --config metadata-gen.toml
 
-# Resume interrupted generation
-kopi-metadata-gen generate --output ./metadata --resume
+# Resume interrupted generation (automatic - no flag needed!)
+kopi-metadata-gen generate --output ./metadata
+# → Automatically detects and resumes from .state files
+
+# Force fresh generation (ignore existing state)
+kopi-metadata-gen generate --output ./metadata --force
 
 # Use with GitHub Actions for automated updates
 - name: Generate Metadata

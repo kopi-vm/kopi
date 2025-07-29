@@ -1,5 +1,9 @@
 # Metadata Abstraction Overview
 
+## Implementation Status
+
+The metadata abstraction has been **partially implemented**. The core abstractions (`MetadataSource` trait, `MetadataProvider`, `FoojayMetadataSource`) and the `kopi-metadata-gen` tool are complete, but integration with the existing cache module and additional sources (HTTP/Web, Local Directory) are not yet implemented.
+
 ## Project Goal
 
 This project aims to abstract metadata retrieval in Kopi to support multiple sources beyond the current foojay.io API. The abstraction will enable fetching metadata from:
