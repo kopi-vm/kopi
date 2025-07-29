@@ -299,10 +299,10 @@ mod tests {
     #[test]
     fn test_from_config() {
         use tempfile::TempDir;
-        
+
         let temp_dir = TempDir::new().unwrap();
         let kopi_home = temp_dir.path();
-        
+
         // Create metadata config
         let sources = vec![
             SourceConfig::Http {
@@ -347,10 +347,10 @@ mod tests {
     #[test]
     fn test_from_config_no_enabled_sources() {
         use tempfile::TempDir;
-        
+
         let temp_dir = TempDir::new().unwrap();
         let kopi_home = temp_dir.path();
-        
+
         // Create config with no enabled sources
         let sources = vec![SourceConfig::Foojay {
             name: "foojay-api".to_string(),
@@ -376,10 +376,10 @@ mod tests {
     #[test]
     fn test_multiple_http_sources() {
         use tempfile::TempDir;
-        
+
         let temp_dir = TempDir::new().unwrap();
         let kopi_home = temp_dir.path();
-        
+
         // Create config with multiple HTTP sources
         let sources = vec![
             SourceConfig::Http {
@@ -573,10 +573,10 @@ mod tests {
     #[test]
     fn test_kopi_home_expansion() {
         use tempfile::TempDir;
-        
+
         let temp_dir = TempDir::new().unwrap();
         let kopi_home = temp_dir.path();
-        
+
         // Create config with ${KOPI_HOME} in path
         let sources = vec![SourceConfig::Local {
             name: "local-bundled".to_string(),

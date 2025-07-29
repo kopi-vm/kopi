@@ -27,7 +27,10 @@ impl MetadataProvider {
     }
 
     /// Create a provider from metadata configuration
-    pub fn from_metadata_config(metadata_config: &MetadataConfig, kopi_home: &std::path::Path) -> Result<Self> {
+    pub fn from_metadata_config(
+        metadata_config: &MetadataConfig,
+        kopi_home: &std::path::Path,
+    ) -> Result<Self> {
         let mut sources: Vec<(String, Box<dyn MetadataSource>)> = Vec::new();
 
         // Initialize sources based on configuration
@@ -39,9 +42,7 @@ impl MetadataProvider {
                     base_url,
                     ..
                 } if *enabled => {
-                    debug!(
-                        "Initializing HTTP metadata source '{name}' at {base_url}"
-                    );
+                    debug!("Initializing HTTP metadata source '{name}' at {base_url}");
                     let source = HttpMetadataSource::new(base_url.clone());
                     sources.push((name.clone(), Box::new(source)));
                 }
@@ -51,9 +52,7 @@ impl MetadataProvider {
                     directory,
                     ..
                 } if *enabled => {
-                    debug!(
-                        "Initializing local metadata source '{name}' at {directory}"
-                    );
+                    debug!("Initializing local metadata source '{name}' at {directory}");
                     // Expand ${KOPI_HOME} in directory path
                     let expanded_directory = if directory.contains("${KOPI_HOME}") {
                         directory.replace("${KOPI_HOME}", &kopi_home.to_string_lossy())
@@ -70,9 +69,7 @@ impl MetadataProvider {
                     base_url,
                     ..
                 } if *enabled => {
-                    debug!(
-                        "Initializing Foojay metadata source '{name}' at {base_url}"
-                    );
+                    debug!("Initializing Foojay metadata source '{name}' at {base_url}");
                     let source = FoojayMetadataSource::new();
                     sources.push((name.clone(), Box::new(source)));
                 }
@@ -112,9 +109,7 @@ impl MetadataProvider {
                     match source.fetch_all() {
                         Ok(metadata) => {
                             if errors.is_empty() {
-                                debug!(
-                                    "Successfully fetched metadata from source: {source_name}"
-                                );
+                                debug!("Successfully fetched metadata from source: {source_name}");
                             } else {
                                 warn!(
                                     "Successfully fetched metadata from source '{}' after {} failed attempts",
@@ -135,9 +130,7 @@ impl MetadataProvider {
                     errors.push((source_name.clone(), "Source not available".to_string()));
                 }
                 Err(e) => {
-                    warn!(
-                        "Error checking availability of source '{source_name}': {e}"
-                    );
+                    warn!("Error checking availability of source '{source_name}': {e}");
                     errors.push((
                         source_name.clone(),
                         format!("Availability check failed: {e}"),
@@ -165,9 +158,7 @@ impl MetadataProvider {
         let mut errors: Vec<(String, String)> = Vec::new();
 
         for (source_name, source) in &self.sources {
-            debug!(
-                "Attempting to fetch distribution '{distribution}' from source: {source_name}"
-            );
+            debug!("Attempting to fetch distribution '{distribution}' from source: {source_name}");
 
             // Check if source is available
             match source.is_available() {
@@ -202,9 +193,7 @@ impl MetadataProvider {
                     errors.push((source_name.clone(), "Source not available".to_string()));
                 }
                 Err(e) => {
-                    warn!(
-                        "Error checking availability of source '{source_name}': {e}"
-                    );
+                    warn!("Error checking availability of source '{source_name}': {e}");
                     errors.push((
                         source_name.clone(),
                         format!("Availability check failed: {e}"),
@@ -285,9 +274,7 @@ impl MetadataProvider {
                     errors.push((source_name.clone(), "Source not available".to_string()));
                 }
                 Err(e) => {
-                    warn!(
-                        "Error checking availability of source '{source_name}': {e}"
-                    );
+                    warn!("Error checking availability of source '{source_name}': {e}");
                     errors.push((
                         source_name.clone(),
                         format!("Availability check failed: {e}"),

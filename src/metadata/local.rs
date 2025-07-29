@@ -378,6 +378,8 @@ mod tests {
 
         let source = LocalDirectorySource::new(metadata_dir);
         let metadata = source.fetch_distribution("temurin").unwrap();
+        // Basic check that works on all platforms
+        assert!(!metadata.is_empty());
 
         #[cfg(target_os = "linux")]
         {
@@ -410,6 +412,8 @@ mod tests {
 
         let source = LocalDirectorySource::new(metadata_dir);
         let metadata = source.fetch_all().unwrap();
+        // Basic check that works on all platforms
+        assert!(!metadata.is_empty());
 
         // Should still get temurin metadata
         #[cfg(target_os = "linux")]
@@ -433,6 +437,8 @@ mod tests {
 
         let source = LocalDirectorySource::new(metadata_dir);
         let metadata = source.fetch_all().unwrap();
+        // Basic check that works on all platforms
+        assert!(!metadata.is_empty());
 
         // Should still get temurin metadata
         #[cfg(target_os = "linux")]
