@@ -1,5 +1,5 @@
 use crate::error::{KopiError, Result};
-use crate::metadata::generator::{GeneratorConfig, Platform};
+use crate::metadata::{GeneratorConfig, Platform};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::str::FromStr;
