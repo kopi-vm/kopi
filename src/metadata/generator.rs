@@ -17,7 +17,7 @@ use std::thread;
 use std::time::Duration;
 
 /// Platform specification for filtering
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Platform {
     pub os: OperatingSystem,
     pub arch: Architecture,
@@ -76,13 +76,16 @@ impl std::fmt::Display for Platform {
 }
 
 /// Configuration for metadata generator
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GeneratorConfig {
     pub distributions: Option<Vec<String>>,
     pub platforms: Option<Vec<Platform>>,
     pub javafx_bundled: bool,
     pub parallel_requests: usize,
+    #[serde(skip)]
     pub dry_run: bool,
     pub minify_json: bool,
+    #[serde(skip)]
     pub force: bool,
 }
 
@@ -422,6 +425,7 @@ impl MetadataGenerator {
             version: 2,
             updated: Utc::now().to_rfc3339(),
             files: entries,
+            generator_config: Some(self.config.clone()),
         })
     }
 

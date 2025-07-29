@@ -51,7 +51,7 @@ enum Commands {
         force: bool,
     },
 
-    /// Update existing metadata (not implemented yet)
+    /// Update existing metadata
     Update {
         /// Input directory with existing metadata
         #[arg(short, long)]
@@ -60,6 +60,18 @@ enum Commands {
         /// Output directory for updated metadata
         #[arg(short, long)]
         output: PathBuf,
+
+        /// Dry run - show what would be updated without actually writing files
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Force fresh generation, ignoring any existing state files
+        #[arg(long)]
+        force: bool,
+
+        /// Override parallel requests setting
+        #[arg(long)]
+        parallel: Option<usize>,
     },
 
     /// Validate metadata structure
@@ -118,16 +130,59 @@ fn main() {
             let generator = MetadataGenerator::new(config);
             generator.generate(&output)
         }
-        Commands::Update { input, output } => {
-            let config = GeneratorConfig {
-                distributions: None, // Use same filters as existing metadata
-                platforms: None,
-                javafx_bundled: false,
-                parallel_requests: 4,
-                dry_run: false,
-                minify_json: true,
-                force: false,
+        Commands::Update {
+            input,
+            output,
+            dry_run,
+            force,
+            parallel,
+        } => {
+            // Load the existing index.json to get the original generator config
+            let index_path = input.join("index.json");
+            if !index_path.exists() {
+                eprintln!("Error: index.json not found in {}", input.display());
+                std::process::exit(1);
+            }
+
+            let index_content = match std::fs::read_to_string(&index_path) {
+                Ok(content) => content,
+                Err(e) => {
+                    eprintln!("Error reading index.json: {e}");
+                    std::process::exit(1);
+                }
             };
+
+            let index: kopi::metadata::index::IndexFile = match serde_json::from_str(&index_content)
+            {
+                Ok(index) => index,
+                Err(e) => {
+                    eprintln!("Error parsing index.json: {e}");
+                    std::process::exit(1);
+                }
+            };
+
+            // Use the generator config from index.json if available, otherwise use defaults
+            let config = if let Some(mut saved_config) = index.generator_config {
+                // Apply runtime flags and overrides
+                saved_config.dry_run = dry_run;
+                saved_config.force = force;
+                if let Some(p) = parallel {
+                    saved_config.parallel_requests = p;
+                }
+                saved_config
+            } else {
+                // Fallback for older index.json files without generator_config
+                GeneratorConfig {
+                    distributions: None,
+                    platforms: None,
+                    javafx_bundled: false,
+                    parallel_requests: parallel.unwrap_or(4),
+                    dry_run,
+                    minify_json: true,
+                    force,
+                }
+            };
+
             let generator = MetadataGenerator::new(config);
             generator.update(&input, &output)
         }
