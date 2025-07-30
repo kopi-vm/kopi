@@ -201,7 +201,7 @@ Kopi is designed with performance and reliability in mind:
 ### Building from Source
 
 ```bash
-git clone https://github.com/your-org/kopi.git
+git clone https://github.com/kopi-vm/kopi.git
 cd kopi
 
 # Development build
