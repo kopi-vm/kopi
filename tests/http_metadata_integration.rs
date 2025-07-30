@@ -63,7 +63,7 @@ fn test_real_github_pages_fetch_all() {
                 println!("  Architecture: {:?}", jdk.architecture);
                 println!("  OS: {:?}", jdk.operating_system);
                 println!("  Package Type: {:?}", jdk.package_type);
-                println!("  Is Complete: {}", jdk.is_complete);
+                println!("  Is Complete: {}", jdk.is_complete());
             }
 
             // Verify all metadata is marked as complete
