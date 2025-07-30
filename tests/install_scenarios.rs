@@ -15,6 +15,7 @@ fn get_test_command(kopi_home: &Path) -> Command {
 /// Test that install command correctly detects current platform
 /// Verifies: Architecture detection, OS detection, and platform-specific package selection
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_platform_compatibility() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -37,6 +38,7 @@ fn test_platform_compatibility() {
 /// Verifies: "21" resolves to latest "21.x.x" version
 /// This tests the semantic versioning resolution internally
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_version_resolution() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -116,6 +118,7 @@ fn test_disk_space_check() {
 /// Verifies: Downloaded files are validated against checksums
 /// This ensures integrity of downloaded JDK archives
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_checksum_verification() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -138,6 +141,7 @@ fn test_checksum_verification() {
 /// Simulates: Invalid proxy configuration to force network errors
 /// Verifies: Appropriate error messages and recovery suggestions
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_network_failure_handling() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -206,6 +210,7 @@ fn test_symlink_creation() {
 }
 
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_multiple_architecture_support() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -226,6 +231,7 @@ fn test_multiple_architecture_support() {
 }
 
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_version_upgrade_scenario() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -249,6 +255,7 @@ fn test_version_upgrade_scenario() {
 }
 
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_package_type_selection() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -269,6 +276,7 @@ fn test_package_type_selection() {
 }
 
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_security_validation() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -322,6 +330,7 @@ fn test_cleanup_on_failure() {
 /// Verifies: Metadata is persisted after refresh and used for subsequent operations
 /// This reduces API calls and enables offline operation
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_metadata_persistence() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();

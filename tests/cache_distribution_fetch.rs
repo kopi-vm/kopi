@@ -20,7 +20,7 @@ fn test_cache_search_auto_fetch_distribution() {
     // Search for a specific distribution that's not cached
     let output = Command::cargo_bin("kopi")
         .unwrap()
-        .args(["cache", "search", "zulu"])
+        .args(["cache", "search", "corretto"])
         .env("KOPI_HOME", kopi_home)
         .output()
         .expect("Failed to execute command");
@@ -33,8 +33,8 @@ fn test_cache_search_auto_fetch_distribution() {
         // Either it found the distribution or showed appropriate message
         // Check that some expected output is present
         assert!(
-            stdout.contains("zulu")
-                || stdout.contains("Zulu")
+            stdout.contains("corretto")
+                || stdout.contains("Corretto")
                 || stdout.contains("Distribution")
                 || stdout.contains("Failed")
         );
@@ -64,7 +64,7 @@ fn test_cache_search_specific_distribution_version() {
     // Search for a specific distribution and version
     let output = Command::cargo_bin("kopi")
         .unwrap()
-        .args(["cache", "search", "dragonwell@21"])
+        .args(["cache", "search", "temurin@21"])
         .env("KOPI_HOME", kopi_home)
         .output()
         .expect("Failed to execute command");
@@ -74,8 +74,8 @@ fn test_cache_search_specific_distribution_version() {
     if output.status.success() {
         // Should either fetch the distribution or show results
         assert!(
-            stdout.contains("dragonwell")
-                || stdout.contains("Dragonwell")
+            stdout.contains("temurin")
+                || stdout.contains("Temurin")
                 || stdout.contains("21")
                 || stdout.contains("No matching")
         );
@@ -100,7 +100,7 @@ fn test_cache_search_json_with_auto_fetch() {
     // Search with JSON output for a distribution not in cache
     let output = Command::cargo_bin("kopi")
         .unwrap()
-        .args(["cache", "search", "liberica", "--json"])
+        .args(["cache", "search", "corretto", "--json"])
         .env("KOPI_HOME", kopi_home)
         .output()
         .expect("Failed to execute command");
@@ -162,7 +162,7 @@ fn test_cache_persists_after_fetch() {
     // First search - should fetch
     let output1 = Command::cargo_bin("kopi")
         .unwrap()
-        .args(["cache", "search", "semeru"])
+        .args(["cache", "search", "corretto"])
         .env("KOPI_HOME", kopi_home)
         .output()
         .expect("Failed to execute command");
@@ -181,7 +181,7 @@ fn test_cache_persists_after_fetch() {
     // Second search - should use cache
     let output2 = Command::cargo_bin("kopi")
         .unwrap()
-        .args(["cache", "search", "semeru"])
+        .args(["cache", "search", "corretto"])
         .env("KOPI_HOME", kopi_home)
         .output()
         .expect("Failed to execute command");
@@ -199,8 +199,8 @@ fn test_cache_persists_after_fetch() {
     // but the actual data should come from cache on the second run
 
     // Verify that both searches found the same data
-    assert!(stdout1.contains("Found") && stdout1.contains("semeru"));
-    assert!(stdout2.contains("Found") && stdout2.contains("semeru"));
+    assert!(stdout1.contains("Found") && stdout1.contains("corretto"));
+    assert!(stdout2.contains("Found") && stdout2.contains("corretto"));
 
     // The key test is that both searches succeed and show results
     // The implementation might show "Fetching" message for consistency

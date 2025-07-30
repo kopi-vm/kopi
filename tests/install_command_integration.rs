@@ -1,5 +1,6 @@
 use std::env;
 use std::process::Command;
+use tempfile::TempDir;
 
 fn run_kopi(args: &[&str]) -> (String, String, bool) {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_kopi"));
@@ -11,6 +12,21 @@ fn run_kopi(args: &[&str]) -> (String, String, bool) {
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
     (stdout, stderr, output.status.success())
+}
+
+fn run_kopi_with_test_home(args: &[&str]) -> (String, String, bool, TempDir) {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_kopi"));
+    cmd.args(args);
+    cmd.env("KOPI_HOME", temp_dir.path());
+
+    let output = cmd.output().expect("Failed to execute kopi");
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    (stdout, stderr, output.status.success(), temp_dir)
 }
 
 #[test]
@@ -46,8 +62,30 @@ fn test_install_distribution_without_version() {
 }
 
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_dry_run() {
-    let (stdout, _, success) = run_kopi(&["install", "21", "--dry-run"]);
+    // Skip if explicitly disabled
+    if std::env::var("SKIP_NETWORK_TESTS").is_ok() {
+        println!("Skipping network test due to SKIP_NETWORK_TESTS env var");
+        return;
+    }
+
+    let (_, _, _, temp_dir) = run_kopi_with_test_home(&["cache", "refresh"]);
+    let temp_path = temp_dir.path().to_path_buf();
+
+    // Run install with dry-run using the same temp home
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_kopi"));
+    cmd.args(["install", "21", "--dry-run"]);
+    cmd.env("KOPI_HOME", &temp_path);
+
+    let output = cmd.output().expect("Failed to execute kopi");
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let success = output.status.success();
+
+    if !success {
+        eprintln!("test_install_dry_run failed: stdout={stdout}, stderr={stderr}");
+    }
     assert!(success);
     assert!(stdout.contains("Would install"));
 }

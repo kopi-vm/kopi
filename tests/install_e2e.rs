@@ -17,6 +17,7 @@ fn get_test_command(kopi_home: &Path) -> Command {
 /// User command: `kopi install 21`
 /// Expected: Successfully installs latest Eclipse Temurin 21.x.x
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_basic_version() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -40,6 +41,7 @@ fn test_install_basic_version() {
 /// User command: `kopi install corretto@17`
 /// Expected: Successfully installs Amazon Corretto 17
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_with_distribution() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -101,6 +103,7 @@ fn test_install_invalid_format() {
 /// Simulates: User tries to install a version that already exists
 /// Expected: Error message suggesting --force flag to reinstall
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_already_exists() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -131,6 +134,7 @@ fn test_install_already_exists() {
 /// User command: `kopi install 21 --force`
 /// Expected: Successfully reinstalls even if version exists
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_force_reinstall() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -172,6 +176,7 @@ fn test_install_with_timeout() {
 }
 
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_no_progress() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -222,6 +227,7 @@ fn test_install_without_cache() {
 
 #[test]
 #[cfg(unix)]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_permission_denied() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -278,6 +284,7 @@ fn test_install_with_javafx() {
 }
 
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_concurrent_installs() {
     use std::thread;
 
@@ -330,6 +337,7 @@ fn test_install_specific_version() {
 }
 
 #[test]
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_lts_version() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
