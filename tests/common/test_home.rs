@@ -48,6 +48,7 @@ impl TestHomeGuard {
             .cache_dir()
             .expect("Failed to create cache directory");
         config.bin_dir().expect("Failed to create bin directory");
+
         self
     }
 }
