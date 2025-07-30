@@ -1006,6 +1006,7 @@ fn test_install_jre_package() {
 /// Test GraalVM installation to verify nested archive extraction works correctly
 /// This specifically tests the fix for extracting files in subdirectories within tar.gz archives
 #[test]
+#[ignore = "GraalVM metadata not yet deployed to kopi-vm.github.io"]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_graalvm() {
     let test_home = TestHomeGuard::new();
