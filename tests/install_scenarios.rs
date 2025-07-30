@@ -159,7 +159,8 @@ fn test_network_failure_handling() {
         .stderr(
             predicate::str::contains("Network")
                 .or(predicate::str::contains("connection"))
-                .or(predicate::str::contains("Source 'foojay' is not available")),
+                .or(predicate::str::contains("Source 'foojay' is not available"))
+                .or(predicate::str::contains("Source 'primary-http' is not available")),
         );
 }
 
