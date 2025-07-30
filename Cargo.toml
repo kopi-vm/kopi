@@ -93,6 +93,10 @@ harness = false
 name = "env_command"
 harness = false
 
+[[bench]]
+name = "metadata_performance"
+harness = false
+
 [[bin]]
 name = "kopi-shim"
 path = "src/bin/kopi-shim.rs"

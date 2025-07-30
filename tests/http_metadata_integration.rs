@@ -1,7 +1,6 @@
 //! Integration tests for HTTP metadata source
 //!
-//! These tests can be run against a real metadata server.
-//! Run with: cargo test --test http_metadata_integration -- --ignored
+//! These tests run against the real metadata server at https://kopi-vm.github.io/metadata
 
 use kopi::metadata::{HttpMetadataSource, MetadataSource};
 
@@ -9,7 +8,6 @@ use kopi::metadata::{HttpMetadataSource, MetadataSource};
 const TEST_METADATA_URL: &str = "https://kopi-vm.github.io/metadata";
 
 #[test]
-#[ignore = "requires real metadata server"]
 fn test_real_github_pages_fetch_index() {
     let source = HttpMetadataSource::new(TEST_METADATA_URL.to_string());
 
@@ -50,7 +48,6 @@ fn test_real_github_pages_fetch_index() {
 }
 
 #[test]
-#[ignore = "requires real metadata server"]
 fn test_real_github_pages_fetch_all() {
     let source = HttpMetadataSource::new(TEST_METADATA_URL.to_string());
 
@@ -90,7 +87,6 @@ fn test_real_github_pages_fetch_all() {
 }
 
 #[test]
-#[ignore = "requires real metadata server"]
 fn test_real_github_pages_fetch_distribution() {
     let source = HttpMetadataSource::new(TEST_METADATA_URL.to_string());
 
@@ -119,9 +115,8 @@ fn test_real_github_pages_fetch_distribution() {
 }
 
 /// Test with a custom metadata server URL
-/// Run with: TEST_METADATA_URL=https://your-server.com/metadata cargo test test_custom_server -- --ignored
+/// Run with: TEST_METADATA_URL=https://your-server.com/metadata cargo test test_custom_server
 #[test]
-#[ignore = "requires real metadata server"]
 fn test_custom_server() {
     let url = std::env::var("TEST_METADATA_URL").unwrap_or_else(|_| TEST_METADATA_URL.to_string());
 
