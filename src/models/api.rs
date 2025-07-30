@@ -17,6 +17,8 @@ pub struct Package {
     pub size: i64,
     pub operating_system: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub architecture: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub lib_c_type: Option<String>,
     pub package_type: String,
     pub javafx_bundled: bool,

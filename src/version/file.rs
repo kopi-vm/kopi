@@ -1,4 +1,5 @@
 use crate::error::{KopiError, Result};
+use crate::models::package::PackageType;
 use crate::version::format_version_minimal;
 use crate::version::parser::ParsedVersionRequest;
 use log::debug;
@@ -23,11 +24,26 @@ pub fn write_version_file(path: &PathBuf, version_request: &ParsedVersionRequest
     let version = version_request.version.as_ref().unwrap();
     let version_str = format_version_minimal(version);
 
-    let version_string = if let Some(dist) = &version_request.distribution {
-        format!("{}@{}", dist.id(), version_str)
-    } else {
-        version_str
-    };
+    // Build the version string
+    let mut parts = Vec::new();
+
+    // Add package type prefix only if it's JRE (JDK is the default)
+    if let Some(package_type) = &version_request.package_type {
+        if *package_type == PackageType::Jre {
+            parts.push("jre".to_string());
+        }
+    }
+
+    // Add distribution if present
+    if let Some(dist) = &version_request.distribution {
+        parts.push(dist.id().to_string());
+    }
+
+    // Add version
+    parts.push(version_str);
+
+    // Join with @ separator
+    let version_string = parts.join("@");
 
     // Write atomically using a temporary file
     let temp_path = path.with_extension("tmp");
@@ -72,31 +88,31 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let version_file = temp_dir.path().join("version");
 
-        // Test with distribution
+        // Test with distribution and default JDK package type
         let version_request = ParsedVersionRequest {
             distribution: Some(Distribution::Temurin),
             version: Some(Version::new(21, 0, 0)),
-            package_type: None,
+            package_type: Some(PackageType::Jdk),
             latest: false,
         };
 
         write_version_file(&version_file, &version_request).unwrap();
 
         let content = fs::read_to_string(&version_file).unwrap();
-        assert_eq!(content, "temurin@21");
+        assert_eq!(content, "temurin@21"); // JDK is omitted
 
         // Test without distribution
         let version_request2 = ParsedVersionRequest {
             distribution: None,
             version: Some(Version::new(17, 0, 0)),
-            package_type: None,
+            package_type: Some(PackageType::Jdk),
             latest: false,
         };
 
         write_version_file(&version_file, &version_request2).unwrap();
 
         let content2 = fs::read_to_string(&version_file).unwrap();
-        assert_eq!(content2, "17");
+        assert_eq!(content2, "17"); // JDK is omitted
     }
 
     #[test]
@@ -107,7 +123,7 @@ mod tests {
         let version_request = ParsedVersionRequest {
             distribution: Some(Distribution::Corretto),
             version: Some(Version::new(11, 0, 21)),
-            package_type: None,
+            package_type: Some(PackageType::Jdk),
             latest: false,
         };
 
@@ -125,7 +141,7 @@ mod tests {
         let version_request = ParsedVersionRequest {
             distribution: None,
             version: Some(Version::new(21, 0, 0)),
-            package_type: None,
+            package_type: Some(PackageType::Jdk),
             latest: false,
         };
 
@@ -134,5 +150,37 @@ mod tests {
         assert!(nested_path.exists());
         let content = fs::read_to_string(&nested_path).unwrap();
         assert_eq!(content, "21");
+    }
+
+    #[test]
+    fn test_write_version_file_with_jre() {
+        let temp_dir = TempDir::new().unwrap();
+        let version_file = temp_dir.path().join("version");
+
+        // Test JRE with distribution
+        let version_request = ParsedVersionRequest {
+            distribution: Some(Distribution::Temurin),
+            version: Some(Version::new(21, 0, 0)),
+            package_type: Some(PackageType::Jre),
+            latest: false,
+        };
+
+        write_version_file(&version_file, &version_request).unwrap();
+
+        let content = fs::read_to_string(&version_file).unwrap();
+        assert_eq!(content, "jre@temurin@21");
+
+        // Test JRE without distribution
+        let version_request2 = ParsedVersionRequest {
+            distribution: None,
+            version: Some(Version::new(17, 0, 0)),
+            package_type: Some(PackageType::Jre),
+            latest: false,
+        };
+
+        write_version_file(&version_file, &version_request2).unwrap();
+
+        let content2 = fs::read_to_string(&version_file).unwrap();
+        assert_eq!(content2, "jre@17");
     }
 }

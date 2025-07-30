@@ -66,6 +66,7 @@ mod metadata_tests {
             tck_tested: "yes".to_string(),
             size: 190000000,
             operating_system: "linux".to_string(),
+            architecture: Some("x64".to_string()),
             lib_c_type: Some("glibc".to_string()),
             package_type: "jdk".to_string(),
             javafx_bundled: false,
@@ -91,6 +92,7 @@ mod metadata_tests {
         assert_eq!(parsed["id"], "test-package-id");
         assert_eq!(parsed["distribution"], "temurin");
         assert_eq!(parsed["java_version"], "21.0.1");
+        assert_eq!(parsed["architecture"], "x64"); // Verify architecture is saved
         assert_eq!(
             parsed["links"]["pkg_download_redirect"],
             "https://example.com/download"

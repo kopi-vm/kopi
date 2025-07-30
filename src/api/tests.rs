@@ -402,6 +402,7 @@ fn test_package_model_with_new_fields() {
         tck_tested: "yes".to_string(),
         size: 100000000,
         operating_system: "linux".to_string(),
+        architecture: Some("x64".to_string()),
         lib_c_type: Some("glibc".to_string()),
         package_type: "jdk".to_string(),
         javafx_bundled: false,

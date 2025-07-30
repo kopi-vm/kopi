@@ -215,6 +215,7 @@ mod tests {
             distribution_version: "21.0.1+12".to_string(),
             jdk_version: 21,
             operating_system: "linux".to_string(),
+            architecture: Some("x64".to_string()),
             package_type: "jdk".to_string(),
             archive_type: "tar.gz".to_string(),
             filename: "OpenJDK21U-jdk_x64_linux_hotspot_21.0.1_12.tar.gz".to_string(),

@@ -481,6 +481,7 @@ impl<'a> InstallCommand<'a> {
             tck_tested: "unknown".to_string(),
             size: metadata.size,
             operating_system: metadata.operating_system.to_string(),
+            architecture: Some(metadata.architecture.to_string()),
             lib_c_type: metadata.lib_c_type.clone(),
             package_type: metadata.package_type.to_string(),
             javafx_bundled: metadata.javafx_bundled,

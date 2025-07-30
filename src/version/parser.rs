@@ -37,7 +37,7 @@ impl<'a> VersionParser<'a> {
             (Some(PackageType::Jdk), spec)
         } else {
             // Default to JDK for backward compatibility
-            (None, trimmed)
+            (Some(PackageType::Jdk), trimmed)
         };
 
         // Check for "latest" keyword
@@ -482,7 +482,7 @@ mod tests {
             Some(Version::from_components(21, None, None))
         );
         assert_eq!(parsed.distribution, None);
-        assert_eq!(parsed.package_type, None); // None means JDK by default
+        assert_eq!(parsed.package_type, Some(PackageType::Jdk)); // Defaults to JDK
 
         // Test with full version
         let parsed = parser.parse("jre@21.0.1+12").unwrap();
