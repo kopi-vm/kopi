@@ -27,34 +27,6 @@ Key features:
 - Project-specific JDK pinning via `.kopi-version` or `.java-version` files
 - Fast performance using Rust
 
-## Development Setup
-
-### Prerequisites
-Before starting development, ensure you have the following installed:
-- Rust toolchain (via rustup)
-- sccache for faster compilation: `cargo install sccache`
-
-### sccache Configuration
-This project uses sccache to cache compilation artifacts and speed up build times. The configuration is already set in `.cargo/config.toml`.
-
-To verify sccache is working:
-```bash
-# Check if sccache is installed
-which sccache
-
-# View sccache statistics
-sccache --show-stats
-```
-
-For advanced sccache configuration (e.g., using cloud storage backends):
-```bash
-# Example: Configure S3 backend for CI/CD
-export SCCACHE_BUCKET=my-sccache-bucket
-export SCCACHE_REGION=us-east-1
-
-# Example: Set cache size limit (default: 10GB)
-export SCCACHE_CACHE_SIZE="20G"
-```
 
 ## Development Commands
 
@@ -208,26 +180,6 @@ Platform integration:
 - `which`: Find executables in PATH
 - `walkdir`: Recursive directory traversal
 - Platform-specific: `winreg` (Windows registry), `junction` (Windows symlinks)
-
-## Implementation Phases
-
-From ADR-001, implement features in this order:
-
-1. **Phase 1**: Core commands (install, list, use, current)
-2. **Phase 2**: Project support (local, pin, config files) and shell command
-3. **Phase 3**: Advanced features (default, doctor, prune)
-4. **Phase 4**: Shell completions and enhanced integration
-
-## Command Structure
-
-Primary commands to implement:
-- `kopi install <version>` or `kopi install <distribution>@<version>`
-- `kopi use <version>` - Temporary version switching
-- `kopi global <version>` - Set global default
-- `kopi local <version>` - Set project-specific version
-- `kopi list` - List installed JDKs
-- `kopi current` - Show active JDK
-- `kopi which` - Show JDK installation path
 
 ## Error Handling Guidelines
 
