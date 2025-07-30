@@ -3,7 +3,11 @@ name = "kopi"
 version = "0.0.1"
 edition = "2024"
 authors = ["taichi"]
-license = "MIT"
+license-file = "LICENSE"
+repository = "https://github.com/kopi-vm/kopi"
+description = "Kopi is a JDK version management tool"
+readme = "README.md"
+keywords = ["java", "jdk", "version", "management", "tool"]
 default-run = "kopi"
 
 [profile.release]
