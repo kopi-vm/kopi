@@ -12,7 +12,6 @@ use std::str::FromStr;
 
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
-use crate::metadata::foojay::FoojayMetadataSource;
 use crate::metadata::provider::MetadataProvider;
 use crate::models::distribution::Distribution as JdkDistribution;
 use crate::models::metadata::JdkMetadata;
@@ -69,9 +68,8 @@ pub fn fetch_and_cache_metadata(
     javafx_bundled: bool,
     config: &KopiConfig,
 ) -> Result<MetadataCache> {
-    // Create metadata provider with Foojay source
-    let foojay_source = Box::new(FoojayMetadataSource::new());
-    let provider = MetadataProvider::new_with_source(foojay_source);
+    // Create metadata provider from config
+    let provider = MetadataProvider::from_config(config)?;
 
     // Fetch all metadata
     let mut metadata = provider
@@ -130,9 +128,8 @@ pub fn fetch_and_cache_distribution(
         MetadataCache::new()
     };
 
-    // Create metadata provider with Foojay source
-    let foojay_source = Box::new(FoojayMetadataSource::new());
-    let provider = MetadataProvider::new_with_source(foojay_source);
+    // Create metadata provider from config
+    let provider = MetadataProvider::from_config(config)?;
 
     // Fetch metadata for the specific distribution
     let mut packages = provider
@@ -169,10 +166,12 @@ pub fn fetch_and_cache_distribution(
 }
 
 /// Fetch checksum for a specific JDK package
-pub fn fetch_package_checksum(package_id: &str) -> Result<(String, ChecksumType)> {
-    // Create metadata provider with Foojay source
-    let foojay_source = Box::new(FoojayMetadataSource::new());
-    let provider = MetadataProvider::new_with_source(foojay_source);
+pub fn fetch_package_checksum(
+    package_id: &str,
+    config: &KopiConfig,
+) -> Result<(String, ChecksumType)> {
+    // Create metadata provider from config
+    let provider = MetadataProvider::from_config(config)?;
 
     // Create a minimal metadata with just the package ID to fetch details
     let mut metadata = JdkMetadata {

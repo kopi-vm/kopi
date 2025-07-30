@@ -167,7 +167,8 @@ impl<'a> InstallCommand<'a> {
                 "Fetching checksum for package ID: {}",
                 jdk_metadata_with_checksum.id
             );
-            match crate::cache::fetch_package_checksum(&jdk_metadata_with_checksum.id) {
+            match crate::cache::fetch_package_checksum(&jdk_metadata_with_checksum.id, self.config)
+            {
                 Ok((checksum, checksum_type)) => {
                     info!("Fetched checksum: {checksum} (type: {checksum_type:?})");
                     jdk_metadata_with_checksum.checksum = Some(checksum);
@@ -330,8 +331,7 @@ impl<'a> InstallCommand<'a> {
             // Ensure metadata is complete before using it
             if !jdk_metadata.is_complete {
                 debug!("Metadata is incomplete, fetching package details...");
-                let foojay_source = Box::new(crate::metadata::FoojayMetadataSource::new());
-                let provider = crate::metadata::MetadataProvider::new_with_source(foojay_source);
+                let provider = crate::metadata::MetadataProvider::from_config(self.config)?;
                 provider.ensure_complete(&mut jdk_metadata)?;
             }
 
@@ -363,10 +363,8 @@ impl<'a> InstallCommand<'a> {
                         // Ensure metadata is complete before using it
                         if !jdk_metadata.is_complete {
                             debug!("Metadata is incomplete, fetching package details...");
-                            let foojay_source =
-                                Box::new(crate::metadata::FoojayMetadataSource::new());
                             let provider =
-                                crate::metadata::MetadataProvider::new_with_source(foojay_source);
+                                crate::metadata::MetadataProvider::from_config(self.config)?;
                             provider.ensure_complete(&mut jdk_metadata)?;
                         }
 
