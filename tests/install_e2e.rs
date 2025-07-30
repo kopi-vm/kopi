@@ -582,7 +582,7 @@ fn test_install_creates_shims() {
         .success();
 
     // Verify shims directory exists
-    let shims_dir = kopi_home.join("bin");
+    let shims_dir = kopi_home.join("shims");
     assert!(shims_dir.exists(), "Shims directory should exist");
     assert!(shims_dir.is_dir(), "Shims directory should be a directory");
 

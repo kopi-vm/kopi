@@ -349,8 +349,23 @@ fn test_env_shell_override() {
         let bash_text = String::from_utf8_lossy(&bash_output.stdout);
         let fish_text = String::from_utf8_lossy(&fish_output.stdout);
 
-        // Without export, both should just output the path
-        assert_eq!(bash_text, fish_text, "Path output should be the same");
+        // Without export, each shell has its own syntax
+        assert!(
+            bash_text.starts_with("JAVA_HOME="),
+            "Bash should use simple assignment"
+        );
+        assert!(
+            !bash_text.contains("export"),
+            "Bash should not export when --export=false"
+        );
+        assert!(
+            fish_text.starts_with("set -g JAVA_HOME"),
+            "Fish should use set -g (not -gx) when --export=false"
+        );
+        assert!(
+            !fish_text.contains("-gx"),
+            "Fish should not export when --export=false"
+        );
     }
 
     // Now test with export

@@ -96,7 +96,11 @@ impl EnvFormatter {
             Shell::Fish => {
                 // Fish also needs quote escaping
                 let escaped_path = java_home.replace('\\', "\\\\").replace('"', "\\\"");
-                Ok(format!("set -gx JAVA_HOME \"{escaped_path}\"\n"))
+                if self.export {
+                    Ok(format!("set -gx JAVA_HOME \"{escaped_path}\"\n"))
+                } else {
+                    Ok(format!("set -g JAVA_HOME \"{escaped_path}\"\n"))
+                }
             }
             Shell::PowerShell => {
                 // PowerShell uses backtick for escaping
@@ -162,6 +166,17 @@ mod tests {
         assert_eq!(
             output,
             "set -gx JAVA_HOME \"/home/user/.kopi/jdks/temurin-21\"\n"
+        );
+    }
+
+    #[test]
+    fn test_fish_formatter_no_export() {
+        let formatter = EnvFormatter::new(Shell::Fish, false);
+        let path = PathBuf::from("/home/user/.kopi/jdks/temurin-21");
+        let output = formatter.format_env(&path).unwrap();
+        assert_eq!(
+            output,
+            "set -g JAVA_HOME \"/home/user/.kopi/jdks/temurin-21\"\n"
         );
     }
 
