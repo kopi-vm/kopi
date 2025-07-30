@@ -152,7 +152,11 @@ fn test_network_failure_handling() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("Error:"))
-        .stderr(predicate::str::contains("connection").or(predicate::str::contains("network")));
+        .stderr(
+            predicate::str::contains("Network")
+                .or(predicate::str::contains("connection"))
+                .or(predicate::str::contains("Source 'foojay' is not available")),
+        );
 }
 
 #[test]
