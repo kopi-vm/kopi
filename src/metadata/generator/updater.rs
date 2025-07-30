@@ -55,6 +55,22 @@ impl UpdateHandler {
         let filtered_final = self.filter_by_javafx(filtered_by_platform);
         println!("  After filters: {} packages", filtered_final.len());
 
+        // Safety check: Ensure we're not losing too many packages
+        let existing_count = existing_metadata.len();
+        let current_count = filtered_final.len();
+        if existing_count > 0 && current_count < existing_count {
+            let reduction_percentage = ((existing_count - current_count) as f64 / existing_count as f64) * 100.0;
+            if reduction_percentage >= 5.0 && !self.config.force {
+                return Err(KopiError::ValidationError(format!(
+                    "Package count dropped by {:.1}% ({} → {}). This might indicate an API issue. Use --force to override.",
+                    reduction_percentage, existing_count, current_count
+                )));
+            } else if reduction_percentage > 0.0 {
+                println!("  ⚠️  Warning: Package count decreased by {:.1}% ({} → {})", 
+                    reduction_percentage, existing_count, current_count);
+            }
+        }
+
         // Step 4: Compare and detect changes
         self.report_progress("Detecting changes...");
         let (updates_needed, unchanged) = self.detect_changes(&existing_by_id, &filtered_final);
