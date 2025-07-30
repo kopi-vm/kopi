@@ -21,7 +21,7 @@ pub trait MetadataSource: Send + Sync {
     /// Fetch metadata for a specific distribution
     fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>>;
 
-    /// Fetch complete details for a specific package (used by MetadataResolver)
+    /// Fetch complete details for a specific package (used by MetadataProvider)
     /// Only needed for sources that return incomplete metadata
     fn fetch_package_details(&self, package_id: &str) -> Result<PackageDetails>;
 

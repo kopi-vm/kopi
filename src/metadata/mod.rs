@@ -5,7 +5,6 @@ pub mod http;
 pub mod index;
 pub mod local;
 pub mod provider;
-pub mod resolver;
 pub mod source;
 
 pub use foojay::FoojayMetadataSource;
@@ -15,5 +14,4 @@ pub use http::HttpMetadataSource;
 pub use index::{IndexFile, IndexFileEntry};
 pub use local::LocalDirectorySource;
 pub use provider::{MetadataProvider, SourceHealth};
-pub use resolver::MetadataResolver;
 pub use source::{MetadataSource, PackageDetails};
