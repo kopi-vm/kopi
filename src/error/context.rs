@@ -96,16 +96,11 @@ impl<'a> ErrorContext<'a> {
                 (suggestion, details)
             }
             KopiError::NoLocalVersion { searched_paths } => {
-                let set_cmd = if cfg!(windows) {
-                    "set KOPI_JAVA_VERSION=temurin@21"
-                } else {
-                    "export KOPI_JAVA_VERSION='temurin@21'"
-                };
-                let suggestion = Some(format!(
+                let suggestion = Some(
                     "To configure a Java version for this project:\n  - Create a .kopi-version \
-                     file: echo 'temurin@21' > .kopi-version\n  - Set environment variable: \
-                     {set_cmd}\n  - Set a global default: kopi global temurin@21"
-                ));
+                     file: echo 'temurin@21' > .kopi-version\n  - Set for this directory: kopi local temurin@21\n  - Set a global default: kopi global temurin@21"
+                        .to_string(),
+                );
                 let details = if searched_paths.is_empty() {
                     None
                 } else {
