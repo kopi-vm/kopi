@@ -108,7 +108,7 @@ When finishing any coding task, always run the following commands in order and f
 
 1. Verify sccache is working: `sccache --show-stats` (should show cache hits after first build)
 2. `cargo fmt` - Auto-format code
-3. `cargo clippy` - Check for type and linting errors
+3. `cargo clippy -- -W clippy::all` - Check for type and linting errors with all warnings enabled
 4. `cargo clippy --tests -- -D warnings` - Check for linting errors in test code
 5. `cargo check` - Fast error checking without building
 6. `cargo test --lib --quiet` - Run unit tests (faster than full test suite)
