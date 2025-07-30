@@ -81,7 +81,6 @@ fn create_realistic_cache() -> MetadataCache {
                                 },
                                 release_status: Some("ga".to_string()),
                                 latest_build_available: Some(true),
-                                is_complete: true,
                             });
                         }
                     }
@@ -134,7 +133,6 @@ fn create_cache_with_size(size: usize) -> MetadataCache {
             },
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         });
     }
 
@@ -276,7 +274,6 @@ pub fn bench_search_performance(c: &mut Criterion) {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         };
         b.iter(|| {
             // Simulate conversion by cloning

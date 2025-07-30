@@ -149,11 +149,8 @@ impl MetadataSource for HttpMetadataSource {
         // Fetch only metadata files relevant to this platform
         for entry in platform_files {
             match self.fetch_metadata_file(&entry.path) {
-                Ok(mut metadata) => {
-                    // Mark all as complete since HTTP source provides full metadata
-                    for m in &mut metadata {
-                        m.is_complete = true;
-                    }
+                Ok(metadata) => {
+                    // HTTP source provides full metadata with download_url and checksums
                     all_metadata.extend(metadata);
                 }
                 Err(e) => warn!("Failed to fetch {}: {}", entry.path, e),
@@ -179,10 +176,8 @@ impl MetadataSource for HttpMetadataSource {
         // Fetch only the specific distribution files
         for entry in filtered_files {
             match self.fetch_metadata_file(&entry.path) {
-                Ok(mut pkg_metadata) => {
-                    for m in &mut pkg_metadata {
-                        m.is_complete = true;
-                    }
+                Ok(pkg_metadata) => {
+                    // HTTP source provides full metadata with download_url and checksums
                     metadata.extend(pkg_metadata);
                 }
                 Err(e) => warn!("Failed to fetch {}: {}", entry.path, e),

@@ -125,7 +125,6 @@ mod tests {
             term_of_support: None,
             release_status: None,
             latest_build_available: None,
-            is_complete: complete,
         }
     }
 
@@ -481,11 +480,11 @@ mod tests {
         // Fetch initial data from primary
         let mut result = provider.fetch_all().unwrap();
         assert_eq!(result.len(), 1);
-        assert!(!result[0].is_complete);
+        assert!(!result[0].is_complete());
 
         // Ensure complete should use fallback for details
         provider.ensure_complete(&mut result[0]).unwrap();
-        assert!(result[0].is_complete);
+        assert!(result[0].is_complete());
         assert_eq!(
             result[0].download_url,
             Some("https://fallback.com/jdk.tar.gz".to_string())

@@ -70,7 +70,6 @@ impl FoojayMetadataSource {
             term_of_support: package.term_of_support,
             release_status: package.release_status,
             latest_build_available: package.latest_build_available,
-            is_complete: false, // Mark as incomplete since we don't have download_url
         })
     }
 }
@@ -245,7 +244,7 @@ mod tests {
         assert_eq!(metadata.download_url, None); // Should be None for incomplete
         assert_eq!(metadata.checksum, None);
         assert_eq!(metadata.checksum_type, None);
-        assert!(!metadata.is_complete); // Should be marked as incomplete
+        assert!(!metadata.is_complete()); // Should be marked as incomplete
     }
 
     #[test]

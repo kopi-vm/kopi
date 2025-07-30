@@ -33,7 +33,6 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         term_of_support: Some("lts".to_string()),
         release_status: Some("ga".to_string()),
         latest_build_available: Some(true),
-        is_complete: true,
     };
 
     // Add STS version (22)
@@ -55,7 +54,6 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         term_of_support: Some("sts".to_string()),
         release_status: Some("ga".to_string()),
         latest_build_available: Some(true),
-        is_complete: true,
     };
 
     // Add EA version (23)
@@ -77,7 +75,6 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         term_of_support: Some("sts".to_string()),
         release_status: Some("ea".to_string()),
         latest_build_available: Some(true),
-        is_complete: true,
     };
 
     // Add JRE package
@@ -99,7 +96,6 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         term_of_support: Some("lts".to_string()),
         release_status: Some("ga".to_string()),
         latest_build_available: Some(true),
-        is_complete: true,
     };
 
     // Add JavaFX bundled package
@@ -121,7 +117,6 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
         term_of_support: Some("lts".to_string()),
         release_status: Some("ga".to_string()),
         latest_build_available: Some(true),
-        is_complete: true,
     };
 
     // Create distribution caches
@@ -283,7 +278,6 @@ fn test_compact_mode_deduplication() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         });
     }
 
@@ -337,7 +331,6 @@ fn test_detailed_mode_deduplication_keeps_smallest() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         });
     }
 

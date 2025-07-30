@@ -64,11 +64,8 @@ impl LocalDirectorySource {
 
             if let Ok(file) = File::open(&file_path) {
                 match serde_json::from_reader::<_, Vec<JdkMetadata>>(file) {
-                    Ok(mut metadata) => {
-                        // Mark all as complete since local files have full metadata
-                        for m in &mut metadata {
-                            m.is_complete = true;
-                        }
+                    Ok(metadata) => {
+                        // Local files should have full metadata
                         all_metadata.extend(metadata);
                     }
                     Err(e) => {
@@ -206,7 +203,6 @@ mod tests {
                 term_of_support: None,
                 release_status: None,
                 latest_build_available: None,
-                is_complete: true,
             },
             JdkMetadata {
                 distribution: "corretto".to_string(),
@@ -226,7 +222,6 @@ mod tests {
                 term_of_support: None,
                 release_status: None,
                 latest_build_available: None,
-                is_complete: true,
             },
         ]
     }
@@ -356,7 +351,7 @@ mod tests {
                     .iter()
                     .all(|m| m.operating_system == OperatingSystem::Linux)
             );
-            assert!(metadata.iter().all(|m| m.is_complete));
+            assert!(metadata.iter().all(|m| m.is_complete()));
         }
 
         // On Windows, would get only Windows metadata

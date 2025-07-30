@@ -42,7 +42,6 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
         JdkMetadata {
             id: "temurin-22-sts".to_string(),
@@ -62,7 +61,6 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("sts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
         JdkMetadata {
             id: "temurin-23-ea".to_string(),
@@ -82,7 +80,6 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("sts".to_string()),
             release_status: Some("ea".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
     ];
 
@@ -115,7 +112,6 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
         JdkMetadata {
             id: "corretto-11-lts".to_string(),
@@ -135,7 +131,6 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(false),
-            is_complete: true,
         },
     ];
 
@@ -168,7 +163,6 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
         JdkMetadata {
             id: "zulu-21".to_string(),
@@ -188,7 +182,6 @@ fn create_comprehensive_test_cache() -> (TestHomeGuard, KopiConfig, MetadataCach
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
     ];
 
@@ -448,7 +441,6 @@ fn test_integration_platform_specific_filtering() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
         JdkMetadata {
             id: "temurin-21-windows".to_string(),
@@ -468,7 +460,6 @@ fn test_integration_platform_specific_filtering() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
         JdkMetadata {
             id: "temurin-21-mac".to_string(),
@@ -488,7 +479,6 @@ fn test_integration_platform_specific_filtering() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
     ];
 
@@ -633,7 +623,6 @@ fn test_integration_performance_large_cache() {
                 },
                 release_status: Some("ga".to_string()),
                 latest_build_available: Some(minor == 4),
-                is_complete: true,
             });
         }
     }

@@ -170,35 +170,35 @@ pub fn fetch_package_checksum(
     package_id: &str,
     config: &KopiConfig,
 ) -> Result<(String, ChecksumType)> {
-    // Create metadata provider from config
-    let provider = MetadataProvider::from_config(config)?;
+    // First, try to find the metadata in the cache
+    let cache = get_metadata(None, config)?;
 
-    // Create a minimal metadata with just the package ID to fetch details
-    let mut metadata = JdkMetadata {
-        id: package_id.to_string(),
-        distribution: String::new(),
-        version: crate::version::Version::new(0, 0, 0),
-        distribution_version: crate::version::Version::new(0, 0, 0),
-        architecture: crate::models::platform::Architecture::X64,
-        operating_system: crate::models::platform::OperatingSystem::Linux,
-        package_type: crate::models::package::PackageType::Jdk,
-        archive_type: crate::models::package::ArchiveType::TarGz,
-        download_url: None,
-        checksum: None,
-        checksum_type: None,
-        size: 0,
-        lib_c_type: None,
-        javafx_bundled: false,
-        term_of_support: None,
-        release_status: None,
-        latest_build_available: None,
-        is_complete: false,
-    };
+    // Search for the package in all distributions
+    let mut found_metadata = None;
+    for dist_cache in cache.distributions.values() {
+        if let Some(metadata) = dist_cache.packages.iter().find(|pkg| pkg.id == package_id) {
+            found_metadata = Some(metadata.clone());
+            break;
+        }
+    }
 
-    // Fetch the complete details
-    provider
-        .ensure_complete(&mut metadata)
-        .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch package checksum: {e}")))?;
+    // If not found in cache, we can't fetch checksum without full metadata
+    let mut metadata = found_metadata.ok_or_else(|| {
+        KopiError::MetadataFetch(format!(
+            "Package with ID '{package_id}' not found in cache. Cannot fetch checksum."
+        ))
+    })?;
+
+    // If metadata is incomplete, try to complete it
+    if !metadata.is_complete() {
+        // Create metadata provider from config
+        let provider = MetadataProvider::from_config(config)?;
+
+        // Fetch the complete details
+        provider.ensure_complete(&mut metadata).map_err(|e| {
+            KopiError::MetadataFetch(format!("Failed to fetch package checksum: {e}"))
+        })?;
+    }
 
     // Extract checksum and type
     let checksum = metadata.checksum.ok_or_else(|| {

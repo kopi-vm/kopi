@@ -329,7 +329,7 @@ impl<'a> InstallCommand<'a> {
             );
 
             // Ensure metadata is complete before using it
-            if !jdk_metadata.is_complete {
+            if !jdk_metadata.is_complete() {
                 debug!("Metadata is incomplete, fetching package details...");
                 let provider = crate::metadata::MetadataProvider::from_config(self.config)?;
                 provider.ensure_complete(&mut jdk_metadata)?;
@@ -361,7 +361,7 @@ impl<'a> InstallCommand<'a> {
                         );
 
                         // Ensure metadata is complete before using it
-                        if !jdk_metadata.is_complete {
+                        if !jdk_metadata.is_complete() {
                             debug!("Metadata is incomplete, fetching package details...");
                             let provider =
                                 crate::metadata::MetadataProvider::from_config(self.config)?;
@@ -450,7 +450,6 @@ impl<'a> InstallCommand<'a> {
             term_of_support: package.term_of_support,
             release_status: package.release_status,
             latest_build_available: package.latest_build_available,
-            is_complete: true, // We have the download URL from the API package
         })
     }
     fn convert_metadata_to_package(&self, metadata: &JdkMetadata) -> crate::models::api::Package {
@@ -575,7 +574,6 @@ mod tests {
             term_of_support: None,
             release_status: None,
             latest_build_available: None,
-            is_complete: true,
         };
 
         let package = cmd.convert_metadata_to_package(&metadata);

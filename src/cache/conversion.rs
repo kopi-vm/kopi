@@ -80,7 +80,6 @@ pub fn convert_package_to_jdk_metadata(
         term_of_support: api_package.term_of_support,
         release_status: api_package.release_status,
         latest_build_available: api_package.latest_build_available,
-        is_complete: true, // API package includes download URL, so it's complete
     };
 
     Ok(jdk_metadata)

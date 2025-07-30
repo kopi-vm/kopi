@@ -177,13 +177,12 @@ impl MetadataGenerator {
                     }
 
                     // Fetch package details if not complete
-                    if !jdk.is_complete {
+                    if !jdk.is_complete() {
                         match source.fetch_package_details(&jdk.id) {
                             Ok(details) => {
                                 jdk.download_url = Some(details.download_url);
                                 jdk.checksum = details.checksum;
                                 jdk.checksum_type = details.checksum_type;
-                                jdk.is_complete = true;
                             }
                             Err(e) => {
                                 errors

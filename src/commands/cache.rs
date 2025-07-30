@@ -920,7 +920,6 @@ mod tests {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: None,
-            is_complete: true,
         };
 
         let dist = DistributionCache {

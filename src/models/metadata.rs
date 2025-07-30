@@ -26,8 +26,13 @@ pub struct JdkMetadata {
     pub term_of_support: Option<String>,
     pub release_status: Option<String>,
     pub latest_build_available: Option<bool>,
+}
 
-    // Tracks whether lazy fields have been loaded
-    #[serde(skip)]
-    pub is_complete: bool,
+impl JdkMetadata {
+    /// Check if the metadata has all required fields for installation
+    pub fn is_complete(&self) -> bool {
+        // Only require download_url to be present
+        // Checksum is optional - if not present, download will proceed without verification
+        self.download_url.is_some()
+    }
 }

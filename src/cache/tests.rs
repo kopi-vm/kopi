@@ -54,7 +54,6 @@ fn create_test_cache() -> MetadataCache {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
         JdkMetadata {
             id: "test-17".to_string(),
@@ -75,7 +74,6 @@ fn create_test_cache() -> MetadataCache {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
     ];
 
@@ -537,7 +535,6 @@ fn test_lookup_with_javafx_filter() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
         JdkMetadata {
             id: "liberica-21-with-fx".to_string(),
@@ -558,7 +555,6 @@ fn test_lookup_with_javafx_filter() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
     ];
 
@@ -784,7 +780,6 @@ fn test_distribution_version_boundary_matching() {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         };
 
         let mut pkg1 = base_pkg.clone();

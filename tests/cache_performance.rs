@@ -92,7 +92,6 @@ fn create_large_test_cache() -> MetadataCache {
                                         Some("ea".to_string())
                                     },
                                     latest_build_available: Some(patch == 10),
-                                    is_complete: true,
                                 });
                             }
                         }

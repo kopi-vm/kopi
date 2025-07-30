@@ -26,7 +26,6 @@ mod http_tests {
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         }
     }
 
@@ -165,7 +164,7 @@ mod http_tests {
         assert!(result.is_ok());
         let all_metadata = result.unwrap();
         assert_eq!(all_metadata.len(), 2); // Both files fetched
-        assert!(all_metadata.iter().all(|m| m.is_complete));
+        assert!(all_metadata.iter().all(|m| m.is_complete()));
     }
 
     #[test]

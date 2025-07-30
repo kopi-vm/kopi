@@ -52,7 +52,6 @@ fn setup_test_cache() -> (
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
         // Temurin 17.0.9
         JdkMetadata {
@@ -73,7 +72,6 @@ fn setup_test_cache() -> (
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
         // Temurin 11.0.21
         JdkMetadata {
@@ -94,7 +92,6 @@ fn setup_test_cache() -> (
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
     ];
 
@@ -128,7 +125,6 @@ fn setup_test_cache() -> (
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
         // Corretto 17.0.10
         JdkMetadata {
@@ -149,7 +145,6 @@ fn setup_test_cache() -> (
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: Some(true),
-            is_complete: true,
         },
     ];
 

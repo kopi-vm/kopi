@@ -219,12 +219,11 @@ impl MetadataProvider {
 
     /// Ensure metadata has all required fields (lazy loading)
     pub fn ensure_complete(&self, metadata: &mut JdkMetadata) -> Result<()> {
-        if !metadata.is_complete {
+        if !metadata.is_complete() {
             let details = self.fetch_package_details(&metadata.id)?;
             metadata.download_url = Some(details.download_url);
             metadata.checksum = details.checksum;
             metadata.checksum_type = details.checksum_type;
-            metadata.is_complete = true;
         }
         Ok(())
     }
@@ -396,13 +395,12 @@ mod tests {
             term_of_support: None,
             release_status: None,
             latest_build_available: None,
-            is_complete: true,
         };
 
         // ensure_complete should not make any changes
         let result = provider.ensure_complete(&mut metadata);
         assert!(result.is_ok());
-        assert!(metadata.is_complete);
+        assert!(metadata.is_complete());
         assert_eq!(
             metadata.download_url,
             Some("https://example.com/download".to_string())

@@ -97,7 +97,6 @@ fn test_cache_offline_mode() {
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
-        is_complete: true,
     };
 
     let dist = DistributionCache {
@@ -164,7 +163,6 @@ fn test_find_package_in_cache() {
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
-        is_complete: true,
     };
 
     let dist = DistributionCache {
@@ -246,7 +244,6 @@ fn test_cache_with_install_command() {
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
-        is_complete: true,
     };
 
     let dist = DistributionCache {

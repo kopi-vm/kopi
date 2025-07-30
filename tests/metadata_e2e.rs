@@ -135,7 +135,6 @@ fn test_metadata_provider_basic_search() {
             term_of_support: None,
             release_status: None,
             latest_build_available: None,
-            is_complete: true,
         },
         JdkMetadata {
             id: "zulu-21.0.2".to_string(),
@@ -155,7 +154,6 @@ fn test_metadata_provider_basic_search() {
             term_of_support: None,
             release_status: None,
             latest_build_available: None,
-            is_complete: true,
         },
     ];
 
@@ -193,7 +191,6 @@ fn test_metadata_provider_fallback() {
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
-        is_complete: true,
     }];
 
     let fallback_metadata = vec![JdkMetadata {
@@ -214,7 +211,6 @@ fn test_metadata_provider_fallback() {
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
-        is_complete: true,
     }];
 
     let _primary = Arc::new(MockMetadataSource::new(primary_metadata));
@@ -288,8 +284,7 @@ fn test_local_directory_integration() {
             "checksum": "abcdef123456",
             "checksum_type": "sha256",
             "size": 100000000,
-            "javafx_bundled": false,
-            "is_complete": false
+            "javafx_bundled": false
         },
         {
             "id": "temurin-17.0.9-linux-x64",
@@ -304,8 +299,7 @@ fn test_local_directory_integration() {
             "checksum": "fedcba654321",
             "checksum_type": "sha256",
             "size": 100000000,
-            "javafx_bundled": false,
-            "is_complete": false
+            "javafx_bundled": false
         },
         {
             "id": "zulu-21.0.2-linux-x64",
@@ -320,8 +314,7 @@ fn test_local_directory_integration() {
             "checksum": "123abc456def",
             "checksum_type": "sha256",
             "size": 100000000,
-            "javafx_bundled": false,
-            "is_complete": false
+            "javafx_bundled": false
         }
     ]);
     std::fs::write(
@@ -380,7 +373,6 @@ fn test_metadata_cache_integration() {
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
-        is_complete: true,
     };
 
     // MetadataCache doesn't have add_packages method, it stores data differently
@@ -410,7 +402,6 @@ fn test_concurrent_metadata_access() {
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
-        is_complete: true,
     }];
 
     let source = MockMetadataSource::new(metadata);
@@ -468,7 +459,6 @@ fn test_error_handling_and_recovery() {
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
-        is_complete: true,
     }];
 
     let source = MockMetadataSource::new(metadata.clone());

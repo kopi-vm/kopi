@@ -67,7 +67,7 @@ fn test_real_github_pages_fetch_all() {
             }
 
             // Verify all metadata is marked as complete
-            assert!(metadata.iter().all(|m| m.is_complete));
+            assert!(metadata.iter().all(|m| m.is_complete()));
 
             // Verify we got platform-specific metadata
             let current_arch = kopi::platform::get_current_architecture();
@@ -97,7 +97,7 @@ fn test_real_github_pages_fetch_distribution() {
 
             // Verify all are temurin
             assert!(metadata.iter().all(|m| m.distribution == "temurin"));
-            assert!(metadata.iter().all(|m| m.is_complete));
+            assert!(metadata.iter().all(|m| m.is_complete()));
 
             if !metadata.is_empty() {
                 println!("Sample temurin JDK:");
