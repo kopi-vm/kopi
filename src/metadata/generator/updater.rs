@@ -63,13 +63,11 @@ impl UpdateHandler {
                 ((existing_count - current_count) as f64 / existing_count as f64) * 100.0;
             if reduction_percentage >= 5.0 && !self.config.force {
                 return Err(KopiError::ValidationError(format!(
-                    "Package count dropped by {:.1}% ({} → {}). This might indicate an API issue. Use --force to override.",
-                    reduction_percentage, existing_count, current_count
+                    "Package count dropped by {reduction_percentage:.1}% ({existing_count} → {current_count}). This might indicate an API issue. Use --force to override."
                 )));
             } else if reduction_percentage > 0.0 {
                 println!(
-                    "  ⚠️  Warning: Package count decreased by {:.1}% ({} → {})",
-                    reduction_percentage, existing_count, current_count
+                    "  ⚠️  Warning: Package count decreased by {reduction_percentage:.1}% ({existing_count} → {current_count})"
                 );
             }
         }

@@ -5,7 +5,6 @@ use predicates::prelude::*;
 use serial_test::serial;
 use std::fs;
 use std::path::Path;
-use tempfile;
 
 fn get_test_command(kopi_home: &Path) -> Command {
     let mut cmd = Command::cargo_bin("kopi").unwrap();
