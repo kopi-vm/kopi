@@ -13,7 +13,7 @@ fn get_test_cache_path(test_home: &TestHomeGuard) -> PathBuf {
 
 #[test]
 #[serial]
-#[ignore] // This test requires network access
+#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_fetch_and_cache_metadata() {
     let test_home = TestHomeGuard::new();
     let test_home = test_home.setup_kopi_structure();
