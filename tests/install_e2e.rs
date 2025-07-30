@@ -1007,7 +1007,6 @@ fn test_install_jre_package() {
 /// This specifically tests the fix for extracting files in subdirectories within tar.gz archives
 #[test]
 #[ignore = "GraalVM metadata not yet deployed to kopi-vm.github.io"]
-#[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_graalvm() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
