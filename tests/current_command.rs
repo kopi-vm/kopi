@@ -237,13 +237,12 @@ fn test_current_environment_takes_priority() {
 }
 
 #[test]
-#[ignore = "Global default currently uses dirs::home_dir() instead of KOPI_HOME, making it difficult to test in isolation"]
 fn test_current_with_global_default() {
     let temp_home = TestHomeGuard::new();
     temp_home.setup_kopi_structure();
 
     // Create global default version file
-    let global_version_file = temp_home.kopi_home().join("default-version");
+    let global_version_file = temp_home.kopi_home().join("version");
     fs::write(&global_version_file, "11").unwrap();
 
     // Create a temp directory for running the command
