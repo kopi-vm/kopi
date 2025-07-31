@@ -1,6 +1,6 @@
 [package]
 name = "kopi"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2024"
 authors = ["taichi"]
 license = "Apache-2.0"
