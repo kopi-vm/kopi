@@ -1,0 +1,32 @@
+# WiX v6 build artifacts
+*.wixobj
+*.wixpdb
+*.msi
+*.cab
+*.log
+*.wixlib
+
+# Generated files
+License.rtf
+
+# Output directory
+output/
+
+# MSBuild directories
+bin/
+obj/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Signing certificates (should never be committed)
+*.pfx
+*.p12
+*.cer
+
+# WiX extensions cache
+.nuget/
+
+# Test outputs
+test-results.csv

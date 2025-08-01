@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization Culture="en-us" xmlns="http://wixtoolset.org/schemas/v4/wxl">
+  <!-- Override default WixUI strings -->
+  <String Id="WelcomeDlgTitle" Value="{\WixUI_Font_Bigger}Welcome to the [ProductName] [ProductVersion] Setup Wizard" />
+  <String Id="WelcomeDlgDescription" Value="This Setup Wizard will install [ProductName] [ProductVersion] on your computer. Click Next to continue or Cancel to exit the Setup Wizard." />
+  
+  <String Id="LicenseAgreementDlgTitle" Value="{\WixUI_Font_Title}End-User License Agreement" />
+  <String Id="LicenseAgreementDlgDescription" Value="Please read the following license agreement carefully" />
+  
+  <String Id="InstallDirDlgTitle" Value="{\WixUI_Font_Title}Destination Folder" />
+  <String Id="InstallDirDlgDescription" Value="Click Next to install to the default folder (%USERPROFILE%\.kopi\bin) or click Change to choose another" />
+  
+  <String Id="VerifyReadyDlgInstallTitle" Value="{\WixUI_Font_Title}Ready to install [ProductName]" />
+  <String Id="VerifyReadyDlgInstallDescription" Value="Click Install to begin the installation. Click Back to review or change any of your installation settings. Click Cancel to exit the wizard." />
+  
+  <String Id="ProgressDlgTitleInstalling" Value="{\WixUI_Font_Title}Installing [ProductName]" />
+  <String Id="ProgressDlgTitleRemoving" Value="{\WixUI_Font_Title}Removing [ProductName]" />
+  
+  <!-- Progress text for custom actions -->
+  <String Id="KopiSetup" Value="Setting up Kopi environment..." />
+  
+  <!-- Exit dialog -->
+  <String Id="ExitDialogTitle" Value="{\WixUI_Font_Bigger}Completing the [ProductName] Setup Wizard" />
+  <String Id="ExitDialogDescription" Value="Kopi has been successfully installed to %USERPROFILE%\.kopi\bin&#13;&#10;&#13;&#10;To start using Kopi, open a new terminal window and run:&#13;&#10;&#13;&#10;    kopi --help&#13;&#10;&#13;&#10;Note: Environment variables have been updated. You may need to restart your terminal for changes to take effect." />
+  
+  <!-- Error messages -->
+  <String Id="Error_WixToolsetNotFound" Value="WiX Toolset is required to build this installer. Please install from https://wixtoolset.org/" />
+  <String Id="Error_CargoNotFound" Value="Cargo (Rust build tool) is required to build Kopi. Please install from https://rustup.rs/" />
+  <String Id="Error_BinaryNotFound" Value="Required binary file not found. Please build the project first using 'cargo build --release'" />
+  
+  <!-- Feature descriptions -->
+  <String Id="FeatureCompleteDescription" Value="Complete installation of Kopi JDK version manager" />
+  <String Id="FeatureMainProgramDescription" Value="Core Kopi executable and shim binaries" />
+  <String Id="FeatureDocumentationDescription" Value="README and license files" />
+  <String Id="FeatureEnvironmentDescription" Value="User environment variable configuration" />
+</WixLocalization>

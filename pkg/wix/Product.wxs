@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" 
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  
+  <!-- Package definition for WiX v6 (using v4 schema) -->
+  <Package ProductCode="*"
+           Name="Kopi" 
+           Version="$(var.Version)" 
+           Manufacturer="Kopi Contributors" 
+           UpgradeCode="6503f7d2-998f-412b-8d34-b6b2073cf939"
+           InstallerVersion="500"
+           Compressed="yes"
+           Scope="perMachine"
+           Language="1033">
+
+    <!-- Package information -->
+    <SummaryInformation 
+      Description="Kopi - JDK Version Management Tool"
+      Comments="A fast JDK version manager written in Rust" />
+
+    <!-- Upgrade settings -->
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    
+    <!-- Media for installation files -->
+    <Media Id="1" Cabinet="Kopi.cab" EmbedCab="yes" />
+
+    <!-- License agreement -->
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+    
+    <!-- Custom properties -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    
+    <!-- Installation directory structure -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="KopiRootFolder" Name="Kopi">
+        <Directory Id="INSTALLFOLDER" Name="bin">
+          <!-- Main binaries -->
+          <Component Id="KopiExe" Guid="bf8637ec-6a0c-44fb-93a0-f31d266abf62">
+            <File Id="KopiExeFile" Source="$(var.KopiProjectRoot)target\release\kopi.exe" KeyPath="yes" />
+          </Component>
+          
+          <Component Id="KopiShimExe" Guid="5c2fa8d3-32b1-45f2-bd5a-fc9f2532a29b">
+            <File Id="KopiShimExeFile" Source="$(var.KopiProjectRoot)target\release-shim\kopi-shim.exe" KeyPath="yes" />
+          </Component>
+        </Directory>
+        
+        <!-- Documentation -->
+        <Directory Id="DocsFolder" Name="docs">
+          <Component Id="Documentation" Guid="8ca86153-c757-4616-b251-bf426aa6383d">
+            <File Id="ReadmeFile" Source="$(var.KopiProjectRoot)README.md" KeyPath="yes" />
+            <File Id="LicenseFile" Source="$(var.KopiProjectRoot)LICENSE" />
+            <File Id="ReferenceFile" Source="$(var.KopiProjectRoot)docs\reference.md" />
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    
+
+    <!-- Environment Variables -->
+    <Component Id="EnvironmentVars" Directory="INSTALLFOLDER" Guid="58291e66-7453-4bee-9a33-51530fe39c44">
+      <Environment Id="KopiHome" 
+                   Name="KOPI_HOME" 
+                   Value="%USERPROFILE%\.kopi" 
+                   Permanent="no" 
+                   Part="all" 
+                   Action="set" 
+                   System="yes" />
+      
+      <Environment Id="PathUpdateBin" 
+                   Name="PATH" 
+                   Value="[ProgramFiles64Folder]Kopi\bin" 
+                   Permanent="no" 
+                   Part="last" 
+                   Action="set" 
+                   System="yes" />
+      
+      <Environment Id="PathUpdateShims" 
+                   Name="PATH" 
+                   Value="%USERPROFILE%\.kopi\shims" 
+                   Permanent="no" 
+                   Part="last" 
+                   Action="set" 
+                   System="yes" />
+    </Component>
+
+    <!-- Feature definition -->
+    <Feature Id="Complete" Title="Kopi" Level="1">
+      <ComponentRef Id="KopiExe" />
+      <ComponentRef Id="KopiShimExe" />
+      <ComponentRef Id="Documentation" />
+      <ComponentRef Id="EnvironmentVars" />
+    </Feature>
+
+    <!-- UI configuration -->
+    <ui:WixUI Id="WixUI_InstallDir" />
+    
+    <!-- Custom Actions -->
+    <!-- Note: kopi setup is NOT run during installation because:
+         1. It needs to run as the actual user (not SYSTEM)
+         2. %USERPROFILE% would resolve to the wrong directory
+         3. Users should run 'kopi setup' manually after installation
+    -->
+    
+    <!-- Removed automatic kopi setup - users must run it manually -->
+  </Package>
+</Wix>

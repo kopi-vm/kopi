@@ -1,0 +1,39 @@
+<Project Sdk="WixToolset.Sdk/6.0.1">
+  <PropertyGroup>
+    <!-- Disable automatic inclusion of .wxs files -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- Package information -->
+    <OutputType>Package</OutputType>
+    
+    <!-- Version property - can be overridden from command line -->
+    <Version Condition="'$(Version)' == ''">0.0.3</Version>
+    
+    <OutputName>kopi-$(Version)-x64</OutputName>
+    
+    <!-- Build configuration -->
+    <InstallerPlatform>x64</InstallerPlatform>
+    <DefaultCompressionLevel>high</DefaultCompressionLevel>
+    <SuppressValidation>false</SuppressValidation>
+    
+    <!-- Preprocessor variables -->
+    <DefineConstants>
+      Version=$(Version);
+      KopiProjectRoot=$(MSBuildProjectDirectory)\..\..\
+    </DefineConstants>
+    
+    <!-- Output settings -->
+    <OutputPath>output\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Source files -->
+    <Compile Include="Product.wxs" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <!-- WiX Extensions -->
+    <PackageReference Include="WixToolset.UI.wixext" Version="6.*" />
+  </ItemGroup>
+</Project>
