@@ -5,6 +5,7 @@
 *.cab
 *.log
 *.wixlib
+*.exe
 
 # Generated files
 License.rtf

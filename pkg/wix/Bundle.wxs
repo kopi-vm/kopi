@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" 
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+  
+  <!-- Bundle definition for WiX v6 -->
+  <Bundle Name="Kopi" 
+          Version="$(var.Version)" 
+          Manufacturer="Kopi Contributors" 
+          UpgradeCode="b5e3f7d2-998f-412b-8d34-b6b2073cf940">
+    
+    <!-- Bootstrap Application -->
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication 
+        Theme="rtfLicense"
+        LicenseFile="License.rtf" />
+    </BootstrapperApplication>
+
+    <!-- Chain of installers -->
+    <Chain>
+      <!-- Visual C++ 2015-2022 Redistributable (x64) -->
+      <!-- Always run the installer - it will skip if already installed -->
+      <!-- We don't use DetectCondition because:
+           1. Registry detection is fragile (keys change with updates)
+           2. The VC++ installer itself is the best judge of what's needed
+           3. Exit code 1638 means "already installed" - treated as success -->
+      <ExePackage Id="VCRedist"
+                  Name="Microsoft Visual C++ 2015-2022 Redistributable (x64)"
+                  Cache="remove"
+                  Compressed="yes"
+                  PerMachine="yes"
+                  Permanent="yes"
+                  Protocol="burn"
+                  SourceFile="$(var.VCRedistPath)"
+                  InstallArguments="/install /quiet /norestart"
+                  RepairArguments="/repair /quiet /norestart"
+                  UninstallArguments="/uninstall /quiet /norestart"
+                  DetectCondition="true">
+        
+        <!-- Exit codes -->
+        <ExitCode Value="0" Behavior="success" />
+        <ExitCode Value="1638" Behavior="success" /> <!-- Already installed or newer version present -->
+        <ExitCode Value="3010" Behavior="scheduleReboot" /> <!-- Reboot required -->
+      </ExePackage>
+
+      <!-- Kopi MSI -->
+      <MsiPackage Id="KopiMsi"
+                  Name="Kopi JDK Version Manager"
+                  SourceFile="$(var.KopiMsiPath)"
+                  Compressed="yes"
+                  Vital="yes" />
+    </Chain>
+  </Bundle>
+</Wix>

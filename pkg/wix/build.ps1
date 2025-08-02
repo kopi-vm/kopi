@@ -1,5 +1,8 @@
 # Kopi MSI Build Script
 # This script builds the Kopi MSI installer using WiX Toolset v6
+# 
+# NOTE: This builds a standalone MSI that requires Visual C++ Runtime.
+# For a complete installer that includes VC++ Runtime, use build-bundle.ps1 instead.
 
 param(
     [string]$Configuration = "Release",

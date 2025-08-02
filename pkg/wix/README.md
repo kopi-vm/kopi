@@ -1,6 +1,21 @@
-# Kopi Windows Installer (MSI)
+# Kopi Windows Installer
 
-This directory contains the WiX Toolset v6 configuration files for building the Kopi MSI installer for Windows.
+This directory contains the WiX Toolset v6 configuration files for building the Kopi installer for Windows.
+
+## Installer Types
+
+1. **Bundle Installer** (`kopi-bundle-x.x.x-x64.exe`) - **Recommended**
+   - Includes Visual C++ 2015-2022 Redistributable
+   - Automatically installs all dependencies
+   - Smart VC++ handling (installs/updates/skips as needed)
+   - No fragile registry detection
+   - Better user experience
+   - Single file distribution
+
+2. **Standalone MSI** (`kopi-x.x.x-x64.msi`)
+   - Lightweight installer
+   - Requires Visual C++ Runtime to be pre-installed
+   - Suitable for managed environments
 
 ## Prerequisites
 
@@ -19,11 +34,23 @@ This directory contains the WiX Toolset v6 configuration files for building the 
 
 4. **PowerShell** (for running the build script)
 
-## Building the MSI
+## Building the Installer
 
-### Quick Build
+### Quick Build (Bundle - Recommended)
 
-Run the build script from this directory:
+Build the bundle installer with all dependencies:
+
+```powershell
+# Download VC++ Runtime (first time only)
+.\download-vcredist.ps1
+
+# Build the bundle
+.\build-bundle.ps1
+```
+
+### Standalone MSI Build
+
+Build just the MSI without dependencies:
 
 ```powershell
 .\build.ps1
@@ -62,15 +89,24 @@ wix build Product.wxs -arch x64 -out output\kopi.msi
 
 ## Files
 
+### Bundle Installer Files
+- `Bundle.wxs` - WiX bundle configuration
+- `build-bundle.ps1` - Bundle build script
+- `download-vcredist.ps1` - Downloads Visual C++ Runtime
+
+### MSI Installer Files
 - `Product.wxs` - Main WiX configuration defining the MSI structure
-- `Kopi.wixproj` - MSBuild project file for WiX v6
+- `kopi.wixproj` - MSBuild project file for WiX v6
+- `build.ps1` - Standalone MSI build script
+
+### Common Files
 - `WixUI_en-us.wxl` - Localization strings for English
-- `build.ps1` - PowerShell build script
 - `License.rtf` - License file (generated from project LICENSE)
+- `test-installer.ps1` - Automated test script (works with both bundle and MSI)
 
-## MSI Features
+## Installer Features
 
-The installer includes:
+Both installer types include:
 
 1. **Core Components**
    - `kopi.exe` - Main Kopi executable
@@ -164,11 +200,17 @@ If you get "WiX Toolset v6 is not installed" error:
 
 ## Distribution
 
-The built MSI file will be in the output directory:
-- Default: `.\output\kopi-{version}-x64.msi`
-- File size: ~5-10 MB (depending on build configuration)
+### Bundle Installer (Recommended)
+- Location: `.\output\kopi-bundle-{version}-x64.exe`
+- File size: ~15-20 MB (includes VC++ Runtime)
+- Best for: End users, direct downloads
 
-The MSI can be distributed through:
+### Standalone MSI
+- Location: `.\output\en-us\kopi-{version}-x64.msi`
+- File size: ~5-10 MB
+- Best for: Managed environments with pre-installed VC++ Runtime
+
+Distribution channels:
 - Direct download from project website
 - Microsoft Store (with additional packaging)
 - Corporate software deployment tools

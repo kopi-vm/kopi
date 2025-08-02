@@ -1,0 +1,45 @@
+<Project Sdk="WixToolset.Sdk/6.0.1">
+  <PropertyGroup>
+    <!-- Disable automatic inclusion of .wxs files -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- Bundle information -->
+    <OutputType>Bundle</OutputType>
+    
+    <!-- Version property - can be overridden from command line -->
+    <Version Condition="'$(Version)' == ''">0.0.3</Version>
+    
+    <OutputName>kopi-bundle-$(Version)-x64</OutputName>
+    
+    <!-- Build configuration -->
+    <InstallerPlatform>x64</InstallerPlatform>
+    
+    <!-- Preprocessor variables -->
+    <DefineConstants>
+      Version=$(Version);
+      KopiProjectRoot=$(MSBuildProjectDirectory)\..\..\;
+      KopiMsiPath=$(KopiMsiPath);
+      VCRedistPath=$(VCRedistPath)
+    </DefineConstants>
+    
+    <!-- Output settings -->
+    <OutputPath>output\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Source files -->
+    <Compile Include="Bundle.wxs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- WiX Extensions -->
+    <PackageReference Include="WixToolset.Bal.wixext" Version="6.*" />
+  </ItemGroup>
+  
+  <!-- Validation that required properties are set -->
+  <Target Name="ValidateBundleProperties" BeforeTargets="Build">
+    <Error Condition="'$(VCRedistPath)' == ''" Text="VCRedistPath property must be set. Use -p:VCRedistPath=path\to\vc_redist.x64.exe" />
+    <Error Condition="!Exists('$(VCRedistPath)')" Text="VC++ Redistributable not found at: $(VCRedistPath)" />
+    <Error Condition="!Exists('$(KopiMsiPath)')" Text="Kopi MSI not found at: $(KopiMsiPath). Build the MSI first using build.ps1" />
+  </Target>
+</Project>
