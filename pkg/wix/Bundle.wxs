@@ -13,7 +13,7 @@
       <bal:WixStandardBootstrapperApplication 
         Theme="rtfLicense"
         LicenseFile="License.rtf"
-        LogoFile="$(KopiProjectRoot)docs/images/logo.png" />
+        LogoFile="$(KopiProjectRoot)docs/images/logo_black.png" />
     </BootstrapperApplication>
 
     <!-- Chain of installers -->
