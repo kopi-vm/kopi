@@ -6,7 +6,7 @@
   <Bundle Name="Kopi" 
           Version="$(var.Version)" 
           Manufacturer="Kopi Contributors" 
-          UpgradeCode="b5e3f7d2-998f-412b-8d34-b6b2073cf940">
+          UpgradeCode="4b11714c-c8d0-42b1-a8ca-fa07553ffeb6">
     
     <!-- Bootstrap Application -->
     <BootstrapperApplication>
