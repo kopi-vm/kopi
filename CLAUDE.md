@@ -78,20 +78,11 @@ mod tests {
 ### Completing Work
 When finishing any coding task, always run the following commands in order and fix any issues:
 
-1. Verify sccache is working: `sccache --show-stats` (should show cache hits after first build)
-2. `cargo fmt` - Auto-format code
-3. `cargo clippy -- -W clippy::all` - Check for type and linting errors with all warnings enabled
-4. `cargo clippy --tests -- -D warnings` - Check for linting errors in test code
-5. `cargo check` - Fast error checking without building
-6. `cargo test --lib --quiet` - Run unit tests (faster than full test suite)
-7. `cargo build --benches` - Ensure benchmark tests compile (if benchmarks were modified)
+1. `cargo fmt` - Auto-format code
+2. `cargo clippy --all-targets -- -D warnings` - Check for linting errors in test code
+3. `cargo test --lib --quiet` - Run unit tests (faster than full test suite)
 
 Address any errors from each command before proceeding to the next. All must pass successfully before considering the work complete.
-
-If sccache is not installed, you'll see an error when running cargo commands. Install it with:
-```bash
-cargo install sccache
-```
 
 ### Performance Considerations
 - **Test execution** is limited to 4 threads by default (configured in `.cargo/config.toml`)
