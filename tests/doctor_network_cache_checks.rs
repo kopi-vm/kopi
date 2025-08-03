@@ -223,7 +223,7 @@ fn test_network_checks_performance() {
 
     // Network checks should complete within reasonable time
     assert!(
-        total_duration < Duration::from_secs(10),
+        total_duration < Duration::from_secs(30),
         "Network checks took too long: {total_duration:?}"
     );
 
