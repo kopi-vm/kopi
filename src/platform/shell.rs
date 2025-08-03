@@ -24,69 +24,82 @@ pub fn detect_shell() -> Result<(Shell, PathBuf)> {
     let mut system = System::new();
     system.refresh_processes(ProcessesToUpdate::All);
 
-    // Find parent process
-    if let Some(current_process) = system.process(Pid::from_u32(current_pid)) {
-        if let Some(parent_pid) = current_process.parent() {
-            if let Some(parent_process) = system.process(parent_pid) {
-                // Get the executable path
-                if let Some(exe_path) = parent_process.exe() {
-                    log::debug!("Parent process executable: {exe_path:?}");
+    // Traverse up the process tree to find a shell
+    let mut current_pid = Pid::from_u32(current_pid);
+    let mut depth = 0;
+    const MAX_DEPTH: usize = 10; // Prevent infinite loops
 
-                    // Get just the file name from the path
-                    if let Some(file_name) = exe_path.file_name() {
-                        let file_str = file_name.to_string_lossy();
-                        log::debug!("Parent process file name: {file_str}");
+    loop {
+        if depth >= MAX_DEPTH {
+            log::debug!("Reached maximum depth ({MAX_DEPTH}) while searching for shell");
+            break;
+        }
 
-                        // Check executable file name and return both type and path
-                        match file_str.as_ref() {
-                            "bash" | "bash.exe" => {
-                                return Ok((Shell::Bash, exe_path.to_path_buf()));
-                            }
-                            "zsh" | "zsh.exe" => return Ok((Shell::Zsh, exe_path.to_path_buf())),
-                            "fish" | "fish.exe" => {
-                                return Ok((Shell::Fish, exe_path.to_path_buf()));
-                            }
-                            "powershell" | "powershell.exe" => {
-                                return Ok((Shell::PowerShell, exe_path.to_path_buf()));
-                            }
-                            "pwsh" | "pwsh.exe" => {
-                                return Ok((Shell::PowerShell, exe_path.to_path_buf()));
-                            }
-                            "cmd" | "cmd.exe" => return Ok((Shell::Cmd, exe_path.to_path_buf())),
-                            _ => {
-                                log::debug!("Parent process is not a recognized shell: {file_str}");
-                                #[cfg(windows)]
-                                {
-                                    return Err(KopiError::ShellDetectionError(format!(
-                                        "Parent process '{file_str}' is not a recognized shell. \
-                                         Please specify shell type with --shell option"
-                                    )));
-                                }
-                                // On Unix, continue to try other detection methods
-                            }
-                        }
+        let Some(process) = system.process(current_pid) else {
+            log::debug!("Process with PID {current_pid:?} not found");
+            break;
+        };
+
+        // Check if this process is a shell
+        if let Some(exe_path) = process.exe() {
+            if let Some(file_name) = exe_path.file_name() {
+                let file_str = file_name.to_string_lossy();
+                log::debug!("Checking process at depth {depth}: {file_str} (PID: {current_pid:?})");
+
+                // Check executable file name and return both type and path
+                match file_str.as_ref() {
+                    "bash" | "bash.exe" => {
+                        log::debug!("Found bash shell at depth {depth}");
+                        return Ok((Shell::Bash, exe_path.to_path_buf()));
                     }
-                }
-
-                // If we can't get the executable path on Windows, fail immediately
-                #[cfg(windows)]
-                {
-                    log::error!("Failed to get executable path for parent process");
-                    return Err(KopiError::ShellDetectionError(
-                        "Cannot determine parent shell executable path. Please specify shell type \
-                         with --shell option"
-                            .to_string(),
-                    ));
+                    "zsh" | "zsh.exe" => {
+                        log::debug!("Found zsh shell at depth {depth}");
+                        return Ok((Shell::Zsh, exe_path.to_path_buf()));
+                    }
+                    "fish" | "fish.exe" => {
+                        log::debug!("Found fish shell at depth {depth}");
+                        return Ok((Shell::Fish, exe_path.to_path_buf()));
+                    }
+                    "powershell" | "powershell.exe" => {
+                        log::debug!("Found PowerShell at depth {depth}");
+                        return Ok((Shell::PowerShell, exe_path.to_path_buf()));
+                    }
+                    "pwsh" | "pwsh.exe" => {
+                        log::debug!("Found PowerShell Core at depth {depth}");
+                        return Ok((Shell::PowerShell, exe_path.to_path_buf()));
+                    }
+                    "cmd" | "cmd.exe" => {
+                        log::debug!("Found cmd shell at depth {depth}");
+                        return Ok((Shell::Cmd, exe_path.to_path_buf()));
+                    }
+                    _ => {
+                        // Not a recognized shell, continue searching
+                    }
                 }
             }
         }
+
+        // Move to parent process
+        let Some(parent_pid) = process.parent() else {
+            log::debug!("No parent process found for PID {current_pid:?}");
+            break;
+        };
+
+        // Check for process loops (shouldn't happen but be safe)
+        if parent_pid == current_pid {
+            log::debug!("Detected process loop: process is its own parent");
+            break;
+        }
+
+        current_pid = parent_pid;
+        depth += 1;
     }
 
-    // On Windows, we cannot proceed without parent process detection
+    // On Windows, we couldn't find a shell in the process tree
     #[cfg(windows)]
     {
         Err(KopiError::ShellDetectionError(
-            "Cannot detect parent shell on Windows. Please specify shell type with --shell option"
+            "Cannot detect shell in process tree. Please specify shell type with --shell option"
                 .to_string(),
         ))
     }
