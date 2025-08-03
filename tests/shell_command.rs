@@ -84,7 +84,9 @@ mod shell_command_tests {
             .env("KOPI_AUTO_INSTALL__ENABLED", "false")
             .assert()
             .failure()
-            .stderr(predicate::str::contains("not found").or(predicate::str::contains("not installed")));
+            .stderr(
+                predicate::str::contains("not found").or(predicate::str::contains("not installed")),
+            );
     }
 
     #[test]
