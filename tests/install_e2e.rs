@@ -3,6 +3,7 @@ use assert_cmd::Command;
 use common::TestHomeGuard;
 use predicates::prelude::*;
 use regex::Regex;
+use serial_test::serial;
 use std::fs;
 use std::path::Path;
 
@@ -17,6 +18,7 @@ fn get_test_command(kopi_home: &Path) -> Command {
 /// User command: `kopi install 21`
 /// Expected: Successfully installs latest Eclipse Temurin 21.x.x
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_basic_version() {
     let test_home = TestHomeGuard::new();
@@ -41,6 +43,7 @@ fn test_install_basic_version() {
 /// User command: `kopi install corretto@17`
 /// Expected: Successfully installs Amazon Corretto 17
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_with_distribution() {
     let test_home = TestHomeGuard::new();
@@ -65,6 +68,7 @@ fn test_install_with_distribution() {
 /// User command: `kopi install 999.999.999`
 /// Expected: Clear error message with suggestion to check available versions
 #[test]
+#[serial]
 fn test_install_invalid_version() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -83,6 +87,7 @@ fn test_install_invalid_version() {
 /// User command: `kopi install invalid@#$%`
 /// Expected: Error message explaining proper version format with examples
 #[test]
+#[serial]
 fn test_install_invalid_format() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -103,6 +108,7 @@ fn test_install_invalid_format() {
 /// Simulates: User tries to install a version that already exists
 /// Expected: Error message suggesting --force flag to reinstall
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_already_exists() {
     let test_home = TestHomeGuard::new();
@@ -134,6 +140,7 @@ fn test_install_already_exists() {
 /// User command: `kopi install 21 --force`
 /// Expected: Successfully reinstalls even if version exists
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_force_reinstall() {
     let test_home = TestHomeGuard::new();
@@ -160,6 +167,7 @@ fn test_install_force_reinstall() {
 }
 
 #[test]
+#[serial]
 fn test_install_with_timeout() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -176,6 +184,7 @@ fn test_install_with_timeout() {
 }
 
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_no_progress() {
     let test_home = TestHomeGuard::new();
@@ -196,6 +205,7 @@ fn test_install_no_progress() {
 }
 
 #[test]
+#[serial]
 fn test_install_verbose_output() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -210,6 +220,7 @@ fn test_install_verbose_output() {
 }
 
 #[test]
+#[serial]
 fn test_install_without_cache() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -226,6 +237,7 @@ fn test_install_without_cache() {
 }
 
 #[test]
+#[serial]
 #[cfg(unix)]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_permission_denied() {
@@ -262,6 +274,7 @@ fn test_install_permission_denied() {
 }
 
 #[test]
+#[serial]
 fn test_install_with_javafx() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -284,6 +297,7 @@ fn test_install_with_javafx() {
 }
 
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_concurrent_installs() {
     use std::thread;
@@ -322,6 +336,7 @@ fn test_concurrent_installs() {
 }
 
 #[test]
+#[serial]
 fn test_install_specific_version() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -337,6 +352,7 @@ fn test_install_specific_version() {
 }
 
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_lts_version() {
     let test_home = TestHomeGuard::new();
@@ -357,6 +373,7 @@ fn test_install_lts_version() {
 }
 
 #[test]
+#[serial]
 fn test_exit_codes() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -381,6 +398,7 @@ fn test_exit_codes() {
 }
 
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_actual_download() {
     let test_home = TestHomeGuard::new();
@@ -405,6 +423,7 @@ fn test_actual_download() {
 /// Test actual JDK installation and verify file structure
 /// This test performs a real download and installation
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_and_verify_files() {
     let test_home = TestHomeGuard::new();
@@ -561,6 +580,7 @@ fn test_install_and_verify_files() {
 
 /// Test installation creates proper shims
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_creates_shims() {
     let test_home = TestHomeGuard::new();
@@ -610,6 +630,7 @@ fn test_install_creates_shims() {
 
 /// Test installation with specific distribution
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_specific_distribution() {
     let test_home = TestHomeGuard::new();
@@ -654,6 +675,7 @@ fn test_install_specific_distribution() {
 
 /// Test that installation properly handles disk space
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_verifies_disk_space() {
     let test_home = TestHomeGuard::new();
@@ -682,6 +704,7 @@ fn test_install_verifies_disk_space() {
 
 /// Test concurrent installation of the same version
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_concurrent_same_version_install() {
     use std::thread;
@@ -762,6 +785,7 @@ fn test_concurrent_same_version_install() {
 
 /// Test installation cleanup on failure
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_cleanup_on_failure() {
     let test_home = TestHomeGuard::new();
@@ -801,6 +825,7 @@ fn test_install_cleanup_on_failure() {
 
 /// Simple test to debug installation process
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_simple_install_debug() {
     let test_home = TestHomeGuard::new();
@@ -870,6 +895,7 @@ fn test_simple_install_debug() {
 /// Test JRE installation to verify it downloads JRE instead of JDK
 /// This test ensures that JRE packages contain java but not javac
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_jre_package() {
     let test_home = TestHomeGuard::new();
@@ -1005,6 +1031,7 @@ fn test_install_jre_package() {
 /// Test GraalVM installation to verify nested archive extraction works correctly
 /// This specifically tests the fix for extracting files in subdirectories within tar.gz archives
 #[test]
+#[serial]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_graalvm() {
     let test_home = TestHomeGuard::new();
