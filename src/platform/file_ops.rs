@@ -140,44 +140,50 @@ pub fn atomic_rename(from: &Path, to: &Path) -> std::io::Result<()> {
 /// Check if any files in the given path are currently in use
 #[cfg(target_os = "windows")]
 pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
-    debug!("Checking if files are in use at {}", path.display());
+    use fs2::FileExt;
+
+    debug!(
+        "Checking if critical JDK files are in use at {}",
+        path.display()
+    );
 
     let mut files_in_use = Vec::new();
 
-    // Try to rename the directory to test if it's in use
-    let temp_path = path.with_extension("kopi_test_temp");
-    match std::fs::rename(path, &temp_path) {
-        Ok(_) => {
-            // Rename back immediately
-            if let Err(e) = std::fs::rename(&temp_path, path) {
-                debug!("Warning: Failed to rename back from temporary name: {e}");
-            }
-        }
-        Err(e) => {
-            debug!("Cannot rename directory: {e}");
-            files_in_use.push("Directory appears to be in use (cannot rename)".to_string());
+    // Check only critical JDK executables
+    let critical_files = [
+        "bin/java.exe",
+        "bin/javac.exe",
+        "bin/javaw.exe",
+        "bin/jar.exe",
+    ];
 
-            // Additionally, try to check specific files
-            if path.is_dir() {
-                use walkdir::WalkDir;
-
-                for entry in WalkDir::new(path).max_depth(2).into_iter().flatten() {
-                    let file_path = entry.path();
-                    if file_path.is_file() {
-                        // Try to open the file exclusively
-                        match std::fs::OpenOptions::new()
-                            .read(true)
-                            .write(true)
-                            .open(file_path)
-                        {
-                            Ok(_) => {
-                                // File can be opened, it's not locked
-                            }
-                            Err(_) => {
-                                files_in_use
-                                    .push(format!("File may be in use: {}", file_path.display()));
-                            }
+    for file_name in &critical_files {
+        let file_path = path.join(file_name);
+        if file_path.exists() {
+            match fs::File::open(&file_path) {
+                Ok(file) => {
+                    // Try to acquire an exclusive lock (non-blocking)
+                    match file.try_lock_exclusive() {
+                        Ok(_) => {
+                            // File is not in use, unlock it
+                            let _ = FileExt::unlock(&file);
                         }
+                        Err(_) => {
+                            files_in_use.push(format!(
+                                "Critical file may be in use: {}",
+                                file_path.display()
+                            ));
+                        }
+                    }
+                }
+                Err(e) => {
+                    // If we can't even open the file, it might be in use
+                    debug!("Cannot open {}: {}", file_path.display(), e);
+                    if e.kind() == std::io::ErrorKind::PermissionDenied {
+                        files_in_use.push(format!(
+                            "Critical file may be in use (access denied): {}",
+                            file_path.display()
+                        ));
                     }
                 }
             }
@@ -190,64 +196,45 @@ pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
 /// Check if any files in the given path are currently in use
 #[cfg(not(target_os = "windows"))]
 pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
-    debug!("Checking if files are in use at {}", path.display());
+    use fs2::FileExt;
+
+    debug!(
+        "Checking if critical JDK files are in use at {}",
+        path.display()
+    );
 
     let mut files_in_use = Vec::new();
 
-    // Try to rename the directory to test if it's in use
-    let temp_path = path.with_extension("kopi_test_temp");
-    match std::fs::rename(path, &temp_path) {
-        Ok(_) => {
-            // Rename back immediately
-            if let Err(e) = std::fs::rename(&temp_path, path) {
-                debug!("Warning: Failed to rename back from temporary name: {e}");
-            }
-        }
-        Err(e) => {
-            debug!("Cannot rename directory: {e}");
-            files_in_use.push("Directory appears to be in use (cannot rename)".to_string());
+    // Check only critical JDK executables
+    let critical_files = ["bin/java", "bin/javac", "bin/javaw", "bin/jar"];
 
-            // On Unix, we can also check if files are open by trying to get exclusive locks
-            if path.is_dir() {
-                use walkdir::WalkDir;
-
-                for entry in WalkDir::new(path).max_depth(2).into_iter().flatten() {
-                    let file_path = entry.path();
-                    if file_path.is_file() {
-                        // Try to open the file with exclusive access
-                        match std::fs::OpenOptions::new()
-                            .read(true)
-                            .write(true)
-                            .open(file_path)
-                        {
-                            Ok(file) => {
-                                // Try to get an exclusive lock
-                                use std::os::unix::io::AsRawFd;
-                                let fd = file.as_raw_fd();
-
-                                let mut flock = libc::flock {
-                                    l_type: libc::F_WRLCK as i16,
-                                    l_whence: libc::SEEK_SET as i16,
-                                    l_start: 0,
-                                    l_len: 0,
-                                    l_pid: 0,
-                                };
-
-                                let result = unsafe { libc::fcntl(fd, libc::F_GETLK, &mut flock) };
-
-                                if result != -1 && flock.l_type != libc::F_UNLCK as i16 {
-                                    files_in_use.push(format!(
-                                        "File may be locked by process {}: {}",
-                                        flock.l_pid,
-                                        file_path.display()
-                                    ));
-                                }
-                            }
-                            Err(_) => {
-                                files_in_use
-                                    .push(format!("Cannot access file: {}", file_path.display()));
-                            }
+    for file_name in &critical_files {
+        let file_path = path.join(file_name);
+        if file_path.exists() {
+            match fs::File::open(&file_path) {
+                Ok(file) => {
+                    // Try to acquire an exclusive lock (non-blocking)
+                    match file.try_lock_exclusive() {
+                        Ok(_) => {
+                            // File is not in use, unlock it
+                            let _ = FileExt::unlock(&file);
                         }
+                        Err(_) => {
+                            files_in_use.push(format!(
+                                "Critical file may be in use: {}",
+                                file_path.display()
+                            ));
+                        }
+                    }
+                }
+                Err(e) => {
+                    // If we can't even open the file, it might be in use
+                    debug!("Cannot open {}: {}", file_path.display(), e);
+                    if e.kind() == std::io::ErrorKind::PermissionDenied {
+                        files_in_use.push(format!(
+                            "Critical file may be in use (access denied): {}",
+                            file_path.display()
+                        ));
                     }
                 }
             }
