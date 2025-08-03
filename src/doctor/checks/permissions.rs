@@ -322,13 +322,17 @@ mod tests {
     fn test_directory_permissions_check() {
         let temp_dir = TempDir::new().unwrap();
 
+        // Create the kopi home directory structure
+        let kopi_home = temp_dir.path().join(".kopi");
+        fs::create_dir(&kopi_home).unwrap();
+
         // Create subdirectories
-        fs::create_dir(temp_dir.path().join("jdks")).unwrap();
-        fs::create_dir(temp_dir.path().join("shims")).unwrap();
-        fs::create_dir(temp_dir.path().join("cache")).unwrap();
+        fs::create_dir(kopi_home.join("jdks")).unwrap();
+        fs::create_dir(kopi_home.join("shims")).unwrap();
+        fs::create_dir(kopi_home.join("cache")).unwrap();
 
         unsafe {
-            env::set_var("KOPI_HOME", temp_dir.path());
+            env::set_var("KOPI_HOME", &kopi_home);
         }
         let config = crate::config::new_kopi_config().unwrap();
 
