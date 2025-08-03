@@ -6,11 +6,11 @@ use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use kopi::commands::which::WhichCommand;
 use kopi::config::KopiConfig;
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 use tempfile::TempDir;
 
 /// Create a test JDK installation for benchmarking
-fn setup_test_jdk(kopi_home: &PathBuf, distribution: &str, version: &str) {
+fn setup_test_jdk(kopi_home: &Path, distribution: &str, version: &str) {
     let jdk_path = kopi_home
         .join("jdks")
         .join(format!("{distribution}-{version}"));

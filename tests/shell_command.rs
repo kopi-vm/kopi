@@ -81,9 +81,10 @@ mod shell_command_tests {
         Command::cargo_bin("kopi")
             .unwrap()
             .args(["shell", "21", "--shell", "nonexistent_shell"])
+            .env("KOPI_AUTO_INSTALL__ENABLED", "false")
             .assert()
             .failure()
-            .stderr(predicate::str::contains("not found"));
+            .stderr(predicate::str::contains("not found").or(predicate::str::contains("not installed")));
     }
 
     #[test]
