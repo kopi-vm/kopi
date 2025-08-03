@@ -14,6 +14,41 @@ fn get_test_command(kopi_home: &Path) -> Command {
     cmd
 }
 
+/// Resolves a file path within a JDK directory, handling macOS-specific directory structure
+/// On macOS, JDK files may be located under Contents/Home/ subdirectory
+fn resolve_jdk_path(jdk_dir: &Path, relative_path: &str) -> std::path::PathBuf {
+    if cfg!(target_os = "macos") {
+        let contents_home = jdk_dir.join("Contents").join("Home");
+        if contents_home.exists() {
+            contents_home.join(relative_path)
+        } else {
+            jdk_dir.join(relative_path)
+        }
+    } else {
+        jdk_dir.join(relative_path)
+    }
+}
+
+/// Resolves a file path within a JDK directory with fallback checking
+/// This is used for files that might exist in multiple locations on macOS
+fn resolve_jdk_path_with_fallback(jdk_dir: &Path, relative_path: &str) -> std::path::PathBuf {
+    if cfg!(target_os = "macos") {
+        let contents_home = jdk_dir.join("Contents").join("Home");
+        if contents_home.exists() {
+            let path_in_contents = contents_home.join(relative_path);
+            if path_in_contents.exists() {
+                path_in_contents
+            } else {
+                jdk_dir.join(relative_path)
+            }
+        } else {
+            jdk_dir.join(relative_path)
+        }
+    } else {
+        jdk_dir.join(relative_path)
+    }
+}
+
 /// Test basic version installation without distribution specification
 /// User command: `kopi install 21`
 /// Expected: Successfully installs latest Eclipse Temurin 21.x.x
@@ -512,8 +547,12 @@ fn test_install_and_verify_files() {
     assert!(jdk_dir.is_dir(), "JDK path should be a directory");
 
     // Verify bin directory exists
-    let bin_dir = jdk_dir.join("bin");
-    assert!(bin_dir.exists(), "bin directory should exist");
+    // On macOS, the bin directory might be under Contents/Home/
+    let bin_dir = resolve_jdk_path(&jdk_dir, "bin");
+    assert!(
+        bin_dir.exists(),
+        "bin directory should exist at {bin_dir:?}"
+    );
     assert!(bin_dir.is_dir(), "bin should be a directory");
 
     // Debug: List all files in bin directory
@@ -563,12 +602,20 @@ fn test_install_and_verify_files() {
     eprintln!("Package type: {}", if is_jdk { "JDK" } else { "JRE" });
 
     // Verify lib directory exists
-    let lib_dir = jdk_dir.join("lib");
-    assert!(lib_dir.exists(), "lib directory should exist");
+    // On macOS, the lib directory might be under Contents/Home/
+    let lib_dir = resolve_jdk_path(&jdk_dir, "lib");
+    assert!(
+        lib_dir.exists(),
+        "lib directory should exist at {lib_dir:?}"
+    );
 
     // Verify release file exists (contains JDK version info)
-    let release_file = jdk_dir.join("release");
-    assert!(release_file.exists(), "release file should exist");
+    // On macOS, the release file might be under Contents/Home/
+    let release_file = resolve_jdk_path_with_fallback(&jdk_dir, "release");
+    assert!(
+        release_file.exists(),
+        "release file should exist at {release_file:?}"
+    );
 
     // Verify the content of release file
     let release_content = fs::read_to_string(&release_file).unwrap();
@@ -587,7 +634,11 @@ fn test_install_creates_shims() {
     test_home.setup_kopi_structure();
     let kopi_home = test_home.kopi_home();
 
-    // First refresh cache
+    // First run setup to ensure shims directory and kopi-shim are created
+    let mut cmd = get_test_command(&kopi_home);
+    cmd.arg("setup").assert().success();
+
+    // Refresh cache
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("cache").arg("refresh").assert().success();
 
@@ -948,8 +999,12 @@ fn test_install_jre_package() {
     );
 
     // Verify bin directory exists
-    let bin_dir = jdk_dir.join("bin");
-    assert!(bin_dir.exists(), "bin directory should exist");
+    // On macOS, the bin directory might be under Contents/Home/
+    let bin_dir = resolve_jdk_path(&jdk_dir, "bin");
+    assert!(
+        bin_dir.exists(),
+        "bin directory should exist at {bin_dir:?}"
+    );
 
     // Debug: List all files in bin directory
     eprintln!("Files in JRE bin directory:");
@@ -998,12 +1053,20 @@ fn test_install_jre_package() {
     );
 
     // Verify lib directory exists
-    let lib_dir = jdk_dir.join("lib");
-    assert!(lib_dir.exists(), "lib directory should exist");
+    // On macOS, the lib directory might be under Contents/Home/
+    let lib_dir = resolve_jdk_path(&jdk_dir, "lib");
+    assert!(
+        lib_dir.exists(),
+        "lib directory should exist at {lib_dir:?}"
+    );
 
     // Verify release file exists
-    let release_file = jdk_dir.join("release");
-    assert!(release_file.exists(), "release file should exist");
+    // On macOS, the release file might be under Contents/Home/
+    let release_file = resolve_jdk_path_with_fallback(&jdk_dir, "release");
+    assert!(
+        release_file.exists(),
+        "release file should exist at {release_file:?}"
+    );
 
     // Verify shims were created - shims are stored in the bin directory
     let bin_shim_dir = kopi_home.join("bin");
@@ -1084,7 +1147,9 @@ fn test_install_graalvm() {
     assert!(jdk_dir.exists(), "JDK directory should exist");
 
     // Check for the license-information-user-manual.zip file that was failing before the fix
-    let license_file = jdk_dir.join("license-information-user-manual.zip");
+    // On macOS, this file might be under Contents/Home/
+    let license_file =
+        resolve_jdk_path_with_fallback(&jdk_dir, "license-information-user-manual.zip");
     assert!(
         license_file.exists(),
         "license-information-user-manual.zip should be extracted at {license_file:?}"
@@ -1098,8 +1163,12 @@ fn test_install_graalvm() {
     );
 
     // Verify other standard JDK files exist
-    let bin_dir = jdk_dir.join("bin");
-    assert!(bin_dir.exists(), "bin directory should exist");
+    // On macOS, the bin directory might be under Contents/Home/
+    let bin_dir = resolve_jdk_path(&jdk_dir, "bin");
+    assert!(
+        bin_dir.exists(),
+        "bin directory should exist at {bin_dir:?}"
+    );
 
     let exe_ext = if cfg!(windows) { ".exe" } else { "" };
     let java_exe = bin_dir.join(format!("java{exe_ext}"));

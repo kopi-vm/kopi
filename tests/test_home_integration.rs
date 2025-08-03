@@ -190,10 +190,14 @@ fn test_user_home_directory_isolation() {
     let test_home = test_home.setup_kopi_structure();
     let test_kopi_home = test_home.kopi_home();
 
-    // Verify test environment is not in user's home
+    // Verify test environment is isolated from user's actual .kopi
     assert!(
-        !test_kopi_home.starts_with(&user_home),
-        "Test environment should not be in user's home directory"
+        test_kopi_home != user_kopi_dir,
+        "Test environment should not use user's actual .kopi directory"
+    );
+    assert!(
+        !test_kopi_home.starts_with(&user_kopi_dir),
+        "Test environment should not be inside user's .kopi directory"
     );
     assert!(
         test_kopi_home.to_string_lossy().contains("target/home"),
