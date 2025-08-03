@@ -1,5 +1,4 @@
 use crate::error::{KopiError, Result};
-use crate::platform;
 use std::env;
 use std::path::{Path, PathBuf};
 use sysinfo::{Pid, ProcessesToUpdate, System};
@@ -292,35 +291,73 @@ mod shell_tests {
 
 /// Check if a directory is in PATH
 pub fn is_in_path(dir: &Path) -> bool {
-    if let Ok(path_var) = env::var("PATH") {
-        let separator = platform::path_separator();
-        let paths = path_var.split(separator);
+    let Ok(paths) = env::var("PATH") else {
+        return false;
+    };
 
-        // Try to canonicalize the target directory for comparison
-        let canonical_dir = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
+    let canonical_dir = if dir.exists() {
+        dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf())
+    } else {
+        dir.to_path_buf()
+    };
 
-        for path in paths {
-            let path_buf = PathBuf::from(path);
-
-            // Try to canonicalize the PATH entry
-            let canonical_path = path_buf.canonicalize().unwrap_or_else(|_| path_buf.clone());
-
-            // Compare both original and canonical paths
-            if path_buf == dir
-                || canonical_path == canonical_dir
-                || path_buf == canonical_dir
-                || canonical_path == dir
-            {
-                return true;
-            }
+    env::split_paths(&paths).any(|path| {
+        // Direct comparison first
+        if path == dir {
+            return true;
         }
-    }
-    false
+
+        // Try canonical comparison
+        let canonical_path = if path.exists() {
+            path.canonicalize().unwrap_or_else(|_| path.clone())
+        } else {
+            path.clone()
+        };
+
+        canonical_path == canonical_dir || canonical_path == dir || path == canonical_dir
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_is_in_path_basic() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        // Create a temporary directory
+        let temp_dir = TempDir::new().unwrap();
+        let test_dir = temp_dir.path().join("test_kopi");
+        fs::create_dir_all(&test_dir).unwrap();
+
+        // Save original PATH
+        let original_path = env::var("PATH").unwrap_or_default();
+
+        // Test with directory in PATH
+        let separator = if cfg!(windows) { ";" } else { ":" };
+        let new_path = format!("{}{}{}", test_dir.display(), separator, original_path);
+        unsafe {
+            env::set_var("PATH", &new_path);
+        }
+
+        assert!(is_in_path(&test_dir), "Directory should be found in PATH");
+
+        // Test with directory not in PATH
+        unsafe {
+            env::set_var("PATH", &original_path);
+        }
+        assert!(
+            !is_in_path(&test_dir),
+            "Directory should not be found in PATH"
+        );
+
+        // Restore original PATH
+        unsafe {
+            env::set_var("PATH", original_path);
+        }
+    }
 
     #[test]
     fn test_shell_detection() {
@@ -389,7 +426,7 @@ mod tests {
         let original_path = env::var("PATH").unwrap_or_default();
 
         // Set a test PATH with platform-specific paths and separators
-        let separator = platform::path_separator();
+        let separator = if cfg!(windows) { ';' } else { ':' };
         let test_paths: Vec<&str>;
         let test_dir: &Path;
         let not_in_path_dir: &Path;
