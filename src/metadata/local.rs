@@ -268,6 +268,48 @@ mod tests {
                     checksum: None,
                     last_modified: None,
                 },
+                // macOS x64 entries
+                IndexFileEntry {
+                    path: "macos-x64-libc/temurin.json".to_string(),
+                    distribution: "temurin".to_string(),
+                    architectures: Some(vec!["x64".to_string()]),
+                    operating_systems: Some(vec!["macos".to_string()]),
+                    lib_c_types: Some(vec!["libc".to_string()]),
+                    size: 1024,
+                    checksum: None,
+                    last_modified: None,
+                },
+                IndexFileEntry {
+                    path: "macos-x64-libc/corretto.json".to_string(),
+                    distribution: "corretto".to_string(),
+                    architectures: Some(vec!["x64".to_string()]),
+                    operating_systems: Some(vec!["macos".to_string()]),
+                    lib_c_types: Some(vec!["libc".to_string()]),
+                    size: 1024,
+                    checksum: None,
+                    last_modified: None,
+                },
+                // macOS aarch64 entries
+                IndexFileEntry {
+                    path: "macos-aarch64-libc/temurin.json".to_string(),
+                    distribution: "temurin".to_string(),
+                    architectures: Some(vec!["aarch64".to_string()]),
+                    operating_systems: Some(vec!["macos".to_string()]),
+                    lib_c_types: Some(vec!["libc".to_string()]),
+                    size: 1024,
+                    checksum: None,
+                    last_modified: None,
+                },
+                IndexFileEntry {
+                    path: "macos-aarch64-libc/corretto.json".to_string(),
+                    distribution: "corretto".to_string(),
+                    architectures: Some(vec!["aarch64".to_string()]),
+                    operating_systems: Some(vec!["macos".to_string()]),
+                    lib_c_types: Some(vec!["libc".to_string()]),
+                    size: 1024,
+                    checksum: None,
+                    last_modified: None,
+                },
             ],
             generator_config: None,
         };
@@ -281,6 +323,12 @@ mod tests {
 
         let windows_dir = metadata_dir.join("windows-x64-c_std_lib");
         fs::create_dir_all(&windows_dir).unwrap();
+
+        let macos_x64_dir = metadata_dir.join("macos-x64-libc");
+        fs::create_dir_all(&macos_x64_dir).unwrap();
+
+        let macos_aarch64_dir = metadata_dir.join("macos-aarch64-libc");
+        fs::create_dir_all(&macos_aarch64_dir).unwrap();
 
         // Create metadata files
         let test_metadata = create_test_metadata();
@@ -305,6 +353,60 @@ mod tests {
             serde_json::to_string_pretty(&vec![JdkMetadata {
                 operating_system: OperatingSystem::Windows,
                 ..test_metadata[0].clone()
+            }])
+            .unwrap(),
+        )
+        .unwrap();
+
+        // macOS x64 files
+        fs::write(
+            macos_x64_dir.join("temurin.json"),
+            serde_json::to_string_pretty(&vec![JdkMetadata {
+                id: "temurin-21-macos-x64".to_string(),
+                operating_system: OperatingSystem::MacOS,
+                architecture: Architecture::X64,
+                lib_c_type: Some("libc".to_string()),
+                ..test_metadata[0].clone()
+            }])
+            .unwrap(),
+        )
+        .unwrap();
+
+        fs::write(
+            macos_x64_dir.join("corretto.json"),
+            serde_json::to_string_pretty(&vec![JdkMetadata {
+                id: "corretto-21-macos-x64".to_string(),
+                operating_system: OperatingSystem::MacOS,
+                architecture: Architecture::X64,
+                lib_c_type: Some("libc".to_string()),
+                ..test_metadata[1].clone()
+            }])
+            .unwrap(),
+        )
+        .unwrap();
+
+        // macOS aarch64 files
+        fs::write(
+            macos_aarch64_dir.join("temurin.json"),
+            serde_json::to_string_pretty(&vec![JdkMetadata {
+                id: "temurin-21-macos-aarch64".to_string(),
+                operating_system: OperatingSystem::MacOS,
+                architecture: Architecture::Aarch64,
+                lib_c_type: Some("libc".to_string()),
+                ..test_metadata[0].clone()
+            }])
+            .unwrap(),
+        )
+        .unwrap();
+
+        fs::write(
+            macos_aarch64_dir.join("corretto.json"),
+            serde_json::to_string_pretty(&vec![JdkMetadata {
+                id: "corretto-21-macos-aarch64".to_string(),
+                operating_system: OperatingSystem::MacOS,
+                architecture: Architecture::Aarch64,
+                lib_c_type: Some("libc".to_string()),
+                ..test_metadata[1].clone()
             }])
             .unwrap(),
         )
@@ -368,6 +470,29 @@ mod tests {
                     .all(|m| m.operating_system == OperatingSystem::Windows)
             );
         }
+
+        // On macOS, should get macOS metadata for current architecture
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(metadata.len(), 2);
+            assert!(
+                metadata
+                    .iter()
+                    .all(|m| m.operating_system == OperatingSystem::MacOS)
+            );
+            assert!(metadata.iter().all(|m| m.is_complete()));
+
+            // Verify architecture matches current system
+            #[cfg(target_arch = "x86_64")]
+            assert!(metadata.iter().all(|m| m.architecture == Architecture::X64));
+
+            #[cfg(target_arch = "aarch64")]
+            assert!(
+                metadata
+                    .iter()
+                    .all(|m| m.architecture == Architecture::Aarch64)
+            );
+        }
     }
 
     #[test]
@@ -384,6 +509,13 @@ mod tests {
         {
             assert_eq!(metadata.len(), 1);
             assert_eq!(metadata[0].distribution, "temurin");
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(metadata.len(), 1);
+            assert_eq!(metadata[0].distribution, "temurin");
+            assert_eq!(metadata[0].operating_system, OperatingSystem::MacOS);
         }
     }
 
@@ -406,8 +538,28 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let metadata_dir = setup_test_directory(&dir);
 
-        // Delete one of the metadata files
+        // Delete one of the metadata files based on platform
+        #[cfg(target_os = "linux")]
         fs::remove_file(metadata_dir.join("linux-x64-glibc").join("corretto.json")).unwrap();
+
+        #[cfg(target_os = "macos")]
+        {
+            #[cfg(target_arch = "x86_64")]
+            fs::remove_file(metadata_dir.join("macos-x64-libc").join("corretto.json")).unwrap();
+
+            #[cfg(target_arch = "aarch64")]
+            fs::remove_file(
+                metadata_dir
+                    .join("macos-aarch64-libc")
+                    .join("corretto.json"),
+            )
+            .unwrap();
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            // Windows doesn't have corretto in test data, so we don't need to delete anything
+        }
 
         let source = LocalDirectorySource::new(metadata_dir);
         let metadata = source.fetch_all().unwrap();
@@ -420,6 +572,13 @@ mod tests {
             assert_eq!(metadata.len(), 1);
             assert_eq!(metadata[0].distribution, "temurin");
         }
+
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(metadata.len(), 1);
+            assert_eq!(metadata[0].distribution, "temurin");
+            assert_eq!(metadata[0].operating_system, OperatingSystem::MacOS);
+        }
     }
 
     #[test]
@@ -427,12 +586,37 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let metadata_dir = setup_test_directory(&dir);
 
-        // Write corrupt JSON to one file
+        // Write corrupt JSON to one file based on platform
+        #[cfg(target_os = "linux")]
         fs::write(
             metadata_dir.join("linux-x64-glibc").join("corretto.json"),
             "{ invalid json",
         )
         .unwrap();
+
+        #[cfg(target_os = "macos")]
+        {
+            #[cfg(target_arch = "x86_64")]
+            fs::write(
+                metadata_dir.join("macos-x64-libc").join("corretto.json"),
+                "{ invalid json",
+            )
+            .unwrap();
+
+            #[cfg(target_arch = "aarch64")]
+            fs::write(
+                metadata_dir
+                    .join("macos-aarch64-libc")
+                    .join("corretto.json"),
+                "{ invalid json",
+            )
+            .unwrap();
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            // Windows only has one temurin file in test data, don't corrupt it
+        }
 
         let source = LocalDirectorySource::new(metadata_dir);
         let metadata = source.fetch_all().unwrap();
@@ -444,6 +628,13 @@ mod tests {
         {
             assert_eq!(metadata.len(), 1);
             assert_eq!(metadata[0].distribution, "temurin");
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(metadata.len(), 1);
+            assert_eq!(metadata[0].distribution, "temurin");
+            assert_eq!(metadata[0].operating_system, OperatingSystem::MacOS);
         }
     }
 
