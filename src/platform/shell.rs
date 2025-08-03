@@ -239,8 +239,37 @@ impl Shell {
     }
 }
 
+/// Check if a directory is in PATH
+pub fn is_in_path(dir: &Path) -> bool {
+    let Ok(paths) = env::var("PATH") else {
+        return false;
+    };
+
+    let canonical_dir = if dir.exists() {
+        dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf())
+    } else {
+        dir.to_path_buf()
+    };
+
+    env::split_paths(&paths).any(|path| {
+        // Direct comparison first
+        if path == dir {
+            return true;
+        }
+
+        // Try canonical comparison
+        let canonical_path = if path.exists() {
+            path.canonicalize().unwrap_or_else(|_| path.clone())
+        } else {
+            path.clone()
+        };
+
+        canonical_path == canonical_dir || canonical_path == dir || path == canonical_dir
+    })
+}
+
 #[cfg(test)]
-mod shell_tests {
+mod tests {
     use super::*;
 
     #[test]
@@ -287,40 +316,6 @@ mod shell_tests {
             "export PATH=\"$HOME/.kopi/shims:$PATH\""
         );
     }
-}
-
-/// Check if a directory is in PATH
-pub fn is_in_path(dir: &Path) -> bool {
-    let Ok(paths) = env::var("PATH") else {
-        return false;
-    };
-
-    let canonical_dir = if dir.exists() {
-        dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf())
-    } else {
-        dir.to_path_buf()
-    };
-
-    env::split_paths(&paths).any(|path| {
-        // Direct comparison first
-        if path == dir {
-            return true;
-        }
-
-        // Try canonical comparison
-        let canonical_path = if path.exists() {
-            path.canonicalize().unwrap_or_else(|_| path.clone())
-        } else {
-            path.clone()
-        };
-
-        canonical_path == canonical_dir || canonical_path == dir || path == canonical_dir
-    })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 
     #[test]
     fn test_is_in_path_basic() {
