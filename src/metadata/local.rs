@@ -12,18 +12,20 @@ use std::path::PathBuf;
 
 /// Get the platform directory name for the current system.
 ///
-/// For Linux systems, includes the libc type (e.g., "linux-x64-glibc").
-/// For other systems, omits the libc type (e.g., "windows-x64", "macos-aarch64").
+/// All platforms include the libc type in the directory name:
+/// - Linux: "linux-x64-glibc", "linux-x64-musl"
+/// - macOS: "macos-x64-libc", "macos-aarch64-libc"
+/// - Windows: "windows-x64-c_std_lib", "windows-aarch64-c_std_lib"
+/// - Others: "aix-ppc64-libc", "solaris-x64-libc", etc.
+///
+/// This format must match the directory structure created by
+/// MetadataGenerator::organize_metadata() in generator.rs.
 fn get_current_platform_directory() -> String {
     let os = get_current_os();
     let arch = get_current_architecture();
+    let libc = get_foojay_libc_type();
 
-    if os == "linux" {
-        let libc = get_foojay_libc_type();
-        format!("{os}-{arch}-{libc}")
-    } else {
-        format!("{os}-{arch}")
-    }
+    format!("{os}-{arch}-{libc}")
 }
 
 /// Metadata source that reads from a local directory structure
@@ -341,6 +343,8 @@ mod tests {
 
         let source = LocalDirectorySource::new(metadata_dir);
         let metadata = source.fetch_all().unwrap();
+        // Basic check that works on all platforms
+        assert!(!metadata.is_empty());
 
         // Should only get Linux metadata on Linux platforms
         #[cfg(target_os = "linux")]

@@ -235,16 +235,12 @@ fn test_local_directory_integration() {
     // Create index.json
     // Get the actual platform directory that LocalDirectorySource will look for
     use kopi::platform::{get_current_architecture, get_current_os, get_foojay_libc_type};
-    let platform_dir = if get_current_os() == "linux" {
-        format!(
-            "{}-{}-{}",
-            get_current_os(),
-            get_current_architecture(),
-            get_foojay_libc_type()
-        )
-    } else {
-        format!("{}-{}", get_current_os(), get_current_architecture())
-    };
+    let platform_dir = format!(
+        "{}-{}-{}",
+        get_current_os(),
+        get_current_architecture(),
+        get_foojay_libc_type()
+    );
     let file_path = format!("{platform_dir}/metadata.json");
     let index = serde_json::json!({
         "version": 1,
