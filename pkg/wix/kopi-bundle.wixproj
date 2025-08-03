@@ -8,7 +8,7 @@
     <!-- Version property - can be overridden from command line -->
     <Version Condition="'$(Version)' == ''">0.0.3</Version>
     
-    <OutputName>kopi-bundle-$(Version)-x64</OutputName>
+    <OutputName>kopi-bundle-with-vcredist-$(Version)-x64</OutputName>
     
     <!-- Build configuration -->
     <InstallerPlatform>x64</InstallerPlatform>

@@ -4,7 +4,7 @@ This directory contains the WiX Toolset v6 configuration files for building the 
 
 ## Installer Types
 
-1. **Bundle Installer** (`kopi-bundle-x.x.x-x64.exe`) - **Recommended**
+1. **Bundle Installer** (`kopi-bundle-with-vcredist-x.x.x-x64.exe`) - **Recommended**
    - Includes Visual C++ 2015-2022 Redistributable
    - Automatically installs all dependencies
    - Smart VC++ handling (installs/updates/skips as needed)
@@ -201,7 +201,7 @@ If you get "WiX Toolset v6 is not installed" error:
 ## Distribution
 
 ### Bundle Installer (Recommended)
-- Location: `.\output\kopi-bundle-{version}-x64.exe`
+- Location: `.\output\kopi-bundle-with-vcredist-{version}-x64.exe`
 - File size: ~15-20 MB (includes VC++ Runtime)
 - Best for: End users, direct downloads
 

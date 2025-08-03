@@ -3,7 +3,7 @@
 # Supports both bundle (.exe) and MSI (.msi) installers
 
 param(
-    [string]$InstallerPath = ".\output\kopi-bundle-0.0.3-x64.exe",
+    [string]$InstallerPath = ".\output\kopi-bundle-with-vcredist-0.0.3-x64.exe",
     [switch]$SkipCleanup
 )
 
