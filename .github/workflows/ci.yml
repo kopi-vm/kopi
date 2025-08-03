@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ci:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+    
+    - name: Check formatting
+      run: cargo fmt -- --check
+    
+    - name: Run clippy
+      run: cargo clippy --all-targets -- -D warnings
+    
+    - name: Build all targets
+      run: cargo build --all-targets
+    
+    - name: Run tests
+      run: cargo test --quiet
+    
+    - name: Run integration tests
+      run: cargo test --quiet --features integration_tests
