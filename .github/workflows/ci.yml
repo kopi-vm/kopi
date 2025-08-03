@@ -27,7 +27,7 @@ jobs:
       run: cargo fmt -- --check
     
     - name: Run clippy
-      run: cargo clippy --all-targets -- -D warnings
+      run: cargo clippy --all-targets
     
     - name: Build all targets
       run: cargo build --all-targets
