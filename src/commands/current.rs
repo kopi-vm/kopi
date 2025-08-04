@@ -159,11 +159,13 @@ fn print_standard_output(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::env;
     use std::fs;
     use tempfile::TempDir;
 
     #[test]
+    #[serial]
     fn test_current_with_env_var() {
         // Save and set environment variable
         let original = env::var("KOPI_JAVA_VERSION").ok();

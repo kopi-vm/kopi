@@ -9,11 +9,13 @@ use kopi::doctor::checks::{
 };
 use kopi::doctor::{CheckCategory, CheckStatus, DiagnosticCheck};
 use kopi::platform::path_separator;
+use serial_test::serial;
 use std::env;
 use std::fs;
 use std::time::Instant;
 
 #[test]
+#[serial]
 fn test_installation_directory_check_with_structure() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -40,6 +42,7 @@ fn test_installation_directory_check_with_structure() {
 }
 
 #[test]
+#[serial]
 fn test_installation_directory_check_missing_subdirs() {
     let test_home = TestHomeGuard::new();
     let kopi_home = test_home.kopi_home();
@@ -72,6 +75,7 @@ fn test_installation_directory_check_missing_subdirs() {
 }
 
 #[test]
+#[serial]
 fn test_config_file_check_valid() {
     let test_home = TestHomeGuard::new();
     let kopi_home = test_home.kopi_home();
@@ -105,6 +109,7 @@ max_age_days = 30
 }
 
 #[test]
+#[serial]
 fn test_shims_in_path_check_integration() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -163,6 +168,7 @@ fn test_shims_in_path_check_integration() {
 }
 
 #[test]
+#[serial]
 fn test_directory_permissions_check() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();
@@ -186,6 +192,7 @@ fn test_directory_permissions_check() {
 }
 
 #[test]
+#[serial]
 #[cfg(unix)]
 fn test_ownership_check_integration() {
     let test_home = TestHomeGuard::new();
@@ -210,6 +217,7 @@ fn test_ownership_check_integration() {
 }
 
 #[test]
+#[serial]
 fn test_doctor_command_full_execution() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();

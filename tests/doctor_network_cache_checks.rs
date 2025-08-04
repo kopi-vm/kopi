@@ -4,6 +4,7 @@ use common::TestHomeGuard;
 use kopi::cache::MetadataCache;
 use kopi::config::KopiConfig;
 use kopi::doctor::{CheckCategory, CheckStatus, DiagnosticEngine};
+use serial_test::serial;
 use std::fs;
 use std::time::Duration;
 
@@ -182,6 +183,7 @@ fn test_cache_permissions_on_unix() {
 }
 
 #[test]
+#[serial]
 fn test_proxy_environment_detection() {
     let guard = TestHomeGuard::new();
     guard.setup_kopi_structure();

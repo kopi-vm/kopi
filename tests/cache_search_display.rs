@@ -7,6 +7,7 @@ use kopi::models::metadata::JdkMetadata;
 use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
 use kopi::models::platform::{Architecture, OperatingSystem};
 use kopi::version::Version;
+use serial_test::serial;
 use std::str::FromStr;
 
 fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
@@ -143,6 +144,7 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
 }
 
 #[test]
+#[serial]
 fn test_compact_display_shows_minimal_columns() {
     let (test_home, cache) = create_test_cache_with_lts_data();
     let cache_path = test_home.kopi_home().join("cache").join("metadata.json");
@@ -165,6 +167,7 @@ fn test_compact_display_shows_minimal_columns() {
 }
 
 #[test]
+#[serial]
 fn test_detailed_display_includes_all_information() {
     let (temp_dir, cache) = create_test_cache_with_lts_data();
     let cache_path = temp_dir.path().join("metadata.json");
@@ -184,6 +187,7 @@ fn test_detailed_display_includes_all_information() {
 }
 
 #[test]
+#[serial]
 fn test_json_output_contains_all_fields() {
     let (temp_dir, cache) = create_test_cache_with_lts_data();
     let cache_path = temp_dir.path().join("metadata.json");

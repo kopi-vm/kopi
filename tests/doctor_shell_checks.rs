@@ -3,6 +3,7 @@ mod common;
 use common::TestHomeGuard;
 use kopi::config::KopiConfig;
 use kopi::doctor::{CheckCategory, CheckStatus, DiagnosticEngine};
+use serial_test::serial;
 use std::env;
 use std::fs;
 
@@ -36,6 +37,7 @@ fn test_shell_checks_full_suite() {
 }
 
 #[test]
+#[serial]
 fn test_path_configuration_with_shims_in_path() {
     let guard = TestHomeGuard::new();
     guard.setup_kopi_structure();
@@ -72,6 +74,7 @@ fn test_path_configuration_with_shims_in_path() {
 }
 
 #[test]
+#[serial]
 fn test_path_configuration_missing_shims() {
     let guard = TestHomeGuard::new();
     guard.setup_kopi_structure();

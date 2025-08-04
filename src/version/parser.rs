@@ -243,6 +243,7 @@ impl<'a> VersionParser<'a> {
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
+    use serial_test::serial;
 
     fn create_test_config() -> KopiConfig {
         // Clear any leftover environment variables
@@ -578,6 +579,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_additional_distributions() {
         use crate::config::new_kopi_config;
         use std::fs;

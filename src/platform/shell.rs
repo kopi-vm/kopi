@@ -271,6 +271,7 @@ pub fn is_in_path(dir: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_path_config_commands() {
@@ -318,6 +319,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_in_path_basic() {
         use std::fs;
         use tempfile::TempDir;
@@ -379,6 +381,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_shell_config_files() {
         // Test with a mock HOME environment
         let original_home = env::var("HOME").ok();
@@ -416,6 +419,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_is_in_path() {
         // Save original PATH
         let original_path = env::var("PATH").unwrap_or_default();
@@ -504,6 +508,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     #[cfg(not(windows))]
     fn test_detect_shell_from_env() {
         // Save original SHELL

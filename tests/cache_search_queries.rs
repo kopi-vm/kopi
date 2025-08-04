@@ -8,6 +8,7 @@ use kopi::models::metadata::JdkMetadata;
 use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
 use kopi::models::platform::{Architecture, OperatingSystem};
 use kopi::version::Version;
+use serial_test::serial;
 use std::env;
 use std::str::FromStr;
 use std::sync::Mutex;
@@ -169,6 +170,7 @@ fn setup_test_cache() -> (
 }
 
 #[test]
+#[serial]
 fn test_search_distribution_only() {
     let (_test_home, config, _guard) = setup_test_cache();
 
@@ -189,6 +191,7 @@ fn test_search_distribution_only() {
 }
 
 #[test]
+#[serial]
 fn test_search_latest_all_distributions() {
     let (_test_home, config, _guard) = setup_test_cache();
 
@@ -209,6 +212,7 @@ fn test_search_latest_all_distributions() {
 }
 
 #[test]
+#[serial]
 fn test_search_latest_specific_distribution() {
     let (_test_home, config, _guard) = setup_test_cache();
 
@@ -229,6 +233,7 @@ fn test_search_latest_specific_distribution() {
 }
 
 #[test]
+#[serial]
 fn test_search_backward_compatibility() {
     let (_test_home, config, _guard) = setup_test_cache();
 
@@ -249,6 +254,7 @@ fn test_search_backward_compatibility() {
 }
 
 #[test]
+#[serial]
 fn test_search_distribution_with_version() {
     let (_test_home, config, _guard) = setup_test_cache();
 
@@ -269,6 +275,7 @@ fn test_search_distribution_with_version() {
 }
 
 #[test]
+#[serial]
 fn test_search_invalid_distribution() {
     let (_test_home, config, _guard) = setup_test_cache();
 
@@ -290,6 +297,7 @@ fn test_search_invalid_distribution() {
 }
 
 #[test]
+#[serial]
 fn test_search_jre_latest() {
     let (_test_home, config, _guard) = setup_test_cache();
 
@@ -310,6 +318,7 @@ fn test_search_jre_latest() {
 }
 
 #[test]
+#[serial]
 fn test_search_display_modes() {
     let (_test_home, config, _guard) = setup_test_cache();
 
