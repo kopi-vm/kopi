@@ -9,3 +9,4 @@ incremental = true
 [alias]
 it = "test --quiet --features integration_tests"
 shim = "build --bin kopi-shim --profile release-shim"
+perf = "test --quiet --features perf_tests"

@@ -112,7 +112,7 @@ fn create_large_test_cache() -> MetadataCache {
     cache
 }
 
-#[cfg_attr(not(feature = "perf-tests"), ignore)]
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_search_performance_by_version() {
     let cache = create_large_test_cache();
@@ -136,7 +136,7 @@ fn test_search_performance_by_version() {
     assert!(!results.is_empty(), "Should find results for version 21");
 }
 
-#[cfg_attr(not(feature = "perf-tests"), ignore)]
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_search_performance_by_distribution() {
     let cache = create_large_test_cache();
@@ -160,7 +160,7 @@ fn test_search_performance_by_distribution() {
     assert!(!results.is_empty(), "Should find results for corretto");
 }
 
-#[cfg_attr(not(feature = "perf-tests"), ignore)]
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_search_performance_latest() {
     let cache = create_large_test_cache();
@@ -188,7 +188,7 @@ fn test_search_performance_latest() {
     );
 }
 
-#[cfg_attr(not(feature = "perf-tests"), ignore)]
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_search_performance_with_platform_filter() {
     let cache = create_large_test_cache();
@@ -216,7 +216,7 @@ fn test_search_performance_with_platform_filter() {
     );
 }
 
-#[cfg_attr(not(feature = "perf-tests"), ignore)]
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_search_memory_usage() {
     let cache = create_large_test_cache();
@@ -243,6 +243,7 @@ fn test_search_memory_usage() {
     // For now, we just ensure the searches complete successfully
 }
 
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_display_rendering_performance() {
     use std::io::Write;
@@ -284,8 +285,7 @@ fn test_display_rendering_performance() {
     );
 }
 
-#[cfg(feature = "integration_tests")]
-#[cfg_attr(not(feature = "perf-tests"), ignore)]
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_real_cache_performance() {
     use kopi::cache::VersionSearchType;

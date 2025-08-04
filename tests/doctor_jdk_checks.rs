@@ -176,6 +176,7 @@ fn test_jdk_disk_space_analysis() {
     assert!(details.contains("temurin-21.0.1"));
 }
 
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_jdk_checks_performance() {
     let guard = TestHomeGuard::new();

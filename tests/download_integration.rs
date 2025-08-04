@@ -397,7 +397,7 @@ fn test_download_network_timeout() {
     }
 }
 
-#[cfg_attr(not(feature = "perf-tests"), ignore)]
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_large_file_download_simulation() {
     use kopi::download::ProgressReporter;

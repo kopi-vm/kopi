@@ -210,6 +210,7 @@ fn test_proxy_environment_detection() {
     }
 }
 
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_network_checks_performance() {
     let guard = TestHomeGuard::new();

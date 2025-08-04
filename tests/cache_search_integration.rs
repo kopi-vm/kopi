@@ -585,6 +585,7 @@ fn test_integration_json_output_structure_validation() {
     // JSON output should be valid and contain expected fields
 }
 
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_integration_performance_large_cache() {
     let test_home = TestHomeGuard::new();

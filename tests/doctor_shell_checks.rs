@@ -217,6 +217,7 @@ fn test_shell_configuration_check() {
     ));
 }
 
+#[cfg_attr(not(feature = "perf_tests"), ignore)]
 #[test]
 fn test_performance_shell_checks() {
     use std::time::Instant;

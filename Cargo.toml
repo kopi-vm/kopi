@@ -77,7 +77,7 @@ winapi = { version = "0.3", features = ["fileapi", "winnt", "securitybaseapi", "
 
 [features]
 integration_tests = []
-perf-tests = []
+perf_tests = []
 
 [dev-dependencies]
 mockall = "0.12"
