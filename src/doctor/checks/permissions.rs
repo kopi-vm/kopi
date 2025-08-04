@@ -7,9 +7,6 @@ use std::path::Path;
 use std::time::Instant;
 use which::which;
 
-#[cfg(unix)]
-use libc;
-
 /// Check write permissions on kopi directories
 pub struct DirectoryPermissionsCheck<'a> {
     config: &'a KopiConfig,

@@ -8,9 +8,6 @@ use std::path::Path;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-#[cfg(unix)]
-use libc;
-
 #[cfg(target_os = "windows")]
 use std::ffi::OsStr;
 

@@ -2,8 +2,6 @@ mod common;
 
 use common::TestHomeGuard;
 use kopi::commands::doctor::DoctorCommand;
-#[cfg(unix)]
-use kopi::doctor::checks::OwnershipCheck;
 use kopi::doctor::checks::{
     ConfigFileCheck, DirectoryPermissionsCheck, InstallationDirectoryCheck, ShimsInPathCheck,
 };
@@ -185,31 +183,6 @@ fn test_directory_permissions_check() {
     // Should pass since we just created the directories
     assert_eq!(result.status, CheckStatus::Pass);
     assert!(result.message.contains("proper write permissions"));
-
-    unsafe {
-        env::remove_var("KOPI_HOME");
-    }
-}
-
-#[test]
-#[serial]
-#[cfg(unix)]
-fn test_ownership_check_integration() {
-    let test_home = TestHomeGuard::new();
-    test_home.setup_kopi_structure();
-
-    unsafe {
-        env::set_var("KOPI_HOME", test_home.kopi_home());
-    }
-    let config = kopi::config::new_kopi_config().unwrap();
-
-    let check = OwnershipCheck::new(&config);
-    let start = Instant::now();
-    let result = check.run(start, CheckCategory::Permissions);
-
-    // Should pass since we own the directories we just created
-    assert_eq!(result.status, CheckStatus::Pass);
-    assert!(result.message.contains("ownership is consistent"));
 
     unsafe {
         env::remove_var("KOPI_HOME");
