@@ -170,7 +170,7 @@ Set-Content -Path $LicenseRtf -Value $rtfContent -Encoding ASCII -NoNewline
 Write-Host "`nBuilding MSI installer..." -ForegroundColor Yellow
 
 # Define MSI output file path
-$MsiFile = Join-Path $OutputDir "en-us\kopi-$Version-x64.msi"
+$MsiFile = Join-Path $OutputDir "en-us\kopi-$Version-windows-x64.msi"
 
 
 # Change to WiX directory for relative paths to work
@@ -195,42 +195,6 @@ try {
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Failed to create MSI"
             exit 1
-        }
-    }
-    # Fallback to wix CLI if available
-    elseif ($hasWixCli) {
-        Write-Host "Using wix CLI to build..." -ForegroundColor Cyan
-        
-        # Build command for WiX v6 CLI
-        $WixArgs = @(
-            "build"
-            "-arch", "x64"
-            "-d", "Version=$Version"
-            "-d", "Configuration=$Configuration"
-            "-d", "KopiProjectRoot=$ProjectRoot"
-            "-ext", "WixToolset.UI.wixext"
-            "-culture", "en-US"
-            "-loc", "WixUI_en-us.wxl"
-            "-out", (Join-Path $ScriptDir "obj\Release\en-us\kopi-$Version-x64.msi")
-            "Product.wxs"
-        )
-        
-        Write-Host "Running: wix $($WixArgs -join ' ')" -ForegroundColor DarkGray
-        
-        & wix $WixArgs
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Failed to create MSI"
-            exit 1
-        }
-        
-        # Copy MSI to output directory to match dotnet build behavior
-        $TempMsi = Join-Path $ScriptDir "obj\Release\en-us\kopi-$Version-x64.msi"
-        if (Test-Path $TempMsi) {
-            $OutputSubDir = Join-Path $OutputDir "en-us"
-            if (-not (Test-Path $OutputSubDir)) {
-                New-Item -ItemType Directory -Path $OutputSubDir | Out-Null
-            }
-            Copy-Item $TempMsi $MsiFile -Force
         }
     }
 }

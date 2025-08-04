@@ -96,8 +96,8 @@ jobs:
       run: |
         pkg/wix/build-bundle.ps1 -Version ${{ github.event.inputs.version }}
         New-Item -Path archive/pkg -ItemType Directory -Force
-        Copy-Item ./pkg/wix/output/kopi-bundle-with-vcredist-${{ github.event.inputs.version }}-x64.exe ./archive/pkg/
-        Copy-Item ./pkg/wix/output/en-us/kopi-${{ github.event.inputs.version }}-x64.msi ./archive/pkg/
+        Copy-Item ./pkg/wix/output/kopi-bundle-with-vcredist-${{ github.event.inputs.version }}-windows-x64.exe ./archive/pkg/
+        Copy-Item ./pkg/wix/output/en-us/kopi-${{ github.event.inputs.version }}-windows-x64.msi ./archive/pkg/
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4

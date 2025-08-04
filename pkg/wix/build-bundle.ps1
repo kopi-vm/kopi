@@ -57,7 +57,7 @@ if ($KopiMsiPath) {
     $msiPath = $KopiMsiPath
     Write-Host "Using provided MSI path: $msiPath" -ForegroundColor Cyan
 } else {
-    $msiPath = Join-Path $ScriptDir "output\en-us\kopi-$Version-x64.msi"
+    $msiPath = Join-Path $ScriptDir "output\en-us\kopi-$Version-windows-x64.msi"
 }
 $vcRedistPath = Join-Path $ScriptDir "redist\vc_redist.x64.exe"
 
@@ -106,7 +106,7 @@ if (Get-Command "dotnet" -ErrorAction SilentlyContinue) {
 # Wait a moment for the file to be written
 Start-Sleep -Milliseconds 500
 
-$bundleOutput = Join-Path $OutputDir "kopi-bundle-with-vcredist-$Version-x64.exe"
+$bundleOutput = Join-Path $OutputDir "kopi-bundle-with-vcredist-$Version-windows-x64.exe"
 if (Test-Path $bundleOutput) {
     Write-Host "`n✓ Bundle built successfully!" -ForegroundColor Green
     Write-Host "  Output: $bundleOutput" -ForegroundColor Gray
