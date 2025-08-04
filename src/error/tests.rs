@@ -1,5 +1,6 @@
 use crate::error::format::format_error_with_color;
 use crate::error::*;
+use serial_test::serial;
 
 #[test]
 fn test_error_context_version_not_available() {
@@ -179,6 +180,7 @@ fn test_format_error_chain() {
 }
 
 #[test]
+#[serial]
 fn test_format_error_with_color_reset() {
     // Test that color codes are properly reset at the end
     let error = KopiError::JdkNotInstalled {
@@ -200,6 +202,7 @@ fn test_format_error_with_color_reset() {
 }
 
 #[test]
+#[serial]
 fn test_format_error_no_color_no_reset() {
     // Test that when color is disabled, no ANSI codes are added
     let error = KopiError::JdkNotInstalled {
