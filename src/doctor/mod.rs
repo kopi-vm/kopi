@@ -80,9 +80,9 @@ impl CheckCategory {
             CachePermissionsCheck, CacheSizeCheck, CacheStalenessCheck, ConfigFileCheck,
             DirectoryPermissionsCheck, DnsResolutionCheck, InstallationDirectoryCheck,
             JdkDiskSpaceCheck, JdkInstallationCheck, JdkIntegrityCheck, JdkVersionConsistencyCheck,
-            KopiBinaryCheck, OwnershipCheck, PathCheck, ProxyConfigurationCheck,
-            ShellConfigurationCheck, ShellDetectionCheck, ShimFunctionalityCheck, ShimsInPathCheck,
-            TlsVerificationCheck, VersionCheck,
+            KopiBinaryCheck, PathCheck, ProxyConfigurationCheck, ShellConfigurationCheck,
+            ShellDetectionCheck, ShimFunctionalityCheck, ShimsInPathCheck, TlsVerificationCheck,
+            VersionCheck,
         };
 
         match self {
@@ -96,7 +96,6 @@ impl CheckCategory {
             CheckCategory::Permissions => vec![
                 Box::new(DirectoryPermissionsCheck::new(config)),
                 Box::new(BinaryPermissionsCheck::new(config)),
-                Box::new(OwnershipCheck::new(config)),
             ],
             CheckCategory::Shell => vec![
                 Box::new(ShellDetectionCheck) as Box<dyn DiagnosticCheck + 'a>,

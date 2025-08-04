@@ -21,23 +21,7 @@ use std::os::windows::ffi::OsStrExt;
 use winapi::um::fileapi::{GetFileAttributesW, INVALID_FILE_ATTRIBUTES, SetFileAttributesW};
 
 #[cfg(target_os = "windows")]
-use winapi::um::winnt::{
-    FILE_ATTRIBUTE_READONLY, HANDLE, OWNER_SECURITY_INFORMATION, PSID, TOKEN_QUERY, TOKEN_USER,
-};
-
-#[cfg(target_os = "windows")]
-use winapi::um::processthreadsapi::{GetCurrentProcess, OpenProcessToken};
-
-#[cfg(target_os = "windows")]
-use winapi::um::securitybaseapi::{
-    EqualSid, GetFileSecurityW, GetSecurityDescriptorOwner, GetTokenInformation,
-};
-
-#[cfg(target_os = "windows")]
-use winapi::um::handleapi::CloseHandle;
-
-#[cfg(target_os = "windows")]
-use std::ptr;
+use winapi::um::winnt::FILE_ATTRIBUTE_READONLY;
 
 /// Make a file executable (Unix only)
 #[cfg(unix)]
@@ -344,118 +328,6 @@ fn remove_readonly_attribute(path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Check if the current user owns the file/directory
-#[cfg(unix)]
-pub fn check_ownership(path: &Path) -> std::io::Result<bool> {
-    use std::os::unix::fs::MetadataExt;
-
-    let metadata = fs::metadata(path)?;
-    let file_uid = metadata.uid();
-    let current_uid = unsafe { libc::getuid() };
-
-    Ok(file_uid == current_uid)
-}
-
-/// Check if the current user owns the file/directory
-#[cfg(windows)]
-pub fn check_ownership(path: &Path) -> std::io::Result<bool> {
-    unsafe {
-        // Get current process token
-        let mut token_handle: HANDLE = ptr::null_mut();
-        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token_handle) == 0 {
-            return Err(std::io::Error::last_os_error());
-        }
-
-        // Get the size needed for token information
-        let mut size_needed = 0;
-        GetTokenInformation(
-            token_handle,
-            winapi::um::winnt::TokenUser,
-            ptr::null_mut(),
-            0,
-            &mut size_needed,
-        );
-
-        if size_needed == 0 {
-            return Err(std::io::Error::last_os_error());
-        }
-
-        // Allocate buffer for token information
-        let mut buffer = vec![0u8; size_needed as usize];
-        if GetTokenInformation(
-            token_handle,
-            winapi::um::winnt::TokenUser,
-            buffer.as_mut_ptr() as *mut _,
-            size_needed,
-            &mut size_needed,
-        ) == 0
-        {
-            return Err(std::io::Error::last_os_error());
-        }
-
-        // Get user SID from token
-        let token_user = buffer.as_ptr() as *const TOKEN_USER;
-        let current_user_sid = (*token_user).User.Sid;
-
-        // Get file security descriptor
-        let path_wide: Vec<u16> = OsStr::new(path)
-            .encode_wide()
-            .chain(std::iter::once(0))
-            .collect();
-
-        // Get the size needed for security descriptor
-        let mut sd_size_needed = 0;
-        GetFileSecurityW(
-            path_wide.as_ptr(),
-            OWNER_SECURITY_INFORMATION,
-            ptr::null_mut(),
-            0,
-            &mut sd_size_needed,
-        );
-
-        if sd_size_needed == 0 {
-            return Err(std::io::Error::last_os_error());
-        }
-
-        // Allocate buffer for security descriptor
-        let mut sd_buffer = vec![0u8; sd_size_needed as usize];
-        if GetFileSecurityW(
-            path_wide.as_ptr(),
-            OWNER_SECURITY_INFORMATION,
-            sd_buffer.as_mut_ptr() as *mut _,
-            sd_size_needed,
-            &mut sd_size_needed,
-        ) == 0
-        {
-            return Err(std::io::Error::last_os_error());
-        }
-
-        // Get owner SID from security descriptor
-        let mut owner_sid: PSID = ptr::null_mut();
-        let mut owner_defaulted = 0;
-        if GetSecurityDescriptorOwner(
-            sd_buffer.as_ptr() as *mut _,
-            &mut owner_sid,
-            &mut owner_defaulted,
-        ) == 0
-        {
-            return Err(std::io::Error::last_os_error());
-        }
-
-        if owner_sid.is_null() {
-            return Ok(false);
-        }
-
-        // Compare SIDs
-        let is_owner = EqualSid(current_user_sid, owner_sid) != 0;
-
-        // Close the token handle
-        CloseHandle(token_handle);
-
-        Ok(is_owner)
-    }
-}
-
 /// Check if a file has secure permissions
 #[cfg(unix)]
 pub fn check_file_permissions(path: &Path) -> Result<bool> {
@@ -709,17 +581,6 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let result = post_removal_cleanup(temp_dir.path());
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_check_ownership() {
-        let temp_dir = TempDir::new().unwrap();
-        let test_file = temp_dir.path().join("test.txt");
-        fs::write(&test_file, "test content").unwrap();
-
-        // Should own files we create
-        assert!(check_ownership(temp_dir.path()).unwrap());
-        assert!(check_ownership(&test_file).unwrap());
     }
 
     #[test]

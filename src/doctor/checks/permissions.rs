@@ -183,101 +183,6 @@ impl DiagnosticCheck for BinaryPermissionsCheck<'_> {
     }
 }
 
-/// Check ownership consistency across kopi installation
-pub struct OwnershipCheck<'a> {
-    config: &'a KopiConfig,
-}
-
-impl<'a> OwnershipCheck<'a> {
-    pub fn new(config: &'a KopiConfig) -> Self {
-        Self { config }
-    }
-}
-
-impl DiagnosticCheck for OwnershipCheck<'_> {
-    fn name(&self) -> &str {
-        "File Ownership Consistency"
-    }
-
-    fn run(&self, start: Instant, category: CheckCategory) -> CheckResult {
-        let kopi_home = self.config.kopi_home();
-
-        if !kopi_home.exists() {
-            return CheckResult::new(
-                self.name(),
-                category,
-                CheckStatus::Skip,
-                "Cannot check ownership - kopi home does not exist",
-                start.elapsed(),
-            );
-        }
-
-        // Check ownership using platform-specific implementation
-        match crate::platform::file_ops::check_ownership(kopi_home) {
-            Ok(is_owner) => {
-                if !is_owner {
-                    #[cfg(unix)]
-                    {
-                        use std::os::unix::fs::MetadataExt;
-                        let current_uid = unsafe { libc::getuid() };
-
-                        if let Ok(metadata) = fs::metadata(kopi_home) {
-                            let dir_uid = metadata.uid();
-                            return CheckResult::new(
-                                self.name(),
-                                category,
-                                CheckStatus::Warning,
-                                "Kopi home directory owned by different user",
-                                start.elapsed(),
-                            )
-                            .with_details(format!(
-                                "Directory owned by UID {dir_uid}, current user is UID \
-                                 {current_uid}"
-                            ))
-                            .with_suggestion(format!(
-                                "Transfer ownership: sudo chown -R {} {}",
-                                std::env::var("USER").unwrap_or_else(|_| current_uid.to_string()),
-                                kopi_home.display()
-                            ));
-                        }
-                    }
-
-                    #[cfg(windows)]
-                    {
-                        return CheckResult::new(
-                            self.name(),
-                            category,
-                            CheckStatus::Warning,
-                            "Kopi home directory owned by different user",
-                            start.elapsed(),
-                        )
-                        .with_details("Directory is not owned by the current user")
-                        .with_suggestion(
-                            "Take ownership via Properties > Security > Advanced > Owner",
-                        );
-                    }
-                }
-
-                CheckResult::new(
-                    self.name(),
-                    category,
-                    CheckStatus::Pass,
-                    "File ownership is consistent",
-                    start.elapsed(),
-                )
-            }
-            Err(e) => CheckResult::new(
-                self.name(),
-                category,
-                CheckStatus::Warning,
-                "Cannot check ownership",
-                start.elapsed(),
-            )
-            .with_details(e.to_string()),
-        }
-    }
-}
-
 // Helper functions
 
 fn check_directory_writable(path: &Path) -> Result<(), String> {
@@ -362,27 +267,6 @@ mod tests {
         let result = check.run(start, CheckCategory::Permissions);
 
         // Should pass when no binaries exist
-        assert_eq!(result.status, CheckStatus::Pass);
-
-        unsafe {
-            env::remove_var("KOPI_HOME");
-        }
-    }
-
-    #[test]
-    fn test_ownership_check() {
-        let temp_dir = TempDir::new().unwrap();
-
-        unsafe {
-            env::set_var("KOPI_HOME", temp_dir.path());
-        }
-        let config = crate::config::new_kopi_config().unwrap();
-
-        let check = OwnershipCheck::new(&config);
-        let start = Instant::now();
-        let result = check.run(start, CheckCategory::Permissions);
-
-        // Should pass since we own the temp directory
         assert_eq!(result.status, CheckStatus::Pass);
 
         unsafe {

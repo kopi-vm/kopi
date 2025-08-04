@@ -17,5 +17,5 @@ pub use jdks::{
 pub use network::{
     ApiConnectivityCheck, DnsResolutionCheck, ProxyConfigurationCheck, TlsVerificationCheck,
 };
-pub use permissions::{BinaryPermissionsCheck, DirectoryPermissionsCheck, OwnershipCheck};
+pub use permissions::{BinaryPermissionsCheck, DirectoryPermissionsCheck};
 pub use shell::{PathCheck, ShellConfigurationCheck, ShellDetectionCheck, ShimFunctionalityCheck};
