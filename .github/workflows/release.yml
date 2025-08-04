@@ -28,7 +28,7 @@ jobs:
       matrix:
         os: [ ubuntu-24.04, windows-2025, macos-15-large ]
     runs-on: ${{ matrix.os }}
-    needs: [validate]
+    needs: [ validate ]
     
     steps:
     - uses: actions/checkout@v4
@@ -105,3 +105,21 @@ jobs:
         name: package-${{ runner.os }}-bundle
         path: target/pkg
         retention-days: 1
+
+  publish-cargo:
+    runs-on: ubuntu-24.04
+    needs: [ archive, package-windows ]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Set version
+      run: cargo set-version ${{ github.event.inputs.version }}
+
+    - name: Publish
+      run: cargo publish --dry-run
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
