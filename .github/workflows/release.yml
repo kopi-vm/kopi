@@ -52,24 +52,24 @@ jobs:
     - name: Zip
       if: runner.os == 'Windows'
       run: |
-        New-Item -Path target/pkg -ItemType Directory
-        Compress-Archive -Path ./target/release/kopi.exe, ./target/release-shim/kopi-shim.exe -DestinationPath target/pkg/kopi-${{ github.event.inputs.version }}-windows-x64.zip
+        New-Item -Path archive/pkg -ItemType Directory -Force
+        Compress-Archive -Path ./target/release/kopi.exe, ./target/release-shim/kopi-shim.exe -DestinationPath archive/pkg/kopi-${{ github.event.inputs.version }}-windows-x64.zip
 
     - name: Targz
       if: runner.os != 'Windows'
       run: |
-        mkdir -p target/pkg
+        mkdir -p archive/pkg
         cp ./target/release/kopi target/
         cp ./target/release-shim/kopi-shim target/
         os_lower=$(echo "${{ runner.os }}" | tr '[:upper:]' '[:lower:]')
         cd target/
-        tar -zcvf ./pkg/kopi-${{ github.event.inputs.version }}-${os_lower}-x64.tar.gz ./kopi ./kopi-shim
+        tar -zcvf ../archive/pkg/kopi-${{ github.event.inputs.version }}-${os_lower}-x64.tar.gz ./kopi ./kopi-shim
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: package-${{ runner.os }}
-        path: target/pkg
+        path: archive/pkg
         retention-days: 1
 
   package-windows:
@@ -95,15 +95,15 @@ jobs:
     - name: Build bundle
       run: |
         pkg/wix/build-bundle.ps1 -Version ${{ github.event.inputs.version }}
-        New-Item -Path target/pkg -ItemType Directory
-        Copy-Item ./pkg/wix/output/kopi-bundle-with-vcredist-${{ github.event.inputs.version }}-x64.exe ./target/pkg/
-        Copy-Item ./pkg/wix/output/en-us/kopi-${{ github.event.inputs.version }}-x64.msi ./target/pkg/
+        New-Item -Path archive/pkg -ItemType Directory -Force
+        Copy-Item ./pkg/wix/output/kopi-bundle-with-vcredist-${{ github.event.inputs.version }}-x64.exe ./archive/pkg/
+        Copy-Item ./pkg/wix/output/en-us/kopi-${{ github.event.inputs.version }}-x64.msi ./archive/pkg/
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: package-${{ runner.os }}-bundle
-        path: target/pkg
+        path: archive/pkg
         retention-days: 1
 
   publish-cargo:
