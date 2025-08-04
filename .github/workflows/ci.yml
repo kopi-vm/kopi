@@ -14,7 +14,7 @@ jobs:
   ci:
     strategy:
       matrix:
-        os: [ macos-15-large]
+        os: [ windows-2025 ]
     runs-on: ${{ matrix.os }}
     
     steps:
