@@ -67,14 +67,14 @@ if (-not $SkipBuild) {
     try {
         # Build main kopi executable
         Write-Host "Building kopi.exe..." -ForegroundColor Cyan
-        cargo build --release
+        cargo auditable build --release
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to build kopi.exe"
         }
         
         # Build kopi-shim with optimized profile
         Write-Host "Building kopi-shim.exe..." -ForegroundColor Cyan
-        cargo build --profile release-shim --bin kopi-shim
+        cargo auditable build --profile release-shim --bin kopi-shim
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to build kopi-shim.exe"
         }
