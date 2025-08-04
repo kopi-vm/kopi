@@ -106,13 +106,16 @@ jobs:
         path: archive/pkg
         retention-days: 1
 
-  publish-cargo:
+  release:
     runs-on: ubuntu-24.04
     needs: [ archive, package-windows ]
 
+    permissions:
+      contents: write
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install Rust
       uses: actions-rust-lang/setup-rust-toolchain@v1
 
@@ -121,8 +124,50 @@ jobs:
       with:
         tool: cargo-edit
 
+    - name: Fetch Linux archive
+      uses: actions/download-artifact@v4
+      with:
+        name: package-Linux
+        path: release
+    - name: Fetch Windows archive
+      uses: actions/download-artifact@v4
+      with:
+        name: package-Windows
+        path: release
+    - name: Fetch Windows Bundle
+      uses: actions/download-artifact@v4
+      with:
+        name: package-Windows-bundle
+        path: release
+    - name: Fetch Mac archive
+      uses: actions/download-artifact@v4
+      with:
+        name: package-macOS
+        path: release
+
+    - name: Show release artifacts
+      run: ls -la release
+
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
     - name: Set version
       run: cargo set-version ${{ github.event.inputs.version }}
+
+    - name: Commit, Tag, and Push
+      run: |
+        git add .
+        git commit -m "Bump v${{ github.event.inputs.version }} [ci skip]"
+        git tag v${{ github.event.inputs.version }}
+        git push
+        git push --tags
+
+    - name: Create draft release
+      run: gh release create v${{ github.event.inputs.version }} --draft --generate-notes release/*
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Publish
       run: cargo publish --dry-run
