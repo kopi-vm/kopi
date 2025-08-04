@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.2.3)'
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Validate inputs
+        run: |
+          if ! [[ "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "⚠️ Error: Version format must be x.x.x (e.g., 1.2.3)."
+            exit 1
+          fi
+          echo "✅ Version format is valid."
+
+  package:
+    strategy:
+      matrix:
+        os: [ ubuntu-24.04, windows-2025, macos-15-large ]
+    runs-on: ${{ matrix.os }}
+    needs: [validate]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Install Tools
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-auditable,cargo-audit,cargo-edit
+
+    - name: Build
+      run: |
+        cargo auditable build --release
+        cargo auditable build --profile release-shim --bin kopi-shim
+
+    - name: Zip
+      if: runner.os == 'Windows'
+      run: |
+        New-Item -Path target/pkg -ItemType Directory
+        Compress-Archive -Path ./target/release/kopi.exe, ./target/release-shim/kopi-shim.exe -DestinationPath target/pkg/kopi-${{ github.event.inputs.version }}-windows-x64.zip
+
+    - name: Targz
+      if: runner.os != 'Windows'
+      run: |
+        mkdir -p target/pkg
+        cp ./target/release/kopi target/
+        cp ./target/release-shim/kopi-shim target/
+        os_lower=$(echo "${{ runner.os }}" | tr '[:upper:]' '[:lower:]')
+        cd target/
+        tar -zcvf ./pkg/kopi-${{ github.event.inputs.version }}-${os_lower}-x64.tar.gz ./kopi ./kopi-shim
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-${{ runner.os }}
+        path: target/pkg
+        retention-days: 1
