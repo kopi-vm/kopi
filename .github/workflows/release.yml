@@ -23,7 +23,7 @@ jobs:
           fi
           echo "✅ Version format is valid."
 
-  package:
+  archive:
     strategy:
       matrix:
         os: [ ubuntu-24.04, windows-2025, macos-15-large ]
@@ -40,6 +40,9 @@ jobs:
       uses: taiki-e/install-action@v2
       with:
         tool: cargo-auditable,cargo-audit,cargo-edit
+
+    - name: Set version
+      run: cargo set-version ${{ github.event.inputs.version }}
 
     - name: Build
       run: |
@@ -66,5 +69,39 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: package-${{ runner.os }}
+        path: target/pkg
+        retention-days: 1
+
+  package-windows:
+    runs-on: windows-2025
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Install Tools
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-auditable,cargo-audit,cargo-edit
+
+    - name: Set version
+      run: cargo set-version ${{ github.event.inputs.version }}
+
+    - name: Install Wix
+      run: dotnet tool install --global wix
+
+    - name: Build bundle
+      run: |
+        pkg/wix/build-bundle.ps1 -Version ${{ github.event.inputs.version }}
+        New-Item -Path target/pkg -ItemType Directory
+        Copy-Item ./pkg/wix/output/kopi-bundle-with-vcredist-${{ github.event.inputs.version }}-x64.exe ./target/pkg/
+        Copy-Item ./pkg/wix/output/en-us/kopi-${{ github.event.inputs.version }}-x64.msi ./target/pkg/
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-${{ runner.os }}-bundle
         path: target/pkg
         retention-days: 1
