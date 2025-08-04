@@ -116,6 +116,11 @@ jobs:
     - name: Install Rust
       uses: actions-rust-lang/setup-rust-toolchain@v1
 
+    - name: Install Tools
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-edit
+
     - name: Set version
       run: cargo set-version ${{ github.event.inputs.version }}
 
