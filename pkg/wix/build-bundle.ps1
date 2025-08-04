@@ -28,7 +28,8 @@ $ProjectRoot = Join-Path $ScriptDir ".." | Join-Path -ChildPath ".." | Resolve-P
 # Step 1: Download VC++ Redistributable
 if (-not $SkipVCDownload) {
     Write-Host "`nStep 1: Downloading VC++ Redistributable..." -ForegroundColor Yellow
-    & "$ScriptDir\download-vcredist.ps1"
+    $vcRedistOutput = Join-Path $ScriptDir "redist"
+    & "$ScriptDir\download-vcredist.ps1" -OutputPath $vcRedistOutput
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to download VC++ Redistributable"
     }
