@@ -1,4 +1,5 @@
 /target
+/release
 
 # Criterion benchmark temporary files
 /target/criterion/
