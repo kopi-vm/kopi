@@ -31,9 +31,9 @@ fn create_large_test_cache() -> MetadataCache {
     for (dist_id, display_name, dist_enum) in distributions {
         let mut packages = Vec::new();
 
-        // Reduced data set: Create versions from 8 to 17 (LTS versions)
-        // This reduces test data from ~11,880 to ~2,160 packages
-        for major in [8, 11, 17].iter() {
+        // Reduced data set: Create versions from 8 to 21 (LTS versions)
+        // This reduces test data from ~11,880 to ~2,880 packages
+        for major in [8, 11, 17, 21].iter() {
             // Create fewer minor versions
             for minor in 0..=2 {
                 // Create fewer patch versions
@@ -229,8 +229,9 @@ fn test_search_memory_usage() {
     println!("Cache contains {package_count} total packages");
 
     // Perform multiple searches to check for memory leaks
+    let test_versions = [8, 11, 17, 21];
     for i in 0..100 {
-        let major_version = (i % 15) + 8; // Versions 8-22
+        let major_version = test_versions[i % test_versions.len()];
         let parsed = parser.parse(&major_version.to_string()).unwrap();
         let results = cache.search(&parsed, VersionSearchType::Auto).unwrap();
         assert!(
