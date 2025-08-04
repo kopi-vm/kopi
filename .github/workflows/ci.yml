@@ -32,8 +32,8 @@ jobs:
     - name: Build all targets
       run: cargo build --all-targets
     
-    - name: Run tests
-      run: cargo test --quiet
+    - name: Run Unit tests
+      run: cargo test --quiet --lib 
     
     - name: Run integration tests
       run: cargo test --quiet --features integration_tests
