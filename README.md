@@ -1,5 +1,5 @@
 <div align="center">
-  <img alt="Kopi Logo" src="docs/images/logo_black.png" width="200" height="200">
+  <img alt="Kopi Logo" src="https://raw.githubusercontent.com/kopi-vm/kopi/main/docs/images/logo_black.png" width="200" height="200">
 </div>
 
 # Kopi - JDK Version Manager
