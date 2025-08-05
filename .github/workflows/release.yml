@@ -159,7 +159,7 @@ jobs:
     - name: Commit, Tag, and Push
       run: |
         git add .
-        git commit -m "Bump v${{ github.event.inputs.version }} [ci skip]"
+        git commit -m "Bump v${{ github.event.inputs.version }}"
         git tag v${{ github.event.inputs.version }}
         git push
         git push --tags
