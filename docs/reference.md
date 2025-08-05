@@ -81,36 +81,30 @@ If an uninstall fails, kopi provides cleanup functionality:
 
 ### `kopi shell` (alias: `use`)
 
-Set JDK version for current shell session. This command outputs shell-specific environment setup commands that should be evaluated by your shell.
+Launch a new shell with the specified JDK version active. This command launches a subshell with `KOPI_JAVA_VERSION` environment variable set, which automatically activates the specified JDK version through shims.
 
 **Usage:**
 ```bash
-kopi shell <version>                     # Set JDK version for current shell session
+kopi shell <version>                     # Launch new shell with specified JDK
 kopi use <version>                       # Alias for 'kopi shell'
 ```
 
 **Options:**
-- `--shell <shell>`: Override shell detection (bash, zsh, fish, powershell)
+- `--shell <shell>`: Override shell detection (bash, zsh, fish, powershell, cmd)
 
 **Examples:**
 ```bash
-# Bash/Zsh
-eval "$(kopi shell 21)"
-
-# Fish
-kopi shell 21 | source
-
-# PowerShell
-kopi shell 21 | Invoke-Expression
-
-# Use specific shell format
-eval "$(kopi shell 21 --shell bash)"
+kopi shell 21                            # Launch shell with Java 21 active
+kopi use temurin@17                      # Launch shell with Temurin 17 (using alias)
+kopi shell corretto@21 --shell zsh       # Launch zsh with Corretto 21
 ```
 
 **Notes:**
 - Automatically installs the JDK if not already installed
-- Sets JAVA_HOME and updates PATH for the current shell session
-- Changes are session-specific and don't affect other shells
+- Launches a new interactive shell session
+- The JDK version remains active until you exit the shell
+- Type `exit` to return to the original shell
+- Uses shims for transparent version switching
 
 ### `kopi env`
 

@@ -111,10 +111,13 @@ kopi search 21 --detailed         # Show full details
 
 ### Shell Environment
 ```bash
-# Set JDK for current shell session
-eval "$(kopi shell 21)"           # Bash/Zsh
-kopi shell 21 | source            # Fish
-kopi shell 21 | Invoke-Expression # PowerShell
+# Launch new shell with specific JDK
+kopi shell 21                     # Launches new shell with Java 21 active
+
+# Or use the env command for shell evaluation
+eval "$(kopi env 21)"             # Bash/Zsh
+kopi env 21 | source              # Fish
+kopi env 21 | Invoke-Expression   # PowerShell
 ```
 
 ### Cache Management
