@@ -258,7 +258,9 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
         if !cache.distributions.contains_key(canonical_name) {
             // Distribution not in cache, fetch it using the canonical name
             if !json {
-                println!("Distribution '{dist_id}' not found in cache. Fetching from configured sources...");
+                println!(
+                    "Distribution '{dist_id}' not found in cache. Fetching from configured sources..."
+                );
             }
 
             match cache::fetch_and_cache_distribution(canonical_name, javafx_bundled, config) {
