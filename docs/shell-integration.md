@@ -15,7 +15,7 @@ Add to your `~/.bashrc` or `~/.zshrc`:
 ```bash
 # Automatic Java environment setup with Kopi
 if command -v kopi &> /dev/null; then
-    eval "$(kopi env --quiet)"
+    eval "$(kopi env)"
 fi
 ```
 
@@ -26,18 +26,33 @@ Add to your `~/.config/fish/config.fish`:
 ```fish
 # Automatic Java environment setup with Kopi
 if command -sq kopi
-    kopi env --quiet | source
+    kopi env | source
 end
 ```
 
 ### PowerShell
 
-Add to your PowerShell profile (`$PROFILE`):
+Add to your PowerShell profile:
+
+```powershell
+# Check your profile location
+echo $PROFILE
+
+# Create profile if it doesn't exist
+if (!(Test-Path $PROFILE)) {
+    New-Item -ItemType File -Path $PROFILE -Force
+}
+
+# Edit your profile
+notepad $PROFILE
+```
+
+Add the following to your profile:
 
 ```powershell
 # Automatic Java environment setup with Kopi
 if (Get-Command kopi -ErrorAction SilentlyContinue) {
-    kopi env --quiet | Invoke-Expression
+    kopi env | Invoke-Expression
 }
 ```
 
@@ -52,9 +67,7 @@ For automatic Java version switching when entering project directories:
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
 kopi_auto_env() {
-    if [[ -f ".kopi-version" ]] || [[ -f ".java-version" ]]; then
-        eval "$(kopi env --quiet)"
-    fi
+    eval "$(kopi env)"
 }
 
 # Hook into directory changes
@@ -74,13 +87,39 @@ fi
 ```fish
 # Add to ~/.config/fish/functions/kopi_auto_env.fish
 function kopi_auto_env --on-variable PWD
-    if test -f .kopi-version -o -f .java-version
-        kopi env --quiet | source
-    end
+    kopi env | source
 end
 
 # Run on shell start
 kopi_auto_env
+```
+
+#### PowerShell with Directory Detection
+
+```powershell
+# Add to your PowerShell profile ($PROFILE)
+# Auto-switch Java version on directory change
+$global:KopiLastPwd = $PWD
+
+function Invoke-KopiAutoEnv {
+    if ($PWD.Path -ne $global:KopiLastPwd) {
+        $global:KopiLastPwd = $PWD.Path
+        if (Get-Command kopi -ErrorAction SilentlyContinue) {
+            kopi env | Invoke-Expression
+        }
+    }
+}
+
+# Hook into prompt function for directory change detection
+$global:OriginalPromptFunction = $function:prompt
+
+function prompt {
+    Invoke-KopiAutoEnv
+    & $global:OriginalPromptFunction
+}
+
+# Run on shell start
+Invoke-KopiAutoEnv
 ```
 
 ### Integration with direnv
@@ -164,131 +203,59 @@ echo "21" > .java-version
 
 ### Version Resolution Order
 
-Kopi resolves versions in this order:
+When using `kopi env` without arguments, it resolves versions in this order:
 1. `KOPI_JAVA_VERSION` environment variable
 2. `.kopi-version` file (searches up directory tree)
 3. `.java-version` file (searches up directory tree)
 4. Global default (`~/.kopi/config.toml`)
 
-## CI/CD Integration
-
-### GitHub Actions
-
-```yaml
-- name: Setup Java with Kopi
-  run: |
-    # Install kopi (example)
-    curl -fsSL https://get.kopi.dev | bash
-    
-    # Set Java environment
-    eval "$(kopi env)"
-    
-    # Verify
-    java -version
+You can override this by specifying a version directly:
+```bash
+eval "$(kopi env 21)"  # Always uses Java 21
 ```
 
-### GitLab CI
+## Performance Tips
 
-```yaml
-before_script:
-  - curl -fsSL https://get.kopi.dev | bash
-  - eval "$(kopi env)"
-  - java -version
-```
+### Bash/Zsh
 
-### Jenkins Pipeline
-
-```groovy
-pipeline {
-    agent any
-    stages {
-        stage('Setup') {
-            steps {
-                sh '''
-                    eval "$(kopi env)"
-                    java -version
-                '''
-            }
-        }
-    }
-}
-```
-
-## Troubleshooting
-
-### Command Not Found
-
-If you get "command not found" errors:
-
-1. Ensure kopi is in your PATH:
-   ```bash
-   which kopi
-   ```
-
-2. Add kopi to PATH if needed:
-   ```bash
-   export PATH="$HOME/.kopi/bin:$PATH"
-   ```
-
-### Version Not Detected
-
-If kopi doesn't detect your project version:
-
-1. Check file permissions:
-   ```bash
-   ls -la .kopi-version .java-version
-   ```
-
-2. Verify version format:
-   ```bash
-   cat .kopi-version  # Should be like: temurin@21
-   ```
-
-3. Check version resolution:
-   ```bash
-   kopi env  # Shows which version would be used
-   ```
-
-### Shell Detection Issues
-
-If shell detection fails:
-
-1. Explicitly specify shell:
+1. **Cache shell detection**: For shells where detection is slow
    ```bash
    eval "$(kopi env --shell bash)"
    ```
 
-2. Check your shell:
+2. **Lazy loading**: Only run kopi in Java project directories
    ```bash
-   echo $SHELL
-   echo $0
-   ```
-
-## Performance Tips
-
-1. **Use --quiet flag**: Suppresses stderr output for faster execution
-   ```bash
-   eval "$(kopi env --quiet)"
-   ```
-
-2. **Cache shell detection**: For shells where detection is slow
-   ```bash
-   KOPI_SHELL=bash eval "$(kopi env --shell $KOPI_SHELL)"
-   ```
-
-3. **Lazy loading**: Only run kopi when needed
-   ```bash
-   # Only in directories with Java projects
-   if [[ -f "pom.xml" ]] || [[ -f "build.gradle" ]]; then
-       eval "$(kopi env --quiet)"
+   # Check for common Java project files
+   if [[ -f "pom.xml" ]] || [[ -f "build.gradle" ]] || [[ -f "build.gradle.kts" ]]; then
+       eval "$(kopi env)"
    fi
+   ```
+
+3. **Disable export for faster execution**: When not needed in subshells
+   ```bash
+   eval "$(kopi env --export=false)"
+   ```
+
+### PowerShell
+
+1. **Cache shell detection**: Explicitly specify PowerShell
+   ```powershell
+   kopi env --shell powershell | Invoke-Expression
+   ```
+
+2. **Lazy loading**: Only run kopi in Java project directories
+   ```powershell
+   # Check for common Java project files
+   if ((Test-Path "pom.xml") -or (Test-Path "build.gradle") -or (Test-Path "build.gradle.kts")) {
+       kopi env | Invoke-Expression
+   }
    ```
 
 ## Security Considerations
 
 1. **Verify project files**: Be cautious with `.kopi-version` files from untrusted sources
-2. **Use --quiet in automation**: Prevents information leakage via stderr
-3. **Validate installations**: Kopi verifies JDK integrity during installation
+2. **Validate installations**: Kopi verifies JDK integrity during installation
+3. **Review environment changes**: Check what environment variables are being set before evaluation
 
 ## Examples
 
@@ -312,6 +279,7 @@ echo $JAVA_HOME
 
 ### Multiple Projects
 
+#### Bash/Zsh
 ```bash
 # Project A uses Java 21
 cd ~/projects/project-a
@@ -322,14 +290,47 @@ cd ~/projects/project-b
 echo $JAVA_HOME  # /home/user/.kopi/jdks/temurin-17.0.9/
 ```
 
+#### PowerShell
+```powershell
+# Project A uses Java 21
+cd ~/projects/project-a
+echo $env:JAVA_HOME  # C:\Users\user\.kopi\jdks\temurin-21.0.5
+
+# Project B uses Java 17
+cd ~/projects/project-b
+echo $env:JAVA_HOME  # C:\Users\user\.kopi\jdks\temurin-17.0.9
+```
+
 ### Override for Testing
 
+#### Bash/Zsh
 ```bash
-# Temporarily use a different version
-KOPI_JAVA_VERSION=temurin@11 eval "$(kopi env)"
+# For interactive work - launch a new shell (recommended)
+kopi shell 11
+java -version  # Shows Java 11
+exit           # Return to original environment
 
-# Or use shell command
-eval "$(kopi shell 11)"
+# For scripts/CI - set specific version temporarily
+eval "$(kopi env 11)"
+./gradlew test  # Runs with Java 11
+
+# You can also specify distribution
+eval "$(kopi env temurin@11)"
+```
+
+#### PowerShell
+```powershell
+# For interactive work - launch a new shell (recommended)
+kopi shell 11
+java -version  # Shows Java 11
+exit           # Return to original environment
+
+# For scripts/CI - set specific version temporarily
+kopi env 11 | Invoke-Expression
+./gradlew test  # Runs with Java 11
+
+# You can also specify distribution
+kopi env temurin@11 | Invoke-Expression
 ```
 
 ## Best Practices
@@ -338,12 +339,12 @@ eval "$(kopi shell 11)"
 2. **Be specific**: Use full version specs (e.g., `temurin@21.0.5`)
 3. **Test locally**: Verify shell integration before deploying
 4. **Document requirements**: Include Java version in your README
-5. **Use quiet mode**: In automated scripts and prompts
+5. **Use shell override**: Explicitly specify shell when detection is unreliable
 
 ## Related Commands
 
-- `kopi shell`: Interactive shell with modified PATH
-- `kopi install`: Install specific JDK versions
+- `kopi shell <version>`: Launch interactive shell with specified JDK
+- `kopi install <version>`: Install specific JDK versions
 - `kopi list`: Show installed JDKs
 - `kopi current`: Display current JDK information
-- `kopi global`: Set system-wide default
+- `kopi global <version>`: Set system-wide default

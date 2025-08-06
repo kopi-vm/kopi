@@ -250,6 +250,7 @@ restorecon -Rv ~/.kopi
 **Symptoms:**
 - `java -version` shows wrong version
 - `which java` doesn't point to kopi shims
+- `kopi` command not found
 
 **Solutions:**
 1. Verify shims in PATH:
@@ -262,9 +263,51 @@ restorecon -Rv ~/.kopi
    export PATH="$HOME/.kopi/shims:$PATH"
    ```
 
-3. Run shell setup:
+3. Check if kopi is installed:
    ```bash
-   kopi shell
+   which kopi
+   ```
+
+### Version Not Detected
+**Symptoms:**
+- Kopi doesn't detect project version files
+- Wrong version is used despite having `.kopi-version` or `.java-version`
+
+**Solutions:**
+1. Check file permissions:
+   ```bash
+   ls -la .kopi-version .java-version
+   ```
+
+2. Verify version format:
+   ```bash
+   cat .kopi-version  # Should be like: temurin@21
+   cat .java-version  # Should be like: 21
+   ```
+
+3. Check version resolution:
+   ```bash
+   kopi current  # Shows which version is currently active
+   kopi env  # Outputs environment variables for the current version
+   ```
+
+### Shell Detection Issues
+**Symptoms:**
+- `kopi env` fails to detect shell type
+- Wrong shell syntax is generated
+
+**Solutions:**
+1. Explicitly specify shell:
+   ```bash
+   eval "$(kopi env --shell bash)"    # For bash
+   kopi env --shell fish | source      # For fish
+   kopi env --shell powershell | Invoke-Expression  # For PowerShell
+   ```
+
+2. Check your current shell:
+   ```bash
+   echo $SHELL
+   echo $0
    ```
 
 ## Getting Help
