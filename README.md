@@ -29,7 +29,7 @@ Kopi is designed for:
 
 ## How it Works
 
-Kopi integrates with your shell to intercept Java commands and automatically route them to the correct JDK version. It fetches available JDK distributions from [foojay.io](https://foojay.io/), a comprehensive OpenJDK discovery service.
+Kopi integrates with your shell to intercept Java commands and automatically route them to the correct JDK version. It uses a multi-source metadata system that can fetch JDK information from pre-generated metadata files (for speed) or the foojay.io API (for real-time data).
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌───────────────┐
@@ -66,20 +66,26 @@ kopi install temurin@17           # Specific distribution and version
 kopi install corretto@11.0.21     # Exact version
 
 # List installed JDKs
-kopi list
+kopi list                         # or: kopi ls
 
 # Set global default
-kopi global 21
+kopi global 21                    # or: kopi g 21, kopi default 21
 
 # Set project-specific version
 cd my-project
-kopi local 17                     # Creates .kopi-version file
+kopi local 17                     # or: kopi l 17, kopi pin 17
+                                  # Creates .kopi-version file
 
 # Show current JDK
 kopi current
+kopi current -q                   # Show only version number
+
+# Show installation path
+kopi which                        # Path to current java executable
+kopi which 21                     # Path for specific version
 
 # Uninstall a JDK
-kopi uninstall temurin@21         # Remove specific version
+kopi uninstall temurin@21         # or: kopi u temurin@21
 kopi uninstall corretto --all     # Remove all Corretto versions
 ```
 
@@ -101,21 +107,26 @@ temurin@21
 
 ### Search Available JDKs
 ```bash
-kopi search 21                    # Search for JDK 21 variants
+kopi search 21                    # Search for JDK 21 variants (alias: kopi s 21)
 kopi search corretto              # List all Corretto versions
 kopi search 21 --lts-only         # Show only LTS versions
 kopi search 21 --detailed         # Show full details
+kopi search 21 --json             # Output as JSON
+
+# Note: 'search' is an alias for 'cache search'
 ```
 
 ### Shell Environment
 ```bash
 # Launch new shell with specific JDK
-kopi shell 21                     # Launches new shell with Java 21 active
+kopi shell 21                     # or: kopi use 21
+                                  # Launches new shell with Java 21 active
 
-# Or use the env command for shell evaluation
-eval "$(kopi env 21)"             # Bash/Zsh
-kopi env 21 | source              # Fish
-kopi env 21 | Invoke-Expression   # PowerShell
+# Or use the env command for shell evaluation (like direnv)
+eval "$(kopi env)"                # Use current project's JDK
+eval "$(kopi env 21)"             # Use specific JDK
+kopi env | source                 # Fish shell
+kopi env | Invoke-Expression      # PowerShell
 ```
 
 ### Cache Management
@@ -123,13 +134,30 @@ kopi env 21 | Invoke-Expression   # PowerShell
 kopi cache refresh                # Update metadata from foojay.io
 kopi cache info                   # Show cache details
 kopi cache clear                  # Remove cached metadata
+kopi cache search <query>         # Search with various options
+kopi cache list-distributions     # List all available distributions
+
+# Shortcuts:
+kopi refresh                      # Alias for 'cache refresh' (alias: kopi r)
+kopi search <query>               # Alias for 'cache search' (alias: kopi s)
 ```
 
 ### Shim Management
 ```bash
 kopi shim list                    # List installed shims
-kopi shim add native-image        # Add shim for GraalVM tool
+kopi shim list --available        # Show available tools that could have shims
+kopi shim add native-image        # Add shim for specific tool
+kopi shim remove jshell           # Remove specific shim
 kopi shim verify                  # Check shim integrity
+kopi shim verify --fix            # Fix any issues found
+```
+
+### Diagnostics
+```bash
+kopi doctor                       # Run diagnostics on kopi installation
+kopi doctor --json                # Output in JSON format
+kopi doctor --check network       # Run specific category of checks
+kopi -v doctor                    # Show detailed diagnostic information
 ```
 
 ## Supported Distributions
@@ -149,7 +177,7 @@ Kopi supports JDKs from multiple vendors:
 - **semeru** - IBM Semeru
 - **trava** - Trava OpenJDK
 
-Run `kopi cache list-distributions` to see all available distributions.
+Run `kopi cache list-distributions` to see all available distributions in your cache.
 
 ## Configuration
 
@@ -170,8 +198,10 @@ min_disk_space_mb = 500
 
 ### Environment Variables
 - `KOPI_HOME` - Override default kopi home directory (default: `~/.kopi`)
+- `KOPI_JAVA_VERSION` - Override JDK version for current shell session
 - `HTTP_PROXY` / `HTTPS_PROXY` - Proxy configuration for downloads
 - `NO_PROXY` - Hosts to bypass proxy
+- `RUST_LOG` - Enable debug logging (e.g., `RUST_LOG=debug kopi install 21`)
 
 ## Architecture
 
@@ -226,16 +256,15 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 When completing any coding task:
 1. Run `cargo fmt` to format code
-2. Run `cargo clippy` to check for improvements  
-3. Run `cargo check` for fast error checking
-4. Run `cargo test --lib` to run unit tests
-5. Submit a pull request
+2. Run `cargo clippy --all-targets -- -D warnings` to check for improvements
+3. Run `cargo test --lib --quiet` to run unit tests
+4. Submit a pull request
 
 All commands must pass without errors before considering work complete.
 
 ## Documentation
 
-- [User Reference](docs/reference.md) - Complete command reference
+- [User Reference](docs/reference.md) - Complete command reference with detailed examples
 - [Architecture Decision Records](docs/adr/) - Design decisions and rationale
 
 ## License
