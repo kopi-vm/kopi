@@ -6,7 +6,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-Kopi is a JDK version management tool written in Rust that integrates with your shell to seamlessly switch between different Java Development Kit versions. It uses a multi-source metadata system with pre-generated metadata files for fast access and provides a simple, fast interface similar to tools like volta, nvm, and pyenv.
+Kopi is a JDK version management tool written in Rust that integrates with your shell to seamlessly switch between different Java Development Kit versions. It uses a multi-source metadata system with pre-generated metadata files and the Foojay API for comprehensive JDK availability, providing a simple, fast interface similar to tools like volta, nvm, and pyenv.
 
 ## Who is this for?
 
@@ -29,7 +29,7 @@ Kopi is designed for:
 
 ## How it Works
 
-Kopi integrates with your shell to intercept Java commands and automatically route them to the correct JDK version. It uses a multi-source metadata system that fetches JDK information from pre-generated metadata files hosted at kopi-vm.github.io for optimal performance, with automatic fallback to local cache and optional foojay.io API support.
+Kopi integrates with your shell to intercept Java commands and automatically route them to the correct JDK version. It uses a multi-source metadata system that fetches JDK information from both pre-generated metadata files hosted at kopi-vm.github.io for optimal performance and the Foojay API for real-time availability of the latest JDK releases.
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌───────────────┐

@@ -253,16 +253,9 @@ fn default_metadata_sources() -> Vec<SourceConfig> {
             cache_locally: true,
             timeout_secs: 30,
         },
-        SourceConfig::Local {
-            name: "local-fallback".to_string(),
-            enabled: true,
-            directory: default_local_directory(),
-            archive_pattern: default_archive_pattern(),
-            cache_extracted: true,
-        },
         SourceConfig::Foojay {
             name: "foojay-api".to_string(),
-            enabled: false,
+            enabled: true,
             base_url: default_foojay_base_url(),
             timeout_secs: 30,
         },
@@ -275,10 +268,6 @@ fn default_metadata_cache_max_age_hours() -> u64 {
 
 fn default_http_base_url() -> String {
     "https://kopi-vm.github.io/metadata".to_string()
-}
-
-fn default_local_directory() -> String {
-    "${KOPI_HOME}/bundled-metadata".to_string()
 }
 
 fn default_archive_pattern() -> String {
