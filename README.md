@@ -6,7 +6,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-Kopi is a JDK version management tool written in Rust that integrates with your shell to seamlessly switch between different Java Development Kit versions. It fetches JDK metadata from foojay.io and provides a simple, fast interface similar to tools like volta, nvm, and pyenv.
+Kopi is a JDK version management tool written in Rust that integrates with your shell to seamlessly switch between different Java Development Kit versions. It uses a multi-source metadata system with pre-generated metadata files for fast access and provides a simple, fast interface similar to tools like volta, nvm, and pyenv.
 
 ## Who is this for?
 
@@ -29,7 +29,7 @@ Kopi is designed for:
 
 ## How it Works
 
-Kopi integrates with your shell to intercept Java commands and automatically route them to the correct JDK version. It uses a multi-source metadata system that can fetch JDK information from pre-generated metadata files (for speed) or the foojay.io API (for real-time data).
+Kopi integrates with your shell to intercept Java commands and automatically route them to the correct JDK version. It uses a multi-source metadata system that fetches JDK information from pre-generated metadata files hosted at kopi-vm.github.io for optimal performance, with automatic fallback to local cache and optional foojay.io API support.
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌───────────────┐
@@ -131,7 +131,7 @@ kopi env | Invoke-Expression      # PowerShell
 
 ### Cache Management
 ```bash
-kopi cache refresh                # Update metadata from foojay.io
+kopi cache refresh                # Update metadata from configured sources
 kopi cache info                   # Show cache details
 kopi cache clear                  # Remove cached metadata
 kopi cache search <query>         # Search with various options
@@ -273,7 +273,7 @@ Kopi is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for detail
 
 ## Acknowledgments
 
-- JDK metadata provided by [foojay.io](https://foojay.io/)
+- JDK metadata originally sourced from [foojay.io](https://foojay.io/) and optimized for fast access
 - Inspired by [volta](https://volta.sh/), [nvm](https://github.com/nvm-sh/nvm), and [pyenv](https://github.com/pyenv/pyenv)
 
 ---

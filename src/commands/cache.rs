@@ -120,7 +120,7 @@ fn refresh_cache(javafx_bundled: bool, config: &KopiConfig) -> Result<()> {
             .template("{spinner:.green} {msg}")
             .unwrap(),
     );
-    spinner.set_message("Refreshing metadata cache from foojay.io...");
+    spinner.set_message("Refreshing metadata cache from configured sources...");
     spinner.enable_steady_tick(Duration::from_millis(100));
 
     let cache = cache::fetch_and_cache_metadata(javafx_bundled, config)?;
@@ -258,7 +258,7 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
         if !cache.distributions.contains_key(canonical_name) {
             // Distribution not in cache, fetch it using the canonical name
             if !json {
-                println!("Distribution '{dist_id}' not found in cache. Fetching from foojay.io...");
+                println!("Distribution '{dist_id}' not found in cache. Fetching from configured sources...");
             }
 
             match cache::fetch_and_cache_distribution(canonical_name, javafx_bundled, config) {

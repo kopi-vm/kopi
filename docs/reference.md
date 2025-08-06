@@ -2,7 +2,7 @@
 
 ## Overview
 
-Kopi is a JDK version management tool that integrates with your shell to seamlessly switch between different Java Development Kit versions. It uses a flexible metadata system that can fetch JDK information from multiple sources including cached HTTP endpoints and the foojay.io API, providing a simple, fast interface similar to tools like volta, nvm, and pyenv.
+Kopi is a JDK version management tool that integrates with your shell to seamlessly switch between different Java Development Kit versions. It uses a flexible metadata system that fetches JDK information from multiple sources including pre-generated metadata files (primary), local cache (fallback), and optionally the foojay.io API, providing a simple, fast interface similar to tools like volta, nvm, and pyenv.
 
 ## Installation & Setup Commands
 
@@ -410,11 +410,11 @@ kopi global corretto@21
 
 ### `kopi refresh`
 
-Update metadata cache from foojay.io. This is an alias for `kopi cache refresh`.
+Update metadata cache from configured sources. This is an alias for `kopi cache refresh`.
 
 **Usage:**
 ```bash
-kopi refresh                             # Update metadata cache from foojay.io
+kopi refresh                             # Update metadata cache from configured sources
 kopi refresh --javafx-bundled            # Include JavaFX bundled packages
 ```
 
@@ -489,9 +489,9 @@ kopi -v doctor                           # See detailed check information
 ### `kopi cache`
 
 Manage the JDK metadata cache used for searching and installing JDK versions. Kopi uses a multi-source metadata system that provides:
-- Fast access through pre-generated metadata files (HTTP source)
-- Real-time data from the foojay.io API
-- Offline capability with local metadata directories
+- Fast access through pre-generated metadata files hosted at kopi-vm.github.io (primary source)
+- Offline capability with local metadata cache (automatic fallback)
+- Optional real-time data from the foojay.io API (when configured)
 - Automatic fallback between sources for reliability
 
 #### `kopi cache refresh`
@@ -826,28 +826,28 @@ Kopi uses a flexible metadata system that can fetch JDK information from multipl
 
 ### Metadata Sources
 
-1. **HTTP Metadata Source** (Primary)
-   - Pre-generated metadata files hosted on GitHub Pages
-   - Updated daily with the latest JDK releases
+1. **HTTP Metadata Source** (Primary, enabled by default)
+   - Pre-generated metadata files hosted at kopi-vm.github.io/metadata
+   - Updated regularly with the latest JDK releases
    - Platform-specific files for reduced data transfer
    - 20-30x faster than direct API access
 
-2. **Foojay API** (Fallback)
-   - Real-time data from api.foojay.io
+2. **Local Cache** (Fallback, enabled by default)
+   - Automatically cached metadata from previous fetches
+   - Enables offline operation
+   - Located in local metadata directory
+
+3. **Foojay API** (Optional, disabled by default)
+   - Direct real-time data from api.foojay.io
    - Always up-to-date with the latest releases
    - Complete package information including download URLs
-   - Used when HTTP source is unavailable
-
-3. **Local Directory Source** (Optional)
-   - For offline environments or bundled installations
-   - Can be configured for air-gapped systems
-   - Reads metadata from local filesystem
+   - Can be enabled for environments requiring real-time data
 
 ### How It Works
 
 1. When you run commands like `kopi list` or `kopi install`, Kopi checks metadata sources in priority order
 2. If the primary source (HTTP) is available, it fetches pre-generated metadata quickly
-3. If the primary source fails, it automatically falls back to the Foojay API
+3. If the primary source fails, it automatically falls back to the local cache
 4. Results are cached locally to improve subsequent operations
 5. The system includes lazy loading for package details to minimize data transfer
 
@@ -864,11 +864,11 @@ name = "github"
 enabled = true
 base_url = "https://kopi-vm.github.io/metadata"
 
-# Foojay API (fallback)
+# Foojay API (optional, disabled by default)
 [[metadata.sources]]
 type = "foojay"
 name = "foojay-api"
-enabled = true
+enabled = false  # Set to true to enable real-time API access
 
 # Local directory (optional, for offline use)
 [[metadata.sources]]
