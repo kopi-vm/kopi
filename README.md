@@ -97,8 +97,6 @@ temurin@21
 17.0.9
 ```
 
-When you `cd` into a project directory, kopi automatically switches to the configured JDK version.
-
 ## Advanced Features
 
 ### Search Available JDKs
