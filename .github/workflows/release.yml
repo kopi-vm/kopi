@@ -7,7 +7,7 @@ on:
         description: 'Release version (e.g., 1.2.3)'
         required: true
       dry-run:
-        description: 'Run in dry-run mode (no tag push, no package publish, draft release)'
+        description: 'Run in dry-run mode (no package publish, draft release)'
         type: boolean
         default: true
 
