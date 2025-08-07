@@ -6,6 +6,10 @@ on:
       version:
         description: 'Release version (e.g., 1.2.3)'
         required: true
+      dry-run:
+        description: 'Run in dry-run mode (no tag push, no package publish, draft release)'
+        type: boolean
+        default: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -166,6 +170,7 @@ jobs:
       run: cargo set-version ${{ github.event.inputs.version }}
 
     - name: Commit, Tag, and Push
+      if: ${{ github.event.inputs.dry-run == 'false' }}
       run: |
         git add .
         git commit -m "Bump v${{ github.event.inputs.version }}"
@@ -173,12 +178,34 @@ jobs:
         git push
         git push --tags
 
+    - name: Commit and Tag (dry-run)
+      if: ${{ github.event.inputs.dry-run == 'true' }}
+      run: |
+        git add .
+        git commit -m "Bump v${{ github.event.inputs.version }}"
+        git tag v${{ github.event.inputs.version }}
+        echo "✅ Dry-run: Skipping tag push"
+
     - name: Publish
+      if: ${{ github.event.inputs.dry-run == 'false' }}
+      run: cargo publish
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+    - name: Publish (dry-run)
+      if: ${{ github.event.inputs.dry-run == 'true' }}
       run: cargo publish --dry-run
       env:
         CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
     - name: Create release
+      if: ${{ github.event.inputs.dry-run == 'false' }}
+      run: gh release create v${{ github.event.inputs.version }} --generate-notes release/*
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Create release (dry-run)
+      if: ${{ github.event.inputs.dry-run == 'true' }}
       run: gh release create v${{ github.event.inputs.version }} --generate-notes release/* --draft
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
