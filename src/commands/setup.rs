@@ -23,6 +23,7 @@ use colored::Colorize;
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
+#[cfg(debug_assertions)]
 use std::process::Command;
 
 pub struct SetupCommand<'a> {
@@ -84,47 +85,51 @@ impl<'a> SetupCommand<'a> {
     fn build_shim_binary(&self) -> Result<()> {
         println!("\nBuilding kopi-shim binary...");
 
-        // Check if we're running from a development environment
         let current_exe = env::current_exe()?;
         log::debug!("Current executable: {}", current_exe.display());
-        let is_development = current_exe
-            .to_str()
-            .map(|p| p.contains("target/debug") || p.contains("target/release"))
-            .unwrap_or(false);
 
-        let source = if is_development {
-            // We're in development, build the shim binary
-            log::info!("Building from source...");
+        #[cfg(debug_assertions)]
+        {
+            // Check if we're running from a development environment
+            let is_development = current_exe
+                .to_str()
+                .map(|p| p.contains("target/debug") || p.contains("target/release"))
+                .unwrap_or(false);
 
-            let output = Command::new("cargo")
-                .args(["build", "--bin", "kopi-shim", "--release"])
-                .output()?;
+            if is_development {
+                // We're in development, build the shim binary
+                log::info!("Building from source...");
 
-            if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                return Err(crate::error::KopiError::SystemError(format!(
-                    "Failed to build kopi-shim: {stderr}"
-                )));
+                let output = Command::new("cargo")
+                    .args(["build", "--bin", "kopi-shim", "--release"])
+                    .output()?;
+
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    return Err(crate::error::KopiError::SystemError(format!(
+                        "Failed to build kopi-shim: {stderr}"
+                    )));
+                }
+
+                let source = PathBuf::from("target/release/kopi-shim");
+                self.copy_and_configure_shim(&source, "kopi-shim")?;
+                return Ok(());
             }
+        }
 
-            PathBuf::from("target/release/kopi-shim")
-        } else {
-            // We're running from an installed version
-            // The kopi-shim should be installed alongside the main binary
-            let shim_name = shim_binary_name();
+        // We're running from an installed version
+        // The kopi-shim should be installed alongside the main binary
+        let shim_name = shim_binary_name();
 
-            current_exe
-                .parent()
-                .map(|p| p.join(shim_name))
-                .ok_or_else(|| {
-                    crate::error::KopiError::SystemError(
-                        "Failed to locate kopi-shim binary".to_string(),
-                    )
-                })?
-        };
+        let source = current_exe
+            .parent()
+            .map(|p| p.join(shim_name))
+            .ok_or_else(|| {
+                crate::error::KopiError::SystemError(
+                    "Failed to locate kopi-shim binary".to_string(),
+                )
+            })?;
 
-        // Copy and configure the shim binary
-        let shim_name = if is_development { "kopi-shim" } else { shim_binary_name() };
         self.copy_and_configure_shim(&source, shim_name)?;
 
         Ok(())
@@ -139,37 +144,37 @@ impl<'a> SetupCommand<'a> {
         }
 
         let dest = self.config.bin_dir()?.join(shim_name);
-        
+
         log::debug!("Source path: {}", source.display());
         log::debug!("Destination path: {}", dest.display());
-        
+
         // Check if source and destination are the same
         if source.canonicalize().ok() == dest.canonicalize().ok() {
             log::debug!("kopi-shim already in place (source and destination are the same)");
         } else {
             log::debug!("Attempting to copy...");
-            
-            match fs::copy(&source, &dest) {
+
+            match fs::copy(source, &dest) {
                 Ok(bytes) => {
-                    log::debug!("Successfully copied {} bytes", bytes);
+                    log::debug!("Successfully copied {bytes} bytes");
                     log::info!("Installed kopi-shim to: {}", dest.display());
                 }
                 Err(e) => {
-                    eprintln!("  Failed to copy file: {}", e);
+                    eprintln!("  Failed to copy file: {e}");
                     log::debug!("  Source: {}", source.display());
                     log::debug!("  Destination: {}", dest.display());
-                    
+
                     // Check if destination file already exists and is in use
                     if dest.exists() {
                         log::debug!("Destination file already exists");
-                        
+
                         // Try to check if file is locked by attempting to open it
                         match OpenOptions::new().write(true).open(&dest) {
                             Ok(_) => log::debug!("File is accessible"),
-                            Err(e2) => log::debug!("Cannot access file: {}", e2),
+                            Err(e2) => log::debug!("Cannot access file: {e2}"),
                         }
                     }
-                    
+
                     return Err(crate::error::KopiError::Io(e));
                 }
             }
