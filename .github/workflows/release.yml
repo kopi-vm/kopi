@@ -145,6 +145,15 @@ jobs:
         name: package-macOS
         path: release
 
+    - name: Generate SHA256 checksums
+      run: |
+        cd release
+        for file in *; do
+          if [ -f "$file" ]; then
+            sha256sum "$file" | cut -d' ' -f1 > "${file}.sha256"
+          fi
+        done
+
     - name: Show release artifacts
       run: ls -la release
 
