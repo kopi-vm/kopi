@@ -21,8 +21,8 @@ use crate::shim::installer::ShimInstaller;
 use crate::shim::tools::default_shim_tools;
 use colored::Colorize;
 use std::env;
-use std::fs;
-use std::path::PathBuf;
+use std::fs::{self, OpenOptions};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub struct SetupCommand<'a> {
@@ -86,14 +86,15 @@ impl<'a> SetupCommand<'a> {
 
         // Check if we're running from a development environment
         let current_exe = env::current_exe()?;
+        log::debug!("Current executable: {}", current_exe.display());
         let is_development = current_exe
             .to_str()
             .map(|p| p.contains("target/debug") || p.contains("target/release"))
             .unwrap_or(false);
 
-        if is_development {
+        let source = if is_development {
             // We're in development, build the shim binary
-            println!("  Building from source...");
+            log::info!("Building from source...");
 
             let output = Command::new("cargo")
                 .args(["build", "--bin", "kopi-shim", "--release"])
@@ -106,49 +107,78 @@ impl<'a> SetupCommand<'a> {
                 )));
             }
 
-            // Copy the built binary to the bin directory
-            let source = PathBuf::from("target/release/kopi-shim");
-            let dest = self.config.bin_dir()?.join("kopi-shim");
-
-            if source.exists() {
-                fs::copy(&source, &dest)?;
-                println!("  Installed kopi-shim to: {}", dest.display());
-
-                // Make it executable
-                make_executable(&dest)?
-            } else {
-                return Err(crate::error::KopiError::SystemError(
-                    "Failed to find built kopi-shim binary".to_string(),
-                ));
-            }
+            PathBuf::from("target/release/kopi-shim")
         } else {
             // We're running from an installed version
             // The kopi-shim should be installed alongside the main binary
             let shim_name = shim_binary_name();
 
-            let source = current_exe
+            current_exe
                 .parent()
                 .map(|p| p.join(shim_name))
                 .ok_or_else(|| {
                     crate::error::KopiError::SystemError(
                         "Failed to locate kopi-shim binary".to_string(),
                     )
-                })?;
+                })?
+        };
 
-            if source.exists() {
-                let dest = self.config.bin_dir()?.join(shim_name);
-                fs::copy(&source, &dest)?;
-                println!("  Installed kopi-shim to: {}", dest.display());
+        // Copy and configure the shim binary
+        let shim_name = if is_development { "kopi-shim" } else { shim_binary_name() };
+        self.copy_and_configure_shim(&source, shim_name)?;
 
-                // Make it executable
-                make_executable(&dest)?
-            } else {
-                return Err(crate::error::KopiError::SystemError(format!(
-                    "kopi-shim binary not found at: {}",
-                    source.display()
-                )));
+        Ok(())
+    }
+
+    fn copy_and_configure_shim(&self, source: &Path, shim_name: &str) -> Result<()> {
+        if !source.exists() {
+            return Err(crate::error::KopiError::SystemError(format!(
+                "kopi-shim binary not found at: {}",
+                source.display()
+            )));
+        }
+
+        let dest = self.config.bin_dir()?.join(shim_name);
+        
+        log::debug!("Source path: {}", source.display());
+        log::debug!("Destination path: {}", dest.display());
+        
+        // Check if source and destination are the same
+        if source.canonicalize().ok() == dest.canonicalize().ok() {
+            log::debug!("kopi-shim already in place (source and destination are the same)");
+        } else {
+            log::debug!("Attempting to copy...");
+            
+            match fs::copy(&source, &dest) {
+                Ok(bytes) => {
+                    log::debug!("Successfully copied {} bytes", bytes);
+                    log::info!("Installed kopi-shim to: {}", dest.display());
+                }
+                Err(e) => {
+                    eprintln!("  Failed to copy file: {}", e);
+                    log::debug!("  Source: {}", source.display());
+                    log::debug!("  Destination: {}", dest.display());
+                    
+                    // Check if destination file already exists and is in use
+                    if dest.exists() {
+                        log::debug!("Destination file already exists");
+                        
+                        // Try to check if file is locked by attempting to open it
+                        match OpenOptions::new().write(true).open(&dest) {
+                            Ok(_) => log::debug!("File is accessible"),
+                            Err(e2) => log::debug!("Cannot access file: {}", e2),
+                        }
+                    }
+                    
+                    return Err(crate::error::KopiError::Io(e));
+                }
             }
         }
+
+        // Make it executable
+        log::debug!("Setting executable permissions...");
+        make_executable(&dest)?;
+        log::debug!("Executable permissions set successfully");
 
         Ok(())
     }
