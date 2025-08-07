@@ -213,10 +213,27 @@ impl<'a> SetupCommand<'a> {
     }
 
     fn show_path_instructions(&self) -> Result<()> {
+        let shims_dir = self.config.shims_dir()?;
+
+        // Check if shims directory is already in PATH
+        if let Ok(path_env) = env::var("PATH") {
+            let is_in_path = env::split_paths(&path_env).any(|p| {
+                // Normalize paths for comparison
+                p.canonicalize().ok() == shims_dir.canonicalize().ok()
+            });
+
+            if is_in_path {
+                println!("\n{}", "PATH is already configured ✓".green().bold());
+                println!("The shims directory is already in your PATH:");
+                println!("  {}", shims_dir.display().to_string().bold());
+                return Ok(());
+            }
+        }
+
+        // If not in PATH, show configuration instructions
         println!("\n{}", "PATH Configuration Required".yellow().bold());
         println!("{}", "─".repeat(50));
 
-        let shims_dir = self.config.shims_dir()?;
         let (shell, _shell_path) = detect_shell().unwrap_or_else(|_| {
             // Fallback to a default shell if detection fails
             #[cfg(unix)]
