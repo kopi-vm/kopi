@@ -33,10 +33,15 @@
     <DefaultCompressionLevel>high</DefaultCompressionLevel>
     <SuppressValidation>false</SuppressValidation>
     
+    <!-- Map Platform to Rust target -->
+    <RustTarget Condition="'$(Platform)' == 'x64'">x86_64-pc-windows-msvc</RustTarget>
+    <RustTarget Condition="'$(Platform)' == 'arm64'">aarch64-pc-windows-msvc</RustTarget>
+    
     <!-- Preprocessor variables -->
     <DefineConstants>
       Version=$(Version);
-      KopiProjectRoot=$(MSBuildProjectDirectory)\..\..\
+      KopiProjectRoot=$(MSBuildProjectDirectory)\..\..\\;
+      RustTarget=$(RustTarget)
     </DefineConstants>
     
     <!-- Output settings -->

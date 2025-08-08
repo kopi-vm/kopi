@@ -51,11 +51,11 @@
         <Directory Id="INSTALLFOLDER" Name="bin">
           <!-- Main binaries -->
           <Component Id="KopiExe" Guid="bf8637ec-6a0c-44fb-93a0-f31d266abf62">
-            <File Id="KopiExeFile" Source="$(var.KopiProjectRoot)target\release\kopi.exe" KeyPath="yes" />
+            <File Id="KopiExeFile" Source="$(var.KopiProjectRoot)target\$(var.RustTarget)\release\kopi.exe" KeyPath="yes" />
           </Component>
           
           <Component Id="KopiShimExe" Guid="5c2fa8d3-32b1-45f2-bd5a-fc9f2532a29b">
-            <File Id="KopiShimExeFile" Source="$(var.KopiProjectRoot)target\release-shim\kopi-shim.exe" KeyPath="yes" />
+            <File Id="KopiShimExeFile" Source="$(var.KopiProjectRoot)target\$(var.RustTarget)\release-shim\kopi-shim.exe" KeyPath="yes" />
           </Component>
         </Directory>
         
