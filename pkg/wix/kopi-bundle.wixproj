@@ -23,10 +23,13 @@
     <!-- Version property - can be overridden from command line -->
     <Version Condition="'$(Version)' == ''">0.0.3</Version>
     
-    <OutputName>kopi-bundle-with-vcredist-$(Version)-windows-x64</OutputName>
+    <!-- Platform property - can be overridden from command line -->
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    
+    <OutputName>kopi-bundle-with-vcredist-$(Version)-windows-$(Platform)</OutputName>
     
     <!-- Build configuration -->
-    <InstallerPlatform>x64</InstallerPlatform>
+    <InstallerPlatform>$(Platform)</InstallerPlatform>
     
     <!-- Preprocessor variables -->
     <DefineConstants>
@@ -53,7 +56,7 @@
   
   <!-- Validation that required properties are set -->
   <Target Name="ValidateBundleProperties" BeforeTargets="Build">
-    <Error Condition="'$(VCRedistPath)' == ''" Text="VCRedistPath property must be set. Use -p:VCRedistPath=path\to\vc_redist.x64.exe" />
+    <Error Condition="'$(VCRedistPath)' == ''" Text="VCRedistPath property must be set. Use -p:VCRedistPath=path\to\vc_redist.$(Platform).exe" />
     <Error Condition="!Exists('$(VCRedistPath)')" Text="VC++ Redistributable not found at: $(VCRedistPath)" />
     <Error Condition="!Exists('$(KopiMsiPath)')" Text="Kopi MSI not found at: $(KopiMsiPath). Build the MSI first using build.ps1" />
   </Target>

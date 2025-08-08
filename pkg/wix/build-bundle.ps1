@@ -23,6 +23,7 @@
 param(
     [string]$Configuration = "Release",
     [string]$Version = "0.0.3",
+    [string]$Platform = "x64",
     [string]$OutputDir = (Join-Path $PSScriptRoot "output"),
     [string]$KopiMsiPath = "",  # Optional: path to pre-built MSI
     [switch]$SkipMsiBuild,
@@ -34,6 +35,8 @@ $ErrorActionPreference = "Stop"
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host " Kopi Bundle Build Script" -ForegroundColor Cyan  
 Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "Version: $Version" -ForegroundColor Cyan
+Write-Host "Platform: $Platform" -ForegroundColor Cyan
 
 # Get script directory
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -43,7 +46,7 @@ $ProjectRoot = Join-Path $ScriptDir ".." | Join-Path -ChildPath ".." | Resolve-P
 if (-not $SkipVCDownload) {
     Write-Host "`nStep 1: Downloading VC++ Redistributable..." -ForegroundColor Yellow
     $vcRedistOutput = Join-Path $ScriptDir "redist"
-    & "$ScriptDir\download-vcredist.ps1" -OutputPath $vcRedistOutput
+    & "$ScriptDir\download-vcredist.ps1" -OutputPath $vcRedistOutput -Platform $Platform
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to download VC++ Redistributable"
     }
@@ -54,7 +57,7 @@ if (-not $SkipVCDownload) {
 # Step 2: Build Kopi MSI
 if (-not $SkipMsiBuild) {
     Write-Host "`nStep 2: Building Kopi MSI..." -ForegroundColor Yellow
-    & "$ScriptDir\build.ps1" -Version $Version
+    & "$ScriptDir\build.ps1" -Version $Version -Platform $Platform
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to build Kopi MSI"
     }
@@ -71,9 +74,9 @@ if ($KopiMsiPath) {
     $msiPath = $KopiMsiPath
     Write-Host "Using provided MSI path: $msiPath" -ForegroundColor Cyan
 } else {
-    $msiPath = Join-Path $ScriptDir "output\en-us\kopi-$Version-windows-x64.msi"
+    $msiPath = Join-Path $ScriptDir "output\en-us\kopi-$Version-windows-$Platform.msi"
 }
-$vcRedistPath = Join-Path $ScriptDir "redist\vc_redist.x64.exe"
+$vcRedistPath = Join-Path $ScriptDir "redist\vc_redist.$Platform.exe"
 
 if (-not (Test-Path $msiPath)) {
     Write-Error "MSI not found at: $msiPath"
@@ -104,6 +107,7 @@ if (Get-Command "dotnet" -ErrorAction SilentlyContinue) {
         $bundleProjectPath,
         "-c", $Configuration,
         "-p:Version=$Version",
+        "-p:Platform=$Platform",
         "-p:VCRedistPath=$vcRedistPath",
         "-p:KopiMsiPath=$msiPath"
     )
@@ -120,7 +124,7 @@ if (Get-Command "dotnet" -ErrorAction SilentlyContinue) {
 # Wait a moment for the file to be written
 Start-Sleep -Milliseconds 500
 
-$bundleOutput = Join-Path $OutputDir "kopi-bundle-with-vcredist-$Version-windows-x64.exe"
+$bundleOutput = Join-Path $OutputDir "kopi-bundle-with-vcredist-$Version-windows-$Platform.exe"
 if (Test-Path $bundleOutput) {
     Write-Host "`n✓ Bundle built successfully!" -ForegroundColor Green
     Write-Host "  Output: $bundleOutput" -ForegroundColor Gray
@@ -129,7 +133,7 @@ if (Test-Path $bundleOutput) {
     Write-Host "  Size: $([math]::Round($bundleSize / 1MB, 2)) MB" -ForegroundColor Gray
     
     Write-Host "`nThe bundle includes:" -ForegroundColor Cyan
-    Write-Host "  - Visual C++ 2015-2022 Redistributable (x64)" -ForegroundColor White
+    Write-Host "  - Visual C++ 2015-2022 Redistributable ($Platform)" -ForegroundColor White
     Write-Host "  - Kopi $Version MSI installer" -ForegroundColor White
     Write-Host "`nVC++ Runtime will be installed automatically if needed." -ForegroundColor Green
 } else {

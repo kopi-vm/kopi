@@ -21,6 +21,7 @@
 param(
     [string]$Configuration = "Release",
     [string]$Version = "0.0.3",
+    [string]$Platform = "x64",
     [string]$OutputDir = ".\output",
     [switch]$SkipBuild
 )
@@ -72,6 +73,16 @@ $ProjectRoot = Resolve-Path $ProjectRoot
 Write-Host "Project root: $ProjectRoot" -ForegroundColor Cyan
 Write-Host "Configuration: $Configuration" -ForegroundColor Cyan
 Write-Host "Version: $Version" -ForegroundColor Cyan
+Write-Host "Platform: $Platform" -ForegroundColor Cyan
+
+# Map platform to Rust target
+$RustTarget = switch ($Platform) {
+    "x64" { "x86_64-pc-windows-msvc" }
+    "arm64" { "aarch64-pc-windows-msvc" }
+    default { throw "Unsupported platform: $Platform" }
+}
+
+Write-Host "Rust target: $RustTarget" -ForegroundColor Cyan
 
 # Build Rust binaries if not skipped
 if (-not $SkipBuild) {
@@ -80,15 +91,15 @@ if (-not $SkipBuild) {
     Push-Location $ProjectRoot
     try {
         # Build main kopi executable
-        Write-Host "Building kopi.exe..." -ForegroundColor Cyan
-        cargo auditable build --release
+        Write-Host "Building kopi.exe for $Platform..." -ForegroundColor Cyan
+        cargo auditable build --release --target $RustTarget
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to build kopi.exe"
         }
         
         # Build kopi-shim with optimized profile
-        Write-Host "Building kopi-shim.exe..." -ForegroundColor Cyan
-        cargo auditable build --profile release-shim --bin kopi-shim
+        Write-Host "Building kopi-shim.exe for $Platform..." -ForegroundColor Cyan
+        cargo auditable build --profile release-shim --bin kopi-shim --target $RustTarget
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to build kopi-shim.exe"
         }
@@ -102,8 +113,8 @@ else {
 }
 
 # Verify binaries exist
-$KopiExe = Join-Path $ProjectRoot "target\release\kopi.exe"
-$KopiShimExe = Join-Path $ProjectRoot "target\release-shim\kopi-shim.exe"
+$KopiExe = Join-Path $ProjectRoot "target\$RustTarget\release\kopi.exe"
+$KopiShimExe = Join-Path $ProjectRoot "target\$RustTarget\release-shim\kopi-shim.exe"
 
 if (-not (Test-Path $KopiExe)) {
     Write-Error "kopi.exe not found at: $KopiExe"
@@ -157,7 +168,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "`nBuilding MSI installer..." -ForegroundColor Yellow
 
 # Define MSI output file path
-$MsiFile = Join-Path $OutputDir "en-us\kopi-$Version-windows-x64.msi"
+$MsiFile = Join-Path $OutputDir "en-us\kopi-$Version-windows-$Platform.msi"
 
 
 # Change to WiX directory for relative paths to work
@@ -173,6 +184,7 @@ try {
             "Kopi.wixproj"
             "-c", $Configuration
             "-p:Version=$Version"
+            "-p:Platform=$Platform"
             "-v:normal"
         )
         

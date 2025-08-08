@@ -14,21 +14,26 @@
 
 # Download Visual C++ Redistributable for bundling with installer
 param(
-    [string]$OutputPath = ".\redist"
+    [string]$OutputPath = ".\redist",
+    [string]$Platform = "x64"
 )
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "Downloading Visual C++ Redistributable..." -ForegroundColor Cyan
+Write-Host "Downloading Visual C++ Redistributable ($Platform)..." -ForegroundColor Cyan
 
 # Create output directory
 if (-not (Test-Path $OutputPath)) {
     New-Item -ItemType Directory -Path $OutputPath | Out-Null
 }
 
-# Visual C++ 2015-2022 Redistributable (x64)
-$vcRedistUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
-$vcRedistPath = Join-Path $OutputPath "vc_redist.x64.exe"
+# Visual C++ 2015-2022 Redistributable
+$vcRedistUrl = switch ($Platform) {
+    "x64" { "https://aka.ms/vs/17/release/vc_redist.x64.exe" }
+    "arm64" { "https://aka.ms/vs/17/release/vc_redist.arm64.exe" }
+    default { throw "Unsupported platform: $Platform" }
+}
+$vcRedistPath = Join-Path $OutputPath "vc_redist.$Platform.exe"
 
 if (Test-Path $vcRedistPath) {
     Write-Host "VC++ Redistributable already exists at: $vcRedistPath" -ForegroundColor Yellow

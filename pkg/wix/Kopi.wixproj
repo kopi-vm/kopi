@@ -23,10 +23,13 @@
     <!-- Version property - can be overridden from command line -->
     <Version Condition="'$(Version)' == ''">0.0.3</Version>
     
-    <OutputName>kopi-$(Version)-windows-x64</OutputName>
+    <!-- Platform property - can be overridden from command line -->
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    
+    <OutputName>kopi-$(Version)-windows-$(Platform)</OutputName>
     
     <!-- Build configuration -->
-    <InstallerPlatform>x64</InstallerPlatform>
+    <InstallerPlatform>$(Platform)</InstallerPlatform>
     <DefaultCompressionLevel>high</DefaultCompressionLevel>
     <SuppressValidation>false</SuppressValidation>
     
