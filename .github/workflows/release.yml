@@ -173,7 +173,7 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: package-${{ runner.os }}-bundle
+        name: package-${{ runner.os }}
         path: archive/pkg
         retention-days: 1
 
@@ -203,20 +203,15 @@ jobs:
       with:
         name: package-Linux
         path: release
-    - name: Fetch Windows archive
-      uses: actions/download-artifact@v4
-      with:
-        name: package-Windows
-        path: release
-    - name: Fetch Windows Bundle
-      uses: actions/download-artifact@v4
-      with:
-        name: package-Windows-bundle
-        path: release
     - name: Fetch Mac archive
       uses: actions/download-artifact@v4
       with:
         name: package-macOS
+        path: release
+    - name: Fetch Windows archive
+      uses: actions/download-artifact@v4
+      with:
+        name: package-Windows
         path: release
 
     - name: Generate SHA256 checksums
