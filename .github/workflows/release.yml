@@ -75,6 +75,8 @@ jobs:
     
     - name: Install Rust
       uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        target: aarch64-apple-darwin
 
     - name: Install Tools
       uses: taiki-e/install-action@v2
@@ -84,19 +86,35 @@ jobs:
     - name: Set version
       run: cargo set-version ${{ github.event.inputs.version }}
 
-    - name: Build
+    - name: Build (x86_64)
       run: |
-        cargo auditable build --release
-        cargo auditable build --profile release-shim --bin kopi-shim
+        cargo auditable build --release --target x86_64-apple-darwin
+        cargo auditable build --profile release-shim --bin kopi-shim --target x86_64-apple-darwin
 
-    - name: Targz
+    - name: Targz (x86_64)
       run: |
         mkdir -p archive/pkg
-        cp ./target/release/kopi target/
-        cp ./target/release-shim/kopi-shim target/
         os_lower=$(echo "${{ runner.os }}" | tr '[:upper:]' '[:lower:]')
-        cd target/
-        tar -zcvf ../archive/pkg/kopi-${{ github.event.inputs.version }}-${os_lower}-x64.tar.gz ./kopi ./kopi-shim
+
+        cd target/x86_64-apple-darwin/
+        cp ./release/kopi .
+        cp ./release-shim/kopi-shim .
+        tar -zcvf ../../archive/pkg/kopi-${{ github.event.inputs.version }}-${os_lower}-x86_64.tar.gz ./kopi ./kopi-shim
+
+    - name: Build (aarch64)
+      run: |
+        cargo auditable build --release --target aarch64-apple-darwin
+        cargo auditable build --profile release-shim --bin kopi-shim --target aarch64-apple-darwin
+
+    - name: Targz (aarch64)
+      run: |
+        mkdir -p archive/pkg
+        os_lower=$(echo "${{ runner.os }}" | tr '[:upper:]' '[:lower:]')
+
+        cd target/aarch64-apple-darwin/
+        cp ./release/kopi .
+        cp ./release-shim/kopi-shim .
+        tar -zcvf ../../archive/pkg/kopi-${{ github.event.inputs.version }}-${os_lower}-aarch64.tar.gz ./kopi ./kopi-shim
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
