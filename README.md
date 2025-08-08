@@ -46,10 +46,26 @@ Kopi integrates with your shell to intercept Java commands and automatically rou
 
 ### Installation
 
-```bash
-# Install kopi (coming soon to package managers)
-cargo install kopi
+#### Using Scoop (Windows)
 
+```bash
+# Add the kopi bucket
+scoop bucket add kopi https://github.com/kopi-vm/scoop-kopi
+
+# Install kopi
+scoop install kopi
+```
+
+#### Using Cargo (All platforms)
+
+```bash
+# Install kopi
+cargo install kopi
+```
+
+#### Post-installation Setup
+
+```bash
 # Initial setup - creates directories and installs shims
 kopi setup
 
