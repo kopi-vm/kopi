@@ -123,10 +123,10 @@ jobs:
         path: archive/pkg
         retention-days: 1
 
-  archive-windows:
+  package-windows:
     runs-on: windows-2025
     needs: [ validate ]
-    
+
     steps:
     - uses: actions/checkout@v4
     
@@ -143,59 +143,32 @@ jobs:
     - name: Set version
       run: cargo set-version ${{ github.event.inputs.version }}
 
-    - name: Build (x86_64)
-      run: |
-        cargo auditable build --release --target x86_64-pc-windows-msvc
-        cargo auditable build --profile release-shim --bin kopi-shim --target x86_64-pc-windows-msvc
+    - name: Install Wix
+      run: dotnet tool install --global wix
 
-    - name: Zip (x86_64)
+    - name: Build bundle (x64)
+      run: |
+        pkg/wix/build-bundle.ps1 -Version ${{ github.event.inputs.version }} -Platform x64
+        New-Item -Path archive/pkg -ItemType Directory -Force
+        Copy-Item ./pkg/wix/output/kopi-bundle-with-vcredist-${{ github.event.inputs.version }}-windows-x64.exe ./archive/pkg/
+        Copy-Item ./pkg/wix/output/en-us/kopi-${{ github.event.inputs.version }}-windows-x64.msi ./archive/pkg/
+
+    - name: Zip (x64)
       run: |
         New-Item -Path archive/pkg -ItemType Directory -Force
         Compress-Archive -Path ./target/x86_64-pc-windows-msvc/release/kopi.exe, ./target/x86_64-pc-windows-msvc/release-shim/kopi-shim.exe -DestinationPath archive/pkg/kopi-${{ github.event.inputs.version }}-windows-x64.zip
 
-    - name: Build (aarch64)
+    - name: Build bundle (arm64)
       run: |
-        cargo auditable build --release --target aarch64-pc-windows-msvc
-        cargo auditable build --profile release-shim --bin kopi-shim --target aarch64-pc-windows-msvc
+        pkg/wix/build-bundle.ps1 -Version ${{ github.event.inputs.version }} -Platform arm64
+        New-Item -Path archive/pkg -ItemType Directory -Force
+        Copy-Item ./pkg/wix/output/kopi-bundle-with-vcredist-${{ github.event.inputs.version }}-windows-arm64.exe ./archive/pkg/
+        Copy-Item ./pkg/wix/output/en-us/kopi-${{ github.event.inputs.version }}-windows-arm64.msi ./archive/pkg/
 
-    - name: Zip (aarch64)
+    - name: Zip (arm64)
       run: |
         New-Item -Path archive/pkg -ItemType Directory -Force
-        Compress-Archive -Path ./target/aarch64-pc-windows-msvc/release/kopi.exe, ./target/aarch64-pc-windows-msvc/release-shim/kopi-shim.exe -DestinationPath archive/pkg/kopi-${{ github.event.inputs.version }}-windows-aarch64.zip
-
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: package-${{ runner.os }}
-        path: archive/pkg
-        retention-days: 1
-
-  package-windows:
-    runs-on: windows-2025
-
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Rust
-      uses: actions-rust-lang/setup-rust-toolchain@v1
-
-    - name: Install Tools
-      uses: taiki-e/install-action@v2
-      with:
-        tool: cargo-auditable,cargo-audit,cargo-edit
-
-    - name: Set version
-      run: cargo set-version ${{ github.event.inputs.version }}
-
-    - name: Install Wix
-      run: dotnet tool install --global wix
-
-    - name: Build bundle
-      run: |
-        pkg/wix/build-bundle.ps1 -Version ${{ github.event.inputs.version }}
-        New-Item -Path archive/pkg -ItemType Directory -Force
-        Copy-Item ./pkg/wix/output/kopi-bundle-with-vcredist-${{ github.event.inputs.version }}-windows-x64.exe ./archive/pkg/
-        Copy-Item ./pkg/wix/output/en-us/kopi-${{ github.event.inputs.version }}-windows-x64.msi ./archive/pkg/
+        Compress-Archive -Path ./target/aarch64-pc-windows-msvc/release/kopi.exe, ./target/aarch64-pc-windows-msvc/release-shim/kopi-shim.exe -DestinationPath archive/pkg/kopi-${{ github.event.inputs.version }}-windows-arm64.zip
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
@@ -209,7 +182,6 @@ jobs:
     needs:
       - archive-linux
       - archive-macos
-      - archive-windows
       - package-windows
 
     permissions:
