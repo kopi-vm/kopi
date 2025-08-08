@@ -142,43 +142,16 @@ if (-not (Test-Path $LicenseFile)) {
     exit 1
 }
 
-# Create RTF version of license
+# Create RTF version of license using the conversion script
 Write-Host "`nCreating License.rtf from LICENSE file..." -ForegroundColor Yellow
-$licenseLines = Get-Content $LicenseFile
+$ConvertScript = Join-Path $ScriptDir "Convert-ToRtf.ps1"
 
-# Build RTF content line by line to preserve formatting
-$rtfContentBuilder = New-Object System.Text.StringBuilder
-
-# RTF header with proper formatting
-$rtfContentBuilder.AppendLine('{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fmodern\fprq1\fcharset0 Courier New;}}') | Out-Null
-$rtfContentBuilder.AppendLine('{\colortbl ;\red0\green0\blue0;}') | Out-Null
-$rtfContentBuilder.AppendLine('{\*\generator Kopi Installer}\viewkind4\uc1') | Out-Null
-$rtfContentBuilder.AppendLine('\pard\sa0\sl276\slmult1\f0\fs20\lang9') | Out-Null
-
-# Process each line preserving indentation
-foreach ($line in $licenseLines) {
-    # Escape special RTF characters
-    $escapedLine = $line `
-        -replace '\\', '\\\\' `
-        -replace '\{', '\\\{' `
-        -replace '\}', '\\\}'
-    
-    # RTF doesn't require escaping regular quotes, but we'll handle smart quotes
-    # Convert smart quotes to regular quotes for consistency
-    $escapedLine = $escapedLine `
-        -replace '["""]', '"'
-    
-    # Add the line with \par for line break
-    $rtfContentBuilder.Append($escapedLine) | Out-Null
-    $rtfContentBuilder.AppendLine('\par') | Out-Null
+# Call the conversion script
+& $ConvertScript -InputFile $LicenseFile -OutputFile $LicenseRtf
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to create License.rtf"
+    exit 1
 }
-
-# Close RTF document
-$rtfContentBuilder.AppendLine('}') | Out-Null
-
-# Write the RTF content
-$rtfContent = $rtfContentBuilder.ToString()
-Set-Content -Path $LicenseRtf -Value $rtfContent -Encoding ASCII -NoNewline
 
 # Build MSI using WiX v6
 Write-Host "`nBuilding MSI installer..." -ForegroundColor Yellow
