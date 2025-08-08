@@ -27,11 +27,86 @@ jobs:
           fi
           echo "✅ Version format is valid."
 
-  archive:
-    strategy:
-      matrix:
-        os: [ ubuntu-24.04, windows-2025, macos-15-large ]
-    runs-on: ${{ matrix.os }}
+  archive-linux:
+    runs-on: ubuntu-24.04
+    needs: [ validate ]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Install Tools
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-auditable,cargo-audit,cargo-edit
+
+    - name: Set version
+      run: cargo set-version ${{ github.event.inputs.version }}
+
+    - name: Build
+      run: |
+        cargo auditable build --release
+        cargo auditable build --profile release-shim --bin kopi-shim
+
+    - name: Targz
+      run: |
+        mkdir -p archive/pkg
+        cp ./target/release/kopi target/
+        cp ./target/release-shim/kopi-shim target/
+        os_lower=$(echo "${{ runner.os }}" | tr '[:upper:]' '[:lower:]')
+        cd target/
+        tar -zcvf ../archive/pkg/kopi-${{ github.event.inputs.version }}-${os_lower}-x64.tar.gz ./kopi ./kopi-shim
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-${{ runner.os }}
+        path: archive/pkg
+        retention-days: 1
+
+  archive-macos:
+    runs-on: macos-15-large
+    needs: [ validate ]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+
+    - name: Install Tools
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-auditable,cargo-audit,cargo-edit
+
+    - name: Set version
+      run: cargo set-version ${{ github.event.inputs.version }}
+
+    - name: Build
+      run: |
+        cargo auditable build --release
+        cargo auditable build --profile release-shim --bin kopi-shim
+
+    - name: Targz
+      run: |
+        mkdir -p archive/pkg
+        cp ./target/release/kopi target/
+        cp ./target/release-shim/kopi-shim target/
+        os_lower=$(echo "${{ runner.os }}" | tr '[:upper:]' '[:lower:]')
+        cd target/
+        tar -zcvf ../archive/pkg/kopi-${{ github.event.inputs.version }}-${os_lower}-x64.tar.gz ./kopi ./kopi-shim
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-${{ runner.os }}
+        path: archive/pkg
+        retention-days: 1
+
+  archive-windows:
+    runs-on: windows-2025
     needs: [ validate ]
     
     steps:
@@ -54,20 +129,9 @@ jobs:
         cargo auditable build --profile release-shim --bin kopi-shim
 
     - name: Zip
-      if: runner.os == 'Windows'
       run: |
         New-Item -Path archive/pkg -ItemType Directory -Force
         Compress-Archive -Path ./target/release/kopi.exe, ./target/release-shim/kopi-shim.exe -DestinationPath archive/pkg/kopi-${{ github.event.inputs.version }}-windows-x64.zip
-
-    - name: Targz
-      if: runner.os != 'Windows'
-      run: |
-        mkdir -p archive/pkg
-        cp ./target/release/kopi target/
-        cp ./target/release-shim/kopi-shim target/
-        os_lower=$(echo "${{ runner.os }}" | tr '[:upper:]' '[:lower:]')
-        cd target/
-        tar -zcvf ../archive/pkg/kopi-${{ github.event.inputs.version }}-${os_lower}-x64.tar.gz ./kopi ./kopi-shim
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
@@ -112,7 +176,11 @@ jobs:
 
   release:
     runs-on: ubuntu-24.04
-    needs: [ archive, package-windows ]
+    needs:
+      - archive-linux
+      - archive-macos
+      - archive-windows
+      - package-windows
 
     permissions:
       contents: write
