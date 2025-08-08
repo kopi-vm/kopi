@@ -41,7 +41,7 @@
     
     <!-- Output settings -->
     <OutputPath>output\</OutputPath>
-    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(Platform)\</IntermediateOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

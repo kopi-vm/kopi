@@ -168,6 +168,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "`nBuilding MSI installer..." -ForegroundColor Yellow
 
 # Define MSI output file path
+# Note: With platform-specific intermediate directories, the MSI might be in a different location
 $MsiFile = Join-Path $OutputDir "en-us\kopi-$Version-windows-$Platform.msi"
 
 
@@ -177,6 +178,12 @@ try {
     # Prefer dotnet build if available (more reliable)
     if (Test-Command "dotnet") {
         Write-Host "Using dotnet build with Kopi.wixproj..." -ForegroundColor Cyan
+        
+        # Clean previous builds for this platform to avoid cache issues
+        if (Test-Path "obj\$Configuration\$Platform") {
+            Write-Host "Cleaning previous build artifacts for $Platform..." -ForegroundColor DarkGray
+            Remove-Item -Path "obj\$Configuration\$Platform" -Recurse -Force -ErrorAction SilentlyContinue
+        }
         
         # Build using MSBuild via dotnet
         $BuildArgs = @(
