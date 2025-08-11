@@ -433,16 +433,16 @@ time ~/.kopi/shims/java --version  # Should be < 10ms with metadata
 - Phases 7-11 complete
 
 ### Tasks
-- [ ] Ensure existing installations work without metadata
-- [ ] Document that metadata is created for new installations only
-- [ ] Test upgrade scenarios
-- [ ] Verify no breaking changes
-- [ ] **Write migration tests**:
-  - [ ] Test existing JDK installations continue working
-  - [ ] Test mixed environments (with/without metadata)
-  - [ ] Test upgrade from old to new version
-  - [ ] Test rollback scenarios
-  - [ ] Integration test with real user scenarios
+- [x] Ensure existing installations work without metadata
+- [x] Document that metadata is created for new installations only
+- [x] Test upgrade scenarios
+- [x] Verify no breaking changes
+- [x] **Write migration tests**:
+  - [x] Test existing JDK installations continue working
+  - [x] Test mixed environments (with/without metadata)
+  - [x] Test upgrade from old to new version
+  - [x] Test rollback scenarios
+  - [x] Integration test with real user scenarios
 
 ### Verification
 ```bash

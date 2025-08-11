@@ -25,7 +25,7 @@ Kopi is designed for:
 - 📌 **Project Pinning** - Lock JDK versions per project using `.kopi-version` or `.java-version` files
 - 🌐 **Smart Caching** - Efficient metadata caching for fast searches and offline support
 - 🗑️ **Easy Uninstall** - Remove JDKs with automatic cleanup of metadata and shims
-- 🎯 **Cross-Platform** - Works on macOS, Linux, and Windows
+- 🎯 **Cross-Platform** - Works on macOS (Intel & Apple Silicon), Linux, and Windows
 
 ## How it Works
 
@@ -228,6 +228,7 @@ Kopi is designed with performance and reliability in mind:
 - **Smart Caching** - Hybrid online/offline metadata management
 - **Atomic Operations** - Safe concurrent JDK installations
 - **Shell Integration** - Works with bash, zsh, fish, and PowerShell
+- **macOS Support** - Handles diverse JDK directory structures (app bundles, direct layouts)
 
 ## Comparison with Similar Tools
 

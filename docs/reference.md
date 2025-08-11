@@ -32,6 +32,15 @@ kopi install zulu@11.0.15                # Zulu JDK version 11.0.15
 - `--timeout <seconds>`: Download timeout in seconds (default: 120)
 - `--javafx-bundled`: Include packages regardless of JavaFX bundled status
 
+**Metadata and Performance:**
+Starting from version 0.8, kopi creates metadata files for newly installed JDKs that contain information about their directory structure. This metadata significantly improves performance when switching between JDK versions, particularly on macOS where different JDK distributions may use different directory layouts:
+- **New installations**: Automatically create metadata files (`.meta.json`) for optimal performance
+- **Existing installations**: Continue to work without metadata using runtime detection
+- **Backward compatibility**: All previously installed JDKs remain fully functional
+- **Performance impact**: JDK switching with metadata is approximately 10x faster than runtime detection
+
+The metadata system is completely transparent to users - no action is required to benefit from the performance improvements.
+
 ### `kopi uninstall`
 
 Remove an installed JDK version and free up disk space.
