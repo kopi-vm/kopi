@@ -73,7 +73,8 @@ impl<'a> EnvCommand<'a> {
 
         // Format environment variables
         let formatter = EnvFormatter::new(shell_type, export);
-        let output = formatter.format_env(&jdk.path)?;
+        let java_home = jdk.resolve_java_home();
+        let output = formatter.format_env(&java_home)?;
 
         // Output to stdout
         let mut stdout = std::io::stdout();
@@ -151,7 +152,11 @@ impl EnvFormatter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::storage::InstalledJdk;
+    use crate::version::Version;
     use std::path::PathBuf;
+    use std::str::FromStr;
+    use tempfile::TempDir;
 
     #[test]
     fn test_bash_formatter() {
@@ -265,6 +270,204 @@ mod tests {
         assert_eq!(
             output,
             "set -gx JAVA_HOME \"/home/user/\\\"kopi\\\"/jdk\"\n"
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_java_home_bundle_structure() {
+        // Create a mock JDK with bundle structure
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_root = temp_dir.path().join("temurin-21");
+        let bundle_home = jdk_root.join("Contents").join("Home");
+        let bundle_bin = bundle_home.join("bin");
+
+        // Create the directory structure
+        std::fs::create_dir_all(&bundle_bin).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "temurin".to_string(),
+            version: Version::from_str("21.0.0").unwrap(),
+            path: jdk_root.clone(),
+        };
+
+        // Test that resolve_java_home returns the Contents/Home path
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, bundle_home);
+
+        // Test formatting for different shells
+        let formatter = EnvFormatter::new(Shell::Bash, true);
+        let output = formatter.format_env(&java_home).unwrap();
+        assert!(output.contains(&bundle_home.to_string_lossy().to_string()));
+        assert!(output.contains("Contents/Home"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_java_home_direct_structure() {
+        // Create a mock JDK with direct structure
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_root = temp_dir.path().join("liberica-21");
+        let direct_bin = jdk_root.join("bin");
+
+        // Create the directory structure
+        std::fs::create_dir_all(&direct_bin).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "liberica".to_string(),
+            version: Version::from_str("21.0.0").unwrap(),
+            path: jdk_root.clone(),
+        };
+
+        // Test that resolve_java_home returns the root path
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, jdk_root);
+
+        // Test formatting for different shells
+        let formatter = EnvFormatter::new(Shell::Bash, true);
+        let output = formatter.format_env(&java_home).unwrap();
+        assert!(output.contains(&jdk_root.to_string_lossy().to_string()));
+        assert!(!output.contains("Contents/Home"));
+    }
+
+    #[test]
+    fn test_env_output_includes_correct_java_home() {
+        // Test bundle structure
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_root = temp_dir.path().join("test-jdk");
+
+        #[cfg(target_os = "macos")]
+        {
+            // Create bundle structure on macOS
+            let bundle_home = jdk_root.join("Contents").join("Home");
+            let bundle_bin = bundle_home.join("bin");
+            std::fs::create_dir_all(&bundle_bin).unwrap();
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            // Create direct structure on other platforms
+            let direct_bin = jdk_root.join("bin");
+            std::fs::create_dir_all(&direct_bin).unwrap();
+        }
+
+        let jdk = InstalledJdk {
+            distribution: "test".to_string(),
+            version: Version::from_str("21.0.0").unwrap(),
+            path: jdk_root.clone(),
+        };
+
+        let java_home = jdk.resolve_java_home();
+
+        // Test bash output
+        let formatter = EnvFormatter::new(Shell::Bash, true);
+        let output = formatter.format_env(&java_home).unwrap();
+        assert!(output.starts_with("export JAVA_HOME="));
+
+        // Test zsh output
+        let formatter = EnvFormatter::new(Shell::Zsh, false);
+        let output = formatter.format_env(&java_home).unwrap();
+        assert!(output.starts_with("JAVA_HOME="));
+
+        // Test fish output
+        let formatter = EnvFormatter::new(Shell::Fish, true);
+        let output = formatter.format_env(&java_home).unwrap();
+        assert!(output.starts_with("set -gx JAVA_HOME"));
+    }
+
+    #[test]
+    fn test_path_includes_correct_bin_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_root = temp_dir.path().join("test-jdk");
+
+        #[cfg(target_os = "macos")]
+        {
+            // Create bundle structure
+            let bundle_home = jdk_root.join("Contents").join("Home");
+            let bundle_bin = bundle_home.join("bin");
+            std::fs::create_dir_all(&bundle_bin).unwrap();
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            // Create direct structure
+            let direct_bin = jdk_root.join("bin");
+            std::fs::create_dir_all(&direct_bin).unwrap();
+        }
+
+        let jdk = InstalledJdk {
+            distribution: "test".to_string(),
+            version: Version::from_str("21.0.0").unwrap(),
+            path: jdk_root.clone(),
+        };
+
+        // Verify bin path resolution
+        let bin_path = jdk.resolve_bin_path().unwrap();
+        assert!(bin_path.exists());
+        assert!(bin_path.ends_with("bin"));
+
+        #[cfg(target_os = "macos")]
+        {
+            // On macOS with bundle structure, bin should be under Contents/Home
+            if jdk_root.join("Contents").join("Home").join("bin").exists() {
+                assert!(bin_path.to_string_lossy().contains("Contents/Home/bin"));
+            }
+        }
+    }
+
+    #[test]
+    fn test_shell_output_formats() {
+        let jdk = InstalledJdk {
+            distribution: "test".to_string(),
+            version: Version::from_str("21.0.0").unwrap(),
+            path: PathBuf::from("/test/jdk"),
+        };
+
+        let java_home = jdk.resolve_java_home();
+
+        // Test all shell formats
+        let shells = vec![
+            (Shell::Bash, true, "export JAVA_HOME="),
+            (Shell::Bash, false, "JAVA_HOME="),
+            (Shell::Zsh, true, "export JAVA_HOME="),
+            (Shell::Fish, true, "set -gx JAVA_HOME"),
+            (Shell::Fish, false, "set -g JAVA_HOME"),
+            (Shell::PowerShell, true, "$env:JAVA_HOME ="),
+            (Shell::Cmd, true, "set JAVA_HOME="),
+        ];
+
+        for (shell, export, expected_prefix) in shells {
+            let formatter = EnvFormatter::new(shell.clone(), export);
+            let output = formatter.format_env(&java_home).unwrap();
+            assert!(
+                output.starts_with(expected_prefix),
+                "Shell {shell:?} with export={export} should start with '{expected_prefix}', but got '{output}'"
+            );
+        }
+    }
+
+    #[test]
+    fn test_error_handling_missing_bin_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_root = temp_dir.path().join("broken-jdk");
+
+        // Create JDK root but no bin directory
+        std::fs::create_dir_all(&jdk_root).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "broken".to_string(),
+            version: Version::from_str("21.0.0").unwrap(),
+            path: jdk_root.clone(),
+        };
+
+        // This should return an error since bin directory is missing
+        let result = jdk.resolve_bin_path();
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("bin directory not found")
         );
     }
 }

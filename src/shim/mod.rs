@@ -614,7 +614,7 @@ mod tests {
         // Create bin directory to make it look like a real JDK installation
         let bin_dir = jdk_path.join("bin");
         fs::create_dir_all(&bin_dir).unwrap();
-        
+
         // The test should find the JDK and return an InstalledJdk
         let result = find_jdk_installation(&repository, &version_request);
 

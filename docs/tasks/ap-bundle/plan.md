@@ -173,15 +173,15 @@ time ~/.kopi/shims/java --version  # Should be < 50ms
   - Phase 2 (Common Path Resolution)
 
 ### Tasks
-- [ ] Update `env` command in `src/commands/env.rs`
-  - [ ] Use `InstalledJdk::resolve_java_home()` for JAVA_HOME
-  - [ ] Remove any hardcoded path assumptions
-- [ ] **Write unit tests**:
-  - [ ] Test JAVA_HOME set correctly for bundle structure
-  - [ ] Test JAVA_HOME set correctly for direct structure
-  - [ ] Test PATH includes correct bin directory
-  - [ ] Test output format for different shells (bash, zsh, fish)
-  - [ ] Test error handling when no JDK selected
+- [x] Update `env` command in `src/commands/env.rs`
+  - [x] Use `InstalledJdk::resolve_java_home()` for JAVA_HOME
+  - [x] Remove any hardcoded path assumptions
+- [x] **Write unit tests**:
+  - [x] Test JAVA_HOME set correctly for bundle structure
+  - [x] Test JAVA_HOME set correctly for direct structure
+  - [x] Test PATH includes correct bin directory
+  - [x] Test output format for different shells (bash, zsh, fish)
+  - [x] Test error handling when no JDK selected
 
 ### Verification
 ```bash
