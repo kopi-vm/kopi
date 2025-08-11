@@ -21,20 +21,20 @@ This document outlines the implementation plan for handling diverse JDK director
   - `/src/error/mod.rs` - Error types and handling
 
 ### Tasks
-- [ ] Create `detect_jdk_root()` function in `src/archive/mod.rs`
-- [ ] Implement detection algorithm:
-  - [ ] Check for `bin/` at root (direct structure)
-  - [ ] Check for `Contents/Home/bin/` (bundle structure)
-  - [ ] Check for symlinks at root pointing to bundle (hybrid structure)
-  - [ ] Return structure type and appropriate path
-- [ ] Add platform conditional compilation (`#[cfg(target_os = "macos")]`)
-- [ ] Add logging for detected structure type
-- [ ] **Write unit tests**:
-  - [ ] Test direct structure detection with mock filesystem
-  - [ ] Test bundle structure detection (Contents/Home)
-  - [ ] Test hybrid structure detection (symlinks)
-  - [ ] Test error cases (invalid structures)
-  - [ ] Test platform-specific behavior
+- [x] Create `detect_jdk_root()` function in `src/archive/mod.rs`
+- [x] Implement detection algorithm:
+  - [x] Check for `bin/` at root (direct structure)
+  - [x] Check for `Contents/Home/bin/` (bundle structure)
+  - [x] Check for symlinks at root pointing to bundle (hybrid structure)
+  - [x] Return structure type and appropriate path
+- [x] Add platform conditional compilation (`#[cfg(target_os = "macos")]`)
+- [x] Add logging for detected structure type
+- [x] **Write unit tests**:
+  - [x] Test direct structure detection with mock filesystem
+  - [x] Test bundle structure detection (Contents/Home)
+  - [x] Test hybrid structure detection (symlinks)
+  - [x] Test error cases (invalid structures)
+  - [x] Test platform-specific behavior
 
 ### Verification
 ```bash
@@ -58,20 +58,20 @@ cargo test --lib archive::tests
   - Phase 1 deliverables
 
 ### Tasks
-- [ ] Add `resolve_java_home()` method to `InstalledJdk` in `src/storage/listing.rs`
-  - [ ] Implement runtime detection for macOS
-  - [ ] Return path directly for other platforms
-  - [ ] Add debug logging for resolved paths
-- [ ] Add `resolve_bin_path()` method to `InstalledJdk`
-  - [ ] Call `resolve_java_home()` and append `bin`
-  - [ ] Verify bin directory exists
-- [ ] **Write unit tests**:
-  - [ ] Test `resolve_java_home()` for macOS bundle structure
-  - [ ] Test `resolve_java_home()` for direct structure
-  - [ ] Test `resolve_java_home()` for Linux/Windows (passthrough)
-  - [ ] Test `resolve_bin_path()` returns correct path
-  - [ ] Test error handling when bin directory missing
-  - [ ] Create mock directory structures for testing
+- [x] Add `resolve_java_home()` method to `InstalledJdk` in `src/storage/listing.rs`
+  - [x] Implement runtime detection for macOS
+  - [x] Return path directly for other platforms
+  - [x] Add debug logging for resolved paths
+- [x] Add `resolve_bin_path()` method to `InstalledJdk`
+  - [x] Call `resolve_java_home()` and append `bin`
+  - [x] Verify bin directory exists
+- [x] **Write unit tests**:
+  - [x] Test `resolve_java_home()` for macOS bundle structure
+  - [x] Test `resolve_java_home()` for direct structure
+  - [x] Test `resolve_java_home()` for Linux/Windows (passthrough)
+  - [x] Test `resolve_bin_path()` returns correct path
+  - [x] Test error handling when bin directory missing
+  - [x] Create mock directory structures for testing
 
 ### Verification
 ```bash
