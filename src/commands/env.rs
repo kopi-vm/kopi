@@ -285,11 +285,11 @@ mod tests {
         // Create the directory structure
         std::fs::create_dir_all(&bundle_bin).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "temurin".to_string(),
-            version: Version::from_str("21.0.0").unwrap(),
-            path: jdk_root.clone(),
-        };
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::from_str("21.0.0").unwrap(),
+            jdk_root.clone(),
+        );
 
         // Test that resolve_java_home returns the Contents/Home path
         let java_home = jdk.resolve_java_home();
@@ -313,11 +313,11 @@ mod tests {
         // Create the directory structure
         std::fs::create_dir_all(&direct_bin).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "liberica".to_string(),
-            version: Version::from_str("21.0.0").unwrap(),
-            path: jdk_root.clone(),
-        };
+        let jdk = InstalledJdk::new(
+            "liberica".to_string(),
+            Version::from_str("21.0.0").unwrap(),
+            jdk_root.clone(),
+        );
 
         // Test that resolve_java_home returns the root path
         let java_home = jdk.resolve_java_home();
@@ -351,11 +351,11 @@ mod tests {
             std::fs::create_dir_all(&direct_bin).unwrap();
         }
 
-        let jdk = InstalledJdk {
-            distribution: "test".to_string(),
-            version: Version::from_str("21.0.0").unwrap(),
-            path: jdk_root.clone(),
-        };
+        let jdk = InstalledJdk::new(
+            "test".to_string(),
+            Version::from_str("21.0.0").unwrap(),
+            jdk_root.clone(),
+        );
 
         let java_home = jdk.resolve_java_home();
 
@@ -395,11 +395,11 @@ mod tests {
             std::fs::create_dir_all(&direct_bin).unwrap();
         }
 
-        let jdk = InstalledJdk {
-            distribution: "test".to_string(),
-            version: Version::from_str("21.0.0").unwrap(),
-            path: jdk_root.clone(),
-        };
+        let jdk = InstalledJdk::new(
+            "test".to_string(),
+            Version::from_str("21.0.0").unwrap(),
+            jdk_root.clone(),
+        );
 
         // Verify bin path resolution
         let bin_path = jdk.resolve_bin_path().unwrap();
@@ -417,11 +417,11 @@ mod tests {
 
     #[test]
     fn test_shell_output_formats() {
-        let jdk = InstalledJdk {
-            distribution: "test".to_string(),
-            version: Version::from_str("21.0.0").unwrap(),
-            path: PathBuf::from("/test/jdk"),
-        };
+        let jdk = InstalledJdk::new(
+            "test".to_string(),
+            Version::from_str("21.0.0").unwrap(),
+            PathBuf::from("/test/jdk"),
+        );
 
         let java_home = jdk.resolve_java_home();
 
@@ -454,11 +454,11 @@ mod tests {
         // Create JDK root but no bin directory
         std::fs::create_dir_all(&jdk_root).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "broken".to_string(),
-            version: Version::from_str("21.0.0").unwrap(),
-            path: jdk_root.clone(),
-        };
+        let jdk = InstalledJdk::new(
+            "broken".to_string(),
+            Version::from_str("21.0.0").unwrap(),
+            jdk_root.clone(),
+        );
 
         // This should return an error since bin directory is missing
         let result = jdk.resolve_bin_path();

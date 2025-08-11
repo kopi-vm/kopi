@@ -140,11 +140,11 @@ fn test_installed_jdk_path_resolution() {
     create_mock_jdk_structure(&bundle_jdk_path, "bundle");
 
     // Test InstalledJdk path resolution
-    let direct_jdk = InstalledJdk {
-        distribution: "liberica".to_string(),
-        version: Version::from_str("21.0.0").unwrap(),
-        path: direct_jdk_path.clone(),
-    };
+    let direct_jdk = InstalledJdk::new(
+        "liberica".to_string(),
+        Version::from_str("21.0.0").unwrap(),
+        direct_jdk_path.clone(),
+    );
 
     // Test resolve_java_home
     let java_home = direct_jdk.resolve_java_home();
@@ -157,11 +157,11 @@ fn test_installed_jdk_path_resolution() {
 
     #[cfg(target_os = "macos")]
     {
-        let bundle_jdk = InstalledJdk {
-            distribution: "temurin".to_string(),
-            version: Version::from_str("21.0.0").unwrap(),
-            path: bundle_jdk_path.clone(),
-        };
+        let bundle_jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::from_str("21.0.0").unwrap(),
+            bundle_jdk_path.clone(),
+        );
 
         // Test resolve_java_home for bundle structure
         let java_home = bundle_jdk.resolve_java_home();

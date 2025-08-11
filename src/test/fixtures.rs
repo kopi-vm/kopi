@@ -27,11 +27,11 @@ use std::str::FromStr;
 /// # Returns
 /// An InstalledJdk instance with a generated path under `/test/jdks/`
 pub fn create_test_jdk(distribution: &str, version: &str) -> InstalledJdk {
-    InstalledJdk {
-        distribution: distribution.to_string(),
-        version: Version::from_str(version).unwrap(),
-        path: PathBuf::from(format!("/test/jdks/{distribution}-{version}")),
-    }
+    InstalledJdk::new(
+        distribution.to_string(),
+        Version::from_str(version).unwrap(),
+        PathBuf::from(format!("/test/jdks/{distribution}-{version}")),
+    )
 }
 
 /// Creates a test JDK with a custom path
@@ -44,11 +44,11 @@ pub fn create_test_jdk(distribution: &str, version: &str) -> InstalledJdk {
 /// # Returns
 /// An InstalledJdk instance with the specified path
 pub fn create_test_jdk_with_path(distribution: &str, version: &str, path: &str) -> InstalledJdk {
-    InstalledJdk {
-        distribution: distribution.to_string(),
-        version: Version::from_str(version).unwrap(),
-        path: PathBuf::from(path),
-    }
+    InstalledJdk::new(
+        distribution.to_string(),
+        Version::from_str(version).unwrap(),
+        PathBuf::from(path),
+    )
 }
 
 /// Creates multiple test JDKs with different distributions and versions

@@ -402,11 +402,8 @@ mod tests {
             let java_path = bin_dir.join("java");
             fs::write(&java_path, "").unwrap();
 
-            let installed_jdk = InstalledJdk {
-                distribution: "test".to_string(),
-                version: Version::new(21, 0, 1),
-                path: jdk_path,
-            };
+            let installed_jdk =
+                InstalledJdk::new("test".to_string(), Version::new(21, 0, 1), jdk_path);
 
             let result = build_tool_path(&installed_jdk, "java").unwrap();
             assert_eq!(result, java_path);
@@ -425,11 +422,8 @@ mod tests {
             let java_path = bin_dir.join("java.exe");
             fs::write(&java_path, "").unwrap();
 
-            let installed_jdk = InstalledJdk {
-                distribution: "test".to_string(),
-                version: Version::new(21, 0, 1),
-                path: jdk_path,
-            };
+            let installed_jdk =
+                InstalledJdk::new("test".to_string(), Version::new(21, 0, 1), jdk_path);
 
             let result = build_tool_path(&installed_jdk, "java").unwrap();
             assert_eq!(result, java_path);
@@ -443,11 +437,8 @@ mod tests {
         let bin_dir = jdk_path.join("bin");
         fs::create_dir_all(&bin_dir).unwrap();
 
-        let installed_jdk = InstalledJdk {
-            distribution: "test".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path,
-        };
+        let installed_jdk =
+            InstalledJdk::new("test".to_string(), Version::new(21, 0, 1), jdk_path);
 
         let result = build_tool_path(&installed_jdk, "nonexistent");
         assert!(result.is_err());
@@ -539,11 +530,8 @@ mod tests {
         let java_path = bundle_bin_dir.join("java");
         fs::write(&java_path, "").unwrap();
 
-        let installed_jdk = InstalledJdk {
-            distribution: "temurin".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path,
-        };
+        let installed_jdk =
+            InstalledJdk::new("temurin".to_string(), Version::new(21, 0, 1), jdk_path);
 
         let result = build_tool_path(&installed_jdk, "java").unwrap();
         assert_eq!(result, java_path);
@@ -562,11 +550,8 @@ mod tests {
         let java_path = bin_dir.join("java");
         fs::write(&java_path, "").unwrap();
 
-        let installed_jdk = InstalledJdk {
-            distribution: "liberica".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path,
-        };
+        let installed_jdk =
+            InstalledJdk::new("liberica".to_string(), Version::new(21, 0, 1), jdk_path);
 
         let result = build_tool_path(&installed_jdk, "java").unwrap();
         assert_eq!(result, java_path);
@@ -578,11 +563,8 @@ mod tests {
         let jdk_path = temp_dir.path().join("broken-jdk");
         fs::create_dir_all(&jdk_path).unwrap();
 
-        let installed_jdk = InstalledJdk {
-            distribution: "broken".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path,
-        };
+        let installed_jdk =
+            InstalledJdk::new("broken".to_string(), Version::new(21, 0, 1), jdk_path);
 
         let result = build_tool_path(&installed_jdk, "java");
         assert!(result.is_err());

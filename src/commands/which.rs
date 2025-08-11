@@ -362,11 +362,11 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let jdk_path = create_test_jdk(&temp_dir, "temurin", "21.0.5");
 
-        let jdk = InstalledJdk {
-            distribution: "temurin".to_string(),
-            version: crate::version::Version::from_str("21.0.5").unwrap(),
-            path: jdk_path,
-        };
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            crate::version::Version::from_str("21.0.5").unwrap(),
+            jdk_path,
+        );
 
         // Test existing tool
         let java_path = get_tool_path(&jdk, "java").unwrap();
@@ -395,11 +395,11 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let jdk_path = create_test_jdk(&temp_dir, "temurin", "21.0.5");
 
-        let jdk = InstalledJdk {
-            distribution: "temurin".to_string(),
-            version: Version::from_str("21.0.5").unwrap(),
-            path: jdk_path,
-        };
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::from_str("21.0.5").unwrap(),
+            jdk_path,
+        );
 
         // Test various JDK tools that are created by create_test_jdk
         for tool_name in &["java", "javac", "jar", "jshell"] {

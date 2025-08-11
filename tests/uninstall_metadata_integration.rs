@@ -138,11 +138,11 @@ fn test_metadata_consistency_after_uninstall() {
     let checker = PostUninstallChecker::new(&repository);
 
     // Create a mock InstalledJdk for the removed JDK
-    let removed_jdk = InstalledJdk {
-        distribution: "temurin".to_string(),
-        version: Version::from_str("21.0.1").unwrap(),
-        path: jdk_path,
-    };
+    let removed_jdk = InstalledJdk::new(
+        "temurin".to_string(),
+        Version::from_str("21.0.1").unwrap(),
+        jdk_path,
+    );
 
     let report = checker.validate_removal(&removed_jdk).unwrap();
     assert!(report.is_successful());
@@ -246,11 +246,11 @@ fn test_orphaned_metadata_detection_and_cleanup() {
     assert!(result.is_ok());
 
     // Create a mock InstalledJdk for post-uninstall checks
-    let removed_jdk = InstalledJdk {
-        distribution: "temurin".to_string(),
-        version: Version::from_str("21.0.1").unwrap(),
-        path: jdk_path,
-    };
+    let removed_jdk = InstalledJdk::new(
+        "temurin".to_string(),
+        Version::from_str("21.0.1").unwrap(),
+        jdk_path,
+    );
 
     // Check for orphaned metadata
     let checker = PostUninstallChecker::new(&repository);
@@ -324,11 +324,11 @@ fn test_partial_removal_detection() {
     assert!(meta_file_path.exists());
 
     // Create a mock InstalledJdk
-    let removed_jdk = InstalledJdk {
-        distribution: "temurin".to_string(),
-        version: Version::from_str("21.0.1").unwrap(),
-        path: jdk_path.clone(),
-    };
+    let removed_jdk = InstalledJdk::new(
+        "temurin".to_string(),
+        Version::from_str("21.0.1").unwrap(),
+        jdk_path.clone(),
+    );
 
     // Check if post-uninstall validation detects incomplete removal
     let checker = PostUninstallChecker::new(&repository);

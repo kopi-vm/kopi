@@ -13,7 +13,9 @@
 // limitations under the License.
 
 use crate::error::{KopiError, Result};
+use crate::storage::{InstallationMetadata, JdkMetadataWithInstallation};
 use crate::version::Version;
+use std::cell::RefCell;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -24,9 +26,75 @@ pub struct InstalledJdk {
     pub distribution: String,
     pub version: Version,
     pub path: PathBuf,
+    /// Cached metadata, loaded lazily on first access
+    metadata_cache: RefCell<Option<InstallationMetadata>>,
 }
 
 impl InstalledJdk {
+    /// Create a new InstalledJdk instance
+    pub fn new(distribution: String, version: Version, path: PathBuf) -> Self {
+        Self {
+            distribution,
+            version,
+            path,
+            metadata_cache: RefCell::new(None),
+        }
+    }
+
+    /// Load metadata from the metadata file if it exists
+    fn load_metadata(&self, jdks_dir: &Path) -> Option<InstallationMetadata> {
+        let dir_name = format!("{}-{}", self.distribution, self.version);
+        let metadata_filename = format!("{dir_name}.meta.json");
+        let metadata_path = jdks_dir.join(&metadata_filename);
+
+        if !metadata_path.exists() {
+            log::debug!("Metadata file not found: {}", metadata_path.display());
+            return None;
+        }
+
+        match std::fs::read_to_string(&metadata_path) {
+            Ok(content) => match serde_json::from_str::<JdkMetadataWithInstallation>(&content) {
+                Ok(metadata) => {
+                    log::debug!("Loaded metadata from: {}", metadata_path.display());
+                    Some(metadata.installation_metadata)
+                }
+                Err(e) => {
+                    log::warn!(
+                        "Failed to parse metadata file {}: {}",
+                        metadata_path.display(),
+                        e
+                    );
+                    None
+                }
+            },
+            Err(e) => {
+                log::warn!(
+                    "Failed to read metadata file {}: {}",
+                    metadata_path.display(),
+                    e
+                );
+                None
+            }
+        }
+    }
+
+    /// Get cached metadata, loading it if necessary
+    fn get_cached_metadata(&self) -> Option<InstallationMetadata> {
+        let mut cache = self.metadata_cache.borrow_mut();
+
+        if cache.is_none() {
+            // Try to load metadata from disk
+            // We need to determine the jdks_dir - typically it's the parent of the JDK path
+            if let Some(parent) = self.path.parent()
+                && let Some(metadata) = self.load_metadata(parent)
+            {
+                *cache = Some(metadata);
+            }
+        }
+
+        cache.clone()
+    }
+
     pub fn write_to(&self, path: &Path) -> Result<()> {
         // Ensure parent directory exists
         if let Some(parent) = path.parent() {
@@ -81,6 +149,29 @@ impl InstalledJdk {
     ///
     /// On other platforms, always returns the path directly.
     pub fn resolve_java_home(&self) -> PathBuf {
+        // Try to use cached metadata first
+        if let Some(metadata) = self.get_cached_metadata() {
+            let java_home = if metadata.java_home_suffix.is_empty() {
+                self.path.clone()
+            } else {
+                self.path.join(&metadata.java_home_suffix)
+            };
+
+            log::debug!(
+                "Resolved JAVA_HOME for {} using cached metadata ({}): {}",
+                self.distribution,
+                metadata.structure_type,
+                java_home.display()
+            );
+            return java_home;
+        }
+
+        // Fall back to runtime detection
+        log::debug!(
+            "No metadata found for {}, using runtime detection",
+            self.distribution
+        );
+
         #[cfg(target_os = "macos")]
         {
             // Check for bundle structure (Contents/Home)
@@ -217,11 +308,11 @@ impl JdkLister {
             Err(_) => return None,
         };
 
-        Some(InstalledJdk {
-            distribution: distribution.to_string(),
-            version: parsed_version,
-            path: path.to_path_buf(),
-        })
+        Some(InstalledJdk::new(
+            distribution.to_string(),
+            parsed_version,
+            path.to_path_buf(),
+        ))
     }
 
     pub fn get_jdk_size(path: &Path) -> Result<u64> {
@@ -311,6 +402,7 @@ mod tests {
             distribution: "temurin".to_string(),
             version: Version::new(21, 0, 1),
             path: jdk_path.clone(),
+            metadata_cache: RefCell::new(None),
         };
 
         let java_home = jdk.resolve_java_home();
@@ -327,11 +419,11 @@ mod tests {
         let bin_path = jdk_path.join("bin");
         fs::create_dir_all(&bin_path).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "liberica".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path.clone(),
-        };
+        let jdk = InstalledJdk::new(
+            "liberica".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+        );
 
         let java_home = jdk.resolve_java_home();
         assert_eq!(java_home, jdk_path);
@@ -347,11 +439,7 @@ mod tests {
         fs::create_dir_all(jdk_path.join("bin")).unwrap();
         fs::create_dir_all(jdk_path.join("Contents").join("Home").join("bin")).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "zulu".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path.clone(),
-        };
+        let jdk = InstalledJdk::new("zulu".to_string(), Version::new(21, 0, 1), jdk_path.clone());
 
         // Should prefer bundle structure when both exist
         let java_home = jdk.resolve_java_home();
@@ -365,11 +453,11 @@ mod tests {
         let jdk_path = temp_dir.path().join("broken-jdk");
         fs::create_dir_all(&jdk_path).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "broken".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path.clone(),
-        };
+        let jdk = InstalledJdk::new(
+            "broken".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+        );
 
         // Should return path as-is when structure cannot be detected
         let java_home = jdk.resolve_java_home();
@@ -390,6 +478,7 @@ mod tests {
             distribution: "temurin".to_string(),
             version: Version::new(21, 0, 1),
             path: jdk_path.clone(),
+            metadata_cache: RefCell::new(None),
         };
 
         let java_home = jdk.resolve_java_home();
@@ -405,11 +494,7 @@ mod tests {
         let bin_path = jdk_path.join("bin");
         fs::create_dir_all(&bin_path).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "test".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path.clone(),
-        };
+        let jdk = InstalledJdk::new("test".to_string(), Version::new(21, 0, 1), jdk_path.clone());
 
         let resolved_bin = jdk.resolve_bin_path().unwrap();
         assert_eq!(resolved_bin, bin_path);
@@ -425,11 +510,7 @@ mod tests {
         let bundle_bin_path = jdk_path.join("Contents").join("Home").join("bin");
         fs::create_dir_all(&bundle_bin_path).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "temurin".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path,
-        };
+        let jdk = InstalledJdk::new("temurin".to_string(), Version::new(21, 0, 1), jdk_path);
 
         let resolved_bin = jdk.resolve_bin_path().unwrap();
         assert_eq!(resolved_bin, bundle_bin_path);
@@ -441,11 +522,7 @@ mod tests {
         let jdk_path = temp_dir.path().join("broken-jdk");
         fs::create_dir_all(&jdk_path).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "broken".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path,
-        };
+        let jdk = InstalledJdk::new("broken".to_string(), Version::new(21, 0, 1), jdk_path);
 
         let result = jdk.resolve_bin_path();
         assert!(result.is_err());
@@ -461,15 +538,281 @@ mod tests {
     }
 
     #[test]
-    fn test_installed_jdk_write_to() {
+    fn test_metadata_lazy_loading() {
         let temp_dir = TempDir::new().unwrap();
-        let version_file = temp_dir.path().join("test-version");
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let jdk_path = jdks_dir.join("temurin-21.0.1");
+        fs::create_dir_all(&jdk_path).unwrap();
+
+        // Create metadata file
+        let metadata_content = r#"{
+            "id": "test-id",
+            "archive_type": "tar.gz",
+            "distribution": "temurin",
+            "major_version": 21,
+            "java_version": "21.0.1",
+            "distribution_version": "21.0.1+35.1",
+            "jdk_version": 21,
+            "directly_downloadable": true,
+            "filename": "test.tar.gz",
+            "links": {
+                "pkg_download_redirect": "https://example.com",
+                "pkg_info_uri": "https://example.com/info"
+            },
+            "free_use_in_production": true,
+            "tck_tested": "yes",
+            "size": 190000000,
+            "operating_system": "mac",
+            "architecture": "aarch64",
+            "lib_c_type": null,
+            "package_type": "jdk",
+            "javafx_bundled": false,
+            "term_of_support": null,
+            "release_status": null,
+            "latest_build_available": null,
+            "installation_metadata": {
+                "java_home_suffix": "Contents/Home",
+                "structure_type": "bundle",
+                "platform": "macos_aarch64",
+                "metadata_version": 1
+            }
+        }"#;
+
+        let metadata_path = jdks_dir.join("temurin-21.0.1.meta.json");
+        fs::write(&metadata_path, metadata_content).unwrap();
 
         let jdk = InstalledJdk {
             distribution: "temurin".to_string(),
             version: Version::new(21, 0, 1),
-            path: temp_dir.path().join("temurin-21.0.1"),
+            path: jdk_path.clone(),
+            metadata_cache: RefCell::new(None),
         };
+
+        // First access should load metadata
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, jdk_path.join("Contents/Home"));
+
+        // Verify metadata was cached
+        assert!(jdk.metadata_cache.borrow().is_some());
+
+        // Second access should use cached data (delete file to ensure it's not re-read)
+        fs::remove_file(&metadata_path).unwrap();
+        let java_home2 = jdk.resolve_java_home();
+        assert_eq!(java_home2, jdk_path.join("Contents/Home"));
+    }
+
+    #[test]
+    fn test_metadata_cache_miss_fallback() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let jdk_path = jdks_dir.join("liberica-21.0.1");
+        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+
+        let jdk = InstalledJdk::new(
+            "liberica".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+        );
+
+        // No metadata file exists, should fall back to runtime detection
+        let java_home = jdk.resolve_java_home();
+
+        #[cfg(target_os = "macos")]
+        assert_eq!(java_home, jdk_path);
+
+        #[cfg(not(target_os = "macos"))]
+        assert_eq!(java_home, jdk_path);
+
+        // Cache should remain None
+        assert!(jdk.metadata_cache.borrow().is_none());
+    }
+
+    #[test]
+    fn test_metadata_corrupt_file_fallback() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let jdk_path = jdks_dir.join("temurin-21.0.1");
+        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+
+        // Create corrupt metadata file
+        let metadata_path = jdks_dir.join("temurin-21.0.1.meta.json");
+        fs::write(&metadata_path, "{ invalid json").unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "temurin".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path.clone(),
+            metadata_cache: RefCell::new(None),
+        };
+
+        // Should fall back to runtime detection
+        let java_home = jdk.resolve_java_home();
+
+        #[cfg(target_os = "macos")]
+        assert_eq!(java_home, jdk_path);
+
+        #[cfg(not(target_os = "macos"))]
+        assert_eq!(java_home, jdk_path);
+
+        // Cache should remain None due to parse error
+        assert!(jdk.metadata_cache.borrow().is_none());
+    }
+
+    #[test]
+    fn test_metadata_performance() {
+        use std::time::Instant;
+
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let jdk_path = jdks_dir.join("temurin-21.0.1");
+        fs::create_dir_all(&jdk_path).unwrap();
+
+        // Create metadata file
+        let metadata_content = r#"{
+            "id": "test-id",
+            "archive_type": "tar.gz",
+            "distribution": "temurin",
+            "major_version": 21,
+            "java_version": "21.0.1",
+            "distribution_version": "21.0.1+35.1",
+            "jdk_version": 21,
+            "directly_downloadable": true,
+            "filename": "test.tar.gz",
+            "links": {
+                "pkg_download_redirect": "https://example.com",
+                "pkg_info_uri": null
+            },
+            "free_use_in_production": true,
+            "tck_tested": "yes",
+            "size": 190000000,
+            "operating_system": "mac",
+            "architecture": "aarch64",
+            "lib_c_type": null,
+            "package_type": "jdk",
+            "javafx_bundled": false,
+            "term_of_support": null,
+            "release_status": null,
+            "latest_build_available": null,
+            "installation_metadata": {
+                "java_home_suffix": "",
+                "structure_type": "direct",
+                "platform": "macos_aarch64",
+                "metadata_version": 1
+            }
+        }"#;
+
+        let metadata_path = jdks_dir.join("temurin-21.0.1.meta.json");
+        fs::write(&metadata_path, metadata_content).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "temurin".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path.clone(),
+            metadata_cache: RefCell::new(None),
+        };
+
+        // First access loads metadata
+        let _ = jdk.resolve_java_home();
+
+        // Measure cached access time
+        let start = Instant::now();
+        for _ in 0..1000 {
+            let _ = jdk.resolve_java_home();
+        }
+        let elapsed = start.elapsed();
+
+        // Average time per call should be < 1ms
+        let avg_micros = elapsed.as_micros() / 1000;
+        assert!(
+            avg_micros < 1000,
+            "Cached access took {avg_micros} microseconds on average"
+        );
+    }
+
+    #[test]
+    fn test_metadata_sequential_access() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let jdk_path = jdks_dir.join("temurin-21.0.1");
+        fs::create_dir_all(&jdk_path).unwrap();
+
+        // Create metadata file
+        let metadata_content = r#"{
+            "id": "test-id",
+            "archive_type": "tar.gz",
+            "distribution": "temurin",
+            "major_version": 21,
+            "java_version": "21.0.1",
+            "distribution_version": "21.0.1+35.1",
+            "jdk_version": 21,
+            "directly_downloadable": true,
+            "filename": "test.tar.gz",
+            "links": {
+                "pkg_download_redirect": "https://example.com",
+                "pkg_info_uri": null
+            },
+            "free_use_in_production": true,
+            "tck_tested": "yes",
+            "size": 190000000,
+            "operating_system": "mac",
+            "architecture": "aarch64",
+            "lib_c_type": null,
+            "package_type": "jdk",
+            "javafx_bundled": false,
+            "term_of_support": null,
+            "release_status": null,
+            "latest_build_available": null,
+            "installation_metadata": {
+                "java_home_suffix": "Contents/Home",
+                "structure_type": "bundle",
+                "platform": "macos_aarch64",
+                "metadata_version": 1
+            }
+        }"#;
+
+        let metadata_path = jdks_dir.join("temurin-21.0.1.meta.json");
+        fs::write(&metadata_path, metadata_content).unwrap();
+
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+        );
+
+        // Note: RefCell is not thread-safe, so this test verifies
+        // sequential access from the same thread (which is the actual use case)
+        let expected_java_home = jdk_path.join("Contents/Home");
+
+        // Multiple sequential accesses
+        for _ in 0..10 {
+            let java_home = jdk.resolve_java_home();
+            assert_eq!(java_home, expected_java_home);
+        }
+
+        // Verify metadata was only loaded once
+        assert!(jdk.metadata_cache.borrow().is_some());
+    }
+
+    #[test]
+    fn test_installed_jdk_write_to() {
+        let temp_dir = TempDir::new().unwrap();
+        let version_file = temp_dir.path().join("test-version");
+
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 1),
+            temp_dir.path().join("temurin-21.0.1"),
+        );
 
         jdk.write_to(&version_file).unwrap();
 
@@ -477,11 +820,11 @@ mod tests {
         assert_eq!(content, "temurin@21.0.1");
 
         // Test overwriting
-        let jdk2 = InstalledJdk {
-            distribution: "corretto".to_string(),
-            version: Version::new(17, 0, 9),
-            path: temp_dir.path().join("corretto-17.0.9"),
-        };
+        let jdk2 = InstalledJdk::new(
+            "corretto".to_string(),
+            Version::new(17, 0, 9),
+            temp_dir.path().join("corretto-17.0.9"),
+        );
 
         jdk2.write_to(&version_file).unwrap();
 

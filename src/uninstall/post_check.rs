@@ -97,7 +97,7 @@ impl<'a> PostUninstallChecker<'a> {
     /// Check for orphaned metadata files
     fn check_orphaned_metadata(&self, jdk_path: &Path) -> Result<Vec<PathBuf>> {
         use std::collections::HashSet;
-        
+
         debug!(
             "Checking for orphaned metadata files related to {}",
             jdk_path.display()
@@ -307,11 +307,11 @@ mod tests {
         fs::create_dir_all(jdk_path.join("bin")).unwrap();
         fs::write(jdk_path.join("bin/java"), "#!/bin/sh\necho mock java").unwrap();
 
-        InstalledJdk {
-            distribution: distribution.to_string(),
-            version: Version::from_str(version).unwrap(),
-            path: jdk_path,
-        }
+        InstalledJdk::new(
+            distribution.to_string(),
+            Version::from_str(version).unwrap(),
+            jdk_path,
+        )
     }
 
     #[test]
@@ -446,11 +446,11 @@ mod tests {
             jdk_completely_removed: true,
             orphaned_metadata_files: Vec::new(),
             shim_functionality_intact: true,
-            remaining_jdks: vec![InstalledJdk {
-                distribution: "temurin".to_string(),
-                version: Version::from_str("21.0.1").unwrap(),
-                path: "/test/path".into(),
-            }],
+            remaining_jdks: vec![InstalledJdk::new(
+                "temurin".to_string(),
+                Version::from_str("21.0.1").unwrap(),
+                "/test/path".into(),
+            )],
             suggested_actions: Vec::new(),
         };
 

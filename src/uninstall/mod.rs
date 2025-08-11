@@ -213,17 +213,21 @@ impl<'a> UninstallHandler<'a> {
             }
             // Continue with removal but warn user
         }
-        
+
         // Remove metadata file before atomic removal
         if let Some(parent) = jdk.path.parent()
             && let Some(jdk_dir_name) = jdk.path.file_name().and_then(|n| n.to_str())
         {
-            let meta_file = parent.join(format!("{}.meta.json", jdk_dir_name));
-            if meta_file.exists() {
-                if let Err(e) = std::fs::remove_file(&meta_file) {
-                    debug!("Failed to remove metadata file {}: {}", meta_file.display(), e);
-                    // Don't fail the operation if metadata removal fails
-                }
+            let meta_file = parent.join(format!("{jdk_dir_name}.meta.json"));
+            if meta_file.exists()
+                && let Err(e) = std::fs::remove_file(&meta_file)
+            {
+                debug!(
+                    "Failed to remove metadata file {}: {}",
+                    meta_file.display(),
+                    e
+                );
+                // Don't fail the operation if metadata removal fails
             }
         }
 

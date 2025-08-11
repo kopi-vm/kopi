@@ -328,21 +328,21 @@ cat ~/.kopi/jdks/temurin-24*.meta.json | jq .installation_metadata
   - Phase 2 (Common Path Resolution)
 
 ### Tasks
-- [ ] Add metadata caching to `InstalledJdk`
-  - [ ] Add optional metadata field to struct
-  - [ ] Implement lazy loading on first access
-  - [ ] Cache in memory for process lifetime
-- [ ] Update `resolve_java_home()` to use cached metadata
-  - [ ] Try metadata first
-  - [ ] Fall back to runtime detection
-  - [ ] Log when using fallback
-- [ ] Update `resolve_bin_path()` to use cached metadata
-- [ ] **Write unit tests**:
-  - [ ] Test lazy loading of metadata
-  - [ ] Test cache hit performance (< 1ms)
-  - [ ] Test fallback when metadata missing
-  - [ ] Test concurrent access to cached data
-  - [ ] Test memory usage with multiple JDKs
+- [x] Add metadata caching to `InstalledJdk`
+  - [x] Add optional metadata field to struct
+  - [x] Implement lazy loading on first access
+  - [x] Cache in memory for process lifetime
+- [x] Update `resolve_java_home()` to use cached metadata
+  - [x] Try metadata first
+  - [x] Fall back to runtime detection
+  - [x] Log when using fallback
+- [x] Update `resolve_bin_path()` to use cached metadata
+- [x] **Write unit tests**:
+  - [x] Test lazy loading of metadata
+  - [x] Test cache hit performance (< 1ms)
+  - [x] Test fallback when metadata missing
+  - [x] Test concurrent access to cached data
+  - [x] Test memory usage with multiple JDKs
 
 ### Verification
 ```bash
