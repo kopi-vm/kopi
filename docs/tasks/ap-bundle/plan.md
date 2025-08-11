@@ -247,18 +247,18 @@ kopi install temurin@21 && kopi use temurin@21 && java --version
   - `/src/models/metadata.rs` - Existing metadata structures
 
 ### Tasks
-- [ ] Define `InstallationMetadata` struct in `src/storage/mod.rs`
-  - [ ] Add `java_home_suffix` field (e.g., "Contents/Home")
-  - [ ] Add `structure_type` field (bundle/direct/hybrid)
-  - [ ] Add `platform` field for platform-specific info
-  - [ ] Add `metadata_version` for future compatibility
-- [ ] Update existing metadata structures to include installation metadata
-- [ ] **Write unit tests**:
-  - [ ] Test serialization to JSON
-  - [ ] Test deserialization from JSON
-  - [ ] Test backward compatibility (missing fields)
-  - [ ] Test forward compatibility (extra fields)
-  - [ ] Test invalid JSON handling
+- [x] Define `InstallationMetadata` struct in `src/storage/mod.rs`
+  - [x] Add `java_home_suffix` field (e.g., "Contents/Home")
+  - [x] Add `structure_type` field (bundle/direct/hybrid)
+  - [x] Add `platform` field for platform-specific info
+  - [x] Add `metadata_version` for future compatibility
+- [x] Update existing metadata structures to include installation metadata
+- [x] **Write unit tests**:
+  - [x] Test serialization to JSON
+  - [x] Test deserialization from JSON
+  - [x] Test backward compatibility (missing fields)
+  - [x] Test forward compatibility (extra fields)
+  - [x] Test invalid JSON handling
 
 ### Verification
 ```bash
