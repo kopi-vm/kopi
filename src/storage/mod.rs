@@ -379,4 +379,181 @@ mod metadata_tests {
     fn test_metadata_version_default() {
         assert_eq!(default_metadata_version(), 1);
     }
+
+    #[test]
+    fn test_save_jdk_metadata_write_failure() {
+        use std::os::unix::fs::PermissionsExt;
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        // Make the directory read-only to cause write failure
+        fs::set_permissions(&jdks_dir, fs::Permissions::from_mode(0o555)).unwrap();
+
+        let distribution = Distribution::Temurin;
+        let package = Package {
+            id: "test-id".to_string(),
+            archive_type: "tar.gz".to_string(),
+            distribution: "temurin".to_string(),
+            major_version: 21,
+            java_version: "21.0.1".to_string(),
+            distribution_version: "21.0.1+35.1".to_string(),
+            jdk_version: 21,
+            directly_downloadable: true,
+            filename: "test.tar.gz".to_string(),
+            links: Links {
+                pkg_download_redirect: "https://example.com".to_string(),
+                pkg_info_uri: None,
+            },
+            free_use_in_production: true,
+            tck_tested: "yes".to_string(),
+            size: 190000000,
+            operating_system: "linux".to_string(),
+            architecture: Some("x64".to_string()),
+            lib_c_type: Some("glibc".to_string()),
+            package_type: "jdk".to_string(),
+            javafx_bundled: false,
+            term_of_support: None,
+            release_status: None,
+            latest_build_available: None,
+        };
+
+        let result = save_jdk_metadata(&jdks_dir, &distribution, "21.0.1+35.1", &package);
+
+        // Should fail due to permission error
+        assert!(result.is_err());
+
+        // Reset permissions
+        fs::set_permissions(&jdks_dir, fs::Permissions::from_mode(0o755)).unwrap();
+    }
+
+    #[test]
+    fn test_save_jdk_metadata_with_installation_atomic() {
+        // Test that metadata saving is atomic (all-or-nothing)
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let distribution = Distribution::Temurin;
+        let package = Package {
+            id: "test-id".to_string(),
+            archive_type: "tar.gz".to_string(),
+            distribution: "temurin".to_string(),
+            major_version: 21,
+            java_version: "21.0.1".to_string(),
+            distribution_version: "21.0.1+35.1".to_string(),
+            jdk_version: 21,
+            directly_downloadable: true,
+            filename: "test.tar.gz".to_string(),
+            links: Links {
+                pkg_download_redirect: "https://example.com".to_string(),
+                pkg_info_uri: None,
+            },
+            free_use_in_production: true,
+            tck_tested: "yes".to_string(),
+            size: 190000000,
+            operating_system: "mac".to_string(),
+            architecture: Some("aarch64".to_string()),
+            lib_c_type: None,
+            package_type: "jdk".to_string(),
+            javafx_bundled: false,
+            term_of_support: None,
+            release_status: None,
+            latest_build_available: None,
+        };
+
+        let installation_metadata = InstallationMetadata {
+            java_home_suffix: "Contents/Home".to_string(),
+            structure_type: "bundle".to_string(),
+            platform: "macos_aarch64".to_string(),
+            metadata_version: 1,
+        };
+
+        // Save metadata
+        let result = save_jdk_metadata_with_installation(
+            &jdks_dir,
+            &distribution,
+            "21.0.1+35.1",
+            &package,
+            &installation_metadata,
+        );
+        assert!(result.is_ok());
+
+        let metadata_path = jdks_dir.join("temurin-21.0.1+35.1.meta.json");
+        assert!(metadata_path.exists());
+
+        // Verify content is complete and valid JSON
+        let content = fs::read_to_string(&metadata_path).unwrap();
+        let parsed: std::result::Result<JdkMetadataWithInstallation, _> = serde_json::from_str(&content);
+        assert!(parsed.is_ok());
+
+        let metadata = parsed.unwrap();
+        assert_eq!(metadata.package.id, "test-id");
+        assert_eq!(
+            metadata.installation_metadata.java_home_suffix,
+            "Contents/Home"
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_save_jdk_metadata_permission_error() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let distribution = Distribution::Temurin;
+        let package = Package {
+            id: "test-id".to_string(),
+            archive_type: "tar.gz".to_string(),
+            distribution: "temurin".to_string(),
+            major_version: 21,
+            java_version: "21.0.1".to_string(),
+            distribution_version: "21.0.1+35.1".to_string(),
+            jdk_version: 21,
+            directly_downloadable: true,
+            filename: "test.tar.gz".to_string(),
+            links: Links {
+                pkg_download_redirect: "https://example.com".to_string(),
+                pkg_info_uri: None,
+            },
+            free_use_in_production: true,
+            tck_tested: "yes".to_string(),
+            size: 190000000,
+            operating_system: "linux".to_string(),
+            architecture: Some("x64".to_string()),
+            lib_c_type: Some("glibc".to_string()),
+            package_type: "jdk".to_string(),
+            javafx_bundled: false,
+            term_of_support: None,
+            release_status: None,
+            latest_build_available: None,
+        };
+
+        let installation_metadata = InstallationMetadata {
+            java_home_suffix: String::new(),
+            structure_type: "direct".to_string(),
+            platform: "linux_x64".to_string(),
+            metadata_version: 1,
+        };
+
+        // Make directory read-only
+        fs::set_permissions(&jdks_dir, fs::Permissions::from_mode(0o555)).unwrap();
+
+        let result = save_jdk_metadata_with_installation(
+            &jdks_dir,
+            &distribution,
+            "21.0.1+35.1",
+            &package,
+            &installation_metadata,
+        );
+
+        // Should fail due to permissions
+        assert!(result.is_err());
+
+        // Reset permissions
+        fs::set_permissions(&jdks_dir, fs::Permissions::from_mode(0o755)).unwrap();
+    }
 }

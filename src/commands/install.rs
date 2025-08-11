@@ -268,15 +268,20 @@ impl<'a> InstallCommand<'a> {
             &repository,
             context,
             structure_info.jdk_root,
-            structure_info.structure_type,
+            structure_info.structure_type.clone(),
         )?;
         info!("JDK installed to {final_path:?}");
 
-        // Save metadata JSON file
-        repository.save_jdk_metadata(
+        // Create installation metadata based on detected structure
+        let installation_metadata =
+            self.create_installation_metadata(&structure_info.structure_type)?;
+
+        // Save metadata JSON file with installation information
+        repository.save_jdk_metadata_with_installation(
             &distribution,
             &jdk_metadata_with_checksum.distribution_version.to_string(),
             &package,
+            &installation_metadata,
         )?;
 
         // Clean up is automatic when download_result goes out of scope
@@ -546,6 +551,37 @@ impl<'a> InstallCommand<'a> {
             // The JDK is directly in the temp path, use standard finalization
             repository.finalize_installation(context)
         }
+    }
+
+    fn create_installation_metadata(
+        &self,
+        structure_type: &JdkStructureType,
+    ) -> Result<crate::storage::InstallationMetadata> {
+        use crate::platform::{get_current_architecture, get_current_os};
+
+        let java_home_suffix = match structure_type {
+            JdkStructureType::Bundle => "Contents/Home".to_string(),
+            JdkStructureType::Direct => String::new(),
+            JdkStructureType::Hybrid => "Contents/Home".to_string(), // Hybrid also uses bundle path
+        };
+
+        let structure_type_str = match structure_type {
+            JdkStructureType::Bundle => "bundle",
+            JdkStructureType::Direct => "direct",
+            JdkStructureType::Hybrid => "hybrid",
+        };
+
+        // Create platform string in format "os_arch"
+        let arch = get_current_architecture();
+        let os = get_current_os();
+        let platform = format!("{os}_{arch}");
+
+        Ok(crate::storage::InstallationMetadata {
+            java_home_suffix,
+            structure_type: structure_type_str.to_string(),
+            platform,
+            metadata_version: 1,
+        })
     }
 
     fn convert_metadata_to_package(&self, metadata: &JdkMetadata) -> crate::models::api::Package {
@@ -903,5 +939,56 @@ mod tests {
         } else {
             panic!("Expected ValidationError for invalid JDK structure");
         }
+    }
+
+    #[test]
+    fn test_create_installation_metadata_direct() {
+        use crate::archive::JdkStructureType;
+
+        let config = KopiConfig::new(std::env::temp_dir()).unwrap();
+        let cmd = InstallCommand::new(&config).unwrap();
+
+        let metadata = cmd
+            .create_installation_metadata(&JdkStructureType::Direct)
+            .unwrap();
+
+        assert_eq!(metadata.java_home_suffix, "");
+        assert_eq!(metadata.structure_type, "direct");
+        assert!(!metadata.platform.is_empty());
+        assert_eq!(metadata.metadata_version, 1);
+    }
+
+    #[test]
+    fn test_create_installation_metadata_bundle() {
+        use crate::archive::JdkStructureType;
+
+        let config = KopiConfig::new(std::env::temp_dir()).unwrap();
+        let cmd = InstallCommand::new(&config).unwrap();
+
+        let metadata = cmd
+            .create_installation_metadata(&JdkStructureType::Bundle)
+            .unwrap();
+
+        assert_eq!(metadata.java_home_suffix, "Contents/Home");
+        assert_eq!(metadata.structure_type, "bundle");
+        assert!(!metadata.platform.is_empty());
+        assert_eq!(metadata.metadata_version, 1);
+    }
+
+    #[test]
+    fn test_create_installation_metadata_hybrid() {
+        use crate::archive::JdkStructureType;
+
+        let config = KopiConfig::new(std::env::temp_dir()).unwrap();
+        let cmd = InstallCommand::new(&config).unwrap();
+
+        let metadata = cmd
+            .create_installation_metadata(&JdkStructureType::Hybrid)
+            .unwrap();
+
+        assert_eq!(metadata.java_home_suffix, "Contents/Home");
+        assert_eq!(metadata.structure_type, "hybrid");
+        assert!(!metadata.platform.is_empty());
+        assert_eq!(metadata.metadata_version, 1);
     }
 }

@@ -106,9 +106,9 @@ cargo test --lib storage::listing::tests
   - [x] Test error handling for invalid JDK structures
   - [x] Test logging output
 - [x] **Manual testing** with real JDK archives:
-  - [x] Temurin (bundle structure)
-  - [x] Liberica (direct structure)
-  - [x] Azul Zulu (hybrid structure)
+  - [x] Temurin (bundle structure) - 実際にinstall_metadataが保存されることを確認
+  - [x] Liberica (direct structure) - java_home_suffix: "" として保存されることを確認
+  - [x] Azul Zulu (hybrid structure) - java_home_suffix: "Contents/Home" として保存されることを確認
 
 ### Verification
 ```bash
@@ -282,20 +282,24 @@ cargo test --lib storage::metadata::tests
   - Phase 7 (Metadata Structure Design)
 
 ### Tasks
-- [ ] Extend `save_jdk_metadata()` in `src/storage/mod.rs`
-  - [ ] Accept installation metadata parameter
-  - [ ] Include in saved JSON structure
-  - [ ] Maintain backward compatibility
-- [ ] Update installation process to save metadata
-  - [ ] Create metadata after successful detection
-  - [ ] Save alongside JDK installation
-- [ ] Add error handling for metadata save failures
-- [ ] **Write unit tests**:
-  - [ ] Test metadata file creation
-  - [ ] Test metadata file content
-  - [ ] Test error handling for write failures
-  - [ ] Test atomic file operations
-  - [ ] Integration test with install command
+- [x] Extend `save_jdk_metadata()` in `src/storage/mod.rs`
+  - [x] Accept installation metadata parameter
+  - [x] Include in saved JSON structure
+  - [x] Maintain backward compatibility
+- [x] Update installation process to save metadata
+  - [x] Create metadata after successful detection
+  - [x] Save alongside JDK installation
+- [x] Add error handling for metadata save failures
+- [x] **Write unit tests**:
+  - [x] Test metadata file creation
+  - [x] Test metadata file content
+  - [x] Test error handling for write failures
+  - [x] Test atomic file operations
+  - [x] Integration test with install command
+- [x] **Manual testing** with real JDK archives:
+  - [x] Temurin 22 (bundle) - installation_metadata.structure_type: "bundle"
+  - [x] Liberica 21 (direct) - installation_metadata.structure_type: "direct"
+  - [x] Azul Zulu 21 (hybrid) - installation_metadata.structure_type: "hybrid"
 
 ### Verification
 ```bash
@@ -304,7 +308,9 @@ cargo clippy --all-targets -- -D warnings
 cargo test --lib storage::tests
 # Manual testing
 kopi install temurin@24
-cat ~/.kopi/jdks/temurin-24.*/metadata.json | jq .installation_metadata
+# Metadata file will be created as ~/.kopi/jdks/temurin-24.0.2.meta.json (version may vary)
+ls ~/.kopi/jdks/temurin-24*.meta.json
+cat ~/.kopi/jdks/temurin-24*.meta.json | jq .installation_metadata
 ```
 
 ---
@@ -379,7 +385,7 @@ cargo fmt
 cargo clippy --all-targets -- -D warnings
 cargo test --lib storage::tests
 # Manual testing - verify fallback works
-rm ~/.kopi/jdks/*/metadata.json
+rm ~/.kopi/jdks/*.meta.json
 kopi use temurin@21
 java --version
 ```

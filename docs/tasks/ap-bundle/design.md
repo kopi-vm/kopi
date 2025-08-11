@@ -149,7 +149,7 @@ Add two methods to the `InstalledJdk` struct:
    - Used by shim to find executables
 
 **Metadata Loading**:
-- Lazy-loads metadata from `metadata.json` file in JDK directory
+- Lazy-loads metadata from `.meta.json` file in JDK directory
 - Caches result in struct field for subsequent calls
 - Falls back to runtime detection if metadata missing or invalid
 

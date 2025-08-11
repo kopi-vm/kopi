@@ -158,6 +158,23 @@ impl<'a> JdkRepository<'a> {
         super::save_jdk_metadata(&jdks_dir, distribution, distribution_version, metadata)
     }
 
+    pub fn save_jdk_metadata_with_installation(
+        &self,
+        distribution: &Distribution,
+        distribution_version: &str,
+        metadata: &Package,
+        installation_metadata: &super::InstallationMetadata,
+    ) -> Result<()> {
+        let jdks_dir = self.config.jdks_dir()?;
+        super::save_jdk_metadata_with_installation(
+            &jdks_dir,
+            distribution,
+            distribution_version,
+            metadata,
+            installation_metadata,
+        )
+    }
+
     /// Find installed JDKs matching a version request and return them sorted by version (oldest first)
     ///
     /// # Arguments
@@ -471,5 +488,88 @@ min_disk_space_mb = 1024
         // Invalid version pattern
         let result = VersionRequest::new("invalid.version".to_string());
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_save_jdk_metadata_with_installation() {
+        use crate::models::api::Links;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let repository = JdkRepository::new(&config);
+        let jdks_dir = config.jdks_dir().unwrap();
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let distribution = Distribution::Temurin;
+        let distribution_version = "21.0.1+35.1";
+
+        let package = Package {
+            id: "test-package-id".to_string(),
+            archive_type: "tar.gz".to_string(),
+            distribution: "temurin".to_string(),
+            major_version: 21,
+            java_version: "21.0.1".to_string(),
+            distribution_version: distribution_version.to_string(),
+            jdk_version: 21,
+            directly_downloadable: true,
+            filename: "OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.1_35.1.tar.gz".to_string(),
+            links: Links {
+                pkg_download_redirect: "https://example.com/download".to_string(),
+                pkg_info_uri: Some("https://example.com/info".to_string()),
+            },
+            free_use_in_production: true,
+            tck_tested: "yes".to_string(),
+            size: 190000000,
+            operating_system: "mac".to_string(),
+            architecture: Some("aarch64".to_string()),
+            lib_c_type: None,
+            package_type: "jdk".to_string(),
+            javafx_bundled: false,
+            term_of_support: None,
+            release_status: None,
+            latest_build_available: None,
+        };
+
+        let installation_metadata = crate::storage::InstallationMetadata {
+            java_home_suffix: "Contents/Home".to_string(),
+            structure_type: "bundle".to_string(),
+            platform: "macos_aarch64".to_string(),
+            metadata_version: 1,
+        };
+
+        // Save metadata with installation info
+        let result = repository.save_jdk_metadata_with_installation(
+            &distribution,
+            distribution_version,
+            &package,
+            &installation_metadata,
+        );
+        assert!(result.is_ok());
+
+        // Verify the metadata file exists
+        let metadata_path = jdks_dir.join(format!(
+            "{}-{distribution_version}.meta.json",
+            distribution.id()
+        ));
+        assert!(metadata_path.exists());
+
+        // Read and verify the contents
+        let content = fs::read_to_string(&metadata_path).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
+
+        // Check API metadata fields
+        assert_eq!(parsed["id"], "test-package-id");
+        assert_eq!(parsed["distribution"], "temurin");
+        assert_eq!(parsed["java_version"], "21.0.1");
+
+        // Check installation metadata fields
+        assert_eq!(
+            parsed["installation_metadata"]["java_home_suffix"],
+            "Contents/Home"
+        );
+        assert_eq!(parsed["installation_metadata"]["structure_type"], "bundle");
+        assert_eq!(parsed["installation_metadata"]["platform"], "macos_aarch64");
+        assert_eq!(parsed["installation_metadata"]["metadata_version"], 1);
     }
 }

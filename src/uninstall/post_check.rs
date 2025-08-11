@@ -106,9 +106,14 @@ impl<'a> PostUninstallChecker<'a> {
         // Check for .meta.json files in the JDK directory
         if jdk_path.exists() {
             // If the JDK directory still exists, check for orphaned metadata
-            let meta_file = jdk_path.join(".meta.json");
-            if meta_file.exists() {
-                orphaned_files.push(meta_file);
+            // Metadata files are stored as <distribution>-<version>.meta.json in jdks directory
+            if let Some(jdk_dir_name) = jdk_path.file_name().and_then(|n| n.to_str()) {
+                if let Some(parent) = jdk_path.parent() {
+                    let meta_file = parent.join(format!("{}.meta.json", jdk_dir_name));
+                    if meta_file.exists() {
+                        orphaned_files.push(meta_file);
+                    }
+                }
             }
         }
 
@@ -340,8 +345,8 @@ mod tests {
         let checker = PostUninstallChecker::new(&repository);
         let jdk = create_mock_jdk(&config, "temurin", "21.0.1");
 
-        // Create a metadata file
-        let meta_file = jdk.path.join(".meta.json");
+        // Create a metadata file in the parent directory
+        let meta_file = jdks_dir.join(format!("{}.meta.json", jdk.path.file_name().unwrap().to_str().unwrap()));
         fs::write(&meta_file, "{}").unwrap();
 
         let orphaned = checker.check_orphaned_metadata(&jdk.path).unwrap();
@@ -397,8 +402,8 @@ mod tests {
         let checker = PostUninstallChecker::new(&repository);
         let jdk = create_mock_jdk(&config, "temurin", "21.0.1");
 
-        // Create metadata files
-        let meta_file = jdk.path.join(".meta.json");
+        // Create metadata files in the parent directory
+        let meta_file = jdks_dir.join(format!("{}.meta.json", jdk.path.file_name().unwrap().to_str().unwrap()));
         fs::write(&meta_file, "{}").unwrap();
 
         let report = PostUninstallReport {
