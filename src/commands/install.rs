@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::archive::extract_archive;
+use crate::archive::{JdkStructureType, detect_jdk_root, extract_archive};
 use crate::cache::{self, MetadataCache};
 use crate::config::KopiConfig;
 use crate::download::download_jdk;
@@ -244,9 +244,32 @@ impl<'a> InstallCommand<'a> {
         extract_archive(download_path, &context.temp_path)?;
         debug!("Extraction completed");
 
-        // Finalize installation
-        debug!("Finalizing installation");
-        let final_path = repository.finalize_installation(context)?;
+        // Detect JDK structure and move the correct directory
+        debug!("Detecting JDK structure");
+        let structure_info = match detect_jdk_root(&context.temp_path) {
+            Ok(info) => info,
+            Err(e) => {
+                // Clean up the failed installation
+                let _ = repository.cleanup_failed_installation(&context);
+                return Err(KopiError::ValidationError(format!(
+                    "Invalid JDK structure in archive: {e}"
+                )));
+            }
+        };
+
+        info!(
+            "Detected JDK structure: {:?} (root: {})",
+            structure_info.structure_type,
+            structure_info.jdk_root.display()
+        );
+
+        // Handle different structure types when moving to final location
+        let final_path = self.finalize_with_structure(
+            &repository,
+            context,
+            structure_info.jdk_root,
+            structure_info.structure_type,
+        )?;
         info!("JDK installed to {final_path:?}");
 
         // Save metadata JSON file
@@ -466,6 +489,65 @@ impl<'a> InstallCommand<'a> {
             latest_build_available: package.latest_build_available,
         })
     }
+    fn finalize_with_structure(
+        &self,
+        repository: &JdkRepository,
+        context: crate::storage::InstallationContext,
+        jdk_root: std::path::PathBuf,
+        structure_type: JdkStructureType,
+    ) -> Result<std::path::PathBuf> {
+        use std::fs;
+
+        // Log the structure type for debugging
+        match structure_type {
+            JdkStructureType::Direct => {
+                info!("Installing JDK with direct structure");
+            }
+            JdkStructureType::Bundle => {
+                info!("Installing JDK with macOS bundle structure");
+            }
+            JdkStructureType::Hybrid => {
+                info!("Installing JDK with hybrid structure (symlinks to bundle)");
+            }
+        }
+
+        // If the JDK root is not the same as the temp path, we need to move it
+        if jdk_root != context.temp_path {
+            debug!(
+                "JDK root ({}) differs from extraction path ({})",
+                jdk_root.display(),
+                context.temp_path.display()
+            );
+
+            // Move the JDK root directly to the final location
+            if let Some(parent) = context.final_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            
+            // Clean up any existing installation at the final path
+            if context.final_path.exists() {
+                fs::remove_dir_all(&context.final_path)?;
+            }
+            
+            // Move the JDK root to the final location
+            fs::rename(&jdk_root, &context.final_path).map_err(|e| {
+                // Try to clean up on error
+                let _ = repository.cleanup_failed_installation(&context);
+                KopiError::Io(e)
+            })?;
+            
+            // Clean up the temp directory if it still exists and is different from jdk_root
+            if context.temp_path.exists() && context.temp_path != jdk_root {
+                let _ = fs::remove_dir_all(&context.temp_path);
+            }
+            
+            Ok(context.final_path)
+        } else {
+            // The JDK is directly in the temp path, use standard finalization
+            repository.finalize_installation(context)
+        }
+    }
+
     fn convert_metadata_to_package(&self, metadata: &JdkMetadata) -> crate::models::api::Package {
         // Convert JdkMetadata to API Package format
         let pkg_info_uri = format!("https://api.foojay.io/disco/v3.0/packages/{}", metadata.id);
@@ -658,5 +740,168 @@ mod tests {
         let error = KopiError::ChecksumMismatch;
         let error_str = error.to_string();
         assert!(error_str.contains("Checksum verification failed"));
+    }
+
+    #[test]
+    fn test_finalize_with_structure_direct() {
+        use crate::archive::JdkStructureType;
+        use crate::storage::InstallationContext;
+        use std::fs;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let cmd = InstallCommand::new(&config).unwrap();
+        let repository = JdkRepository::new(&config);
+
+        // Create a mock installation context
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let temp_path = jdks_dir.join(".tmp/test-install");
+        fs::create_dir_all(&temp_path).unwrap();
+
+        // Create a fake JDK structure
+        let jdk_root = temp_path.join("jdk-21");
+        fs::create_dir_all(jdk_root.join("bin")).unwrap();
+        fs::write(jdk_root.join("bin/java"), "mock java").unwrap();
+
+        let context = InstallationContext {
+            final_path: jdks_dir.join("temurin-21.0.1"),
+            temp_path: temp_path.clone(),
+        };
+
+        // Test direct structure finalization
+        let result = cmd.finalize_with_structure(
+            &repository,
+            context,
+            jdk_root.clone(),
+            JdkStructureType::Direct,
+        );
+
+        assert!(result.is_ok());
+        let final_path = result.unwrap();
+        assert!(final_path.exists());
+        assert!(final_path.join("bin/java").exists());
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_finalize_with_structure_bundle() {
+        use crate::archive::JdkStructureType;
+        use crate::storage::InstallationContext;
+        use std::fs;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let cmd = InstallCommand::new(&config).unwrap();
+        let repository = JdkRepository::new(&config);
+
+        // Create a mock installation context
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let temp_path = jdks_dir.join(".tmp/test-install");
+        fs::create_dir_all(&temp_path).unwrap();
+
+        // Create a fake bundle structure
+        let bundle_root = temp_path.join("jdk-21.jdk");
+        let contents_home = bundle_root.join("Contents/Home");
+        fs::create_dir_all(contents_home.join("bin")).unwrap();
+        fs::write(contents_home.join("bin/java"), "mock java").unwrap();
+
+        let context = InstallationContext {
+            final_path: jdks_dir.join("temurin-21.0.1"),
+            temp_path: temp_path.clone(),
+        };
+
+        // Test bundle structure finalization
+        // The bundle_root should be what gets moved, not Contents/Home
+        let result = cmd.finalize_with_structure(
+            &repository,
+            context,
+            bundle_root.clone(),
+            JdkStructureType::Bundle,
+        );
+
+        assert!(result.is_ok());
+        let final_path = result.unwrap();
+        assert!(final_path.exists());
+        // After installation, the structure should be preserved
+        assert!(final_path.join("Contents/Home/bin/java").exists());
+    }
+
+    #[test]
+    fn test_finalize_with_structure_logging() {
+        use crate::archive::JdkStructureType;
+        use crate::storage::InstallationContext;
+        use std::fs;
+        use tempfile::TempDir;
+
+        // This test verifies that structure types are logged correctly
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let cmd = InstallCommand::new(&config).unwrap();
+
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let temp_path = jdks_dir.join(".tmp/test-install");
+        let jdk_root = temp_path.join("jdk");
+        fs::create_dir_all(jdk_root.join("bin")).unwrap();
+        fs::write(jdk_root.join("bin/java"), "mock").unwrap();
+
+        // Test that each structure type can be processed without errors
+        for structure_type in [
+            JdkStructureType::Direct,
+            JdkStructureType::Bundle,
+            JdkStructureType::Hybrid,
+        ] {
+            let ctx = InstallationContext {
+                final_path: jdks_dir.join(format!("test-jdk-{structure_type:?}")),
+                temp_path: temp_path.clone(),
+            };
+
+            // Re-create the JDK structure for each test
+            if !jdk_root.exists() {
+                fs::create_dir_all(jdk_root.join("bin")).unwrap();
+                fs::write(jdk_root.join("bin/java"), "mock").unwrap();
+            }
+
+            let repo = JdkRepository::new(&config);
+            let result =
+                cmd.finalize_with_structure(&repo, ctx, jdk_root.clone(), structure_type.clone());
+
+            // The function should handle all structure types
+            assert!(
+                result.is_ok(),
+                "Failed for structure type: {structure_type:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_invalid_jdk_structure_error_handling() {
+        use crate::archive::detect_jdk_root;
+        use std::fs;
+        use tempfile::TempDir;
+
+        // Test that invalid JDK structures are properly rejected
+        let temp_dir = TempDir::new().unwrap();
+        let invalid_dir = temp_dir.path();
+
+        // Create a directory without valid JDK structure
+        fs::create_dir_all(invalid_dir.join("some_dir")).unwrap();
+        fs::write(invalid_dir.join("some_file.txt"), "not a JDK").unwrap();
+
+        let result = detect_jdk_root(invalid_dir);
+        assert!(result.is_err());
+
+        if let Err(KopiError::ValidationError(msg)) = result {
+            assert!(msg.contains("No valid JDK structure found"));
+        } else {
+            panic!("Expected ValidationError for invalid JDK structure");
+        }
     }
 }

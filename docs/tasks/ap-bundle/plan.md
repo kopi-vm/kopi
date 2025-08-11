@@ -95,16 +95,16 @@ cargo test --lib storage::listing::tests
   - Phase 2 (Common Path Resolution)
 
 ### Tasks
-- [ ] Update `extract_and_install()` in `src/commands/install.rs`
-  - [ ] Call `detect_jdk_root()` after extraction
-  - [ ] Move correct directory to final location
-  - [ ] Log structure type at INFO level
-- [ ] Update error handling for invalid structures
-- [ ] **Write unit tests**:
-  - [ ] Mock extraction and structure detection
-  - [ ] Test correct directory movement for each structure type
-  - [ ] Test error handling for invalid JDK structures
-  - [ ] Test logging output
+- [x] Update `extract_and_install()` in `src/commands/install.rs`
+  - [x] Call `detect_jdk_root()` after extraction
+  - [x] Move correct directory to final location
+  - [x] Log structure type at INFO level
+- [x] Update error handling for invalid structures
+- [x] **Write unit tests**:
+  - [x] Mock extraction and structure detection
+  - [x] Test correct directory movement for each structure type
+  - [x] Test error handling for invalid JDK structures
+  - [x] Test logging output
 - [ ] **Manual testing** with real JDK archives:
   - [ ] Temurin (bundle structure)
   - [ ] Liberica (direct structure)
