@@ -72,6 +72,82 @@ impl InstalledJdk {
         log::debug!("Wrote version file: {path:?}");
         Ok(())
     }
+
+    /// Resolves the correct JAVA_HOME path for this JDK installation.
+    ///
+    /// On macOS, this handles different directory structures:
+    /// - Bundle structure: Returns path/Contents/Home
+    /// - Direct structure: Returns path directly
+    ///
+    /// On other platforms, always returns the path directly.
+    pub fn resolve_java_home(&self) -> PathBuf {
+        #[cfg(target_os = "macos")]
+        {
+            // Check for bundle structure (Contents/Home)
+            let bundle_path = self.path.join("Contents").join("Home");
+            if bundle_path.join("bin").exists() {
+                log::debug!(
+                    "Resolved JAVA_HOME for {} using bundle structure: {}",
+                    self.distribution,
+                    bundle_path.display()
+                );
+                return bundle_path;
+            }
+
+            // Direct structure or hybrid (has bin at root)
+            if self.path.join("bin").exists() {
+                log::debug!(
+                    "Resolved JAVA_HOME for {} using direct structure: {}",
+                    self.distribution,
+                    self.path.display()
+                );
+                return self.path.clone();
+            }
+
+            // Fallback: return path as-is and log warning
+            log::warn!(
+                "Could not detect JDK structure for {} at {}, using path as-is",
+                self.distribution,
+                self.path.display()
+            );
+            self.path.clone()
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            // On non-macOS platforms, always use direct structure
+            log::debug!(
+                "Resolved JAVA_HOME for {} on non-macOS platform: {}",
+                self.distribution,
+                self.path.display()
+            );
+            self.path.clone()
+        }
+    }
+
+    /// Resolves the path to the bin directory for this JDK installation.
+    ///
+    /// This method uses resolve_java_home() and appends "bin" to get the
+    /// correct bin directory path regardless of the JDK structure.
+    pub fn resolve_bin_path(&self) -> Result<PathBuf> {
+        let java_home = self.resolve_java_home();
+        let bin_path = java_home.join("bin");
+
+        if !bin_path.exists() {
+            return Err(KopiError::SystemError(format!(
+                "JDK bin directory not found at expected location: {}",
+                bin_path.display()
+            )));
+        }
+
+        log::debug!(
+            "Resolved bin path for {}: {}",
+            self.distribution,
+            bin_path.display()
+        );
+
+        Ok(bin_path)
+    }
 }
 
 pub struct JdkLister;
@@ -219,6 +295,169 @@ mod tests {
 
         // Version with 'v' prefix should not be parsed
         assert!(JdkLister::parse_jdk_dir_name(Path::new("zulu-v11.0.21")).is_none());
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_resolve_java_home_bundle_structure() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path().join("temurin-21.0.1");
+
+        // Create bundle structure
+        let bundle_bin_path = jdk_path.join("Contents").join("Home").join("bin");
+        fs::create_dir_all(&bundle_bin_path).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "temurin".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path.clone(),
+        };
+
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, jdk_path.join("Contents").join("Home"));
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_resolve_java_home_direct_structure() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path().join("liberica-21.0.1");
+
+        // Create direct structure
+        let bin_path = jdk_path.join("bin");
+        fs::create_dir_all(&bin_path).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "liberica".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path.clone(),
+        };
+
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, jdk_path);
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_resolve_java_home_hybrid_structure() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path().join("zulu-21.0.1");
+
+        // Create hybrid structure (bin at root + Contents/Home exists)
+        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+        fs::create_dir_all(jdk_path.join("Contents").join("Home").join("bin")).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "zulu".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path.clone(),
+        };
+
+        // Should prefer bundle structure when both exist
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, jdk_path.join("Contents").join("Home"));
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_resolve_java_home_missing_structure() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path().join("broken-jdk");
+        fs::create_dir_all(&jdk_path).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "broken".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path.clone(),
+        };
+
+        // Should return path as-is when structure cannot be detected
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, jdk_path);
+    }
+
+    #[test]
+    #[cfg(not(target_os = "macos"))]
+    fn test_resolve_java_home_non_macos() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path().join("temurin-21.0.1");
+
+        // Even if bundle structure exists, should return direct path on non-macOS
+        fs::create_dir_all(jdk_path.join("Contents").join("Home").join("bin")).unwrap();
+        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "temurin".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path.clone(),
+        };
+
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, jdk_path);
+    }
+
+    #[test]
+    fn test_resolve_bin_path_success() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path().join("test-jdk");
+
+        // Create a bin directory
+        let bin_path = jdk_path.join("bin");
+        fs::create_dir_all(&bin_path).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "test".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path.clone(),
+        };
+
+        let resolved_bin = jdk.resolve_bin_path().unwrap();
+        assert_eq!(resolved_bin, bin_path);
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_resolve_bin_path_bundle_structure() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path().join("temurin-21.0.1");
+
+        // Create bundle structure
+        let bundle_bin_path = jdk_path.join("Contents").join("Home").join("bin");
+        fs::create_dir_all(&bundle_bin_path).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "temurin".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path,
+        };
+
+        let resolved_bin = jdk.resolve_bin_path().unwrap();
+        assert_eq!(resolved_bin, bundle_bin_path);
+    }
+
+    #[test]
+    fn test_resolve_bin_path_missing_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path().join("broken-jdk");
+        fs::create_dir_all(&jdk_path).unwrap();
+
+        let jdk = InstalledJdk {
+            distribution: "broken".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path,
+        };
+
+        let result = jdk.resolve_bin_path();
+        assert!(result.is_err());
+
+        if let Err(e) = result {
+            match e {
+                KopiError::SystemError(msg) => {
+                    assert!(msg.contains("bin directory not found"));
+                }
+                _ => panic!("Expected SystemError"),
+            }
+        }
     }
 
     #[test]
