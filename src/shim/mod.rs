@@ -15,12 +15,12 @@
 use crate::config::new_kopi_config;
 use crate::error::{KopiError, Result};
 use crate::models::distribution::Distribution;
-use crate::storage::JdkRepository;
+use crate::storage::{InstalledJdk, JdkRepository};
 use crate::version::VersionRequest;
 use std::env;
 use std::ffi::OsString;
 use std::io::IsTerminal;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 pub mod discovery;
@@ -77,8 +77,8 @@ pub fn run_shim() -> Result<()> {
 
     // Find JDK installation
     let repository = JdkRepository::new(&config);
-    let jdk_path = match find_jdk_installation(&repository, &version_request) {
-        Ok(path) => path,
+    let installed_jdk = match find_jdk_installation(&repository, &version_request) {
+        Ok(jdk) => jdk,
         Err(mut err) => {
             if let KopiError::JdkNotInstalled {
                 jdk_spec,
@@ -116,7 +116,7 @@ pub fn run_shim() -> Result<()> {
                             Ok(()) => {
                                 // Retry finding the JDK after installation
                                 match find_jdk_installation(&repository, &version_request) {
-                                    Ok(path) => path,
+                                    Ok(jdk) => jdk,
                                     Err(_) => {
                                         // Still not found after installation attempt
                                         let error = KopiError::JdkNotInstalled {
@@ -204,10 +204,15 @@ pub fn run_shim() -> Result<()> {
             }
         }
     };
-    log::debug!("JDK path: {jdk_path:?}");
+    log::debug!(
+        "Found JDK: {} {} at {:?}",
+        installed_jdk.distribution,
+        installed_jdk.version,
+        installed_jdk.path
+    );
 
     // Build tool path
-    let tool_path = build_tool_path(&jdk_path, &tool_name)?;
+    let tool_path = build_tool_path(&installed_jdk, &tool_name)?;
     log::debug!("Tool path: {tool_path:?}");
 
     // Collect arguments (skip argv[0])
@@ -247,7 +252,7 @@ fn get_tool_name() -> Result<String> {
 fn find_jdk_installation(
     repository: &JdkRepository,
     version_request: &VersionRequest,
-) -> Result<PathBuf> {
+) -> Result<InstalledJdk> {
     log::debug!("Finding JDK for version request: {version_request:?}");
 
     // Parse distribution from version request
@@ -286,7 +291,7 @@ fn find_jdk_installation(
                 matches
             );
             if matches {
-                return Ok(jdk.path);
+                return Ok(jdk);
             }
         }
     }
@@ -303,8 +308,9 @@ fn find_jdk_installation(
     })
 }
 
-fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
-    let bin_dir = jdk_path.join("bin");
+fn build_tool_path(installed_jdk: &InstalledJdk, tool_name: &str) -> Result<PathBuf> {
+    // Use the resolved bin path from InstalledJdk
+    let bin_dir = installed_jdk.resolve_bin_path()?;
 
     let tool_filename = if crate::platform::executable_extension().is_empty() {
         tool_name.to_string()
@@ -346,7 +352,11 @@ fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
 
             let error = KopiError::ToolNotFound {
                 tool: tool_name.to_string(),
-                jdk_path: jdk_path.to_str().unwrap_or("<invalid path>").to_string(),
+                jdk_path: installed_jdk
+                    .path
+                    .to_str()
+                    .unwrap_or("<invalid path>")
+                    .to_string(),
                 available_tools,
             };
             eprintln!(
@@ -358,7 +368,8 @@ fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
 
         #[cfg(test)]
         return Err(KopiError::SystemError(format!(
-            "Tool '{tool_name}' not found in JDK at {jdk_path:?}"
+            "Tool '{tool_name}' not found in JDK at {:?}",
+            installed_jdk.path
         )));
     }
 
@@ -384,14 +395,20 @@ mod tests {
         #[cfg(not(target_os = "windows"))]
         {
             let temp_dir = TempDir::new().unwrap();
-            let jdk_path = temp_dir.path();
+            let jdk_path = temp_dir.path().join("test-jdk");
             let bin_dir = jdk_path.join("bin");
             fs::create_dir_all(&bin_dir).unwrap();
 
             let java_path = bin_dir.join("java");
             fs::write(&java_path, "").unwrap();
 
-            let result = build_tool_path(jdk_path, "java").unwrap();
+            let installed_jdk = InstalledJdk {
+                distribution: "test".to_string(),
+                version: Version::new(21, 0, 1),
+                path: jdk_path,
+            };
+
+            let result = build_tool_path(&installed_jdk, "java").unwrap();
             assert_eq!(result, java_path);
         }
     }
@@ -401,14 +418,20 @@ mod tests {
         #[cfg(target_os = "windows")]
         {
             let temp_dir = TempDir::new().unwrap();
-            let jdk_path = temp_dir.path();
+            let jdk_path = temp_dir.path().join("test-jdk");
             let bin_dir = jdk_path.join("bin");
             fs::create_dir_all(&bin_dir).unwrap();
 
             let java_path = bin_dir.join("java.exe");
             fs::write(&java_path, "").unwrap();
 
-            let result = build_tool_path(jdk_path, "java").unwrap();
+            let installed_jdk = InstalledJdk {
+                distribution: "test".to_string(),
+                version: Version::new(21, 0, 1),
+                path: jdk_path,
+            };
+
+            let result = build_tool_path(&installed_jdk, "java").unwrap();
             assert_eq!(result, java_path);
         }
     }
@@ -416,11 +439,17 @@ mod tests {
     #[test]
     fn test_build_tool_path_not_found() {
         let temp_dir = TempDir::new().unwrap();
-        let jdk_path = temp_dir.path();
+        let jdk_path = temp_dir.path().join("test-jdk");
         let bin_dir = jdk_path.join("bin");
         fs::create_dir_all(&bin_dir).unwrap();
 
-        let result = build_tool_path(jdk_path, "nonexistent");
+        let installed_jdk = InstalledJdk {
+            distribution: "test".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path,
+        };
+
+        let result = build_tool_path(&installed_jdk, "nonexistent");
         assert!(result.is_err());
     }
 
@@ -495,5 +524,108 @@ mod tests {
                 .unwrap()
                 .matches_pattern("17.0.16")
         );
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_build_tool_path_with_bundle_structure() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path().join("temurin-21.0.1");
+
+        // Create bundle structure
+        let bundle_bin_dir = jdk_path.join("Contents").join("Home").join("bin");
+        fs::create_dir_all(&bundle_bin_dir).unwrap();
+
+        let java_path = bundle_bin_dir.join("java");
+        fs::write(&java_path, "").unwrap();
+
+        let installed_jdk = InstalledJdk {
+            distribution: "temurin".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path,
+        };
+
+        let result = build_tool_path(&installed_jdk, "java").unwrap();
+        assert_eq!(result, java_path);
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_build_tool_path_with_direct_structure() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path().join("liberica-21.0.1");
+
+        // Create direct structure
+        let bin_dir = jdk_path.join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+
+        let java_path = bin_dir.join("java");
+        fs::write(&java_path, "").unwrap();
+
+        let installed_jdk = InstalledJdk {
+            distribution: "liberica".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path,
+        };
+
+        let result = build_tool_path(&installed_jdk, "java").unwrap();
+        assert_eq!(result, java_path);
+    }
+
+    #[test]
+    fn test_build_tool_path_with_missing_bin() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path().join("broken-jdk");
+        fs::create_dir_all(&jdk_path).unwrap();
+
+        let installed_jdk = InstalledJdk {
+            distribution: "broken".to_string(),
+            version: Version::new(21, 0, 1),
+            path: jdk_path,
+        };
+
+        let result = build_tool_path(&installed_jdk, "java");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_find_jdk_installation_returns_installed_jdk() {
+        // Clear any leftover environment variables
+        unsafe {
+            std::env::remove_var("KOPI_AUTO_INSTALL");
+            std::env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
+            std::env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
+            std::env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
+        }
+
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let repository = JdkRepository::new(&config);
+
+        // Create a mock JDK installation
+        let jdks_dir = temp_dir.path().join("jdks");
+        let jdk_path = jdks_dir.join("temurin-21.0.1");
+        fs::create_dir_all(&jdk_path).unwrap();
+
+        let version_request = VersionRequest::new("21".to_string())
+            .unwrap()
+            .with_distribution("temurin".to_string());
+
+        // Create bin directory to make it look like a real JDK installation
+        let bin_dir = jdk_path.join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+        
+        // The test should find the JDK and return an InstalledJdk
+        let result = find_jdk_installation(&repository, &version_request);
+
+        match result {
+            Ok(jdk) => {
+                // Verify we got the right JDK
+                assert_eq!(jdk.distribution, "temurin");
+                assert_eq!(jdk.version.to_string(), "21.0.1");
+                assert_eq!(jdk.path, jdk_path);
+            }
+            Err(e) => panic!("Expected to find JDK but got error: {:?}", e),
+        }
     }
 }

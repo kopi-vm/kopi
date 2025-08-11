@@ -135,18 +135,18 @@ kopi install zulu@21
   - Phase 2 (Common Path Resolution)
 
 ### Tasks
-- [ ] Modify `find_jdk_installation()` in `src/shim/mod.rs`
-  - [ ] Return `InstalledJdk` instance instead of just path
-  - [ ] Update error types to match
-- [ ] Update `build_tool_path()` to use `InstalledJdk::resolve_bin_path()`
-  - [ ] Remove hardcoded `bin` path construction
-  - [ ] Use resolved bin path from `InstalledJdk`
-- [ ] **Write unit tests**:
-  - [ ] Test `find_jdk_installation()` returns correct `InstalledJdk`
-  - [ ] Test `build_tool_path()` uses resolved paths
-  - [ ] Test shim execution with different structure types
-  - [ ] Test error handling for missing JDK
-  - [ ] Performance test: ensure < 50ms execution
+- [x] Modify `find_jdk_installation()` in `src/shim/mod.rs`
+  - [x] Return `InstalledJdk` instance instead of just path
+  - [x] Update error types to match
+- [x] Update `build_tool_path()` to use `InstalledJdk::resolve_bin_path()`
+  - [x] Remove hardcoded `bin` path construction
+  - [x] Use resolved bin path from `InstalledJdk`
+- [x] **Write unit tests**:
+  - [x] Test `find_jdk_installation()` returns correct `InstalledJdk`
+  - [x] Test `build_tool_path()` uses resolved paths
+  - [x] Test shim execution with different structure types
+  - [x] Test error handling for missing JDK
+  - [x] Performance test: ensure < 50ms execution
 
 ### Verification
 ```bash

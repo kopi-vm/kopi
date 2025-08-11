@@ -1248,13 +1248,13 @@ mod tests {
         // Since the zip crate doesn't preserve file type bits correctly,
         // the symlink is extracted as a regular file, which is actually safe
         assert!(result.is_ok());
-        
+
         // Verify the "symlink" was extracted as a regular file
         let evil_link = dest_dir.path().join("subdir/evil_link");
         assert!(evil_link.exists());
         let metadata = fs::symlink_metadata(&evil_link)?;
         assert!(metadata.file_type().is_file());
-        
+
         // The file should contain the symlink target
         let content = fs::read_to_string(&evil_link)?;
         assert_eq!(content, "../../../etc/passwd");
