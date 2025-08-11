@@ -319,6 +319,179 @@ fn calculate_uncompressed_size(archive_path: &Path, archive_type: &ArchiveType) 
     }
 }
 
+/// Represents the type of JDK directory structure
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum JdkStructureType {
+    /// Direct structure: bin/, lib/, conf/ at root
+    Direct,
+    /// Bundle structure: Contents/Home/bin/, Contents/Home/lib/, etc.
+    Bundle,
+    /// Hybrid structure: symlinks at root pointing to bundle structure
+    Hybrid,
+}
+
+/// Result of JDK structure detection
+#[derive(Debug, Clone)]
+pub struct JdkStructureInfo {
+    /// The actual root directory of the JDK where bin/java exists
+    pub jdk_root: PathBuf,
+    /// The type of structure detected
+    pub structure_type: JdkStructureType,
+    /// Suffix to append to installation directory to get to JDK root (e.g., "Contents/Home")
+    pub java_home_suffix: String,
+}
+
+/// Detect the JDK root directory and its structure type from an extracted archive
+///
+/// This function analyzes the directory structure of an extracted JDK archive to determine
+/// where the actual JDK files are located. On macOS, JDKs can have different structures:
+/// - Direct: bin/, lib/, conf/ at the root
+/// - Bundle: macOS application bundle with Contents/Home/
+/// - Hybrid: symlinks at root pointing to bundle structure (e.g., Azul Zulu)
+///
+/// # Arguments
+/// * `extracted_dir` - The directory where the archive was extracted
+///
+/// # Returns
+/// * `Ok(JdkStructureInfo)` - Information about the detected JDK structure
+/// * `Err(KopiError)` - If no valid JDK structure is found
+pub fn detect_jdk_root(extracted_dir: &Path) -> Result<JdkStructureInfo> {
+    log::debug!("Detecting JDK structure in: {}", extracted_dir.display());
+
+    // Check for direct structure or hybrid (symlinks at root)
+    if extracted_dir.join("bin").exists() {
+        log::debug!("Found bin/ at root - checking if valid JDK");
+        if validate_jdk_root(extracted_dir)? {
+            // Check if this is a hybrid structure (symlinks pointing to bundle)
+            let structure_type = if is_hybrid_structure(extracted_dir) {
+                log::info!("Detected hybrid JDK structure (symlinks to bundle)");
+                JdkStructureType::Hybrid
+            } else {
+                log::info!("Detected direct JDK structure");
+                JdkStructureType::Direct
+            };
+
+            return Ok(JdkStructureInfo {
+                jdk_root: extracted_dir.to_path_buf(),
+                structure_type,
+                java_home_suffix: String::new(),
+            });
+        }
+    }
+
+    // Check for macOS bundle structure at root
+    #[cfg(target_os = "macos")]
+    {
+        let bundle_home = extracted_dir.join("Contents").join("Home");
+        if bundle_home.exists() {
+            log::debug!("Found Contents/Home/ - checking if valid JDK");
+            if validate_jdk_root(&bundle_home)? {
+                log::info!("Detected macOS bundle JDK structure");
+                return Ok(JdkStructureInfo {
+                    jdk_root: bundle_home,
+                    structure_type: JdkStructureType::Bundle,
+                    java_home_suffix: "Contents/Home".to_string(),
+                });
+            }
+        }
+
+        // Check for nested bundle structure (e.g., jdk-x.y.z.jdk/Contents/Home/)
+        // This is common when the archive contains an extra directory level
+        if let Ok(entries) = fs::read_dir(extracted_dir) {
+            for entry in entries.flatten() {
+                if entry.file_type().is_ok_and(|ft| ft.is_dir()) {
+                    let nested_bundle = entry.path().join("Contents").join("Home");
+                    if nested_bundle.exists() {
+                        log::debug!(
+                            "Found nested Contents/Home/ at {} - checking if valid JDK",
+                            entry.path().display()
+                        );
+                        if validate_jdk_root(&nested_bundle)? {
+                            log::info!(
+                                "Detected nested macOS bundle JDK structure at {}",
+                                entry.path().display()
+                            );
+                            // For nested bundles, we need to move the entire bundle directory
+                            // So return the parent of Contents/Home which contains the full bundle
+                            if let Some(bundle_dir) =
+                                nested_bundle.parent().and_then(|p| p.parent())
+                            {
+                                return Ok(JdkStructureInfo {
+                                    jdk_root: bundle_dir.to_path_buf(),
+                                    structure_type: JdkStructureType::Bundle,
+                                    java_home_suffix: "Contents/Home".to_string(),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // For non-macOS platforms or if no bundle structure found, look for direct structure in subdirectories
+    if let Ok(entries) = fs::read_dir(extracted_dir) {
+        for entry in entries.flatten() {
+            if entry.file_type().is_ok_and(|ft| ft.is_dir()) {
+                let path = entry.path();
+                if path.join("bin").exists() {
+                    log::debug!(
+                        "Found bin/ in subdirectory {} - checking if valid JDK",
+                        path.display()
+                    );
+                    if validate_jdk_root(&path)? {
+                        log::info!("Detected JDK in subdirectory: {}", path.display());
+                        return Ok(JdkStructureInfo {
+                            jdk_root: path,
+                            structure_type: JdkStructureType::Direct,
+                            java_home_suffix: String::new(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // No valid JDK structure found
+    Err(KopiError::ValidationError(format!(
+        "No valid JDK structure found in {}. Expected to find bin/java or Contents/Home/bin/java",
+        extracted_dir.display()
+    )))
+}
+
+/// Validate that a directory contains a valid JDK by checking for the java binary
+fn validate_jdk_root(path: &Path) -> Result<bool> {
+    let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
+    let java_path = path.join("bin").join(java_binary);
+
+    Ok(java_path.exists())
+}
+
+/// Check if a directory has a hybrid structure (symlinks pointing to bundle)
+#[cfg(target_os = "macos")]
+fn is_hybrid_structure(path: &Path) -> bool {
+    // Check if bin is a symlink
+    let bin_path = path.join("bin");
+    if let Ok(metadata) = fs::symlink_metadata(&bin_path)
+        && metadata.file_type().is_symlink()
+    {
+        // Try to read the symlink target
+        if let Ok(target) = fs::read_link(&bin_path) {
+            // Check if it points to a Contents/Home structure
+            let target_str = target.to_string_lossy();
+            if target_str.contains("Contents/Home") {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(not(target_os = "macos"))]
+fn is_hybrid_structure(_path: &Path) -> bool {
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -532,5 +705,267 @@ mod tests {
         assert!(dest_dir.path().join("jdk/bin").is_dir());
 
         Ok(())
+    }
+
+    #[test]
+    fn test_detect_jdk_root_direct_structure() -> Result<()> {
+        // Create a temporary directory with direct JDK structure
+        let temp_dir = tempdir()?;
+        let jdk_path = temp_dir.path();
+
+        // Create JDK structure
+        fs::create_dir_all(jdk_path.join("bin"))?;
+        fs::create_dir_all(jdk_path.join("lib"))?;
+        fs::create_dir_all(jdk_path.join("conf"))?;
+
+        // Create java binary
+        let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
+        File::create(jdk_path.join("bin").join(java_binary))?;
+
+        // Test detection
+        let result = detect_jdk_root(jdk_path)?;
+        assert_eq!(result.jdk_root, jdk_path);
+        assert_eq!(result.structure_type, JdkStructureType::Direct);
+        assert_eq!(result.java_home_suffix, "");
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_detect_jdk_root_bundle_structure() -> Result<()> {
+        // Create a temporary directory with macOS bundle structure
+        let temp_dir = tempdir()?;
+        let bundle_path = temp_dir.path();
+
+        // Create bundle structure
+        let contents_home = bundle_path.join("Contents").join("Home");
+        fs::create_dir_all(contents_home.join("bin"))?;
+        fs::create_dir_all(contents_home.join("lib"))?;
+        fs::create_dir_all(bundle_path.join("Contents").join("MacOS"))?;
+
+        // Create java binary
+        File::create(contents_home.join("bin").join("java"))?;
+
+        // Test detection
+        let result = detect_jdk_root(bundle_path)?;
+        assert_eq!(result.jdk_root, contents_home);
+        assert_eq!(result.structure_type, JdkStructureType::Bundle);
+        assert_eq!(result.java_home_suffix, "Contents/Home");
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_detect_jdk_root_nested_bundle_structure() -> Result<()> {
+        // Create a temporary directory with nested bundle structure
+        let temp_dir = tempdir()?;
+        let extracted_dir = temp_dir.path();
+
+        // Create nested bundle structure (e.g., jdk-24.0.2+12.jdk/Contents/Home/)
+        let jdk_dir = extracted_dir.join("jdk-24.0.2+12.jdk");
+        let contents_home = jdk_dir.join("Contents").join("Home");
+        fs::create_dir_all(contents_home.join("bin"))?;
+        fs::create_dir_all(contents_home.join("lib"))?;
+        fs::create_dir_all(jdk_dir.join("Contents").join("MacOS"))?;
+
+        // Create java binary
+        File::create(contents_home.join("bin").join("java"))?;
+
+        // Test detection
+        let result = detect_jdk_root(extracted_dir)?;
+        assert_eq!(result.jdk_root, jdk_dir);
+        assert_eq!(result.structure_type, JdkStructureType::Bundle);
+        assert_eq!(result.java_home_suffix, "Contents/Home");
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_detect_jdk_root_hybrid_structure() -> Result<()> {
+        // Create a temporary directory with hybrid structure (symlinks to bundle)
+        let temp_dir = tempdir()?;
+        let hybrid_path = temp_dir.path();
+
+        // Create the actual bundle structure
+        let bundle_dir = hybrid_path.join("zulu-24.jdk");
+        let contents_home = bundle_dir.join("Contents").join("Home");
+        fs::create_dir_all(contents_home.join("bin"))?;
+        fs::create_dir_all(contents_home.join("lib"))?;
+        fs::create_dir_all(contents_home.join("conf"))?;
+
+        // Create java binary in the bundle
+        File::create(contents_home.join("bin").join("java"))?;
+
+        // Create symlinks at root pointing to bundle
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(contents_home.join("bin"), hybrid_path.join("bin"))?;
+            symlink(contents_home.join("lib"), hybrid_path.join("lib"))?;
+            symlink(contents_home.join("conf"), hybrid_path.join("conf"))?;
+        }
+
+        // On non-Unix systems, create regular directories as fallback
+        #[cfg(not(unix))]
+        {
+            fs::create_dir_all(hybrid_path.join("bin"))?;
+            File::create(hybrid_path.join("bin").join("java"))?;
+        }
+
+        // Test detection
+        let result = detect_jdk_root(hybrid_path)?;
+        assert_eq!(result.jdk_root, hybrid_path);
+
+        #[cfg(unix)]
+        assert_eq!(result.structure_type, JdkStructureType::Hybrid);
+
+        #[cfg(not(unix))]
+        assert_eq!(result.structure_type, JdkStructureType::Direct);
+
+        assert_eq!(result.java_home_suffix, "");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_detect_jdk_root_nested_direct_structure() -> Result<()> {
+        // Create a temporary directory with JDK in a subdirectory
+        let temp_dir = tempdir()?;
+        let extracted_dir = temp_dir.path();
+
+        // Create JDK in subdirectory
+        let jdk_subdir = extracted_dir.join("graalvm-jdk-21.0.7+8.1");
+        fs::create_dir_all(jdk_subdir.join("bin"))?;
+        fs::create_dir_all(jdk_subdir.join("lib"))?;
+
+        // Create java binary
+        let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
+        File::create(jdk_subdir.join("bin").join(java_binary))?;
+
+        // Test detection
+        let result = detect_jdk_root(extracted_dir)?;
+        assert_eq!(result.jdk_root, jdk_subdir);
+        assert_eq!(result.structure_type, JdkStructureType::Direct);
+        assert_eq!(result.java_home_suffix, "");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_detect_jdk_root_invalid_structure() {
+        // Create a temporary directory without valid JDK structure
+        let temp_dir = tempdir().unwrap();
+        let invalid_path = temp_dir.path();
+
+        // Create some directories but no bin/java
+        fs::create_dir_all(invalid_path.join("lib")).unwrap();
+        fs::create_dir_all(invalid_path.join("conf")).unwrap();
+
+        // Test detection - should fail
+        let result = detect_jdk_root(invalid_path);
+        assert!(result.is_err());
+
+        if let Err(KopiError::ValidationError(msg)) = result {
+            assert!(msg.contains("No valid JDK structure found"));
+        } else {
+            panic!("Expected ValidationError");
+        }
+    }
+
+    #[test]
+    fn test_detect_jdk_root_missing_java_binary() {
+        // Create a temporary directory with bin but no java
+        let temp_dir = tempdir().unwrap();
+        let path = temp_dir.path();
+
+        // Create bin directory but no java binary
+        fs::create_dir_all(path.join("bin")).unwrap();
+        fs::create_dir_all(path.join("lib")).unwrap();
+
+        // Test detection - should fail
+        let result = detect_jdk_root(path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_jdk_root() -> Result<()> {
+        // Test with valid JDK root
+        let temp_dir = tempdir()?;
+        let jdk_path = temp_dir.path();
+        fs::create_dir_all(jdk_path.join("bin"))?;
+
+        let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
+        File::create(jdk_path.join("bin").join(java_binary))?;
+
+        assert!(validate_jdk_root(jdk_path)?);
+
+        // Test with invalid JDK root (no java binary)
+        let invalid_dir = tempdir()?;
+        fs::create_dir_all(invalid_dir.path().join("bin"))?;
+
+        assert!(!validate_jdk_root(invalid_dir.path())?);
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_is_hybrid_structure() -> Result<()> {
+        // Test with actual hybrid structure
+        let temp_dir = tempdir()?;
+        let hybrid_path = temp_dir.path();
+
+        // Create bundle structure
+        let bundle_bin = hybrid_path.join("zulu-24.jdk/Contents/Home/bin");
+        fs::create_dir_all(&bundle_bin)?;
+
+        // Create symlink
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&bundle_bin, hybrid_path.join("bin"))?;
+            assert!(is_hybrid_structure(hybrid_path));
+        }
+
+        // Test with direct structure (no symlinks)
+        let direct_dir = tempdir()?;
+        fs::create_dir_all(direct_dir.path().join("bin"))?;
+        assert!(!is_hybrid_structure(direct_dir.path()));
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(not(target_os = "macos"))]
+    fn test_is_hybrid_structure_non_macos() {
+        // On non-macOS platforms, should always return false
+        let temp_dir = tempdir().unwrap();
+        assert!(!is_hybrid_structure(temp_dir.path()));
+    }
+
+    #[test]
+    fn test_jdk_structure_type_equality() {
+        assert_eq!(JdkStructureType::Direct, JdkStructureType::Direct);
+        assert_eq!(JdkStructureType::Bundle, JdkStructureType::Bundle);
+        assert_eq!(JdkStructureType::Hybrid, JdkStructureType::Hybrid);
+        assert_ne!(JdkStructureType::Direct, JdkStructureType::Bundle);
+        assert_ne!(JdkStructureType::Bundle, JdkStructureType::Hybrid);
+        assert_ne!(JdkStructureType::Direct, JdkStructureType::Hybrid);
+    }
+
+    #[test]
+    fn test_jdk_structure_info_fields() {
+        let info = JdkStructureInfo {
+            jdk_root: PathBuf::from("/test/jdk"),
+            structure_type: JdkStructureType::Bundle,
+            java_home_suffix: "Contents/Home".to_string(),
+        };
+
+        assert_eq!(info.jdk_root, PathBuf::from("/test/jdk"));
+        assert_eq!(info.structure_type, JdkStructureType::Bundle);
+        assert_eq!(info.java_home_suffix, "Contents/Home");
     }
 }
