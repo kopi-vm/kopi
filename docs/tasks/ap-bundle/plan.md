@@ -4,9 +4,9 @@
 
 This document outlines the implementation plan for handling diverse JDK directory structures on macOS, particularly the application bundle format (`Contents/Home`) used by distributions like Temurin. The implementation is divided into phases that can be completed independently with context resets (`/clear`) between each phase.
 
-## Phase 1: Core Structure Support (MVP)
+## Phase 1: Structure Detection Module
 
-**Goal**: Enable Kopi to work with all major macOS JDK distributions by implementing runtime structure detection.
+**Goal**: Create the core structure detection functionality for identifying JDK directory layouts.
 
 ### Input Materials
 - **Documentation**:
@@ -15,41 +15,12 @@ This document outlines the implementation plan for handling diverse JDK director
 
 - **Source Code to Modify**:
   - `/src/archive/mod.rs` - Add structure detection
-  - `/src/storage/listing.rs` - Add path resolution to InstalledJdk
-  - `/src/commands/install.rs` - Update installation process
-  - `/src/shim/mod.rs` - Update shim to use InstalledJdk methods
-  - `/src/commands/env.rs` - Update env command
 
 - **Reference Code**:
   - `/src/platform/mod.rs` - Platform detection utilities
   - `/src/error/mod.rs` - Error types and handling
-  - `/src/storage/mod.rs` - Storage utilities
 
-### Deliverables
-1. **Source Code Changes**:
-   - `detect_jdk_root()` function implemented and tested
-   - `InstalledJdk::resolve_java_home()` method implemented
-   - `InstalledJdk::resolve_bin_path()` method implemented
-   - Updated shim using new path resolution
-   - Updated env command using new path resolution
-
-2. **Test Results**:
-   - Unit tests passing for all structure types
-   - Manual test: Successfully install and run Temurin@21 on macOS
-   - Manual test: Successfully install and run Liberica@21 on macOS
-   - Manual test: Successfully install and run Azul Zulu@21 on macOS
-   - Shim execution time < 50ms confirmed
-
-3. **Verification Commands**:
-   ```bash
-   # All should succeed after Phase 1
-   kopi install temurin@21
-   kopi use temurin@21
-   java --version
-   kopi env
-   ```
-
-### 1.1 Structure Detection Module
+### Tasks
 - [ ] Create `detect_jdk_root()` function in `src/archive/mod.rs`
 - [ ] Implement detection algorithm:
   - [ ] Check for `bin/` at root (direct structure)
@@ -58,9 +29,35 @@ This document outlines the implementation plan for handling diverse JDK director
   - [ ] Return structure type and appropriate path
 - [ ] Add platform conditional compilation (`#[cfg(target_os = "macos")]`)
 - [ ] Add logging for detected structure type
-- [ ] Create unit tests for each structure type
+- [ ] **Write unit tests**:
+  - [ ] Test direct structure detection with mock filesystem
+  - [ ] Test bundle structure detection (Contents/Home)
+  - [ ] Test hybrid structure detection (symlinks)
+  - [ ] Test error cases (invalid structures)
+  - [ ] Test platform-specific behavior
 
-### 1.2 Common Path Resolution
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib archive::tests
+```
+
+---
+
+## Phase 2: Common Path Resolution
+
+**Goal**: Implement path resolution methods for JDK installations.
+
+### Input Materials
+- **Source Code to Modify**:
+  - `/src/storage/listing.rs` - Add path resolution to InstalledJdk
+
+- **Reference Code**:
+  - `/src/storage/mod.rs` - Storage utilities
+  - Phase 1 deliverables
+
+### Tasks
 - [ ] Add `resolve_java_home()` method to `InstalledJdk` in `src/storage/listing.rs`
   - [ ] Implement runtime detection for macOS
   - [ ] Return path directly for other platforms
@@ -68,97 +65,223 @@ This document outlines the implementation plan for handling diverse JDK director
 - [ ] Add `resolve_bin_path()` method to `InstalledJdk`
   - [ ] Call `resolve_java_home()` and append `bin`
   - [ ] Verify bin directory exists
-- [ ] Add unit tests for path resolution on different platforms
-- [ ] Test with mock directory structures
+- [ ] **Write unit tests**:
+  - [ ] Test `resolve_java_home()` for macOS bundle structure
+  - [ ] Test `resolve_java_home()` for direct structure
+  - [ ] Test `resolve_java_home()` for Linux/Windows (passthrough)
+  - [ ] Test `resolve_bin_path()` returns correct path
+  - [ ] Test error handling when bin directory missing
+  - [ ] Create mock directory structures for testing
 
-### 1.3 Installation Integration
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib storage::listing::tests
+```
+
+---
+
+## Phase 3: Installation Integration
+
+**Goal**: Update the installation process to handle different JDK structures.
+
+### Input Materials
+- **Source Code to Modify**:
+  - `/src/commands/install.rs` - Update installation process
+
+- **Dependencies**:
+  - Phase 1 (Structure Detection Module)
+  - Phase 2 (Common Path Resolution)
+
+### Tasks
 - [ ] Update `extract_and_install()` in `src/commands/install.rs`
   - [ ] Call `detect_jdk_root()` after extraction
   - [ ] Move correct directory to final location
   - [ ] Log structure type at INFO level
 - [ ] Update error handling for invalid structures
-- [ ] Test installation with real JDK archives:
+- [ ] **Write unit tests**:
+  - [ ] Mock extraction and structure detection
+  - [ ] Test correct directory movement for each structure type
+  - [ ] Test error handling for invalid JDK structures
+  - [ ] Test logging output
+- [ ] **Manual testing** with real JDK archives:
   - [ ] Temurin (bundle structure)
   - [ ] Liberica (direct structure)
   - [ ] Azul Zulu (hybrid structure)
 
-### 1.4 Shim Enhancement
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib commands::install::tests
+# Manual testing
+kopi install temurin@21
+kopi install liberica@21
+kopi install zulu@21
+```
+
+---
+
+## Phase 4: Shim Enhancement
+
+**Goal**: Update the shim to use the new path resolution methods.
+
+### Input Materials
+- **Source Code to Modify**:
+  - `/src/shim/mod.rs` - Update shim to use InstalledJdk methods
+
+- **Dependencies**:
+  - Phase 2 (Common Path Resolution)
+
+### Tasks
 - [ ] Modify `find_jdk_installation()` in `src/shim/mod.rs`
   - [ ] Return `InstalledJdk` instance instead of just path
   - [ ] Update error types to match
 - [ ] Update `build_tool_path()` to use `InstalledJdk::resolve_bin_path()`
   - [ ] Remove hardcoded `bin` path construction
   - [ ] Use resolved bin path from `InstalledJdk`
-- [ ] Update shim tests for new behavior
-- [ ] Verify shim works with all structure types
+- [ ] **Write unit tests**:
+  - [ ] Test `find_jdk_installation()` returns correct `InstalledJdk`
+  - [ ] Test `build_tool_path()` uses resolved paths
+  - [ ] Test shim execution with different structure types
+  - [ ] Test error handling for missing JDK
+  - [ ] Performance test: ensure < 50ms execution
 
-### 1.5 Env Command Integration
-- [ ] Update `env` command in `src/commands/env.rs`
-  - [ ] Use `InstalledJdk::resolve_java_home()` for JAVA_HOME
-  - [ ] Remove any hardcoded path assumptions
-- [ ] Test env command output for each structure type
-- [ ] Verify shell integration works correctly
-
-### 1.6 Integration Testing
-- [ ] Create integration test suite for macOS structures
-- [ ] Test version switching between different structure types
-- [ ] Test `kopi use` with various JDK distributions
-- [ ] Test `kopi current` reports correct version
-- [ ] Performance testing: ensure < 50ms shim execution
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib shim::tests
+# Manual testing
+kopi use temurin@21
+java --version
+time ~/.kopi/shims/java --version  # Should be < 50ms
+```
 
 ---
 
-## Phase 2: Metadata Optimization
+## Phase 5: Env Command Integration
 
-**Goal**: Improve performance by caching structure information in metadata files.
+**Goal**: Update the env command to use proper path resolution.
+
+### Input Materials
+- **Source Code to Modify**:
+  - `/src/commands/env.rs` - Update env command
+
+- **Dependencies**:
+  - Phase 2 (Common Path Resolution)
+
+### Tasks
+- [ ] Update `env` command in `src/commands/env.rs`
+  - [ ] Use `InstalledJdk::resolve_java_home()` for JAVA_HOME
+  - [ ] Remove any hardcoded path assumptions
+- [ ] **Write unit tests**:
+  - [ ] Test JAVA_HOME set correctly for bundle structure
+  - [ ] Test JAVA_HOME set correctly for direct structure
+  - [ ] Test PATH includes correct bin directory
+  - [ ] Test output format for different shells (bash, zsh, fish)
+  - [ ] Test error handling when no JDK selected
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib commands::env::tests
+# Manual testing
+kopi env
+eval "$(kopi env)"
+echo $JAVA_HOME
+```
+
+---
+
+## Phase 6: Core Functionality Integration
+
+**Goal**: Verify all core components work together correctly.
+
+### Dependencies
+- Phases 1-5 complete with their unit tests
+
+### Tasks
+- [ ] **Integration tests** for core workflow:
+  - [ ] Test full installation flow with structure detection
+  - [ ] Test shim execution with resolved paths
+  - [ ] Test env command with correct JAVA_HOME
+  - [ ] Test version switching between different structures
+- [ ] **End-to-end tests**:
+  - [ ] Install Temurin (bundle) → use → run java
+  - [ ] Install Liberica (direct) → switch → run java
+  - [ ] Test `kopi current` reports correct version
+- [ ] **Performance validation**:
+  - [ ] Measure shim execution time < 50ms
+  - [ ] Profile memory usage during operations
+- [ ] Fix any integration issues discovered
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+# Run unit tests for phases 1-5
+cargo test --lib --quiet
+# Run integration tests if available
+cargo test --test '*' --quiet
+# Manual testing
+kopi install temurin@21 && kopi use temurin@21 && java --version
+```
+
+---
+
+## Phase 7: Metadata Structure Design
+
+**Goal**: Design and implement the metadata structure for caching JDK information.
 
 ### Input Materials
 - **Documentation**:
   - `/docs/tasks/ap-bundle/design.md` - Metadata Extension specification (Component #2)
-  - Phase 1 deliverables and test results
 
 - **Source Code to Modify**:
-  - `/src/storage/mod.rs` - Extend save_jdk_metadata function
-  - `/src/storage/listing.rs` - Add metadata caching to InstalledJdk
-  - `/src/commands/install.rs` - Save metadata during installation
+  - `/src/storage/mod.rs` - Define metadata structures
 
 - **Reference Code**:
   - `/src/models/metadata.rs` - Existing metadata structures
-  - Existing `save_jdk_metadata()` implementation
 
-### Deliverables
-1. **Source Code Changes**:
-   - `InstallationMetadata` struct defined and integrated
-   - Extended `save_jdk_metadata()` with installation metadata
-   - Metadata lazy loading in `InstalledJdk`
-   - Fallback detection when metadata missing
-
-2. **Test Results**:
-   - Metadata correctly saved for new installations
-   - Path resolution uses metadata (verified via logs)
-   - Fallback works for existing installations without metadata
-   - Performance benchmark: < 1ms with metadata, ~5ms without
-
-3. **Verification**:
-   ```bash
-   # Install new JDK and verify metadata created
-   kopi install temurin@24
-   cat ~/.kopi/jdks/temurin-24.*/metadata.json | jq .installation_metadata
-   
-   # Verify performance improvement
-   time ~/.kopi/shims/java --version
-   ```
-
-### 2.1 Metadata Structure Design
+### Tasks
 - [ ] Define `InstallationMetadata` struct in `src/storage/mod.rs`
   - [ ] Add `java_home_suffix` field (e.g., "Contents/Home")
   - [ ] Add `structure_type` field (bundle/direct/hybrid)
   - [ ] Add `platform` field for platform-specific info
   - [ ] Add `metadata_version` for future compatibility
 - [ ] Update existing metadata structures to include installation metadata
-- [ ] Add serialization/deserialization tests
+- [ ] **Write unit tests**:
+  - [ ] Test serialization to JSON
+  - [ ] Test deserialization from JSON
+  - [ ] Test backward compatibility (missing fields)
+  - [ ] Test forward compatibility (extra fields)
+  - [ ] Test invalid JSON handling
 
-### 2.2 Metadata Persistence
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib storage::metadata::tests
+```
+
+---
+
+## Phase 8: Metadata Persistence
+
+**Goal**: Implement saving metadata during JDK installation.
+
+### Input Materials
+- **Source Code to Modify**:
+  - `/src/storage/mod.rs` - Extend save_jdk_metadata function
+  - `/src/commands/install.rs` - Save metadata during installation
+
+- **Dependencies**:
+  - Phase 7 (Metadata Structure Design)
+
+### Tasks
 - [ ] Extend `save_jdk_metadata()` in `src/storage/mod.rs`
   - [ ] Accept installation metadata parameter
   - [ ] Include in saved JSON structure
@@ -167,8 +290,38 @@ This document outlines the implementation plan for handling diverse JDK director
   - [ ] Create metadata after successful detection
   - [ ] Save alongside JDK installation
 - [ ] Add error handling for metadata save failures
+- [ ] **Write unit tests**:
+  - [ ] Test metadata file creation
+  - [ ] Test metadata file content
+  - [ ] Test error handling for write failures
+  - [ ] Test atomic file operations
+  - [ ] Integration test with install command
 
-### 2.3 Metadata Loading
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib storage::tests
+# Manual testing
+kopi install temurin@24
+cat ~/.kopi/jdks/temurin-24.*/metadata.json | jq .installation_metadata
+```
+
+---
+
+## Phase 9: Metadata Loading
+
+**Goal**: Implement lazy loading and caching of metadata.
+
+### Input Materials
+- **Source Code to Modify**:
+  - `/src/storage/listing.rs` - Add metadata caching to InstalledJdk
+
+- **Dependencies**:
+  - Phase 7 (Metadata Structure Design)
+  - Phase 2 (Common Path Resolution)
+
+### Tasks
 - [ ] Add metadata caching to `InstalledJdk`
   - [ ] Add optional metadata field to struct
   - [ ] Implement lazy loading on first access
@@ -178,8 +331,33 @@ This document outlines the implementation plan for handling diverse JDK director
   - [ ] Fall back to runtime detection
   - [ ] Log when using fallback
 - [ ] Update `resolve_bin_path()` to use cached metadata
+- [ ] **Write unit tests**:
+  - [ ] Test lazy loading of metadata
+  - [ ] Test cache hit performance (< 1ms)
+  - [ ] Test fallback when metadata missing
+  - [ ] Test concurrent access to cached data
+  - [ ] Test memory usage with multiple JDKs
 
-### 2.4 Fallback Behavior
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib storage::listing::tests
+# Manual testing
+RUST_LOG=debug kopi use temurin@24
+# Should see logs about using metadata
+```
+
+---
+
+## Phase 10: Fallback Behavior
+
+**Goal**: Implement graceful fallback when metadata is missing or corrupted.
+
+### Dependencies
+- Phase 9 (Metadata Loading)
+
+### Tasks
 - [ ] Implement graceful fallback when metadata missing
   - [ ] Log warning about missing metadata
   - [ ] Perform runtime detection
@@ -188,83 +366,128 @@ This document outlines the implementation plan for handling diverse JDK director
   - [ ] Validate JSON structure
   - [ ] Fall back on parse errors
   - [ ] Log errors for debugging
+- [ ] **Write unit tests**:
+  - [ ] Test with missing metadata file
+  - [ ] Test with corrupted JSON
+  - [ ] Test with incomplete metadata
+  - [ ] Test logging output for debugging
+  - [ ] Test no user-visible errors on fallback
 
-### 2.5 Performance Testing
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib storage::tests
+# Manual testing - verify fallback works
+rm ~/.kopi/jdks/*/metadata.json
+kopi use temurin@21
+java --version
+```
+
+---
+
+## Phase 11: Performance Testing
+
+**Goal**: Benchmark and verify performance improvements.
+
+### Dependencies
+- Phases 7-10 complete
+
+### Tasks
 - [ ] Create benchmark suite for path resolution
   - [ ] Measure with metadata (cache hit)
   - [ ] Measure without metadata (fallback)
   - [ ] Compare before/after implementation
 - [ ] Verify shim performance improvement
 - [ ] Test with various cache states
+- [ ] **Write performance tests**:
+  - [ ] Benchmark metadata loading time
+  - [ ] Benchmark structure detection time
+  - [ ] Test shim startup time < 50ms (< 10ms with cache)
+  - [ ] Memory usage benchmarks
+  - [ ] Create performance regression tests
 
-### 2.6 Migration Support
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib --quiet
+cargo bench --bench path_resolution
+# Manual performance testing
+time ~/.kopi/shims/java --version  # Should be < 10ms with metadata
+```
+
+---
+
+## Phase 12: Migration Support
+
+**Goal**: Ensure backward compatibility with existing installations.
+
+### Dependencies
+- Phases 7-11 complete
+
+### Tasks
 - [ ] Ensure existing installations work without metadata
 - [ ] Document that metadata is created for new installations only
 - [ ] Test upgrade scenarios
 - [ ] Verify no breaking changes
+- [ ] **Write migration tests**:
+  - [ ] Test existing JDK installations continue working
+  - [ ] Test mixed environments (with/without metadata)
+  - [ ] Test upgrade from old to new version
+  - [ ] Test rollback scenarios
+  - [ ] Integration test with real user scenarios
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib storage::tests
+# Manual testing with old installation
+kopi use existing-jdk-without-metadata
+java --version
+```
 
 ---
 
-## Phase 3: Testing and Documentation
+## Phase 13: Test Coverage Analysis
 
-**Goal**: Comprehensive testing and documentation of the implementation.
+**Goal**: Verify comprehensive test coverage and add any missing tests.
 
-### Input Materials
-- **Documentation**:
-  - `/docs/adr/018-macos-jdk-bundle-structure-handling.md` - ADR to update
-  - `/docs/reference.md` - User documentation to update
-  - Phase 1 and 2 deliverables
+### Dependencies
+- Phases 1-12 complete with their unit tests
 
-- **Test Resources**:
-  - JDK distribution download URLs from foojay.io
-  - Existing test suites in `/tests/`
-  - ADR-018 contains structure analysis for test data
+### Tasks
+- [ ] Run coverage analysis with `cargo tarpaulin`
+- [ ] Identify untested code paths
+- [ ] Add tests for any uncovered edge cases:
+  - [ ] Race conditions in concurrent access
+  - [ ] Platform-specific edge cases
+  - [ ] Error recovery scenarios
+- [ ] Verify all error types have tests
+- [ ] Ensure >90% code coverage for new functionality
+- [ ] Create test documentation
 
-- **Source Code**:
-  - All code changes from Phase 1 and 2
-  - Existing test infrastructure
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib --quiet
+# Generate and review coverage report
+cargo tarpaulin --lib --out Html
+# Ensure >90% coverage for new functionality
+```
 
-### Deliverables
-1. **Test Suites**:
-   - Unit tests with >90% coverage for new code
-   - Integration tests for all supported distributions
-   - Performance benchmarks in `benches/`
-   - CI passing on all platforms
+---
 
-2. **Documentation**:
-   - Updated README with macOS support notes
-   - Updated `/docs/reference.md` with structure details
-   - ADR-018 updated with implementation results
-   - Troubleshooting guide for common issues
+## Phase 14: Integration Test Suite
 
-3. **Release Artifacts**:
-   - CHANGELOG.md entry
-   - Release notes draft
-   - Migration guide (if needed)
+**Goal**: Test real JDK distributions end-to-end.
 
-4. **Verification**:
-   ```bash
-   # All tests passing
-   cargo test --quiet
-   cargo test --quiet --features integration_tests
-   
-   # Documentation build succeeds
-   cargo doc --no-deps
-   
-   # Clean installation test
-   rm -rf ~/.kopi
-   kopi install temurin@21
-   java --version
-   ```
+### Dependencies
+- Phases 1-12 complete
 
-### 3.1 Unit Test Coverage
-- [ ] Structure detection tests with mock filesystems
-- [ ] Path resolution tests for all platforms
-- [ ] Metadata serialization/deserialization tests
-- [ ] Error handling tests for edge cases
-- [ ] Performance regression tests
-
-### 3.2 Integration Test Suite
+### Tasks
 - [ ] Download and test real JDK distributions:
   - [ ] Temurin 11, 17, 21, 24
   - [ ] Liberica 8, 17, 21
@@ -274,7 +497,24 @@ This document outlines the implementation plan for handling diverse JDK director
 - [ ] Test version switching scenarios
 - [ ] Cross-platform compatibility tests
 
-### 3.3 Documentation Updates
+### Verification
+```bash
+cargo test --quiet --features integration_tests
+```
+
+---
+
+## Phase 15: Documentation Updates
+
+**Goal**: Update all documentation to reflect the new functionality.
+
+### Input Materials
+- **Documentation to Update**:
+  - `/docs/adr/018-macos-jdk-bundle-structure-handling.md` - ADR to update
+  - `/docs/reference.md` - User documentation to update
+  - `README.md` - Add macOS support notes
+
+### Tasks
 - [ ] Update user documentation:
   - [ ] Add macOS-specific notes to README
   - [ ] Document supported JDK distributions
@@ -285,30 +525,38 @@ This document outlines the implementation plan for handling diverse JDK director
   - [ ] Add architecture diagrams
 - [ ] Update ADR-018 with implementation results
 
-### 3.4 Release Preparation
-- [ ] Create release notes highlighting macOS improvements
-- [ ] Prepare migration guide for users
-- [ ] Update changelog
-- [ ] Create test plan for QA
+### Verification
+```bash
+# Review documentation files manually
+ls -la docs/
+cat README.md | head -20
+cat docs/reference.md | head -20
+```
 
 ---
 
 ## Implementation Order
 
-1. **Phase 1**: Core Structure Support
-   - Implement basic functionality
-   - Get macOS JDKs working
-   - `/clear` after completion
+### Core Structure Support (Phases 1-6)
+1. **Phase 1**: Structure Detection Module
+2. **Phase 2**: Common Path Resolution  
+3. **Phase 3**: Installation Integration
+4. **Phase 4**: Shim Enhancement
+5. **Phase 5**: Env Command Integration
+6. **Phase 6**: Core Integration Testing
 
-2. **Phase 2**: Metadata Optimization
-   - Add performance improvements
-   - Implement caching
-   - `/clear` after completion
+### Metadata Optimization (Phases 7-12)
+7. **Phase 7**: Metadata Structure Design
+8. **Phase 8**: Metadata Persistence
+9. **Phase 9**: Metadata Loading
+10. **Phase 10**: Fallback Behavior
+11. **Phase 11**: Performance Testing
+12. **Phase 12**: Migration Support
 
-3. **Phase 3**: Testing and Documentation
-   - Comprehensive testing
-   - Documentation updates
-   - Release preparation
+### Testing and Documentation (Phases 13-15)
+13. **Phase 13**: Test Coverage Analysis
+14. **Phase 14**: Integration Test Suite
+15. **Phase 15**: Documentation Updates
 
 ## Dependencies
 
@@ -322,19 +570,19 @@ This document outlines the implementation plan for handling diverse JDK director
 ## Risks & Mitigations
 
 1. **Risk**: Unknown JDK structure variations
-   - **Mitigation**: Test with multiple distributions early
+   - **Mitigation**: Test with multiple distributions early (Phase 1)
    - **Fallback**: Add support incrementally as discovered
 
 2. **Risk**: Performance regression from structure detection
-   - **Mitigation**: Implement metadata caching in Phase 2
+   - **Mitigation**: Implement metadata caching (Phases 7-12)
    - **Fallback**: Optimize detection algorithm if needed
 
 3. **Risk**: Breaking existing installations
-   - **Mitigation**: Careful backward compatibility testing
+   - **Mitigation**: Careful backward compatibility testing (Phase 12)
    - **Fallback**: Feature flag for new behavior if needed
 
 4. **Risk**: Platform-specific bugs
-   - **Mitigation**: Extensive testing on macOS Intel and Apple Silicon
+   - **Mitigation**: Extensive testing on macOS Intel and Apple Silicon (Phase 14)
    - **Fallback**: Platform-specific workarounds if needed
 
 ## Success Metrics
@@ -348,7 +596,8 @@ This document outlines the implementation plan for handling diverse JDK director
 ## Notes for Implementation
 
 - Each phase is designed to be self-contained
-- Use `/clear` between phases to reset context
+- Use `/clear` between phases to reset context if needed
 - Commit working code at the end of each phase
-- Run full test suite after each phase
+- Run relevant tests after each phase (`cargo test --lib` for unit tests)
 - Document any deviations from the plan in commit messages
+- Phases within a group can be done sequentially, but groups can be parallelized if multiple developers are involved
