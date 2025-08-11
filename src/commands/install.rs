@@ -523,24 +523,24 @@ impl<'a> InstallCommand<'a> {
             if let Some(parent) = context.final_path.parent() {
                 fs::create_dir_all(parent)?;
             }
-            
+
             // Clean up any existing installation at the final path
             if context.final_path.exists() {
                 fs::remove_dir_all(&context.final_path)?;
             }
-            
+
             // Move the JDK root to the final location
             fs::rename(&jdk_root, &context.final_path).map_err(|e| {
                 // Try to clean up on error
                 let _ = repository.cleanup_failed_installation(&context);
                 KopiError::Io(e)
             })?;
-            
+
             // Clean up the temp directory if it still exists and is different from jdk_root
             if context.temp_path.exists() && context.temp_path != jdk_root {
                 let _ = fs::remove_dir_all(&context.temp_path);
             }
-            
+
             Ok(context.final_path)
         } else {
             // The JDK is directly in the temp path, use standard finalization

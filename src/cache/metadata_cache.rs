@@ -236,20 +236,60 @@ impl MetadataCache {
             .unwrap_or(distribution.id());
         let dist_cache = self.distributions.get(canonical_name)?;
 
+        // On macOS, prefer tar.gz to preserve symbolic links
+        let is_macos = operating_system == "macos" || operating_system == "mac_os";
+
         // Find exact match, filtering for supported archive types only
-        dist_cache
-            .packages
-            .iter()
-            .find(|pkg| {
-                pkg.version.matches_pattern(version)
-                    && pkg.architecture.to_string() == architecture
-                    && pkg.operating_system.to_string() == operating_system
-                    && (package_type.is_none() || Some(&pkg.package_type) == package_type)
-                    && (javafx_bundled.is_none() || Some(pkg.javafx_bundled) == javafx_bundled)
-                    && self.matches_platform_libc(&pkg.lib_c_type)
-                    && matches!(pkg.archive_type, ArchiveType::TarGz | ArchiveType::Zip)
-            })
-            .cloned()
+        if is_macos {
+            // First try to find tar.gz
+            let tar_gz_match = dist_cache
+                .packages
+                .iter()
+                .find(|pkg| {
+                    pkg.version.matches_pattern(version)
+                        && pkg.architecture.to_string() == architecture
+                        && pkg.operating_system.to_string() == operating_system
+                        && (package_type.is_none() || Some(&pkg.package_type) == package_type)
+                        && (javafx_bundled.is_none() || Some(pkg.javafx_bundled) == javafx_bundled)
+                        && self.matches_platform_libc(&pkg.lib_c_type)
+                        && matches!(pkg.archive_type, ArchiveType::TarGz)
+                })
+                .cloned();
+
+            if tar_gz_match.is_some() {
+                return tar_gz_match;
+            }
+
+            // Fall back to zip if no tar.gz available
+            dist_cache
+                .packages
+                .iter()
+                .find(|pkg| {
+                    pkg.version.matches_pattern(version)
+                        && pkg.architecture.to_string() == architecture
+                        && pkg.operating_system.to_string() == operating_system
+                        && (package_type.is_none() || Some(&pkg.package_type) == package_type)
+                        && (javafx_bundled.is_none() || Some(pkg.javafx_bundled) == javafx_bundled)
+                        && self.matches_platform_libc(&pkg.lib_c_type)
+                        && matches!(pkg.archive_type, ArchiveType::Zip)
+                })
+                .cloned()
+        } else {
+            // For other platforms, accept both tar.gz and zip
+            dist_cache
+                .packages
+                .iter()
+                .find(|pkg| {
+                    pkg.version.matches_pattern(version)
+                        && pkg.architecture.to_string() == architecture
+                        && pkg.operating_system.to_string() == operating_system
+                        && (package_type.is_none() || Some(&pkg.package_type) == package_type)
+                        && (javafx_bundled.is_none() || Some(pkg.javafx_bundled) == javafx_bundled)
+                        && self.matches_platform_libc(&pkg.lib_c_type)
+                        && matches!(pkg.archive_type, ArchiveType::TarGz | ArchiveType::Zip)
+                })
+                .cloned()
+        }
     }
 
     /// Check if the package's lib_c_type is compatible with the current platform

@@ -105,10 +105,10 @@ cargo test --lib storage::listing::tests
   - [x] Test correct directory movement for each structure type
   - [x] Test error handling for invalid JDK structures
   - [x] Test logging output
-- [ ] **Manual testing** with real JDK archives:
-  - [ ] Temurin (bundle structure)
-  - [ ] Liberica (direct structure)
-  - [ ] Azul Zulu (hybrid structure)
+- [x] **Manual testing** with real JDK archives:
+  - [x] Temurin (bundle structure)
+  - [x] Liberica (direct structure)
+  - [x] Azul Zulu (hybrid structure)
 
 ### Verification
 ```bash
