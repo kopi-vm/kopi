@@ -42,10 +42,10 @@ pub fn write_version_file(path: &PathBuf, version_request: &ParsedVersionRequest
     let mut parts = Vec::new();
 
     // Add package type prefix only if it's JRE (JDK is the default)
-    if let Some(package_type) = &version_request.package_type {
-        if *package_type == PackageType::Jre {
-            parts.push("jre".to_string());
-        }
+    if let Some(package_type) = &version_request.package_type
+        && *package_type == PackageType::Jre
+    {
+        parts.push("jre".to_string());
     }
 
     // Add distribution if present

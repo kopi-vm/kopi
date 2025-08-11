@@ -334,12 +334,11 @@ impl ApiClient {
                 if response.status() == attohttpc::StatusCode::TOO_MANY_REQUESTS
                     && current_try < (MAX_RETRIES - 1) as u64
                 {
-                    if let Some(retry_after) = response.headers().get("Retry-After") {
-                        if let Ok(retry_str) = retry_after.to_str() {
-                            if let Ok(seconds) = retry_str.parse::<u64>() {
-                                thread::sleep(Duration::from_secs(seconds));
-                            }
-                        }
+                    if let Some(retry_after) = response.headers().get("Retry-After")
+                        && let Ok(retry_str) = retry_after.to_str()
+                        && let Ok(seconds) = retry_str.parse::<u64>()
+                    {
+                        thread::sleep(Duration::from_secs(seconds));
                     }
                     return OperationResult::Retry(KopiError::MetadataFetch(
                         "Too many requests. Waiting before retrying...".to_string(),

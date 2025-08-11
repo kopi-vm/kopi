@@ -163,10 +163,11 @@ impl<'a> UninstallCleanup<'a> {
         if let Ok(entries) = fs::read_dir(jdks_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if name.starts_with('.') && name.ends_with(".removing") {
-                        temp_dirs.push(path);
-                    }
+                if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                    && name.starts_with('.')
+                    && name.ends_with(".removing")
+                {
+                    temp_dirs.push(path);
                 }
             }
         }
@@ -182,10 +183,10 @@ impl<'a> UninstallCleanup<'a> {
                 let path = entry.path();
                 if path.is_dir() {
                     // Skip temporary removal directories and hidden directories
-                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        if name.starts_with('.') {
-                            continue; // Skip temporary directories and hidden files
-                        }
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                        && name.starts_with('.')
+                    {
+                        continue; // Skip temporary directories and hidden files
                     }
 
                     if self.is_partial_removal(&path)? {
@@ -204,14 +205,14 @@ impl<'a> UninstallCleanup<'a> {
         if let Ok(entries) = fs::read_dir(jdks_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if name.ends_with(".meta.json") {
-                        // Check if corresponding JDK directory exists
-                        let jdk_name = name.replace(".meta.json", "");
-                        let jdk_path = jdks_dir.join(&jdk_name);
-                        if !jdk_path.exists() {
-                            orphaned_metadata.push(path);
-                        }
+                if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                    && name.ends_with(".meta.json")
+                {
+                    // Check if corresponding JDK directory exists
+                    let jdk_name = name.replace(".meta.json", "");
+                    let jdk_path = jdks_dir.join(&jdk_name);
+                    if !jdk_path.exists() {
+                        orphaned_metadata.push(path);
                     }
                 }
             }

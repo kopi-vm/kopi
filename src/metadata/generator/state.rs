@@ -78,12 +78,11 @@ pub fn should_skip_file(json_path: &Path) -> bool {
             match state.status {
                 FileStatus::Completed => {
                     // Validate the file still exists and matches checksum
-                    if let Some(checksum) = state.checksum {
-                        if json_path.exists() {
-                            if let Ok(current_checksum) = calculate_file_checksum(json_path) {
-                                return current_checksum == checksum;
-                            }
-                        }
+                    if let Some(checksum) = state.checksum
+                        && json_path.exists()
+                        && let Ok(current_checksum) = calculate_file_checksum(json_path)
+                    {
+                        return current_checksum == checksum;
                     }
                     false
                 }

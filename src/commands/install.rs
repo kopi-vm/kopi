@@ -72,11 +72,11 @@ impl<'a> InstallCommand<'a> {
                 Ok(cache) => Ok(cache),
                 Err(e) => {
                     // If refresh fails and we have an existing cache, use it with warning
-                    if cache_path.exists() {
-                        if let Ok(cache) = cache::load_cache(&cache_path) {
-                            warn!("Failed to refresh cache: {e}. Using existing cache.");
-                            return Ok(cache);
-                        }
+                    if cache_path.exists()
+                        && let Ok(cache) = cache::load_cache(&cache_path)
+                    {
+                        warn!("Failed to refresh cache: {e}. Using existing cache.");
+                        return Ok(cache);
                     }
                     Err(KopiError::MetadataFetch(format!(
                         "Failed to fetch metadata: {e}"
@@ -216,11 +216,11 @@ impl<'a> InstallCommand<'a> {
         debug!("Downloaded to {download_path:?}");
 
         // Verify checksum
-        if let Some(checksum) = &jdk_metadata_with_checksum.checksum {
-            if let Some(checksum_type) = jdk_metadata_with_checksum.checksum_type {
-                println!("Verifying checksum...");
-                verify_checksum(download_path, checksum, checksum_type)?;
-            }
+        if let Some(checksum) = &jdk_metadata_with_checksum.checksum
+            && let Some(checksum_type) = jdk_metadata_with_checksum.checksum_type
+        {
+            println!("Verifying checksum...");
+            verify_checksum(download_path, checksum, checksum_type)?;
         }
 
         // Prepare installation context
@@ -432,14 +432,14 @@ impl<'a> InstallCommand<'a> {
         let os = get_current_os();
 
         // Validate lib_c_type compatibility
-        if let Some(ref lib_c_type) = package.lib_c_type {
-            if !matches_foojay_libc_type(lib_c_type) {
-                return Err(KopiError::VersionNotAvailable(format!(
-                    "JDK lib_c_type '{}' is not compatible with kopi's platform '{}'",
-                    lib_c_type,
-                    get_platform_description()
-                )));
-            }
+        if let Some(ref lib_c_type) = package.lib_c_type
+            && !matches_foojay_libc_type(lib_c_type)
+        {
+            return Err(KopiError::VersionNotAvailable(format!(
+                "JDK lib_c_type '{}' is not compatible with kopi's platform '{}'",
+                lib_c_type,
+                get_platform_description()
+            )));
         }
 
         Ok(JdkMetadata {

@@ -59,10 +59,10 @@ pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Res
         match load_cache(&cache_path) {
             Ok(loaded_cache) => {
                 // If specific version requested and not in cache, try API
-                if let Some(version) = requested_version {
-                    if !loaded_cache.has_version(version) {
-                        return fetch_and_cache_metadata(false, config);
-                    }
+                if let Some(version) = requested_version
+                    && !loaded_cache.has_version(version)
+                {
+                    return fetch_and_cache_metadata(false, config);
                 }
                 return Ok(loaded_cache);
             }

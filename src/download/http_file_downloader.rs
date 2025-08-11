@@ -111,10 +111,10 @@ impl HttpFileDownloader {
             self.download_to_file(response, &download_path, start_byte, total_size)?;
 
         // Verify checksum if provided
-        if let Some(expected_checksum) = &options.checksum {
-            if let Some(checksum_type) = options.checksum_type {
-                verify_checksum(&downloaded_path, expected_checksum, checksum_type)?;
-            }
+        if let Some(expected_checksum) = &options.checksum
+            && let Some(checksum_type) = options.checksum_type
+        {
+            verify_checksum(&downloaded_path, expected_checksum, checksum_type)?;
         }
 
         // Move temp file to final destination if we used a temp file
@@ -140,14 +140,13 @@ impl HttpFileDownloader {
         }
 
         // Check content length if available
-        if let Some(content_length) = response.header("Content-Length") {
-            if let Ok(length) = content_length.parse::<u64>() {
-                if length > max_size {
-                    return Err(KopiError::ValidationError(format!(
-                        "Download size {length} exceeds maximum allowed size {max_size}"
-                    )));
-                }
-            }
+        if let Some(content_length) = response.header("Content-Length")
+            && let Ok(length) = content_length.parse::<u64>()
+            && length > max_size
+        {
+            return Err(KopiError::ValidationError(format!(
+                "Download size {length} exceeds maximum allowed size {max_size}"
+            )));
         }
 
         Ok(())
@@ -155,17 +154,17 @@ impl HttpFileDownloader {
 
     fn get_total_size(&self, response: &dyn HttpResponse, start_byte: u64) -> Result<u64> {
         // Try to get size from Content-Range header (for resumed downloads)
-        if let Some(content_range) = response.header("Content-Range") {
-            if let Some(total) = parse_content_range(content_range) {
-                return Ok(total);
-            }
+        if let Some(content_range) = response.header("Content-Range")
+            && let Some(total) = parse_content_range(content_range)
+        {
+            return Ok(total);
         }
 
         // Fall back to Content-Length
-        if let Some(content_length) = response.header("Content-Length") {
-            if let Ok(length) = content_length.parse::<u64>() {
-                return Ok(start_byte + length);
-            }
+        if let Some(content_length) = response.header("Content-Length")
+            && let Ok(length) = content_length.parse::<u64>()
+        {
+            return Ok(start_byte + length);
         }
 
         // If we can't determine size, return 0 (unknown)
@@ -211,10 +210,10 @@ impl HttpFileDownloader {
 }
 
 pub(crate) fn parse_content_range(range_str: &str) -> Option<u64> {
-    if let Some(slash_pos) = range_str.rfind('/') {
-        if let Ok(total) = range_str[slash_pos + 1..].parse::<u64>() {
-            return Some(total);
-        }
+    if let Some(slash_pos) = range_str.rfind('/')
+        && let Ok(total) = range_str[slash_pos + 1..].parse::<u64>()
+    {
+        return Some(total);
     }
     None
 }

@@ -345,26 +345,23 @@ impl DiagnosticCheck for ShimsInPathCheck<'_> {
                 })
                 .collect();
 
-            if let Some(shims_idx) = shims_index {
-                if let Some(&first_java_idx) = java_indices.first() {
-                    if shims_idx > first_java_idx {
-                        return CheckResult::new(
-                            self.name(),
-                            category,
-                            CheckStatus::Warning,
-                            "Shims directory is in PATH but appears after system Java",
-                            start.elapsed(),
-                        )
-                        .with_details(format!(
-                            "Shims at position {}, system Java at position {}",
-                            shims_idx + 1,
-                            first_java_idx + 1
-                        ))
-                        .with_suggestion(
-                            "Move shims directory earlier in PATH to take precedence",
-                        );
-                    }
-                }
+            if let Some(shims_idx) = shims_index
+                && let Some(&first_java_idx) = java_indices.first()
+                && shims_idx > first_java_idx
+            {
+                return CheckResult::new(
+                    self.name(),
+                    category,
+                    CheckStatus::Warning,
+                    "Shims directory is in PATH but appears after system Java",
+                    start.elapsed(),
+                )
+                .with_details(format!(
+                    "Shims at position {}, system Java at position {}",
+                    shims_idx + 1,
+                    first_java_idx + 1
+                ))
+                .with_suggestion("Move shims directory earlier in PATH to take precedence");
             }
 
             CheckResult::new(

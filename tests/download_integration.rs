@@ -670,23 +670,21 @@ fn test_download_connection_reset() {
             }
 
             // Check if it's a KopiError::Http variant (attohttpc errors often wrap IO errors)
-            if !is_connection_error {
-                if let kopi::error::KopiError::Http(_) = &e {
-                    // For Http errors, we need to check the error chain for IO errors
-                    let mut error_chain: &dyn std::error::Error = &e;
-                    loop {
-                        if let Some(io_error) = error_chain.downcast_ref::<std::io::Error>() {
-                            if is_connection_io_error(io_error) {
-                                is_connection_error = true;
-                                break;
-                            }
-                        }
+            if !is_connection_error && let kopi::error::KopiError::Http(_) = &e {
+                // For Http errors, we need to check the error chain for IO errors
+                let mut error_chain: &dyn std::error::Error = &e;
+                loop {
+                    if let Some(io_error) = error_chain.downcast_ref::<std::io::Error>()
+                        && is_connection_io_error(io_error)
+                    {
+                        is_connection_error = true;
+                        break;
+                    }
 
-                        // Move to the next error in the chain
-                        match error_chain.source() {
-                            Some(source) => error_chain = source,
-                            None => break,
-                        }
+                    // Move to the next error in the chain
+                    match error_chain.source() {
+                        Some(source) => error_chain = source,
+                        None => break,
                     }
                 }
             }
@@ -695,11 +693,11 @@ fn test_download_connection_reset() {
             if !is_connection_error {
                 let mut error_chain: &dyn std::error::Error = &e;
                 loop {
-                    if let Some(io_error) = error_chain.downcast_ref::<std::io::Error>() {
-                        if is_connection_io_error(io_error) {
-                            is_connection_error = true;
-                            break;
-                        }
+                    if let Some(io_error) = error_chain.downcast_ref::<std::io::Error>()
+                        && is_connection_io_error(io_error)
+                    {
+                        is_connection_error = true;
+                        break;
                     }
 
                     // Move to the next error in the chain

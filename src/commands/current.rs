@@ -78,11 +78,11 @@ impl<'a> CurrentCommand<'a> {
         let mut is_installed = false;
 
         // Get matching JDKs and use the last one from the results
-        if let Ok(matching_jdks) = repository.find_matching_jdks(&version_request) {
-            if let Some(jdk) = matching_jdks.last() {
-                install_path = Some(jdk.path.clone());
-                is_installed = true;
-            }
+        if let Ok(matching_jdks) = repository.find_matching_jdks(&version_request)
+            && let Some(jdk) = matching_jdks.last()
+        {
+            install_path = Some(jdk.path.clone());
+            is_installed = true;
         }
 
         // Format and display output

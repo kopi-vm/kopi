@@ -120,10 +120,10 @@ impl MetadataCache {
 
         for (dist_name, dist_cache) in &self.distributions {
             // Filter by distribution if specified
-            if let Some(ref target_dist) = request.distribution {
-                if dist_cache.distribution != *target_dist {
-                    continue;
-                }
+            if let Some(ref target_dist) = request.distribution
+                && dist_cache.distribution != *target_dist
+            {
+                continue;
             }
 
             if request.latest {
@@ -132,10 +132,10 @@ impl MetadataCache {
 
                 for package in &dist_cache.packages {
                     // Apply package type filter if specified
-                    if let Some(ref package_type) = request.package_type {
-                        if package.package_type != *package_type {
-                            continue;
-                        }
+                    if let Some(ref package_type) = request.package_type
+                        && package.package_type != *package_type
+                    {
+                        continue;
                     }
 
                     // Apply platform filters
@@ -290,31 +290,31 @@ impl MetadataCache {
         }
 
         // Check package type if specified
-        if let Some(ref package_type) = request.package_type {
-            if package.package_type != *package_type {
-                return false;
-            }
+        if let Some(ref package_type) = request.package_type
+            && package.package_type != *package_type
+        {
+            return false;
         }
 
         // Apply platform filters if set
-        if let Some(ref arch) = platform_filter.architecture {
-            if package.architecture.to_string() != *arch {
-                return false;
-            }
+        if let Some(ref arch) = platform_filter.architecture
+            && package.architecture.to_string() != *arch
+        {
+            return false;
         }
 
-        if let Some(ref os) = platform_filter.operating_system {
-            if package.operating_system.to_string() != *os {
-                return false;
-            }
+        if let Some(ref os) = platform_filter.operating_system
+            && package.operating_system.to_string() != *os
+        {
+            return false;
         }
 
         if let Some(ref lib_c) = platform_filter.lib_c_type {
-            if let Some(ref pkg_lib_c) = package.lib_c_type {
-                if pkg_lib_c != lib_c {
-                    return false;
-                }
-            } else {
+            if let Some(ref pkg_lib_c) = package.lib_c_type
+                && pkg_lib_c != lib_c
+            {
+                return false;
+            } else if package.lib_c_type.is_none() {
                 // Package doesn't specify lib_c_type, skip it if we're filtering
                 return false;
             }

@@ -97,14 +97,14 @@ fn test_cache_search_lts_only_with_json() {
         assert!(result.is_ok(), "Output should be valid JSON");
 
         // Check that all results have LTS term_of_support
-        if let Ok(json) = result {
-            if let Some(array) = json.as_array() {
-                for item in array {
-                    if let Some(package) = item.get("package") {
-                        if let Some(tos) = package.get("term_of_support") {
-                            assert_eq!(tos.as_str(), Some("lts"));
-                        }
-                    }
+        if let Ok(json) = result
+            && let Some(array) = json.as_array()
+        {
+            for item in array {
+                if let Some(package) = item.get("package")
+                    && let Some(tos) = package.get("term_of_support")
+                {
+                    assert_eq!(tos.as_str(), Some("lts"));
                 }
             }
         }

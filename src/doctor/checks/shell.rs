@@ -59,15 +59,15 @@ impl<'a> PathCheck<'a> {
                 }
             }
 
-            if let (Some(shims), Some(system)) = (shims_index, system_java_index) {
-                if shims > system {
-                    return Some(format!(
-                        "Kopi shims directory is in PATH but comes after system Java (position {} \
-                         vs {})",
-                        shims + 1,
-                        system + 1
-                    ));
-                }
+            if let (Some(shims), Some(system)) = (shims_index, system_java_index)
+                && shims > system
+            {
+                return Some(format!(
+                    "Kopi shims directory is in PATH but comes after system Java (position {} \
+                     vs {})",
+                    shims + 1,
+                    system + 1
+                ));
             }
         }
         None

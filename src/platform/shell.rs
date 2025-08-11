@@ -54,40 +54,40 @@ pub fn detect_shell() -> Result<(Shell, PathBuf)> {
         };
 
         // Check if this process is a shell
-        if let Some(exe_path) = process.exe() {
-            if let Some(file_name) = exe_path.file_name() {
-                let file_str = file_name.to_string_lossy();
-                log::debug!("Checking process at depth {depth}: {file_str} (PID: {current_pid:?})");
+        if let Some(exe_path) = process.exe()
+            && let Some(file_name) = exe_path.file_name()
+        {
+            let file_str = file_name.to_string_lossy();
+            log::debug!("Checking process at depth {depth}: {file_str} (PID: {current_pid:?})");
 
-                // Check executable file name and return both type and path
-                match file_str.as_ref() {
-                    "bash" | "bash.exe" => {
-                        log::debug!("Found bash shell at depth {depth}");
-                        return Ok((Shell::Bash, exe_path.to_path_buf()));
-                    }
-                    "zsh" | "zsh.exe" => {
-                        log::debug!("Found zsh shell at depth {depth}");
-                        return Ok((Shell::Zsh, exe_path.to_path_buf()));
-                    }
-                    "fish" | "fish.exe" => {
-                        log::debug!("Found fish shell at depth {depth}");
-                        return Ok((Shell::Fish, exe_path.to_path_buf()));
-                    }
-                    "powershell" | "powershell.exe" => {
-                        log::debug!("Found PowerShell at depth {depth}");
-                        return Ok((Shell::PowerShell, exe_path.to_path_buf()));
-                    }
-                    "pwsh" | "pwsh.exe" => {
-                        log::debug!("Found PowerShell Core at depth {depth}");
-                        return Ok((Shell::PowerShell, exe_path.to_path_buf()));
-                    }
-                    "cmd" | "cmd.exe" => {
-                        log::debug!("Found cmd shell at depth {depth}");
-                        return Ok((Shell::Cmd, exe_path.to_path_buf()));
-                    }
-                    _ => {
-                        // Not a recognized shell, continue searching
-                    }
+            // Check executable file name and return both type and path
+            match file_str.as_ref() {
+                "bash" | "bash.exe" => {
+                    log::debug!("Found bash shell at depth {depth}");
+                    return Ok((Shell::Bash, exe_path.to_path_buf()));
+                }
+                "zsh" | "zsh.exe" => {
+                    log::debug!("Found zsh shell at depth {depth}");
+                    return Ok((Shell::Zsh, exe_path.to_path_buf()));
+                }
+                "fish" | "fish.exe" => {
+                    log::debug!("Found fish shell at depth {depth}");
+                    return Ok((Shell::Fish, exe_path.to_path_buf()));
+                }
+                "powershell" | "powershell.exe" => {
+                    log::debug!("Found PowerShell at depth {depth}");
+                    return Ok((Shell::PowerShell, exe_path.to_path_buf()));
+                }
+                "pwsh" | "pwsh.exe" => {
+                    log::debug!("Found PowerShell Core at depth {depth}");
+                    return Ok((Shell::PowerShell, exe_path.to_path_buf()));
+                }
+                "cmd" | "cmd.exe" => {
+                    log::debug!("Found cmd shell at depth {depth}");
+                    return Ok((Shell::Cmd, exe_path.to_path_buf()));
+                }
+                _ => {
+                    // Not a recognized shell, continue searching
                 }
             }
         }

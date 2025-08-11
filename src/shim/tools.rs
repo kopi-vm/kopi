@@ -98,45 +98,45 @@ impl ToolRegistry {
         };
 
         // Check version constraints
-        if let Some(min_ver) = tool.min_version {
-            if major_version < min_ver {
-                return false;
-            }
+        if let Some(min_ver) = tool.min_version
+            && major_version < min_ver
+        {
+            return false;
         }
 
-        if let Some(max_ver) = tool.max_version {
-            if major_version > max_ver {
-                return false;
-            }
+        if let Some(max_ver) = tool.max_version
+            && major_version > max_ver
+        {
+            return false;
         }
 
         // Check distribution-specific exclusions
-        if let Some(dist_exclusions) = self.distribution_exclusions.get(distribution.id()) {
-            if let Some((min_excl, max_excl)) = dist_exclusions.get(tool_name) {
-                // Special handling for "never available" (999, 999)
-                if min_excl == &Some(999) && max_excl == &Some(999) {
+        if let Some(dist_exclusions) = self.distribution_exclusions.get(distribution.id())
+            && let Some((min_excl, max_excl)) = dist_exclusions.get(tool_name)
+        {
+            // Special handling for "never available" (999, 999)
+            if min_excl == &Some(999) && max_excl == &Some(999) {
+                return false;
+            }
+
+            // For GraalVM js tool - available before version 23
+            if distribution.id() == "graalvm" && tool_name == "js" {
+                if let Some(min) = min_excl
+                    && major_version >= *min
+                {
                     return false;
                 }
-
-                // For GraalVM js tool - available before version 23
-                if distribution.id() == "graalvm" && tool_name == "js" {
-                    if let Some(min) = min_excl {
-                        if major_version >= *min {
-                            return false;
-                        }
-                    }
-                } else {
-                    // Normal exclusion logic
-                    if let Some(min) = min_excl {
-                        if major_version < *min {
-                            return false;
-                        }
-                    }
-                    if let Some(max) = max_excl {
-                        if major_version > *max {
-                            return false;
-                        }
-                    }
+            } else {
+                // Normal exclusion logic
+                if let Some(min) = min_excl
+                    && major_version < *min
+                {
+                    return false;
+                }
+                if let Some(max) = max_excl
+                    && major_version > *max
+                {
+                    return false;
                 }
             }
         }

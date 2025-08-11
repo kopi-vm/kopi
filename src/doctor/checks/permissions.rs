@@ -66,12 +66,11 @@ impl DiagnosticCheck for DirectoryPermissionsCheck<'_> {
         ];
 
         for (name, dir_result) in subdirs {
-            if let Ok(dir) = dir_result {
-                if dir.exists() {
-                    if let Err(e) = check_directory_writable(&dir) {
-                        permission_issues.push(format!("{} ({}): {}", name, dir.display(), e));
-                    }
-                }
+            if let Ok(dir) = dir_result
+                && dir.exists()
+                && let Err(e) = check_directory_writable(&dir)
+            {
+                permission_issues.push(format!("{} ({}): {}", name, dir.display(), e));
             }
         }
 
@@ -132,34 +131,34 @@ impl DiagnosticCheck for BinaryPermissionsCheck<'_> {
 
         // Check kopi binary
         let kopi_name = kopi_binary_name();
-        if let Ok(kopi_path) = which(kopi_name) {
-            if let Err(e) = check_executable_permissions(&kopi_path) {
-                permission_issues.push(format!("{}: {}", kopi_path.display(), e));
-            }
+        if let Ok(kopi_path) = which(kopi_name)
+            && let Err(e) = check_executable_permissions(&kopi_path)
+        {
+            permission_issues.push(format!("{}: {}", kopi_path.display(), e));
         }
 
         // Check shim binaries if shims directory exists
-        if let Ok(shims_dir) = self.config.shims_dir() {
-            if shims_dir.exists() {
-                // Check kopi-shim binary
-                let shim_path = shims_dir.join(shim_binary_name());
-                if shim_path.exists() {
-                    if let Err(e) = check_executable_permissions(&shim_path) {
-                        permission_issues.push(format!("{}: {}", shim_path.display(), e));
-                    }
-                }
+        if let Ok(shims_dir) = self.config.shims_dir()
+            && shims_dir.exists()
+        {
+            // Check kopi-shim binary
+            let shim_path = shims_dir.join(shim_binary_name());
+            if shim_path.exists()
+                && let Err(e) = check_executable_permissions(&shim_path)
+            {
+                permission_issues.push(format!("{}: {}", shim_path.display(), e));
+            }
 
-                // Check Java shims
-                let java_shims = ["java", "javac", "jar", "javap", "jshell"];
-                for shim_name in &java_shims {
-                    let shim_path = shims_dir
-                        .join(shim_name)
-                        .with_extension(executable_extension());
-                    if shim_path.exists() {
-                        if let Err(e) = check_executable_permissions(&shim_path) {
-                            permission_issues.push(format!("{}: {}", shim_path.display(), e));
-                        }
-                    }
+            // Check Java shims
+            let java_shims = ["java", "javac", "jar", "javap", "jshell"];
+            for shim_name in &java_shims {
+                let shim_path = shims_dir
+                    .join(shim_name)
+                    .with_extension(executable_extension());
+                if shim_path.exists()
+                    && let Err(e) = check_executable_permissions(&shim_path)
+                {
+                    permission_issues.push(format!("{}: {}", shim_path.display(), e));
                 }
             }
         }

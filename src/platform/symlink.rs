@@ -88,18 +88,18 @@ pub fn cleanup_orphaned_symlinks(dir: &Path) -> Result<()> {
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if let Ok(metadata) = fs::symlink_metadata(&path) {
-                if metadata.file_type().is_symlink() {
-                    // Check if symlink target exists
-                    if fs::metadata(&path).is_err() {
-                        debug!("Removing orphaned symlink: {}", path.display());
-                        if let Err(e) = fs::remove_file(&path) {
-                            warn!(
-                                "Failed to remove orphaned symlink {}: {}",
-                                path.display(),
-                                e
-                            );
-                        }
+            if let Ok(metadata) = fs::symlink_metadata(&path)
+                && metadata.file_type().is_symlink()
+            {
+                // Check if symlink target exists
+                if fs::metadata(&path).is_err() {
+                    debug!("Removing orphaned symlink: {}", path.display());
+                    if let Err(e) = fs::remove_file(&path) {
+                        warn!(
+                            "Failed to remove orphaned symlink {}: {}",
+                            path.display(),
+                            e
+                        );
                     }
                 }
             }

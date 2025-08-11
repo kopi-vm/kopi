@@ -34,7 +34,7 @@ impl TestStorage {
         }
     }
 
-    fn manager(&self) -> JdkRepository {
+    fn manager(&self) -> JdkRepository<'_> {
         JdkRepository::new(&self.config)
     }
 }

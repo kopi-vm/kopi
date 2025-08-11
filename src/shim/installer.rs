@@ -92,12 +92,11 @@ impl ShimInstaller {
             let entry = entry?;
             let path = entry.path();
 
-            if path.is_file() {
-                if let Some(name) = path.file_stem() {
-                    if let Some(name_str) = name.to_str() {
-                        shims.push(name_str.to_string());
-                    }
-                }
+            if path.is_file()
+                && let Some(name) = path.file_stem()
+                && let Some(name_str) = name.to_str()
+            {
+                shims.push(name_str.to_string());
             }
         }
 
@@ -117,14 +116,12 @@ impl ShimInstaller {
             let entry = entry?;
             let path = entry.path();
 
-            if path.is_file() {
-                if let Some(name) = path.file_stem() {
-                    if let Some(name_str) = name.to_str() {
-                        if let Err(e) = platform::shim::verify_shim(&path) {
-                            broken_shims.push((name_str.to_string(), e.to_string()));
-                        }
-                    }
-                }
+            if path.is_file()
+                && let Some(name) = path.file_stem()
+                && let Some(name_str) = name.to_str()
+                && let Err(e) = platform::shim::verify_shim(&path)
+            {
+                broken_shims.push((name_str.to_string(), e.to_string()));
             }
         }
 

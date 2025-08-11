@@ -180,10 +180,10 @@ impl<'a> JdkRepository<'a> {
             .into_iter()
             .filter(|jdk| {
                 // Check distribution filter if specified
-                if let Some(dist) = &request.distribution {
-                    if &jdk.distribution != dist {
-                        return false;
-                    }
+                if let Some(dist) = &request.distribution
+                    && &jdk.distribution != dist
+                {
+                    return false;
                 }
 
                 // Check version pattern
@@ -226,7 +226,7 @@ mod tests {
             }
         }
 
-        fn manager(&self) -> JdkRepository {
+        fn manager(&self) -> JdkRepository<'_> {
             JdkRepository::new(&self.config)
         }
     }

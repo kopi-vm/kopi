@@ -124,20 +124,19 @@ fn get_tool_path(installation: &InstalledJdk, tool: &str) -> Result<PathBuf> {
 
         if let Ok(entries) = std::fs::read_dir(&bin_dir) {
             for entry in entries.flatten() {
-                if let Ok(file_type) = entry.file_type() {
-                    if file_type.is_file() || file_type.is_symlink() {
-                        if let Some(name) = entry.file_name().to_str() {
-                            // Remove executable extension for cleaner listing
-                            let tool_name = if !executable_extension().is_empty()
-                                && name.ends_with(executable_extension())
-                            {
-                                &name[..name.len() - executable_extension().len()]
-                            } else {
-                                name
-                            };
-                            available_tools.push(tool_name.to_string());
-                        }
-                    }
+                if let Ok(file_type) = entry.file_type()
+                    && (file_type.is_file() || file_type.is_symlink())
+                    && let Some(name) = entry.file_name().to_str()
+                {
+                    // Remove executable extension for cleaner listing
+                    let tool_name = if !executable_extension().is_empty()
+                        && name.ends_with(executable_extension())
+                    {
+                        &name[..name.len() - executable_extension().len()]
+                    } else {
+                        name
+                    };
+                    available_tools.push(tool_name.to_string());
                 }
             }
         }

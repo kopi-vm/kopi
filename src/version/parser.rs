@@ -169,20 +169,20 @@ impl<'a> VersionParser<'a> {
             )));
         }
 
-        if let Some(minor) = version.minor() {
-            if minor > 99 {
-                return Err(KopiError::InvalidVersionFormat(format!(
-                    "Invalid minor version: {minor}. Minor versions typically range from 0 to 99."
-                )));
-            }
+        if let Some(minor) = version.minor()
+            && minor > 99
+        {
+            return Err(KopiError::InvalidVersionFormat(format!(
+                "Invalid minor version: {minor}. Minor versions typically range from 0 to 99."
+            )));
         }
 
-        if let Some(patch) = version.patch() {
-            if patch > 999 {
-                return Err(KopiError::InvalidVersionFormat(format!(
-                    "Invalid patch version: {patch}. Patch versions typically range from 0 to 999."
-                )));
-            }
+        if let Some(patch) = version.patch()
+            && patch > 999
+        {
+            return Err(KopiError::InvalidVersionFormat(format!(
+                "Invalid patch version: {patch}. Patch versions typically range from 0 to 999."
+            )));
         }
 
         Ok(())

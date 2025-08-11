@@ -74,18 +74,18 @@ impl<'a> PostUninstallChecker<'a> {
         }
 
         // Check if any temporary removal files remain
-        if let Some(parent) = jdk_path.parent() {
-            if parent.exists() {
-                for entry in std::fs::read_dir(parent)? {
-                    let entry = entry?;
-                    let path = entry.path();
+        if let Some(parent) = jdk_path.parent()
+            && parent.exists()
+        {
+            for entry in std::fs::read_dir(parent)? {
+                let entry = entry?;
+                let path = entry.path();
 
-                    if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-                        // Check for temporary removal files (e.g., .temurin-21.0.1.removing)
-                        if file_name.starts_with('.') && file_name.ends_with(".removing") {
-                            warn!("Found temporary removal file: {}", path.display());
-                            return Ok(false);
-                        }
+                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                    // Check for temporary removal files (e.g., .temurin-21.0.1.removing)
+                    if file_name.starts_with('.') && file_name.ends_with(".removing") {
+                        warn!("Found temporary removal file: {}", path.display());
+                        return Ok(false);
                     }
                 }
             }
@@ -113,21 +113,22 @@ impl<'a> PostUninstallChecker<'a> {
         }
 
         // Check for metadata files in the parent directory that might reference the removed JDK
-        if let Some(parent) = jdk_path.parent() {
-            if parent.exists() {
-                for entry in std::fs::read_dir(parent)? {
-                    let entry = entry?;
-                    let path = entry.path();
+        if let Some(parent) = jdk_path.parent()
+            && parent.exists()
+        {
+            for entry in std::fs::read_dir(parent)? {
+                let entry = entry?;
+                let path = entry.path();
 
-                    if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
-                        if file_name.ends_with(".meta.json") && path.is_file() {
-                            // Check if this metadata file references the removed JDK
-                            if let Some(jdk_name) = jdk_path.file_name().and_then(|n| n.to_str()) {
-                                if file_name.contains(jdk_name) {
-                                    orphaned_files.push(path);
-                                }
-                            }
-                        }
+                if let Some(file_name) = path.file_name().and_then(|n| n.to_str())
+                    && file_name.ends_with(".meta.json")
+                    && path.is_file()
+                {
+                    // Check if this metadata file references the removed JDK
+                    if let Some(jdk_name) = jdk_path.file_name().and_then(|n| n.to_str())
+                        && file_name.contains(jdk_name)
+                    {
+                        orphaned_files.push(path);
                     }
                 }
             }

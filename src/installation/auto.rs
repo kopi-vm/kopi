@@ -181,31 +181,29 @@ impl<'a> AutoInstaller<'a> {
         let kopi_name = crate::platform::kopi_binary_name();
 
         // Try to find kopi in the same directory as the current executable
-        if let Ok(current_exe) = std::env::current_exe() {
-            if let Some(parent) = current_exe.parent() {
-                // On Windows, handle shims directory specially
-                #[cfg(target_os = "windows")]
+        if let Ok(current_exe) = std::env::current_exe()
+            && let Some(parent) = current_exe.parent()
+        {
+            // On Windows, handle shims directory specially
+            #[cfg(target_os = "windows")]
+            {
+                if let Ok(shims_dir) = self.config.shims_dir()
+                    && parent == shims_dir
+                    && let Ok(bin_dir) = self.config.bin_dir()
                 {
-                    if let Ok(shims_dir) = self.config.shims_dir() {
-                        if parent == shims_dir {
-                            // Look for kopi in the bin directory
-                            if let Ok(bin_dir) = self.config.bin_dir() {
-                                let kopi_bin_path = bin_dir.join(kopi_name);
-                                searched_paths.push(kopi_bin_path.display().to_string());
-                                if kopi_bin_path.exists() {
-                                    return Ok(kopi_bin_path);
-                                }
-                            }
-                        }
+                    let kopi_bin_path = bin_dir.join(kopi_name);
+                    searched_paths.push(kopi_bin_path.display().to_string());
+                    if kopi_bin_path.exists() {
+                        return Ok(kopi_bin_path);
                     }
                 }
+            }
 
-                // Check same directory as current executable
-                let kopi_path = parent.join(kopi_name);
-                searched_paths.push(kopi_path.display().to_string());
-                if kopi_path.exists() {
-                    return Ok(kopi_path);
-                }
+            // Check same directory as current executable
+            let kopi_path = parent.join(kopi_name);
+            searched_paths.push(kopi_path.display().to_string());
+            if kopi_path.exists() {
+                return Ok(kopi_path);
             }
         }
 
@@ -266,8 +264,8 @@ mod tests {
         // Mock scenario where kopi is not found
         // This test documents expected behavior when kopi binary is not available
         let result = installer.find_kopi_binary();
-        if result.is_err() {
-            match result.unwrap_err() {
+        if let Err(e) = result {
+            match e {
                 KopiError::KopiNotFound {
                     searched_paths,
                     is_auto_install_context,

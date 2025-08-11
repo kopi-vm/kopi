@@ -179,14 +179,12 @@ impl<'a> UninstallHandler<'a> {
             .into_iter()
             .filter(|jdk| {
                 // Check distribution match
-                if let Some(dist_str) = distribution_str {
-                    if let Ok(req_dist) = Distribution::from_str(dist_str) {
-                        if let Ok(jdk_dist) = Distribution::from_str(&jdk.distribution) {
-                            if req_dist != jdk_dist {
-                                return false;
-                            }
-                        }
-                    }
+                if let Some(dist_str) = distribution_str
+                    && let Ok(req_dist) = Distribution::from_str(dist_str)
+                    && let Ok(jdk_dist) = Distribution::from_str(&jdk.distribution)
+                    && req_dist != jdk_dist
+                {
+                    return false;
                 }
 
                 // Check version match

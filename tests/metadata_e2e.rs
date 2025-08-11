@@ -428,10 +428,10 @@ fn test_concurrent_metadata_access() {
 
             std::thread::spawn(move || {
                 for _ in 0..10 {
-                    if let Ok(results) = provider.fetch_distribution("concurrent") {
-                        if !results.is_empty() {
-                            success_count.fetch_add(1, Ordering::Relaxed);
-                        }
+                    if let Ok(results) = provider.fetch_distribution("concurrent")
+                        && !results.is_empty()
+                    {
+                        success_count.fetch_add(1, Ordering::Relaxed);
                     }
                     std::thread::sleep(Duration::from_millis(1));
                 }

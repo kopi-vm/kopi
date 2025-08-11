@@ -45,7 +45,7 @@ mod e2e_tests {
             }
         }
 
-        fn get_repository(&self) -> JdkRepository {
+        fn get_repository(&self) -> JdkRepository<'_> {
             JdkRepository::new(&self.config)
         }
 
@@ -469,14 +469,14 @@ JAVA_RUNTIME_VERSION="{version}"
             if let Ok(entries) = fs::read_dir(parent) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if let Ok(metadata) = fs::symlink_metadata(&path) {
-                        if metadata.file_type().is_symlink() {
-                            // Check if it's an orphaned symlink
-                            assert!(
-                                fs::metadata(&path).is_ok(),
-                                "No orphaned symlinks should remain"
-                            );
-                        }
+                    if let Ok(metadata) = fs::symlink_metadata(&path)
+                        && metadata.file_type().is_symlink()
+                    {
+                        // Check if it's an orphaned symlink
+                        assert!(
+                            fs::metadata(&path).is_ok(),
+                            "No orphaned symlinks should remain"
+                        );
                     }
                 }
             }

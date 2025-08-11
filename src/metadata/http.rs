@@ -74,26 +74,25 @@ impl HttpMetadataSource {
             .into_iter()
             .filter(|entry| {
                 // Check architecture
-                if let Some(ref archs) = entry.architectures {
-                    if !archs.contains(&current_arch) {
-                        return false;
-                    }
+                if let Some(ref archs) = entry.architectures
+                    && !archs.contains(&current_arch)
+                {
+                    return false;
                 }
 
                 // Check operating system
-                if let Some(ref oses) = entry.operating_systems {
-                    if !oses.contains(&current_os) {
-                        return false;
-                    }
+                if let Some(ref oses) = entry.operating_systems
+                    && !oses.contains(&current_os)
+                {
+                    return false;
                 }
 
                 // Check lib_c_type (only for Linux)
-                if current_os == "linux" {
-                    if let Some(ref lib_c_types) = entry.lib_c_types {
-                        if !lib_c_types.contains(&current_libc.to_string()) {
-                            return false;
-                        }
-                    }
+                if current_os == "linux"
+                    && let Some(ref lib_c_types) = entry.lib_c_types
+                    && !lib_c_types.contains(&current_libc.to_string())
+                {
+                    return false;
                 }
 
                 true

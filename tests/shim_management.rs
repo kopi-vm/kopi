@@ -23,16 +23,16 @@ use tempfile::TempDir;
 
 /// Cleanup function to remove any test artifacts
 fn cleanup_test_shim() {
-    if let Ok(current_exe) = std::env::current_exe() {
-        if let Some(dir) = current_exe.parent() {
-            let shim_path = dir.join(kopi::platform::shim_binary_name());
-            if shim_path.exists() {
-                // Only remove if it's our test shim (check size or content)
-                if let Ok(content) = fs::read(&shim_path) {
-                    // Our test shim has a specific pattern
-                    if content.len() > 128 && content.len() < 4096 {
-                        let _ = fs::remove_file(&shim_path);
-                    }
+    if let Ok(current_exe) = std::env::current_exe()
+        && let Some(dir) = current_exe.parent()
+    {
+        let shim_path = dir.join(kopi::platform::shim_binary_name());
+        if shim_path.exists() {
+            // Only remove if it's our test shim (check size or content)
+            if let Ok(content) = fs::read(&shim_path) {
+                // Our test shim has a specific pattern
+                if content.len() > 128 && content.len() < 4096 {
+                    let _ = fs::remove_file(&shim_path);
                 }
             }
         }

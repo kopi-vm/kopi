@@ -168,22 +168,20 @@ impl MetadataSource for LocalDirectorySource {
     fn last_updated(&self) -> Result<Option<chrono::DateTime<chrono::Utc>>> {
         // Try to get the bundle generation time from index.json
         let index_path = self.directory.join("index.json");
-        if let Ok(file) = File::open(&index_path) {
-            if let Ok(index) = serde_json::from_reader::<_, serde_json::Value>(file) {
-                if let Some(updated) = index.get("updated").and_then(|v| v.as_str()) {
-                    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(updated) {
-                        return Ok(Some(dt.with_timezone(&chrono::Utc)));
-                    }
-                }
-            }
+        if let Ok(file) = File::open(&index_path)
+            && let Ok(index) = serde_json::from_reader::<_, serde_json::Value>(file)
+            && let Some(updated) = index.get("updated").and_then(|v| v.as_str())
+            && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(updated)
+        {
+            return Ok(Some(dt.with_timezone(&chrono::Utc)));
         }
 
         // Fallback to index.json modification time
-        if let Ok(metadata) = std::fs::metadata(&index_path) {
-            if let Ok(modified) = metadata.modified() {
-                let datetime: chrono::DateTime<chrono::Utc> = modified.into();
-                return Ok(Some(datetime));
-            }
+        if let Ok(metadata) = std::fs::metadata(&index_path)
+            && let Ok(modified) = metadata.modified()
+        {
+            let datetime: chrono::DateTime<chrono::Utc> = modified.into();
+            return Ok(Some(datetime));
         }
 
         Ok(None)

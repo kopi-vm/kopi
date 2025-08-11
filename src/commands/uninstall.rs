@@ -143,7 +143,7 @@ impl<'a> UninstallCommand<'a> {
         handler.uninstall_jdk(version_spec, false)?;
 
         // Display success summary
-        display_uninstall_summary(&[jdk.clone()], disk_space);
+        display_uninstall_summary(std::slice::from_ref(jdk), disk_space);
 
         Ok(())
     }

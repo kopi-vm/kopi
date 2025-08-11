@@ -322,21 +322,21 @@ fn build_tool_path(jdk_path: &Path, tool_name: &str) -> Result<PathBuf> {
             // List available tools in the JDK bin directory
             let mut available_tools = Vec::new();
 
-            if bin_dir.exists() {
-                if let Ok(entries) = std::fs::read_dir(&bin_dir) {
-                    for entry in entries.flatten() {
-                        if let Some(name) = entry.file_name().to_str() {
-                            // Remove .exe extension on Windows
-                            let tool_name_clean = if cfg!(windows) && name.ends_with(".exe") {
-                                &name[..name.len() - 4]
-                            } else {
-                                name
-                            };
+            if bin_dir.exists()
+                && let Ok(entries) = std::fs::read_dir(&bin_dir)
+            {
+                for entry in entries.flatten() {
+                    if let Some(name) = entry.file_name().to_str() {
+                        // Remove .exe extension on Windows
+                        let tool_name_clean = if cfg!(windows) && name.ends_with(".exe") {
+                            &name[..name.len() - 4]
+                        } else {
+                            name
+                        };
 
-                            // Only include executable files
-                            if entry.metadata().map(|m| m.is_file()).unwrap_or(false) {
-                                available_tools.push(tool_name_clean.to_string());
-                            }
+                        // Only include executable files
+                        if entry.metadata().map(|m| m.is_file()).unwrap_or(false) {
+                            available_tools.push(tool_name_clean.to_string());
                         }
                     }
                 }
