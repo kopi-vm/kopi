@@ -400,18 +400,18 @@ java --version
 - Phases 7-10 complete
 
 ### Tasks
-- [ ] Create benchmark suite for path resolution
-  - [ ] Measure with metadata (cache hit)
-  - [ ] Measure without metadata (fallback)
-  - [ ] Compare before/after implementation
-- [ ] Verify shim performance improvement
-- [ ] Test with various cache states
-- [ ] **Write performance tests**:
-  - [ ] Benchmark metadata loading time
-  - [ ] Benchmark structure detection time
-  - [ ] Test shim startup time < 50ms (< 10ms with cache)
-  - [ ] Memory usage benchmarks
-  - [ ] Create performance regression tests
+- [x] Create benchmark suite for path resolution
+  - [x] Measure with metadata (cache hit)
+  - [x] Measure without metadata (fallback)
+  - [x] Compare before/after implementation
+- [x] Verify shim performance improvement
+- [x] Test with various cache states
+- [x] **Write performance tests**:
+  - [x] Benchmark metadata loading time
+  - [x] Benchmark structure detection time
+  - [x] Test shim startup time < 50ms (< 10ms with cache)
+  - [x] Memory usage benchmarks
+  - [x] Create performance regression tests
 
 ### Verification
 ```bash

@@ -365,6 +365,8 @@ impl JdkLister {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::api::{Links, Package};
+    use std::time::Instant;
     use tempfile::TempDir;
 
     #[test]
@@ -1152,5 +1154,204 @@ mod tests {
 
         let content2 = fs::read_to_string(&version_file).unwrap();
         assert_eq!(content2, "corretto@17.0.9");
+    }
+
+    #[test]
+    fn test_path_resolution_performance_regression() {
+        // This test ensures that path resolution performance doesn't regress
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path();
+        let jdk_path = jdks_dir.join("temurin-21.0.1");
+        fs::create_dir_all(&jdk_path).unwrap();
+
+        // Create metadata for fast cached access
+        let metadata = JdkMetadataWithInstallation {
+            package: Package {
+                id: "perf-test".to_string(),
+                archive_type: "tar.gz".to_string(),
+                distribution: "temurin".to_string(),
+                major_version: 21,
+                java_version: "21.0.1".to_string(),
+                distribution_version: "21.0.1".to_string(),
+                jdk_version: 21,
+                directly_downloadable: true,
+                filename: "temurin-21.0.1.tar.gz".to_string(),
+                links: Links {
+                    pkg_download_redirect: "https://example.com/jdk.tar.gz".to_string(),
+                    pkg_info_uri: None,
+                },
+                free_use_in_production: true,
+                tck_tested: "yes".to_string(),
+                size: 100000000,
+                operating_system: "macos".to_string(),
+                architecture: Some("x64".to_string()),
+                lib_c_type: None,
+                package_type: "jdk".to_string(),
+                javafx_bundled: false,
+                term_of_support: None,
+                release_status: None,
+                latest_build_available: Some(true),
+            },
+            installation_metadata: InstallationMetadata {
+                java_home_suffix: "Contents/Home".to_string(),
+                structure_type: "bundle".to_string(),
+                platform: "macos".to_string(),
+                metadata_version: 1,
+            },
+        };
+
+        let metadata_file = jdks_dir.join("temurin-21.0.1.meta.json");
+        fs::write(&metadata_file, serde_json::to_string(&metadata).unwrap()).unwrap();
+
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+        );
+
+        // Pre-load cache
+        let _ = jdk.resolve_java_home();
+
+        // Measure cached access time
+        let start = Instant::now();
+        for _ in 0..1000 {
+            let _ = jdk.resolve_java_home();
+        }
+        let elapsed = start.elapsed();
+
+        // Average time per call should be < 1 microsecond (1000ns)
+        let avg_ns = elapsed.as_nanos() / 1000;
+        assert!(
+            avg_ns < 1000,
+            "Path resolution with cache too slow: {avg_ns} ns/call (expected < 1000 ns)"
+        );
+
+        // Test bin path resolution performance
+        let start = Instant::now();
+        for _ in 0..1000 {
+            let _ = jdk.resolve_bin_path();
+        }
+        let elapsed = start.elapsed();
+
+        // Bin path resolution should also be fast
+        let avg_ns = elapsed.as_nanos() / 1000;
+        assert!(
+            avg_ns < 10000,
+            "Bin path resolution too slow: {avg_ns} ns/call (expected < 10000 ns)"
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_structure_detection_performance_regression() {
+        use crate::archive::detect_jdk_root;
+
+        // Test that structure detection performance is acceptable
+        let temp_dir = TempDir::new().unwrap();
+        let jdk_path = temp_dir.path();
+
+        // Create bundle structure
+        let contents_home = jdk_path.join("Contents").join("Home");
+        fs::create_dir_all(contents_home.join("bin")).unwrap();
+        fs::File::create(contents_home.join("bin").join("java")).unwrap();
+
+        // Measure detection time
+        let start = Instant::now();
+        for _ in 0..100 {
+            let _ = detect_jdk_root(jdk_path).unwrap();
+        }
+        let elapsed = start.elapsed();
+
+        // Average time should be < 1ms
+        let avg_ms = elapsed.as_millis() / 100;
+        assert!(
+            avg_ms < 1,
+            "Structure detection too slow: {avg_ms} ms/call (expected < 1 ms)"
+        );
+    }
+
+    #[test]
+    fn test_memory_usage_with_multiple_jdks() {
+        // Test that memory usage is reasonable with many JDKs
+        let temp_dir = TempDir::new().unwrap();
+        let mut jdks = Vec::new();
+
+        // Create 100 JDKs with metadata
+        for i in 0..100 {
+            let distribution = format!("dist{i}");
+            let version = Version::new(21, 0, i as u32);
+            let jdk_path = temp_dir.path().join(format!("{distribution}-{version}"));
+            fs::create_dir_all(&jdk_path).unwrap();
+
+            // Create metadata
+            let metadata = JdkMetadataWithInstallation {
+                package: Package {
+                    id: format!("id-{i}"),
+                    archive_type: "tar.gz".to_string(),
+                    distribution: distribution.clone(),
+                    major_version: 21,
+                    java_version: version.to_string(),
+                    distribution_version: version.to_string(),
+                    jdk_version: 21,
+                    directly_downloadable: true,
+                    filename: format!("{distribution}-{version}.tar.gz"),
+                    links: Links {
+                        pkg_download_redirect: format!("https://example.com/jdk{i}.tar.gz"),
+                        pkg_info_uri: None,
+                    },
+                    free_use_in_production: true,
+                    tck_tested: "yes".to_string(),
+                    size: 100000000,
+                    operating_system: "macos".to_string(),
+                    architecture: Some("x64".to_string()),
+                    lib_c_type: None,
+                    package_type: "jdk".to_string(),
+                    javafx_bundled: false,
+                    term_of_support: None,
+                    release_status: None,
+                    latest_build_available: Some(true),
+                },
+                installation_metadata: InstallationMetadata {
+                    java_home_suffix: if i % 2 == 0 {
+                        "".to_string()
+                    } else {
+                        "Contents/Home".to_string()
+                    },
+                    structure_type: if i % 2 == 0 {
+                        "direct".to_string()
+                    } else {
+                        "bundle".to_string()
+                    },
+                    platform: "macos".to_string(),
+                    metadata_version: 1,
+                },
+            };
+
+            let metadata_file = temp_dir
+                .path()
+                .join(format!("{distribution}-{version}.meta.json"));
+            fs::write(&metadata_file, serde_json::to_string(&metadata).unwrap()).unwrap();
+
+            jdks.push(InstalledJdk::new(distribution, version, jdk_path));
+        }
+
+        // Access all JDKs to load metadata
+        for jdk in &jdks {
+            let _ = jdk.resolve_java_home();
+        }
+
+        // Verify we can still access them efficiently
+        let start = Instant::now();
+        for jdk in &jdks {
+            let _ = jdk.resolve_java_home();
+        }
+        let elapsed = start.elapsed();
+
+        // Should still be fast even with 100 JDKs
+        let elapsed_ms = elapsed.as_millis();
+        assert!(
+            elapsed_ms < 10,
+            "Accessing 100 JDKs took too long: {elapsed_ms} ms (expected < 10 ms)"
+        );
     }
 }
