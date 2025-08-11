@@ -625,7 +625,7 @@ mod tests {
                 assert_eq!(jdk.version.to_string(), "21.0.1");
                 assert_eq!(jdk.path, jdk_path);
             }
-            Err(e) => panic!("Expected to find JDK but got error: {:?}", e),
+            Err(e) => panic!("Expected to find JDK but got error: {e:?}"),
         }
     }
 }
