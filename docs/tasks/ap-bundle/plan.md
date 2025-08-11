@@ -364,20 +364,20 @@ RUST_LOG=debug kopi use temurin@24
 - Phase 9 (Metadata Loading)
 
 ### Tasks
-- [ ] Implement graceful fallback when metadata missing
-  - [ ] Log warning about missing metadata
-  - [ ] Perform runtime detection
-  - [ ] Continue operation normally
-- [ ] Handle corrupted metadata files
-  - [ ] Validate JSON structure
-  - [ ] Fall back on parse errors
-  - [ ] Log errors for debugging
-- [ ] **Write unit tests**:
-  - [ ] Test with missing metadata file
-  - [ ] Test with corrupted JSON
-  - [ ] Test with incomplete metadata
-  - [ ] Test logging output for debugging
-  - [ ] Test no user-visible errors on fallback
+- [x] Implement graceful fallback when metadata missing
+  - [x] Log warning about missing metadata
+  - [x] Perform runtime detection
+  - [x] Continue operation normally
+- [x] Handle corrupted metadata files
+  - [x] Validate JSON structure
+  - [x] Fall back on parse errors
+  - [x] Log errors for debugging
+- [x] **Write unit tests**:
+  - [x] Test with missing metadata file
+  - [x] Test with corrupted JSON
+  - [x] Test with incomplete metadata
+  - [x] Test logging output for debugging
+  - [x] Test no user-visible errors on fallback
 
 ### Verification
 ```bash

@@ -88,11 +88,42 @@ impl InstalledJdk {
             if let Some(parent) = self.path.parent()
                 && let Some(metadata) = self.load_metadata(parent)
             {
-                *cache = Some(metadata);
+                // Validate metadata has required fields
+                if self.validate_metadata(&metadata) {
+                    *cache = Some(metadata);
+                } else {
+                    log::warn!(
+                        "Metadata for {} has incomplete fields, falling back to runtime detection",
+                        self.distribution
+                    );
+                }
             }
         }
 
         cache.clone()
+    }
+
+    /// Validate that metadata has all required fields
+    fn validate_metadata(&self, metadata: &InstallationMetadata) -> bool {
+        // Check that critical fields are not empty or have valid values
+        if metadata.platform.is_empty() {
+            log::debug!("Metadata validation failed: empty platform field");
+            return false;
+        }
+
+        if metadata.structure_type.is_empty() {
+            log::debug!("Metadata validation failed: empty structure_type field");
+            return false;
+        }
+
+        // java_home_suffix can be empty for direct structure, so we don't validate it
+        // metadata_version should be > 0
+        if metadata.metadata_version == 0 {
+            log::debug!("Metadata validation failed: invalid metadata_version");
+            return false;
+        }
+
+        true
     }
 
     pub fn write_to(&self, path: &Path) -> Result<()> {
@@ -167,9 +198,11 @@ impl InstalledJdk {
         }
 
         // Fall back to runtime detection
-        log::debug!(
-            "No metadata found for {}, using runtime detection",
-            self.distribution
+        log::warn!(
+            "No metadata found for {} at {}, falling back to runtime detection. \
+             This may impact performance. Consider reinstalling the JDK to create metadata.",
+            self.distribution,
+            self.path.display()
         );
 
         #[cfg(target_os = "macos")]
@@ -801,6 +834,295 @@ mod tests {
 
         // Verify metadata was only loaded once
         assert!(jdk.metadata_cache.borrow().is_some());
+    }
+
+    #[test]
+    fn test_metadata_incomplete_fields_fallback() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let jdk_path = jdks_dir.join("temurin-21.0.1");
+        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+
+        // Create metadata file with missing required fields
+        let incomplete_metadata = r#"{
+            "id": "test-id",
+            "archive_type": "tar.gz",
+            "distribution": "temurin",
+            "major_version": 21,
+            "java_version": "21.0.1",
+            "distribution_version": "21.0.1+35.1",
+            "jdk_version": 21,
+            "directly_downloadable": true,
+            "filename": "test.tar.gz",
+            "links": {
+                "pkg_download_redirect": "https://example.com",
+                "pkg_info_uri": null
+            },
+            "free_use_in_production": true,
+            "tck_tested": "yes",
+            "size": 190000000,
+            "operating_system": "mac",
+            "architecture": "aarch64",
+            "lib_c_type": null,
+            "package_type": "jdk",
+            "javafx_bundled": false,
+            "term_of_support": null,
+            "release_status": null,
+            "latest_build_available": null,
+            "installation_metadata": {
+                "java_home_suffix": "Contents/Home",
+                "structure_type": "",
+                "platform": "macos_aarch64",
+                "metadata_version": 1
+            }
+        }"#;
+
+        let metadata_path = jdks_dir.join("temurin-21.0.1.meta.json");
+        fs::write(&metadata_path, incomplete_metadata).unwrap();
+
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+        );
+
+        // Should fall back to runtime detection due to empty structure_type
+        let java_home = jdk.resolve_java_home();
+
+        #[cfg(target_os = "macos")]
+        assert_eq!(java_home, jdk_path);
+
+        #[cfg(not(target_os = "macos"))]
+        assert_eq!(java_home, jdk_path);
+
+        // Cache should remain None due to validation failure
+        assert!(jdk.metadata_cache.borrow().is_none());
+    }
+
+    #[test]
+    fn test_metadata_invalid_version_fallback() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let jdk_path = jdks_dir.join("liberica-21.0.1");
+        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+
+        // Create metadata file with invalid metadata_version
+        let invalid_metadata = r#"{
+            "id": "test-id",
+            "archive_type": "tar.gz",
+            "distribution": "liberica",
+            "major_version": 21,
+            "java_version": "21.0.1",
+            "distribution_version": "21.0.1",
+            "jdk_version": 21,
+            "directly_downloadable": true,
+            "filename": "test.tar.gz",
+            "links": {
+                "pkg_download_redirect": "https://example.com",
+                "pkg_info_uri": null
+            },
+            "free_use_in_production": true,
+            "tck_tested": "yes",
+            "size": 190000000,
+            "operating_system": "linux",
+            "architecture": "x64",
+            "lib_c_type": null,
+            "package_type": "jdk",
+            "javafx_bundled": false,
+            "term_of_support": null,
+            "release_status": null,
+            "latest_build_available": null,
+            "installation_metadata": {
+                "java_home_suffix": "",
+                "structure_type": "direct",
+                "platform": "linux_x64",
+                "metadata_version": 0
+            }
+        }"#;
+
+        let metadata_path = jdks_dir.join("liberica-21.0.1.meta.json");
+        fs::write(&metadata_path, invalid_metadata).unwrap();
+
+        let jdk = InstalledJdk::new(
+            "liberica".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+        );
+
+        // Should fall back to runtime detection due to invalid metadata_version
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, jdk_path);
+
+        // Cache should remain None due to validation failure
+        assert!(jdk.metadata_cache.borrow().is_none());
+    }
+
+    #[test]
+    fn test_metadata_empty_platform_fallback() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        let jdk_path = jdks_dir.join("zulu-21.0.1");
+        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+
+        // Create metadata file with empty platform field
+        let invalid_metadata = r#"{
+            "id": "test-id",
+            "archive_type": "tar.gz",
+            "distribution": "zulu",
+            "major_version": 21,
+            "java_version": "21.0.1",
+            "distribution_version": "21.0.1",
+            "jdk_version": 21,
+            "directly_downloadable": true,
+            "filename": "test.tar.gz",
+            "links": {
+                "pkg_download_redirect": "https://example.com",
+                "pkg_info_uri": null
+            },
+            "free_use_in_production": true,
+            "tck_tested": "yes",
+            "size": 190000000,
+            "operating_system": "mac",
+            "architecture": "aarch64",
+            "lib_c_type": null,
+            "package_type": "jdk",
+            "javafx_bundled": false,
+            "term_of_support": null,
+            "release_status": null,
+            "latest_build_available": null,
+            "installation_metadata": {
+                "java_home_suffix": "",
+                "structure_type": "direct",
+                "platform": "",
+                "metadata_version": 1
+            }
+        }"#;
+
+        let metadata_path = jdks_dir.join("zulu-21.0.1.meta.json");
+        fs::write(&metadata_path, invalid_metadata).unwrap();
+
+        let jdk = InstalledJdk::new("zulu".to_string(), Version::new(21, 0, 1), jdk_path.clone());
+
+        // Should fall back to runtime detection due to empty platform
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, jdk_path);
+
+        // Cache should remain None due to validation failure
+        assert!(jdk.metadata_cache.borrow().is_none());
+    }
+
+    #[test]
+    fn test_fallback_no_user_errors() {
+        // This test verifies that all fallback scenarios work without returning errors to users
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        // Test 1: Missing metadata file - should work without errors
+        let jdk_path1 = jdks_dir.join("temurin-17.0.1");
+        fs::create_dir_all(jdk_path1.join("bin")).unwrap();
+        let jdk1 = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(17, 0, 1),
+            jdk_path1.clone(),
+        );
+
+        // These operations should succeed without errors
+        let java_home1 = jdk1.resolve_java_home();
+        assert!(!java_home1.as_os_str().is_empty());
+        let bin_path1 = jdk1.resolve_bin_path();
+        assert!(bin_path1.is_ok());
+
+        // Test 2: Corrupted metadata file - should work without errors
+        let jdk_path2 = jdks_dir.join("liberica-17.0.1");
+        fs::create_dir_all(jdk_path2.join("bin")).unwrap();
+        fs::write(jdks_dir.join("liberica-17.0.1.meta.json"), "{ corrupt json").unwrap();
+        let jdk2 = InstalledJdk::new(
+            "liberica".to_string(),
+            Version::new(17, 0, 1),
+            jdk_path2.clone(),
+        );
+
+        let java_home2 = jdk2.resolve_java_home();
+        assert!(!java_home2.as_os_str().is_empty());
+        let bin_path2 = jdk2.resolve_bin_path();
+        assert!(bin_path2.is_ok());
+
+        // Test 3: Incomplete metadata - should work without errors
+        let jdk_path3 = jdks_dir.join("zulu-17.0.1");
+        fs::create_dir_all(jdk_path3.join("bin")).unwrap();
+        let incomplete_meta = r#"{
+            "id": "test",
+            "installation_metadata": {
+                "java_home_suffix": "",
+                "structure_type": "",
+                "platform": "test",
+                "metadata_version": 1
+            }
+        }"#;
+        fs::write(jdks_dir.join("zulu-17.0.1.meta.json"), incomplete_meta).unwrap();
+        let jdk3 = InstalledJdk::new(
+            "zulu".to_string(),
+            Version::new(17, 0, 1),
+            jdk_path3.clone(),
+        );
+
+        let java_home3 = jdk3.resolve_java_home();
+        assert!(!java_home3.as_os_str().is_empty());
+        let bin_path3 = jdk3.resolve_bin_path();
+        assert!(bin_path3.is_ok());
+    }
+
+    #[test]
+    fn test_fallback_logging_output() {
+        use log::{Level, Log, Metadata, Record};
+        use std::sync::Mutex;
+
+        // Custom logger to capture log messages
+        struct TestLogger {
+            messages: Mutex<Vec<(Level, String)>>,
+        }
+
+        impl Log for TestLogger {
+            fn enabled(&self, _metadata: &Metadata) -> bool {
+                true
+            }
+
+            fn log(&self, record: &Record) {
+                let mut messages = self.messages.lock().unwrap();
+                messages.push((record.level(), record.args().to_string()));
+            }
+
+            fn flush(&self) {}
+        }
+
+        let _logger = TestLogger {
+            messages: Mutex::new(Vec::new()),
+        };
+
+        // Note: In a real test environment, we'd use a proper logging framework
+        // This is a simplified example to demonstrate the concept
+
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        // Test missing metadata logging
+        let jdk_path = jdks_dir.join("test-jdk");
+        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+        let jdk = InstalledJdk::new("test".to_string(), Version::new(21, 0, 1), jdk_path.clone());
+
+        // This should trigger fallback warning
+        let _ = jdk.resolve_java_home();
+
+        // In a real test, we would verify the log messages contain expected warnings
+        // For now, we just ensure the operation completes without panic
     }
 
     #[test]

@@ -437,8 +437,7 @@ mod tests {
         let bin_dir = jdk_path.join("bin");
         fs::create_dir_all(&bin_dir).unwrap();
 
-        let installed_jdk =
-            InstalledJdk::new("test".to_string(), Version::new(21, 0, 1), jdk_path);
+        let installed_jdk = InstalledJdk::new("test".to_string(), Version::new(21, 0, 1), jdk_path);
 
         let result = build_tool_path(&installed_jdk, "nonexistent");
         assert!(result.is_err());

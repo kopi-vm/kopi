@@ -312,7 +312,7 @@ mod tests {
         assert!(result.is_err());
         match result {
             Err(KopiError::SystemError(msg)) => {
-                assert!(msg.contains("timed out"));
+                assert!(msg.contains("timed out") || msg.contains("Command execution timed out"));
             }
             _ => panic!("Expected timeout error"),
         }
