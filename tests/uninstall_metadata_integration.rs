@@ -75,7 +75,10 @@ impl TestEnvironment {
                 "size": 10485760
             }}"#
         );
-        fs::write(jdk_path.join(".meta.json"), metadata_content).unwrap();
+        // Write metadata file in parent directory as expected by kopi
+        let jdks_dir = self.config.jdks_dir().unwrap();
+        let meta_file = jdks_dir.join(format!("{distribution}-{version}.meta.json"));
+        fs::write(meta_file, metadata_content).unwrap();
 
         jdk_path
     }
@@ -109,7 +112,9 @@ fn test_metadata_consistency_after_uninstall() {
 
     // Verify JDK exists with metadata
     assert!(jdk_path.exists());
-    assert!(jdk_path.join(".meta.json").exists());
+    let jdks_dir = env.config.jdks_dir().unwrap();
+    let meta_file = jdks_dir.join("temurin-21.0.1.meta.json");
+    assert!(meta_file.exists());
 
     // List installed JDKs before uninstall
     let jdks_before = repository.list_installed_jdks().unwrap();
@@ -123,7 +128,7 @@ fn test_metadata_consistency_after_uninstall() {
 
     // Verify JDK is completely removed
     assert!(!jdk_path.exists());
-    assert!(!jdk_path.join(".meta.json").exists());
+    assert!(!meta_file.exists());
 
     // List installed JDKs after uninstall
     let jdks_after = repository.list_installed_jdks().unwrap();
@@ -313,7 +318,10 @@ fn test_partial_removal_detection() {
 
     // But leave the main directory and metadata
     assert!(jdk_path.exists());
-    assert!(jdk_path.join(".meta.json").exists());
+    // Metadata is stored in parent directory as <distribution>-<version>.meta.json
+    let jdks_dir = env.config.jdks_dir().unwrap();
+    let meta_file_path = jdks_dir.join("temurin-21.0.1.meta.json");
+    assert!(meta_file_path.exists());
 
     // Create a mock InstalledJdk
     let removed_jdk = InstalledJdk {

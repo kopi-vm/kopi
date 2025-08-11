@@ -96,23 +96,25 @@ impl<'a> PostUninstallChecker<'a> {
 
     /// Check for orphaned metadata files
     fn check_orphaned_metadata(&self, jdk_path: &Path) -> Result<Vec<PathBuf>> {
+        use std::collections::HashSet;
+        
         debug!(
             "Checking for orphaned metadata files related to {}",
             jdk_path.display()
         );
 
-        let mut orphaned_files = Vec::new();
+        let mut orphaned_files = HashSet::new();
 
         // Check for .meta.json files in the JDK directory
         if jdk_path.exists() {
             // If the JDK directory still exists, check for orphaned metadata
             // Metadata files are stored as <distribution>-<version>.meta.json in jdks directory
-            if let Some(jdk_dir_name) = jdk_path.file_name().and_then(|n| n.to_str()) {
-                if let Some(parent) = jdk_path.parent() {
-                    let meta_file = parent.join(format!("{}.meta.json", jdk_dir_name));
-                    if meta_file.exists() {
-                        orphaned_files.push(meta_file);
-                    }
+            if let Some(jdk_dir_name) = jdk_path.file_name().and_then(|n| n.to_str())
+                && let Some(parent) = jdk_path.parent()
+            {
+                let meta_file = parent.join(format!("{jdk_dir_name}.meta.json"));
+                if meta_file.exists() {
+                    orphaned_files.insert(meta_file);
                 }
             }
         }
@@ -133,13 +135,13 @@ impl<'a> PostUninstallChecker<'a> {
                     if let Some(jdk_name) = jdk_path.file_name().and_then(|n| n.to_str())
                         && file_name.contains(jdk_name)
                     {
-                        orphaned_files.push(path);
+                        orphaned_files.insert(path);
                     }
                 }
             }
         }
 
-        Ok(orphaned_files)
+        Ok(orphaned_files.into_iter().collect())
     }
 
     /// Validate that shim functionality is still intact
@@ -346,7 +348,11 @@ mod tests {
         let jdk = create_mock_jdk(&config, "temurin", "21.0.1");
 
         // Create a metadata file in the parent directory
-        let meta_file = jdks_dir.join(format!("{}.meta.json", jdk.path.file_name().unwrap().to_str().unwrap()));
+        let jdks_dir = config.jdks_dir().unwrap();
+        let meta_file = jdks_dir.join(format!(
+            "{}.meta.json",
+            jdk.path.file_name().unwrap().to_str().unwrap()
+        ));
         fs::write(&meta_file, "{}").unwrap();
 
         let orphaned = checker.check_orphaned_metadata(&jdk.path).unwrap();
@@ -403,7 +409,11 @@ mod tests {
         let jdk = create_mock_jdk(&config, "temurin", "21.0.1");
 
         // Create metadata files in the parent directory
-        let meta_file = jdks_dir.join(format!("{}.meta.json", jdk.path.file_name().unwrap().to_str().unwrap()));
+        let jdks_dir = config.jdks_dir().unwrap();
+        let meta_file = jdks_dir.join(format!(
+            "{}.meta.json",
+            jdk.path.file_name().unwrap().to_str().unwrap()
+        ));
         fs::write(&meta_file, "{}").unwrap();
 
         let report = PostUninstallReport {

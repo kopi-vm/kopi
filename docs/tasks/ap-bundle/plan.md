@@ -106,9 +106,9 @@ cargo test --lib storage::listing::tests
   - [x] Test error handling for invalid JDK structures
   - [x] Test logging output
 - [x] **Manual testing** with real JDK archives:
-  - [x] Temurin (bundle structure) - 実際にinstall_metadataが保存されることを確認
-  - [x] Liberica (direct structure) - java_home_suffix: "" として保存されることを確認
-  - [x] Azul Zulu (hybrid structure) - java_home_suffix: "Contents/Home" として保存されることを確認
+  - [x] Temurin (bundle structure) - Verify that installation_metadata is actually saved
+  - [x] Liberica (direct structure) - Verify saved with java_home_suffix: ""
+  - [x] Azul Zulu (hybrid structure) - Verify saved with java_home_suffix: "Contents/Home"
 
 ### Verification
 ```bash

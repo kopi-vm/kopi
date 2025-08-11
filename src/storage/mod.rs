@@ -484,7 +484,8 @@ mod metadata_tests {
 
         // Verify content is complete and valid JSON
         let content = fs::read_to_string(&metadata_path).unwrap();
-        let parsed: std::result::Result<JdkMetadataWithInstallation, _> = serde_json::from_str(&content);
+        let parsed: std::result::Result<JdkMetadataWithInstallation, _> =
+            serde_json::from_str(&content);
         assert!(parsed.is_ok());
 
         let metadata = parsed.unwrap();
