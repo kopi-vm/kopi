@@ -84,6 +84,9 @@ kopi install corretto@11.0.21     # Exact version
 # List installed JDKs
 kopi list                         # or: kopi ls
 
+# macOS Note: Kopi automatically handles different JDK directory structures
+# (e.g., Temurin's Contents/Home, Liberica's direct layout, Zulu's symlinks)
+
 # Set global default
 kopi global 21                    # or: kopi g 21, kopi default 21
 
@@ -229,6 +232,43 @@ Kopi is designed with performance and reliability in mind:
 - **Atomic Operations** - Safe concurrent JDK installations
 - **Shell Integration** - Works with bash, zsh, fish, and PowerShell
 - **macOS Support** - Handles diverse JDK directory structures (app bundles, direct layouts)
+
+### macOS JDK Structure Handling
+
+Kopi intelligently handles the various directory structures used by different JDK distributions on macOS:
+
+#### Bundle Structure (Temurin, GraalVM)
+```
+temurin-21.0.5/
+└── Contents/
+    └── Home/         # Actual JDK files
+        ├── bin/
+        ├── lib/
+        └── conf/
+```
+
+#### Direct Structure (Liberica)
+```
+liberica-21.0.5/      # JDK files at root
+├── bin/
+├── lib/
+└── conf/
+```
+
+#### Hybrid Structure (Azul Zulu)
+```
+zulu-21.0.5/
+├── bin -> zulu-21.jdk/Contents/Home/bin  # Symlinks at root
+├── lib -> zulu-21.jdk/Contents/Home/lib
+└── zulu-21.jdk/
+    └── Contents/Home/                     # Actual files in bundle
+```
+
+Kopi automatically detects and handles these structures transparently:
+- **Automatic Detection**: Structure is detected during installation
+- **Metadata Caching**: Structure information is cached for fast switching
+- **Transparent Operation**: Users never need to know about `Contents/Home`
+- **Proper JAVA_HOME**: Always sets the correct JAVA_HOME for IDEs and build tools
 
 ## Comparison with Similar Tools
 

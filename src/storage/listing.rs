@@ -1507,25 +1507,25 @@ mod tests {
 
         // Create JDK with proper structure based on platform
         let jdk_path = jdks_dir.join("temurin-21.0.0");
-        
+
         #[cfg(target_os = "macos")]
         {
             // macOS: Create bundle structure
             let bundle_home = jdk_path.join("Contents/Home");
             let bundle_bin = bundle_home.join("bin");
             fs::create_dir_all(&bundle_bin).unwrap();
-            
+
             // Create java binary
             let java_binary = "java";
             fs::write(bundle_bin.join(java_binary), "#!/bin/sh\necho 'test java'").unwrap();
         }
-        
+
         #[cfg(not(target_os = "macos"))]
         {
             // Other platforms: Create direct structure
             let bin_dir = jdk_path.join("bin");
             fs::create_dir_all(&bin_dir).unwrap();
-            
+
             // Create java binary
             let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
             fs::write(bin_dir.join(java_binary), "#!/bin/sh\necho 'test java'").unwrap();
@@ -1543,19 +1543,19 @@ mod tests {
 
         // Should fall back to runtime detection when metadata is invalid
         let java_home = jdk.resolve_java_home();
-        
+
         // Expected path depends on platform
         #[cfg(target_os = "macos")]
         let expected_java_home = jdk_path.join("Contents/Home");
         #[cfg(not(target_os = "macos"))]
         let expected_java_home = jdk_path.clone();
-        
+
         assert_eq!(java_home, expected_java_home);
 
         // Bin path should still work via fallback
         let bin_path = jdk.resolve_bin_path();
         assert!(bin_path.is_ok());
-        
+
         #[cfg(target_os = "macos")]
         assert_eq!(bin_path.unwrap(), jdk_path.join("Contents/Home/bin"));
         #[cfg(not(target_os = "macos"))]

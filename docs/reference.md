@@ -620,6 +620,32 @@ kopi cache clear                         # Delete the cache file
 - `semeru` - IBM Semeru
 - `trava` - Trava OpenJDK
 
+### macOS Directory Structure by Distribution
+
+On macOS, different JDK distributions use different directory layouts. Kopi automatically detects and handles these structures:
+
+| Distribution | Structure Type | Directory Layout | Notes |
+|-------------|---------------|------------------|-------|
+| **Temurin** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
+| **Corretto** | Direct | `bin/java` | Simple directory structure |
+| **Zulu** | Hybrid | Symlinks → `zulu-*.jdk/Contents/Home/` | Root symlinks for compatibility |
+| **OpenJDK** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
+| **GraalVM** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
+| **Dragonwell** | Direct | `bin/java` | Simple directory structure |
+| **SAP Machine** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
+| **Liberica** | Direct | `bin/java` | Simple directory structure |
+| **Mandrel** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
+| **Kona** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
+| **Semeru** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
+| **Trava** | Direct | `bin/java` | Simple directory structure |
+
+**Structure Types Explained:**
+- **Bundle**: JDK files are inside `Contents/Home/` following macOS application bundle conventions
+- **Direct**: JDK files (`bin/`, `lib/`, etc.) are directly at the root of the installation
+- **Hybrid**: Combination of bundle structure with convenience symlinks at the root (Zulu only)
+
+**Note**: This information applies only to macOS. On Linux and Windows, all distributions use the direct structure.
+
 ### Custom Distributions
 
 Additional distributions can be configured in `~/.kopi/config.toml` using the `additional_distributions` field. See the Global Config section for details.
@@ -896,7 +922,156 @@ directory = "${KOPI_HOME}/local-metadata"
 
 ## Troubleshooting
 
-For troubleshooting common issues and solutions, see the [Troubleshooting Guide](troubleshooting.md).
+### Common Issues and Solutions
+
+#### macOS-Specific Issues
+
+##### JDK Not Found After Installation
+**Symptom**: After installing a JDK on macOS, commands like `java --version` fail with "command not found"
+
+**Causes and Solutions**:
+1. **Shims not in PATH**: Ensure `~/.kopi/shims` is in your PATH
+   ```bash
+   echo $PATH | grep -q "$HOME/.kopi/shims" || echo 'export PATH="$HOME/.kopi/shims:$PATH"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+
+2. **Bundle structure detection failed**: Some JDKs use `Contents/Home` structure
+   - Kopi should handle this automatically
+   - Check if metadata was created: `ls ~/.kopi/jdks/*.meta.json`
+   - If missing, try reinstalling: `kopi uninstall <version> && kopi install <version>`
+
+##### Wrong JAVA_HOME on macOS
+**Symptom**: IDEs or build tools complain about incorrect JAVA_HOME
+
+**Solution**: Kopi automatically adjusts JAVA_HOME for bundle structures
+```bash
+# Check current JAVA_HOME
+kopi env | grep JAVA_HOME
+
+# For Temurin (bundle): Should show .../Contents/Home
+# For Liberica (direct): Should show base directory
+```
+
+##### Slow JDK Switching on macOS
+**Symptom**: Switching between JDKs takes longer than expected
+
+**Solutions**:
+1. **Metadata missing for old installations**: New installations create metadata for fast switching
+   - Performance improves automatically for new installations
+   - Existing JDKs continue to work but use runtime detection
+
+2. **Check for metadata files**:
+   ```bash
+   ls -la ~/.kopi/jdks/*.meta.json
+   ```
+
+#### General Issues
+
+##### Installation Fails with "No packages found"
+**Symptom**: `kopi install` reports no packages found for the requested version
+
+**Solutions**:
+1. **Refresh metadata cache**:
+   ```bash
+   kopi cache refresh
+   ```
+
+2. **Check available versions**:
+   ```bash
+   kopi search <version>
+   ```
+
+3. **Verify network connectivity**:
+   ```bash
+   kopi doctor --check network
+   ```
+
+##### Disk Space Issues
+**Symptom**: Installation fails with disk space errors
+
+**Solution**: Check available space and configuration:
+```bash
+# Check disk space
+df -h ~/.kopi
+
+# Adjust minimum space requirement in config
+echo 'min_disk_space_mb = 250' >> ~/.kopi/config.toml
+```
+
+##### Proxy Configuration Issues
+**Symptom**: Downloads fail behind corporate proxy
+
+**Solution**: Set proxy environment variables:
+```bash
+export HTTP_PROXY=http://proxy.company.com:8080
+export HTTPS_PROXY=http://proxy.company.com:8080
+export NO_PROXY=localhost,127.0.0.1
+```
+
+##### Permission Denied Errors
+**Symptom**: Installation or shim execution fails with permission errors
+
+**Solutions**:
+1. **Fix directory permissions**:
+   ```bash
+   chmod -R u+rwX ~/.kopi
+   ```
+
+2. **Verify shim permissions**:
+   ```bash
+   kopi shim verify --fix
+   ```
+
+##### Version Detection Not Working
+**Symptom**: Kopi doesn't detect `.kopi-version` or `.java-version` files
+
+**Solutions**:
+1. **Check file location**: Files must be in current or parent directories
+2. **Verify file format**: Ensure no extra whitespace or characters
+3. **Test with explicit path**:
+   ```bash
+   cd /path/to/project && kopi current
+   ```
+
+### Diagnostic Tools
+
+#### Using kopi doctor
+The `doctor` command helps diagnose common issues:
+```bash
+# Run all diagnostics
+kopi doctor
+
+# Check specific category
+kopi doctor --check network
+kopi doctor --check permissions
+kopi doctor --check jdks
+
+# Verbose output for debugging
+kopi -v doctor
+```
+
+#### Debug Logging
+Enable debug logging for detailed troubleshooting:
+```bash
+RUST_LOG=debug kopi install 21
+RUST_LOG=trace kopi current
+```
+
+#### Manual Verification
+Check installation integrity:
+```bash
+# List all installations
+kopi list
+
+# Verify specific JDK
+~/.kopi/jdks/<distribution>-<version>/bin/java --version
+
+# Check metadata (if available)
+cat ~/.kopi/jdks/<distribution>-<version>.meta.json | jq .
+```
+
+For additional troubleshooting help, see the [Troubleshooting Guide](troubleshooting.md) or report issues at https://github.com/kopi-vm/kopi/issues.
 
 ## Developer Documentation
 
