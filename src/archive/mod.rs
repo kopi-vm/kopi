@@ -1272,23 +1272,24 @@ mod tests {
         // Test Windows-specific path handling edge cases
         let temp_dir = tempdir()?;
 
-        // Test with Windows-style paths
-        let jdk_path = temp_dir.path().join("C:\\Program Files\\Java\\jdk-21");
+        // Test with Windows-style directory structure (spaces in path)
+        let jdk_path = temp_dir
+            .path()
+            .join("Program Files")
+            .join("Java")
+            .join("jdk-21");
         let bin_path = jdk_path.join("bin");
         fs::create_dir_all(&bin_path)?;
         File::create(bin_path.join("java.exe"))?;
 
         let result = detect_jdk_root(&jdk_path);
-        assert!(result.is_ok(), "Failed to handle Windows-style path");
+        assert!(
+            result.is_ok(),
+            "Failed to handle Windows-style path with spaces"
+        );
 
-        // Test with UNC paths (network paths)
-        let unc_path = temp_dir.path().join("\\\\server\\share\\jdk");
-        let unc_bin = unc_path.join("bin");
-        fs::create_dir_all(&unc_bin)?;
-        File::create(unc_bin.join("java.exe"))?;
-
-        let result = detect_jdk_root(&unc_path);
-        assert!(result.is_ok(), "Failed to handle UNC path");
+        // Note: UNC path testing removed as it requires actual network share
+        // or administrative privileges to create mock network paths
 
         Ok(())
     }
@@ -1403,11 +1404,7 @@ mod tests {
             // Windows absolute paths might only be rejected on Windows
             #[cfg(windows)]
             if path.contains(":\\") {
-                assert!(
-                    result.is_err(),
-                    "Windows path '{}' should be rejected",
-                    path
-                );
+                assert!(result.is_err(), "Windows path '{path}' should be rejected");
             }
         }
 
@@ -1438,6 +1435,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_validate_symlink_target_absolute() {
         let temp_dir = tempdir().unwrap();
         let dest = temp_dir.path();

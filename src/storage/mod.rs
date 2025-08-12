@@ -381,6 +381,7 @@ mod metadata_tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_save_jdk_metadata_write_failure() {
         use std::os::unix::fs::PermissionsExt;
         let temp_dir = TempDir::new().unwrap();

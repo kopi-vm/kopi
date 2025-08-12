@@ -1236,10 +1236,12 @@ mod tests {
         let elapsed = start.elapsed();
 
         // Bin path resolution should also be fast
+        // Windows file system operations can be slower, so we use a more lenient threshold
         let avg_ns = elapsed.as_nanos() / 1000;
+        let threshold_ns = if cfg!(windows) { 100000 } else { 10000 };
         assert!(
-            avg_ns < 10000,
-            "Bin path resolution too slow: {avg_ns} ns/call (expected < 10000 ns)"
+            avg_ns < threshold_ns,
+            "Bin path resolution too slow: {avg_ns} ns/call (expected < {threshold_ns} ns)"
         );
     }
 

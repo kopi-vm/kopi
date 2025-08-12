@@ -45,13 +45,16 @@ fn run_kopi_with_home(home: &TestHomeGuard, args: &[&str]) -> (String, String, b
 }
 
 fn create_mock_jdk_structure(base_path: &Path, structure_type: &str) -> PathBuf {
+    let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
+    let javac_binary = if cfg!(windows) { "javac.exe" } else { "javac" };
+
     match structure_type {
         "direct" => {
             // Direct structure: bin/ at root
             let bin_dir = base_path.join("bin");
             fs::create_dir_all(&bin_dir).unwrap();
-            fs::write(bin_dir.join("java"), "#!/bin/sh\necho \"Mock Java\"").unwrap();
-            fs::write(bin_dir.join("javac"), "#!/bin/sh\necho \"Mock Javac\"").unwrap();
+            fs::write(bin_dir.join(java_binary), "#!/bin/sh\necho \"Mock Java\"").unwrap();
+            fs::write(bin_dir.join(javac_binary), "#!/bin/sh\necho \"Mock Javac\"").unwrap();
             base_path.to_path_buf()
         }
         "bundle" => {
@@ -59,8 +62,8 @@ fn create_mock_jdk_structure(base_path: &Path, structure_type: &str) -> PathBuf 
             let home_dir = base_path.join("Contents").join("Home");
             let bin_dir = home_dir.join("bin");
             fs::create_dir_all(&bin_dir).unwrap();
-            fs::write(bin_dir.join("java"), "#!/bin/sh\necho \"Mock Java\"").unwrap();
-            fs::write(bin_dir.join("javac"), "#!/bin/sh\necho \"Mock Javac\"").unwrap();
+            fs::write(bin_dir.join(java_binary), "#!/bin/sh\necho \"Mock Java\"").unwrap();
+            fs::write(bin_dir.join(javac_binary), "#!/bin/sh\necho \"Mock Javac\"").unwrap();
             base_path.to_path_buf()
         }
         "hybrid" => {
@@ -71,8 +74,8 @@ fn create_mock_jdk_structure(base_path: &Path, structure_type: &str) -> PathBuf 
             let home_dir = contents_dir.join("Home");
             let bin_dir = home_dir.join("bin");
             fs::create_dir_all(&bin_dir).unwrap();
-            fs::write(bin_dir.join("java"), "#!/bin/sh\necho \"Mock Java\"").unwrap();
-            fs::write(bin_dir.join("javac"), "#!/bin/sh\necho \"Mock Javac\"").unwrap();
+            fs::write(bin_dir.join(java_binary), "#!/bin/sh\necho \"Mock Java\"").unwrap();
+            fs::write(bin_dir.join(javac_binary), "#!/bin/sh\necho \"Mock Javac\"").unwrap();
 
             // Create symlinks at root using relative paths like Zulu does
             #[cfg(unix)]
@@ -247,7 +250,20 @@ fn test_env_command_with_different_structures() {
         eprintln!("stdout: {stdout}");
     }
     assert!(success);
-    assert!(stdout.contains(&format!("JAVA_HOME=\"{}\"", liberica_path.display())));
+    // Check that JAVA_HOME is set and contains the liberica path
+    // The format varies by shell (Bash: JAVA_HOME="path", PowerShell: $env:JAVA_HOME = "path", etc.)
+    assert!(
+        stdout.contains("JAVA_HOME"),
+        "Output should contain JAVA_HOME: {stdout}"
+    );
+    // On Windows, the backslashes in paths might be escaped in the output
+    let liberica_path_str = liberica_path.to_string_lossy();
+    let liberica_path_escaped = liberica_path_str.replace('\\', "\\\\");
+    assert!(
+        stdout.contains(liberica_path_str.as_ref()) || stdout.contains(&liberica_path_escaped),
+        "Output should contain liberica path {} (or escaped version): {stdout}",
+        liberica_path.display()
+    );
 
     #[cfg(target_os = "macos")]
     {
@@ -260,7 +276,19 @@ fn test_env_command_with_different_structures() {
         let (stdout, _, success) = run_kopi_with_home(test_home, &["env"]);
         assert!(success);
         let expected_java_home = temurin_path.join("Contents").join("Home");
-        assert!(stdout.contains(&format!("JAVA_HOME=\"{}\"", expected_java_home.display())));
+        // Check that JAVA_HOME is set and contains the expected path
+        // The format varies by shell
+        assert!(
+            stdout.contains("JAVA_HOME"),
+            "Output should contain JAVA_HOME: {}",
+            stdout
+        );
+        assert!(
+            stdout.contains(&expected_java_home.to_string_lossy().to_string()),
+            "Output should contain temurin path {}: {}",
+            expected_java_home.display(),
+            stdout
+        );
     }
 }
 

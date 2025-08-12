@@ -377,8 +377,7 @@ mod tests {
 
         // On Windows without a shell parent, it should error
         #[cfg(windows)]
-        if result.is_err() {
-            let err = result.unwrap_err();
+        if let Err(err) = result {
             assert!(err.to_string().contains("shell"));
         }
 
