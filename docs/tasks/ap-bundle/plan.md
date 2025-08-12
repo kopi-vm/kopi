@@ -4,7 +4,7 @@
 
 This document outlines the implementation plan for handling diverse JDK directory structures on macOS, particularly the application bundle format (`Contents/Home`) used by distributions like Temurin. The implementation is divided into phases that can be completed independently with context resets (`/clear`) between each phase.
 
-**Current Status**: Phases 1-5 and 7-13 completed ✅. Phase 6 (Integration Testing) and Phases 14-15 are pending.
+**Current Status**: Phases 1-5 and 7-14 completed ✅. Phase 6 (Core Functionality Integration) and Phase 15 (Documentation Updates) are pending.
 
 ## Phase 1: Structure Detection Module
 
@@ -498,7 +498,7 @@ cargo llvm-cov --lib --summary-only
 
 ---
 
-## Phase 14: Integration Test Suite
+## Phase 14: Integration Test Suite ✅
 
 **Goal**: Test real JDK distributions end-to-end.
 
@@ -506,17 +506,34 @@ cargo llvm-cov --lib --summary-only
 - Phases 1-12 complete
 
 ### Tasks
-- [ ] Download and test real JDK distributions:
-  - [ ] Temurin 11, 17, 21, 24
-  - [ ] Liberica 8, 17, 21
-  - [ ] Azul Zulu 8, 17, 21
-  - [ ] GraalVM 17, 21
-- [ ] Test installation, execution, and removal
-- [ ] Test version switching scenarios
-- [ ] Cross-platform compatibility tests
+- [x] Download and test real JDK distributions:
+  - [x] Temurin 11, 17, 21, 24
+  - [x] Liberica 8, 17, 21
+  - [x] Azul Zulu 8, 17, 21
+  - [x] GraalVM 17, 21
+- [x] Test installation, execution, and removal
+- [x] Test version switching scenarios
+- [x] Cross-platform compatibility tests
+- [x] Performance testing (shim execution < 50ms)
+
+### Implementation Details
+- Created comprehensive integration test suite in `/tests/jdk_distributions_integration.rs`
+- Tests cover all major JDK distributions with multiple versions
+- Includes tests for:
+  - Installation and verification of each JDK
+  - Execution of Java commands through shims
+  - Version switching between different distributions
+  - Uninstallation of JDKs
+  - Environment variable setup (JAVA_HOME) for different structures
+  - Performance validation of shim execution
+- All tests use isolated test environments via `TestHomeGuard`
+- Tests are marked with `#[cfg_attr(not(feature = "integration_tests"), ignore)]` to run only when explicitly requested
 
 ### Verification
 ```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib --quiet
 cargo test --quiet --features integration_tests
 ```
 
@@ -573,7 +590,7 @@ cat docs/reference.md | head -20
 
 ### Testing and Documentation (Phases 13-15)
 13. **Phase 13**: Test Coverage Analysis ✅
-14. **Phase 14**: Integration Test Suite
+14. **Phase 14**: Integration Test Suite ✅
 15. **Phase 15**: Documentation Updates
 
 ## Dependencies
