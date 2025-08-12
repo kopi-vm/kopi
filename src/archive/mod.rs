@@ -1190,7 +1190,7 @@ mod tests {
         // Set very restrictive permissions
         let metadata = fs::metadata(&jdk_path)?;
         let mut permissions = metadata.permissions();
-        permissions.set_mode(0o400); // Read-only for owner
+        permissions.set_mode(0o500); // Read and execute for owner (minimum for directory traversal)
         fs::set_permissions(&jdk_path, permissions)?;
 
         // Should still be able to detect structure (read-only access)
