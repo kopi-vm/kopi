@@ -228,6 +228,13 @@ mod tests {
 
     fn create_test_config() -> KopiConfig {
         let temp_dir = TempDir::new().unwrap();
+        // Clear environment variables that might interfere with config loading
+        unsafe {
+            std::env::remove_var("KOPI_STORAGE_MIN_DISK_SPACE_MB");
+            std::env::remove_var("KOPI_AUTO_INSTALL_TIMEOUT_SECS");
+            std::env::remove_var("KOPI_AUTO_INSTALL_ENABLED");
+            std::env::remove_var("KOPI_CACHE_TTL_HOURS");
+        }
         let mut config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         config.auto_install.enabled = true;
         config.auto_install.prompt = false;

@@ -1047,6 +1047,256 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "macos")]
+    fn test_macos_case_insensitive_jdk_detection() -> Result<()> {
+        // Test that JDK detection works with various case combinations
+        // as macOS file system is typically case-insensitive
+        let temp_dir = tempdir()?;
+        let _jdk_path = temp_dir.path();
+
+        // Create bundle structure with mixed case
+        let bundle_paths = vec![
+            "Contents/Home/bin",
+            "contents/home/bin", // lowercase
+            "CONTENTS/HOME/BIN", // uppercase
+        ];
+
+        for path in bundle_paths {
+            let test_dir = tempdir()?;
+            let bundle_bin = test_dir.path().join(path);
+            fs::create_dir_all(&bundle_bin)?;
+
+            // Create java binary
+            let java_binary = "java";
+            File::create(bundle_bin.join(java_binary))?;
+
+            // Detection should work regardless of case on macOS
+            let result = detect_jdk_root(test_dir.path());
+            assert!(result.is_ok(), "Failed to detect JDK with path: {path}");
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_broken_symlink_in_hybrid_structure() -> Result<()> {
+        // Test handling of broken symlinks in hybrid structures
+        let temp_dir = tempdir()?;
+        let hybrid_path = temp_dir.path();
+
+        // Create broken symlink (pointing to non-existent target)
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            let non_existent_target = hybrid_path.join("non_existent/bin");
+            symlink(&non_existent_target, hybrid_path.join("bin"))?;
+
+            // Should not panic, but should not be detected as hybrid
+            assert!(!is_hybrid_structure(hybrid_path));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_circular_symlink_detection() -> Result<()> {
+        // Test handling of circular symlinks
+        let temp_dir = tempdir()?;
+        let base_path = temp_dir.path();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            // Create circular symlink: a -> b -> a
+            symlink(base_path.join("b"), base_path.join("a"))?;
+            symlink(base_path.join("a"), base_path.join("b"))?;
+
+            // Should handle circular symlinks gracefully
+            let result = std::panic::catch_unwind(|| is_hybrid_structure(base_path));
+            assert!(result.is_ok(), "Circular symlink caused panic");
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_nested_bundle_with_spaces_in_path() -> Result<()> {
+        // Test handling of paths with spaces, common on macOS
+        let temp_dir = tempdir()?;
+        let jdk_path = temp_dir.path().join("My JDK Installation");
+
+        // Create standard bundle structure (the structure itself is fixed,
+        // but the installation path can have spaces)
+        let bundle_home = jdk_path.join("Contents/Home");
+        let bundle_bin = bundle_home.join("bin");
+        fs::create_dir_all(&bundle_bin)?;
+
+        // Create java binary
+        File::create(bundle_bin.join("java"))?;
+
+        // Should handle installation paths with spaces
+        let result = detect_jdk_root(&jdk_path);
+        assert!(result.is_ok(), "Failed to handle path with spaces");
+
+        let info = result.unwrap();
+        assert_eq!(info.structure_type, JdkStructureType::Bundle);
+        assert_eq!(info.java_home_suffix, "Contents/Home");
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_windows_path_edge_cases() -> Result<()> {
+        // Test Windows-specific path handling edge cases
+        let temp_dir = tempdir()?;
+
+        // Test with Windows-style paths
+        let jdk_path = temp_dir.path().join("C:\\Program Files\\Java\\jdk-21");
+        let bin_path = jdk_path.join("bin");
+        fs::create_dir_all(&bin_path)?;
+        File::create(bin_path.join("java.exe"))?;
+
+        let result = detect_jdk_root(&jdk_path);
+        assert!(result.is_ok(), "Failed to handle Windows-style path");
+
+        // Test with UNC paths (network paths)
+        let unc_path = temp_dir.path().join("\\\\server\\share\\jdk");
+        let unc_bin = unc_path.join("bin");
+        fs::create_dir_all(&unc_bin)?;
+        File::create(unc_bin.join("java.exe"))?;
+
+        let result = detect_jdk_root(&unc_path);
+        assert!(result.is_ok(), "Failed to handle UNC path");
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn test_linux_permission_edge_cases() -> Result<()> {
+        use std::os::unix::fs::PermissionsExt;
+
+        // Test handling of directories with restricted permissions
+        let temp_dir = tempdir()?;
+        let jdk_path = temp_dir.path().join("restricted-jdk");
+        let bin_path = jdk_path.join("bin");
+        fs::create_dir_all(&bin_path)?;
+        File::create(bin_path.join("java"))?;
+
+        // Set very restrictive permissions
+        let metadata = fs::metadata(&jdk_path)?;
+        let mut permissions = metadata.permissions();
+        permissions.set_mode(0o400); // Read-only for owner
+        fs::set_permissions(&jdk_path, permissions)?;
+
+        // Should still be able to detect structure (read-only access)
+        let result = detect_jdk_root(&jdk_path);
+
+        // Restore permissions for cleanup
+        let mut permissions = fs::metadata(&jdk_path)?.permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&jdk_path, permissions)?;
+
+        assert!(result.is_ok(), "Failed to handle restricted permissions");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_error_recovery_io_error_during_detection() -> Result<()> {
+        // Test handling of I/O errors during structure detection
+        let temp_dir = tempdir()?;
+        let jdk_path = temp_dir.path().join("restricted-jdk");
+
+        // Create a directory that will cause I/O issues
+        fs::create_dir_all(&jdk_path)?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            // Remove all permissions
+            let metadata = fs::metadata(&jdk_path)?;
+            let mut permissions = metadata.permissions();
+            permissions.set_mode(0o000);
+            fs::set_permissions(&jdk_path, permissions)?;
+
+            // Detection should handle permission errors gracefully
+            let result = detect_jdk_root(&jdk_path);
+            assert!(result.is_err());
+
+            // Restore permissions for cleanup
+            let mut permissions = fs::metadata(&jdk_path)?.permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(&jdk_path, permissions)?;
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_error_recovery_missing_java_binary() -> Result<()> {
+        // Test detection when java binary is missing
+        let temp_dir = tempdir()?;
+        let jdk_path = temp_dir.path();
+
+        // Create structure without java binary
+        let bin_path = jdk_path.join("bin");
+        fs::create_dir_all(&bin_path)?;
+
+        // Should fail validation due to missing java binary
+        let result = validate_jdk_root(jdk_path);
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+
+        // Detection should also handle this gracefully
+        let detect_result = detect_jdk_root(jdk_path);
+        assert!(detect_result.is_err());
+        assert!(
+            detect_result
+                .unwrap_err()
+                .to_string()
+                .contains("No valid JDK structure found")
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_error_recovery_malformed_archive_entry() -> Result<()> {
+        // Test handling of malformed paths in archive entries
+        let malformed_paths = vec![
+            "../../../etc/passwd",           // Path traversal attempt
+            "/etc/passwd",                   // Absolute path
+            "C:\\Windows\\System32\\config", // Windows absolute path
+            "jdk//bin//java",                // Double slashes
+            "jdk/./bin/../lib",              // Relative components
+        ];
+
+        for path in malformed_paths {
+            let result = validate_entry_path(Path::new(path));
+            // Path traversal and absolute paths should be rejected
+            if path.starts_with("..") || path.starts_with("/") {
+                assert!(result.is_err(), "Path '{path}' should be rejected");
+            }
+            // Windows absolute paths might only be rejected on Windows
+            #[cfg(windows)]
+            if path.contains(":\\") {
+                assert!(
+                    result.is_err(),
+                    "Windows path '{}' should be rejected",
+                    path
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn test_jdk_structure_type_equality() {
         assert_eq!(JdkStructureType::Direct, JdkStructureType::Direct);
         assert_eq!(JdkStructureType::Bundle, JdkStructureType::Bundle);

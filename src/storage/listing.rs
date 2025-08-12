@@ -366,6 +366,8 @@ impl JdkLister {
 mod tests {
     use super::*;
     use crate::models::api::{Links, Package};
+    use crate::storage::{InstallationMetadata, JdkMetadataWithInstallation};
+    use crate::version::Version;
     use std::time::Instant;
     use tempfile::TempDir;
 
@@ -1353,5 +1355,254 @@ mod tests {
             elapsed_ms < 10,
             "Accessing 100 JDKs took too long: {elapsed_ms} ms (expected < 10 ms)"
         );
+    }
+
+    // This test is commented out because it causes a compilation error
+    // that demonstrates the thread-safety issue.
+    /*
+    #[test]
+    #[should_panic(expected = "cannot be shared between threads safely")]
+    #[ignore = "This test reveals a thread-safety issue with RefCell - metadata_cache should use RwLock instead"]
+    fn test_concurrent_metadata_access_reveals_race_condition() {
+        use std::sync::Arc;
+        use std::thread;
+
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        // Create JDK directory structure with bundle format
+        let jdk_path = jdks_dir.join("temurin-21.0.0");
+        fs::create_dir_all(&jdk_path).unwrap();
+        let bundle_home = jdk_path.join("Contents/Home");
+        let bundle_bin = bundle_home.join("bin");
+        fs::create_dir_all(&bundle_bin).unwrap();
+
+        // Create java binary
+        let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
+        fs::write(bundle_bin.join(java_binary), "#!/bin/sh\necho 'test java'").unwrap();
+
+        // Create metadata file
+        let metadata = JdkMetadataWithInstallation {
+            package: Package {
+                id: "test-id".to_string(),
+                archive_type: "tar.gz".to_string(),
+                distribution: "temurin".to_string(),
+                major_version: 21,
+                java_version: "21".to_string(),
+                distribution_version: "21.0.0".to_string(),
+                jdk_version: 21,
+                directly_downloadable: true,
+                filename: "test.tar.gz".to_string(),
+                links: Links {
+                    pkg_download_redirect: "".to_string(),
+                    pkg_info_uri: None,
+                },
+                free_use_in_production: true,
+                tck_tested: "yes".to_string(),
+                size: 100000000,
+                operating_system: "mac".to_string(),
+                lib_c_type: None,
+                architecture: Some("aarch64".to_string()),
+                package_type: "jdk".to_string(),
+                javafx_bundled: false,
+                term_of_support: Some("sts".to_string()),
+                release_status: None,
+                latest_build_available: Some(true),
+            },
+            installation_metadata: InstallationMetadata {
+                java_home_suffix: "Contents/Home".to_string(),
+                structure_type: "bundle".to_string(),
+                platform: "macos".to_string(),
+                metadata_version: 1,
+            },
+        };
+
+        let metadata_file = jdks_dir.join("temurin-21.0.0.meta.json");
+        fs::write(&metadata_file, serde_json::to_string(&metadata).unwrap()).unwrap();
+
+        // Create shared InstalledJdk instance
+        let version = Version::new(21, 0, 0);
+        let jdk = Arc::new(InstalledJdk::new(
+            "temurin".to_string(),
+            version,
+            jdk_path,
+        ));
+
+        // Spawn multiple threads accessing metadata concurrently
+        let mut handles = vec![];
+        for _ in 0..10 {
+            let jdk_clone = Arc::clone(&jdk);
+            let handle = thread::spawn(move || {
+                // Each thread tries to resolve paths multiple times
+                for _ in 0..100 {
+                    let java_home = jdk_clone.resolve_java_home();
+                    assert!(java_home.to_string_lossy().contains("Contents/Home"));
+
+                    let bin_path = jdk_clone.resolve_bin_path();
+                    assert!(bin_path.is_ok());
+                    assert!(bin_path.unwrap().to_string_lossy().contains("Contents/Home/bin"));
+                }
+            });
+            handles.push(handle);
+        }
+
+        // Wait for all threads to complete
+        for handle in handles {
+            handle.join().unwrap();
+        }
+
+        // FINDING: This test reveals a thread-safety issue in InstalledJdk.
+        // The metadata_cache field uses RefCell which is not Sync, preventing
+        // safe concurrent access. The implementation should use RwLock or OnceCell
+        // for thread-safe lazy initialization of metadata.
+        //
+        // The compile error proves that Arc<InstalledJdk> cannot be safely shared
+        // between threads due to RefCell not implementing Sync.
+    }
+    */
+
+    #[test]
+    fn test_error_recovery_missing_bin_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        // Create JDK without bin directory
+        let jdk_path = jdks_dir.join("temurin-21.0.0");
+        fs::create_dir_all(&jdk_path).unwrap();
+
+        // Create metadata indicating bundle structure
+        let metadata = JdkMetadataWithInstallation {
+            package: create_test_package("temurin", "21.0.0"),
+            installation_metadata: InstallationMetadata {
+                java_home_suffix: "Contents/Home".to_string(),
+                structure_type: "bundle".to_string(),
+                platform: "macos".to_string(),
+                metadata_version: 1,
+            },
+        };
+
+        let metadata_file = jdks_dir.join("temurin-21.0.0.meta.json");
+        fs::write(&metadata_file, serde_json::to_string(&metadata).unwrap()).unwrap();
+
+        let jdk = InstalledJdk::new("temurin".to_string(), Version::new(21, 0, 0), jdk_path);
+
+        // Should return error when bin directory is missing
+        let bin_path_result = jdk.resolve_bin_path();
+        assert!(bin_path_result.is_err());
+        assert!(
+            bin_path_result
+                .unwrap_err()
+                .to_string()
+                .contains("bin directory not found")
+        );
+    }
+
+    #[test]
+    fn test_error_recovery_invalid_json_metadata() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        // Create JDK with proper structure
+        let jdk_path = jdks_dir.join("temurin-21.0.0");
+        let bundle_home = jdk_path.join("Contents/Home");
+        let bundle_bin = bundle_home.join("bin");
+        fs::create_dir_all(&bundle_bin).unwrap();
+
+        // Create java binary
+        let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
+        fs::write(bundle_bin.join(java_binary), "#!/bin/sh\necho 'test java'").unwrap();
+
+        // Write invalid JSON to metadata file
+        let metadata_file = jdks_dir.join("temurin-21.0.0.meta.json");
+        fs::write(&metadata_file, "{ invalid json content }").unwrap();
+
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 0),
+            jdk_path.clone(),
+        );
+
+        // Should fall back to runtime detection when metadata is invalid
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, jdk_path.join("Contents/Home"));
+
+        // Bin path should still work via fallback
+        let bin_path = jdk.resolve_bin_path();
+        assert!(bin_path.is_ok());
+        assert_eq!(bin_path.unwrap(), jdk_path.join("Contents/Home/bin"));
+    }
+
+    #[test]
+    fn test_error_recovery_partially_missing_metadata() {
+        let temp_dir = TempDir::new().unwrap();
+        let jdks_dir = temp_dir.path().join("jdks");
+        fs::create_dir_all(&jdks_dir).unwrap();
+
+        // Create JDK with direct structure
+        let jdk_path = jdks_dir.join("liberica-17.0.9");
+        let bin_path = jdk_path.join("bin");
+        fs::create_dir_all(&bin_path).unwrap();
+
+        let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
+        fs::write(bin_path.join(java_binary), "#!/bin/sh\necho 'test java'").unwrap();
+
+        // Create metadata with missing installation_metadata field
+        let incomplete_metadata = r#"{
+            "id": "test-id",
+            "distribution": "liberica",
+            "version": "17.0.9",
+            "java_version": "17",
+            "major_version": 17
+        }"#;
+
+        let metadata_file = jdks_dir.join("liberica-17.0.9.meta.json");
+        fs::write(&metadata_file, incomplete_metadata).unwrap();
+
+        let jdk = InstalledJdk::new(
+            "liberica".to_string(),
+            Version::new(17, 0, 9),
+            jdk_path.clone(),
+        );
+
+        // Should fall back to runtime detection
+        let java_home = jdk.resolve_java_home();
+        assert_eq!(java_home, jdk_path);
+
+        let bin_path = jdk.resolve_bin_path();
+        assert!(bin_path.is_ok());
+        assert_eq!(bin_path.unwrap(), jdk_path.join("bin"));
+    }
+
+    // Helper function to create a test Package
+    fn create_test_package(distribution: &str, version: &str) -> Package {
+        Package {
+            id: "test-id".to_string(),
+            archive_type: "tar.gz".to_string(),
+            distribution: distribution.to_string(),
+            major_version: 21,
+            java_version: version.to_string(),
+            distribution_version: version.to_string(),
+            jdk_version: 21,
+            directly_downloadable: true,
+            filename: "test.tar.gz".to_string(),
+            links: Links {
+                pkg_download_redirect: "".to_string(),
+                pkg_info_uri: None,
+            },
+            free_use_in_production: true,
+            tck_tested: "yes".to_string(),
+            size: 100000000,
+            operating_system: "mac".to_string(),
+            lib_c_type: None,
+            architecture: Some("aarch64".to_string()),
+            package_type: "jdk".to_string(),
+            javafx_bundled: false,
+            term_of_support: Some("sts".to_string()),
+            release_status: None,
+            latest_build_available: Some(true),
+        }
     }
 }

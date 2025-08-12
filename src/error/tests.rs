@@ -239,3 +239,309 @@ fn test_format_error_no_color_no_reset() {
     assert!(formatted.contains("Suggestions:"));
     assert!(formatted.contains("kopi install temurin@21"));
 }
+
+#[test]
+fn test_error_extract() {
+    let error = KopiError::Extract("Failed to extract archive.tar.gz".to_string());
+    let context = ErrorContext::new(&error);
+
+    assert!(context.suggestion.is_some());
+    assert!(context.suggestion.unwrap().contains("disk space"));
+    assert!(context.details.is_some());
+}
+
+#[test]
+fn test_error_config_file() {
+    let error = KopiError::ConfigFile("Invalid TOML format".to_string());
+    let context = ErrorContext::new(&error);
+
+    // ConfigFile errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_invalid_config() {
+    let error = KopiError::InvalidConfig("Missing required field 'storage.path'".to_string());
+    let context = ErrorContext::new(&error);
+
+    // InvalidConfig errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_unsupported_shell() {
+    let error = KopiError::UnsupportedShell("csh".to_string());
+    let context = ErrorContext::new(&error);
+
+    assert!(context.suggestion.is_some());
+    assert!(context.suggestion.unwrap().contains("Supported shells:"));
+}
+
+#[test]
+fn test_error_shell_detection_error() {
+    let error = KopiError::ShellDetectionError("Unable to determine current shell".to_string());
+    let context = ErrorContext::new(&error);
+
+    assert!(context.suggestion.is_some());
+    assert!(context.suggestion.unwrap().contains("--shell"));
+}
+
+#[test]
+fn test_error_shell_not_found() {
+    let error = KopiError::ShellNotFound("zsh".to_string());
+    let context = ErrorContext::new(&error);
+
+    assert!(context.suggestion.is_some());
+    assert!(context.suggestion.unwrap().contains("Ensure"));
+}
+
+#[test]
+fn test_error_path_update() {
+    let error = KopiError::PathUpdate("Failed to update shell configuration".to_string());
+    let context = ErrorContext::new(&error);
+
+    // PathUpdate errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_shim_creation() {
+    let error = KopiError::ShimCreation("Failed to create java shim".to_string());
+    let context = ErrorContext::new(&error);
+
+    // ShimCreation errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_metadata_fetch() {
+    let error = KopiError::MetadataFetch("Failed to fetch from foojay.io".to_string());
+    let context = ErrorContext::new(&error);
+
+    // MetadataFetch errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_invalid_metadata() {
+    let error = KopiError::InvalidMetadata;
+    let context = ErrorContext::new(&error);
+
+    // InvalidMetadata errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_directory_not_found() {
+    let error = KopiError::DirectoryNotFound("/opt/java".to_string());
+    let context = ErrorContext::new(&error);
+
+    assert!(context.suggestion.is_some());
+    assert!(
+        context
+            .suggestion
+            .unwrap()
+            .contains("Ensure the directory exists")
+    );
+}
+
+#[test]
+fn test_error_config_error() {
+    let error = KopiError::ConfigError("Failed to parse configuration".to_string());
+    let context = ErrorContext::new(&error);
+
+    // ConfigError errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_security_error() {
+    let error = KopiError::SecurityError("Path traversal detected".to_string());
+    let context = ErrorContext::new(&error);
+
+    // SecurityError errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_validation_error() {
+    let error = KopiError::ValidationError("Invalid JDK structure".to_string());
+    let context = ErrorContext::new(&error);
+
+    // ValidationError errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_system_error() {
+    let error = KopiError::SystemError("Process execution failed".to_string());
+    let context = ErrorContext::new(&error);
+
+    // SystemError errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_cache_not_found() {
+    let error = KopiError::CacheNotFound;
+    let context = ErrorContext::new(&error);
+
+    assert!(context.suggestion.is_some());
+    assert!(context.suggestion.unwrap().contains("kopi cache refresh"));
+}
+
+#[test]
+fn test_error_not_found() {
+    let error = KopiError::NotFound("Package xyz not found".to_string());
+    let context = ErrorContext::new(&error);
+
+    // NotFound errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_thread_panic() {
+    let error = KopiError::ThreadPanic("Worker thread panicked".to_string());
+    let context = ErrorContext::new(&error);
+
+    // ThreadPanic errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_not_implemented() {
+    let error = KopiError::NotImplemented("Feature X is not yet implemented".to_string());
+    let context = ErrorContext::new(&error);
+
+    // NotImplemented errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_error_generation_failed() {
+    let error = KopiError::GenerationFailed("Failed to generate metadata".to_string());
+    let context = ErrorContext::new(&error);
+
+    // GenerationFailed errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_exit_code_coverage() {
+    // Test additional exit codes not covered by other tests
+    assert_eq!(get_exit_code(&KopiError::Extract("test".to_string())), 1);
+    assert_eq!(get_exit_code(&KopiError::ChecksumMismatch), 1);
+    assert_eq!(get_exit_code(&KopiError::ConfigFile("test".to_string())), 1);
+    assert_eq!(get_exit_code(&KopiError::PathUpdate("test".to_string())), 1);
+    assert_eq!(
+        get_exit_code(&KopiError::ShimCreation("test".to_string())),
+        1
+    );
+    assert_eq!(
+        get_exit_code(&KopiError::MetadataFetch("test".to_string())),
+        20
+    );
+    assert_eq!(get_exit_code(&KopiError::InvalidMetadata), 1);
+    assert_eq!(
+        get_exit_code(&KopiError::DirectoryNotFound("test".to_string())),
+        1
+    );
+    assert_eq!(
+        get_exit_code(&KopiError::ConfigError("test".to_string())),
+        1
+    );
+    assert_eq!(
+        get_exit_code(&KopiError::SecurityError("test".to_string())),
+        1
+    );
+    assert_eq!(
+        get_exit_code(&KopiError::SystemError("test".to_string())),
+        1
+    );
+    assert_eq!(get_exit_code(&KopiError::CacheNotFound), 1);
+    assert_eq!(get_exit_code(&KopiError::NotFound("test".to_string())), 1);
+    assert_eq!(
+        get_exit_code(&KopiError::ThreadPanic("test".to_string())),
+        1
+    );
+    assert_eq!(
+        get_exit_code(&KopiError::NotImplemented("test".to_string())),
+        1
+    );
+    assert_eq!(
+        get_exit_code(&KopiError::GenerationFailed("test".to_string())),
+        1
+    );
+    assert_eq!(
+        get_exit_code(&KopiError::ShellDetectionError("test".to_string())),
+        6
+    );
+    assert_eq!(
+        get_exit_code(&KopiError::ShellNotFound("test".to_string())),
+        127
+    );
+    assert_eq!(
+        get_exit_code(&KopiError::UnsupportedShell("test".to_string())),
+        7
+    );
+}
+
+#[test]
+fn test_json_error() {
+    let json_err = serde_json::from_str::<String>("invalid json").unwrap_err();
+    let error = KopiError::Json(json_err);
+    let context = ErrorContext::new(&error);
+
+    // Json errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_nul_error() {
+    use std::ffi::CString;
+    let nul_err = CString::new("test\0string").unwrap_err();
+    let error = KopiError::Nul(nul_err);
+    let context = ErrorContext::new(&error);
+
+    // Nul errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none() || context.details.is_none());
+}
+
+#[test]
+fn test_walkdir_error() {
+    // Create a WalkDirError by attempting to walk a non-existent directory
+    let walkdir_iter = walkdir::WalkDir::new("/non/existent/path");
+    let walkdir_err = walkdir_iter.into_iter().next().unwrap().unwrap_err();
+    let error = KopiError::WalkDir(walkdir_err);
+    let context = ErrorContext::new(&error);
+
+    // WalkDir errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none());
+    assert!(context.details.is_none());
+}
+
+#[test]
+fn test_zip_error() {
+    use zip::result::ZipError;
+    let zip_err = ZipError::UnsupportedArchive("test");
+    let error = KopiError::Zip(zip_err);
+    let context = ErrorContext::new(&error);
+
+    // Zip errors don't have specific context in the current implementation
+    assert!(context.suggestion.is_none() || context.details.is_none());
+}

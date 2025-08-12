@@ -533,6 +533,11 @@ mod tests {
         // First create a valid config
         unsafe {
             env::set_var("KOPI_HOME", temp_dir.path());
+            // Clear any problematic environment variables
+            env::remove_var("KOPI_STORAGE_MIN_DISK_SPACE_MB");
+            env::remove_var("KOPI_AUTO_INSTALL_TIMEOUT_SECS");
+            env::remove_var("KOPI_AUTO_INSTALL_ENABLED");
+            env::remove_var("KOPI_CACHE_TTL_HOURS");
         }
         let config = crate::config::new_kopi_config().unwrap();
         let config_path = config.config_path();

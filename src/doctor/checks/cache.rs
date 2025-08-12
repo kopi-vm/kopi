@@ -454,6 +454,14 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_test_config(temp_dir: &Path) -> KopiConfig {
+        // Clear environment variables that might interfere with config loading
+        unsafe {
+            std::env::remove_var("KOPI_STORAGE_MIN_DISK_SPACE_MB");
+            std::env::remove_var("KOPI_AUTO_INSTALL_TIMEOUT_SECS");
+            std::env::remove_var("KOPI_AUTO_INSTALL_ENABLED");
+            std::env::remove_var("KOPI_CACHE_TTL_HOURS");
+        }
+
         KopiConfig::new(temp_dir.to_path_buf()).unwrap()
     }
 
