@@ -8,7 +8,7 @@ description: Kopi is a JDK version management tool
 homepage: https://kopi-vm.github.io/
 license: Apache-2.0
 contents:
-  - src: target/${CARGO_BUILD_TARGET}/release/Kopi
+  - src: target/${CARGO_BUILD_TARGET}/release/kopi
     dst: /usr/bin/kopi
     expand: true
     file_info:
