@@ -84,6 +84,7 @@ jobs:
     - name: Bundle
       run: |
         export VERSION=${{ github.event.inputs.version }}
+        export CARGO_BUILD_TARGET=${{ matrix.target }}
         export ARCH=${{ matrix.arch }}
 
         nfpm pkg --packager deb -f pkg/nfpm/nfpm.yml -t archive/pkg/
