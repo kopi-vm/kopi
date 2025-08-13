@@ -2,7 +2,7 @@
 name = "kopi"
 version = "0.0.8"
 edition = "2024"
-authors = ["taichi"]
+authors = ["satotaichi"]
 license = "Apache-2.0"
 repository = "https://github.com/kopi-vm/kopi"
 description = "Kopi is a JDK version management tool"
@@ -116,3 +116,9 @@ unused_variables = "deny"
 uninlined_format_args = "deny"
 needless_borrow = "deny"
 bool_assert_comparison = "deny"
+
+[package.metadata.nfpm]
+epoch = "2"
+contents = [
+    { src = "target/${CARGO_BUILD_TARGET}/release-shim/kopi-shim", dst = "/usr/bin/kopi-shim", mode = "755", expand = true },
+]
