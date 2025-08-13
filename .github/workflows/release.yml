@@ -31,11 +31,14 @@ jobs:
     strategy:
         matrix:
           include:
-            - target: x86_64-unknown-linux-gnu
+            - os: ubuntu-24.04
+              target: x86_64-unknown-linux-gnu
               arch: amd64
-            - target: aarch64-unknown-linux-gnu
+            - os: ubuntu-24.04-arm
+              target: aarch64-unknown-linux-gnu
               arch: arm64
-    runs-on: ubuntu-24.04
+              
+    runs-on: ${{ matrix.os }}
     needs: [ validate ]
     
     steps:
@@ -78,7 +81,7 @@ jobs:
       run: |
         export VERSION=${{ github.event.inputs.version }}
         export ARCH=${{ matrix.arch }}
-        
+
         nfpm pkg --packager deb -f pkg/nfpm/nfpm.yml -t archive/pkg/
 
     - name: Upload Artifact
