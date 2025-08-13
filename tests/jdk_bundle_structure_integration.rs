@@ -280,14 +280,12 @@ fn test_env_command_with_different_structures() {
         // The format varies by shell
         assert!(
             stdout.contains("JAVA_HOME"),
-            "Output should contain JAVA_HOME: {}",
-            stdout
+            "Output should contain JAVA_HOME: {stdout}"
         );
         assert!(
             stdout.contains(&expected_java_home.to_string_lossy().to_string()),
-            "Output should contain temurin path {}: {}",
-            expected_java_home.display(),
-            stdout
+            "Output should contain temurin path {}: {stdout}",
+            expected_java_home.display()
         );
     }
 }
