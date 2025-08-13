@@ -28,6 +28,13 @@ jobs:
           echo "✅ Version format is valid."
 
   package-linux:
+    strategy:
+        matrix:
+          include:
+            - target: x86_64-unknown-linux-gnu
+              arch: amd64
+            - target: aarch64-unknown-linux-gnu
+              arch: arm64
     runs-on: ubuntu-24.04
     needs: [ validate ]
     
@@ -40,24 +47,39 @@ jobs:
     - name: Install Tools
       uses: taiki-e/install-action@v2
       with:
-        tool: cargo-auditable,cargo-audit,cargo-edit
+        tool: cargo-auditable,cargo-audit,cargo-edit,cross
 
     - name: Set version
       run: cargo set-version ${{ github.event.inputs.version }}
 
     - name: Build
       run: |
-        cargo auditable build --release
-        cargo auditable build --profile release-shim --bin kopi-shim
+        cross auditable build --release --target ${{ matrix.target }}
+        cross auditable build --profile release-shim --bin kopi-shim --target ${{ matrix.target }}
 
     - name: Targz
       run: |
         mkdir -p archive/pkg
-        cp ./target/release/kopi target/
-        cp ./target/release-shim/kopi-shim target/
         os_lower=$(echo "${{ runner.os }}" | tr '[:upper:]' '[:lower:]')
-        cd target/
-        tar -zcvf ../archive/pkg/kopi-${{ github.event.inputs.version }}-${os_lower}-x64.tar.gz ./kopi ./kopi-shim
+
+        cd target/${{ matrix.target }}/
+        cp ./release/kopi .
+        cp ./release-shim/kopi-shim .
+        
+        tar -zcvf ../../archive/pkg/kopi-${{ github.event.inputs.version }}-${os_lower}-${{ matrix.arch }}.tar.gz ./kopi ./kopi-shim
+
+    - name: Install nFPM
+      run: |
+        echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+        sudo apt update
+        sudo apt install nfpm
+
+    - name: Bundle
+      run: |
+        export VERSION=${{ github.event.inputs.version }}
+        export ARCH=${{ matrix.arch }}
+        
+        nfpm pkg --packager deb -f pkg/nfpm/nfpm.yml -t archive/pkg/
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
