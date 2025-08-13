@@ -449,19 +449,27 @@ pub fn detect_jdk_root(extracted_dir: &Path) -> Result<JdkStructureInfo> {
         log::debug!("Found bin/ at root - checking if valid JDK");
         if validate_jdk_root(extracted_dir)? {
             // Check if this is a hybrid structure (symlinks pointing to bundle)
-            let structure_type = if is_hybrid_structure(extracted_dir) {
+            if is_hybrid_structure(extracted_dir) {
                 log::info!("Detected hybrid JDK structure (symlinks to bundle)");
-                JdkStructureType::Hybrid
+
+                // For hybrid structures, we need to determine the java_home_suffix
+                // by following the symlinks to find the actual bundle location
+                let java_home_suffix = detect_hybrid_suffix(extracted_dir)?;
+                log::debug!("Hybrid structure java_home_suffix: {java_home_suffix}");
+
+                return Ok(JdkStructureInfo {
+                    jdk_root: extracted_dir.to_path_buf(),
+                    structure_type: JdkStructureType::Hybrid,
+                    java_home_suffix,
+                });
             } else {
                 log::info!("Detected direct JDK structure");
-                JdkStructureType::Direct
-            };
-
-            return Ok(JdkStructureInfo {
-                jdk_root: extracted_dir.to_path_buf(),
-                structure_type,
-                java_home_suffix: String::new(),
-            });
+                return Ok(JdkStructureInfo {
+                    jdk_root: extracted_dir.to_path_buf(),
+                    structure_type: JdkStructureType::Direct,
+                    java_home_suffix: String::new(),
+                });
+            }
         }
     }
 
@@ -590,6 +598,41 @@ fn is_hybrid_structure(path: &Path) -> bool {
 #[cfg(not(target_os = "macos"))]
 fn is_hybrid_structure(_path: &Path) -> bool {
     false
+}
+
+/// Detect the java_home_suffix for hybrid structures by following symlinks
+#[cfg(target_os = "macos")]
+fn detect_hybrid_suffix(path: &Path) -> Result<String> {
+    // Follow the bin symlink to find the actual bundle location
+    let bin_path = path.join("bin");
+
+    if let Ok(target) = fs::read_link(&bin_path) {
+        // The target should be something like "zulu-21.jdk/Contents/Home/bin"
+        // We need to extract the path up to Contents/Home
+        let target_str = target.to_string_lossy();
+
+        // Find the position of Contents/Home in the path
+        if let Some(pos) = target_str.find("Contents/Home") {
+            // Include Contents/Home in the suffix
+            let suffix = &target_str[..pos + "Contents/Home".len()];
+
+            // Remove any leading "./" if present
+            let suffix = suffix.strip_prefix("./").unwrap_or(suffix);
+
+            return Ok(suffix.to_string());
+        }
+    }
+
+    // If we can't determine the suffix from symlinks, log a warning
+    // and return the default for hybrid structures
+    log::warn!("Could not determine java_home_suffix from symlinks, using default");
+    Ok("Contents/Home".to_string())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn detect_hybrid_suffix(_path: &Path) -> Result<String> {
+    // Non-macOS platforms don't have hybrid structures
+    Ok(String::new())
 }
 
 #[cfg(test)]
@@ -899,13 +942,13 @@ mod tests {
         // Create java binary in the bundle
         File::create(contents_home.join("bin").join("java"))?;
 
-        // Create symlinks at root pointing to bundle
+        // Create symlinks at root pointing to bundle (using relative paths like Zulu does)
         #[cfg(unix)]
         {
             use std::os::unix::fs::symlink;
-            symlink(contents_home.join("bin"), hybrid_path.join("bin"))?;
-            symlink(contents_home.join("lib"), hybrid_path.join("lib"))?;
-            symlink(contents_home.join("conf"), hybrid_path.join("conf"))?;
+            symlink("zulu-24.jdk/Contents/Home/bin", hybrid_path.join("bin"))?;
+            symlink("zulu-24.jdk/Contents/Home/lib", hybrid_path.join("lib"))?;
+            symlink("zulu-24.jdk/Contents/Home/conf", hybrid_path.join("conf"))?;
         }
 
         // On non-Unix systems, create regular directories as fallback
@@ -920,12 +963,17 @@ mod tests {
         assert_eq!(result.jdk_root, hybrid_path);
 
         #[cfg(unix)]
-        assert_eq!(result.structure_type, JdkStructureType::Hybrid);
+        {
+            assert_eq!(result.structure_type, JdkStructureType::Hybrid);
+            // The java_home_suffix should now contain the path to the bundle
+            assert_eq!(result.java_home_suffix, "zulu-24.jdk/Contents/Home");
+        }
 
         #[cfg(not(unix))]
-        assert_eq!(result.structure_type, JdkStructureType::Direct);
-
-        assert_eq!(result.java_home_suffix, "");
+        {
+            assert_eq!(result.structure_type, JdkStructureType::Direct);
+            assert_eq!(result.java_home_suffix, "");
+        }
 
         Ok(())
     }
@@ -1034,6 +1082,76 @@ mod tests {
         let direct_dir = tempdir()?;
         fs::create_dir_all(direct_dir.path().join("bin"))?;
         assert!(!is_hybrid_structure(direct_dir.path()));
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_detect_hybrid_suffix() -> Result<()> {
+        // Test with Zulu-style hybrid structure
+        let temp_dir = tempdir()?;
+        let hybrid_path = temp_dir.path();
+
+        // Create bundle structure like Zulu
+        let bundle_bin = hybrid_path.join("zulu-21.jdk/Contents/Home/bin");
+        fs::create_dir_all(&bundle_bin)?;
+
+        // Create symlink
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink("zulu-21.jdk/Contents/Home/bin", hybrid_path.join("bin"))?;
+
+            let suffix = detect_hybrid_suffix(hybrid_path)?;
+            assert_eq!(suffix, "zulu-21.jdk/Contents/Home");
+        }
+
+        // Test with absolute path symlink
+        let temp_dir2 = tempdir()?;
+        let hybrid_path2 = temp_dir2.path();
+        let bundle_bin2 = hybrid_path2.join("temurin-17.jdk/Contents/Home/bin");
+        fs::create_dir_all(&bundle_bin2)?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&bundle_bin2, hybrid_path2.join("bin"))?;
+
+            let suffix = detect_hybrid_suffix(hybrid_path2)?;
+            // Should extract the relative part
+            assert!(suffix.ends_with("Contents/Home"));
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_detect_jdk_root_with_hybrid_structure() -> Result<()> {
+        // Test full JDK detection with Zulu-style hybrid structure
+        let temp_dir = tempdir()?;
+        let extracted_dir = temp_dir.path();
+
+        // Create Zulu-style structure with nested bundle
+        let bundle_home = extracted_dir.join("zulu-21.jdk/Contents/Home");
+        let bundle_bin = bundle_home.join("bin");
+        fs::create_dir_all(&bundle_bin)?;
+        fs::write(bundle_bin.join("java"), "mock java")?;
+
+        // Create symlinks at root
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink("zulu-21.jdk/Contents/Home/bin", extracted_dir.join("bin"))?;
+            symlink("zulu-21.jdk/Contents/Home/lib", extracted_dir.join("lib"))?;
+            symlink("zulu-21.jdk/Contents/Home/conf", extracted_dir.join("conf"))?;
+        }
+
+        let structure_info = detect_jdk_root(extracted_dir)?;
+        assert_eq!(structure_info.structure_type, JdkStructureType::Hybrid);
+        assert_eq!(structure_info.java_home_suffix, "zulu-21.jdk/Contents/Home");
+        assert_eq!(structure_info.jdk_root, extracted_dir.to_path_buf());
 
         Ok(())
     }

@@ -267,14 +267,13 @@ impl<'a> InstallCommand<'a> {
         let final_path = self.finalize_with_structure(
             &repository,
             context,
-            structure_info.jdk_root,
+            structure_info.jdk_root.clone(),
             structure_info.structure_type.clone(),
         )?;
         info!("JDK installed to {final_path:?}");
 
         // Create installation metadata based on detected structure
-        let installation_metadata =
-            self.create_installation_metadata(&structure_info.structure_type)?;
+        let installation_metadata = self.create_installation_metadata(&structure_info)?;
 
         // Save metadata JSON file with installation information
         repository.save_jdk_metadata_with_installation(
@@ -555,17 +554,14 @@ impl<'a> InstallCommand<'a> {
 
     fn create_installation_metadata(
         &self,
-        structure_type: &JdkStructureType,
+        structure_info: &crate::archive::JdkStructureInfo,
     ) -> Result<crate::storage::InstallationMetadata> {
         use crate::platform::{get_current_architecture, get_current_os};
 
-        let java_home_suffix = match structure_type {
-            JdkStructureType::Bundle => "Contents/Home".to_string(),
-            JdkStructureType::Direct => String::new(),
-            JdkStructureType::Hybrid => "Contents/Home".to_string(), // Hybrid also uses bundle path
-        };
+        // Use the java_home_suffix from the structure info, which was properly detected
+        let java_home_suffix = structure_info.java_home_suffix.clone();
 
-        let structure_type_str = match structure_type {
+        let structure_type_str = match structure_info.structure_type {
             JdkStructureType::Bundle => "bundle",
             JdkStructureType::Direct => "direct",
             JdkStructureType::Hybrid => "hybrid",
@@ -943,14 +939,19 @@ mod tests {
 
     #[test]
     fn test_create_installation_metadata_direct() {
-        use crate::archive::JdkStructureType;
+        use crate::archive::{JdkStructureInfo, JdkStructureType};
+        use std::path::PathBuf;
 
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
         let cmd = InstallCommand::new(&config).unwrap();
 
-        let metadata = cmd
-            .create_installation_metadata(&JdkStructureType::Direct)
-            .unwrap();
+        let structure_info = JdkStructureInfo {
+            jdk_root: PathBuf::from("/test/jdk"),
+            structure_type: JdkStructureType::Direct,
+            java_home_suffix: String::new(),
+        };
+
+        let metadata = cmd.create_installation_metadata(&structure_info).unwrap();
 
         assert_eq!(metadata.java_home_suffix, "");
         assert_eq!(metadata.structure_type, "direct");
@@ -960,14 +961,19 @@ mod tests {
 
     #[test]
     fn test_create_installation_metadata_bundle() {
-        use crate::archive::JdkStructureType;
+        use crate::archive::{JdkStructureInfo, JdkStructureType};
+        use std::path::PathBuf;
 
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
         let cmd = InstallCommand::new(&config).unwrap();
 
-        let metadata = cmd
-            .create_installation_metadata(&JdkStructureType::Bundle)
-            .unwrap();
+        let structure_info = JdkStructureInfo {
+            jdk_root: PathBuf::from("/test/jdk"),
+            structure_type: JdkStructureType::Bundle,
+            java_home_suffix: "Contents/Home".to_string(),
+        };
+
+        let metadata = cmd.create_installation_metadata(&structure_info).unwrap();
 
         assert_eq!(metadata.java_home_suffix, "Contents/Home");
         assert_eq!(metadata.structure_type, "bundle");
@@ -977,16 +983,21 @@ mod tests {
 
     #[test]
     fn test_create_installation_metadata_hybrid() {
-        use crate::archive::JdkStructureType;
+        use crate::archive::{JdkStructureInfo, JdkStructureType};
+        use std::path::PathBuf;
 
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
         let cmd = InstallCommand::new(&config).unwrap();
 
-        let metadata = cmd
-            .create_installation_metadata(&JdkStructureType::Hybrid)
-            .unwrap();
+        let structure_info = JdkStructureInfo {
+            jdk_root: PathBuf::from("/test/jdk"),
+            structure_type: JdkStructureType::Hybrid,
+            java_home_suffix: "zulu-21.jdk/Contents/Home".to_string(),
+        };
 
-        assert_eq!(metadata.java_home_suffix, "Contents/Home");
+        let metadata = cmd.create_installation_metadata(&structure_info).unwrap();
+
+        assert_eq!(metadata.java_home_suffix, "zulu-21.jdk/Contents/Home");
         assert_eq!(metadata.structure_type, "hybrid");
         assert!(!metadata.platform.is_empty());
         assert_eq!(metadata.metadata_version, 1);

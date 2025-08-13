@@ -65,18 +65,20 @@ fn create_mock_jdk_structure(base_path: &Path, structure_type: &str) -> PathBuf 
         }
         "hybrid" => {
             // Hybrid structure: symlinks at root pointing to bundle
-            let contents_dir = base_path.join("Contents");
+            // Create a Zulu-style nested bundle structure
+            let jdk_dir = base_path.join("zulu-21.jdk");
+            let contents_dir = jdk_dir.join("Contents");
             let home_dir = contents_dir.join("Home");
             let bin_dir = home_dir.join("bin");
             fs::create_dir_all(&bin_dir).unwrap();
             fs::write(bin_dir.join("java"), "#!/bin/sh\necho \"Mock Java\"").unwrap();
             fs::write(bin_dir.join("javac"), "#!/bin/sh\necho \"Mock Javac\"").unwrap();
 
-            // Create symlinks at root
+            // Create symlinks at root using relative paths like Zulu does
             #[cfg(unix)]
             {
                 use std::os::unix::fs::symlink;
-                symlink(&bin_dir, base_path.join("bin")).unwrap();
+                symlink("zulu-21.jdk/Contents/Home/bin", base_path.join("bin")).unwrap();
             }
             #[cfg(windows)]
             {
@@ -118,7 +120,8 @@ fn test_structure_detection_integration() {
         let info = detect_jdk_root(&hybrid_jdk).unwrap();
         // For hybrid structures, the root is where the symlinks are
         assert_eq!(info.jdk_root, hybrid_jdk);
-        assert_eq!(info.java_home_suffix, "");
+        // Hybrid structures now properly detect the java_home_suffix
+        assert_eq!(info.java_home_suffix, "zulu-21.jdk/Contents/Home");
         assert!(matches!(info.structure_type, JdkStructureType::Hybrid));
     }
 }
