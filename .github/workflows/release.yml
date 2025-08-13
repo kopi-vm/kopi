@@ -92,7 +92,7 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: package-${{ runner.os }}
+        name: package-${{ runner.os }}-${{ matrix.arch }}
         path: archive/pkg
         retention-days: 1
 
@@ -231,7 +231,12 @@ jobs:
     - name: Fetch Linux archive
       uses: actions/download-artifact@v4
       with:
-        name: package-Linux
+        name: package-Linux-amd64
+        path: release
+    - name: Fetch Linux archive
+      uses: actions/download-artifact@v4
+      with:
+        name: package-Linux-arm64
         path: release
     - name: Fetch Mac archive
       uses: actions/download-artifact@v4
