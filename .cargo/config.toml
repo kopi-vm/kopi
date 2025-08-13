@@ -6,6 +6,9 @@ RUST_TEST_THREADS = "4"
 # Enable incremental compilation
 incremental = true
 
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+
 [alias]
 it = "test --quiet --features integration_tests"
 shim = "build --bin kopi-shim --profile release-shim"
