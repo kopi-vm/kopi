@@ -1,7 +1,6 @@
 name: kopi
 arch: ${ARCH}
 version: ${VERSION}
-version_metadata: git
 section: default
 maintainer: satotaichi <sato.taichi@dentsusoken.com>
 description: Kopi is a JDK version management tool
