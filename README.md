@@ -46,6 +46,13 @@ Kopi integrates with your shell to intercept Java commands and automatically rou
 
 ### Installation
 
+#### Using Homebrew (macOS)
+
+```bash
+# Install kopi from the official tap
+brew install kopi-vm/tap/kopi
+```
+
 #### Using Scoop (Windows)
 
 ```bash
