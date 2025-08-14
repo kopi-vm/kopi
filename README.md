@@ -53,6 +53,13 @@ Kopi integrates with your shell to intercept Java commands and automatically rou
 brew install kopi-vm/tap/kopi
 ```
 
+#### Using Windows Package Manager (Windows)
+
+```bash
+# Install kopi using winget
+winget install kopi
+```
+
 #### Using Scoop (Windows)
 
 ```bash
