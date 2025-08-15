@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "kopidocs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "sitemcp",
+        "http://127.0.0.1:8000/"
+      ]
+    }
+  }
+}
