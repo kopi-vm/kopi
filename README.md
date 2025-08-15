@@ -53,6 +53,23 @@ Kopi integrates with your shell to intercept Java commands and automatically rou
 brew install kopi-vm/tap/kopi
 ```
 
+#### Using PPA (Ubuntu/Debian)
+
+```bash
+# Import GPG key
+curl -fsSL https://keyserver.ubuntu.com/pks/lookup?op=get\&search=0xD2AC04A5A34E9BE3A8B32784F507C6D3DB058848 | \
+  gpg --dearmor | \
+  sudo tee /usr/share/keyrings/kopi-archive-keyring.gpg > /dev/null
+
+# Add repository
+echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/kopi-archive-keyring.gpg] \
+  https://kopi-vm.github.io/ppa-kopi $(lsb_release -cs) main" | \
+  sudo tee /etc/apt/sources.list.d/kopi.list > /dev/null
+
+# Install kopi
+sudo apt update && sudo apt install kopi
+```
+
 #### Using Windows Package Manager (Windows)
 
 ```bash
