@@ -27,6 +27,9 @@ Key features:
 - Project-specific JDK pinning via `.kopi-version` or `.java-version` files
 - Fast performance using Rust
 
+### User Documentation
+
+The user-facing documentation for Kopi is maintained in a separate repository at `../kopi-vm.github.io/`. This repository uses MkDocs to generate and publish documentation for end users.
 
 ## Development Commands
 
