@@ -165,7 +165,7 @@ Examples:
     },
 
     /// Search available JDK versions (alias for cache search)
-    #[command(visible_alias = "s", hide = true)]
+    #[command(visible_alias = "s", aliases = ["ls-remote", "list-remote"], hide = true)]
     Search {
         /// Version pattern to search (e.g., "21", "corretto", "corretto@17")
         #[arg(value_name = "VERSION")]
