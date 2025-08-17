@@ -770,7 +770,6 @@ fn test_install_verifies_disk_space() {
 /// Test concurrent installation of the same version
 #[test]
 #[serial]
-#[cfg_attr(not(feature = "integration_tests"), ignore)]
 #[ignore] // Will be re-enabled when lock file feature is implemented
 fn test_concurrent_same_version_install() {
     use std::thread;
