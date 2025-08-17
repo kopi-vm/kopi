@@ -311,9 +311,10 @@ impl<'a> DiagnosticCheck for CacheStalenessCheck<'a> {
         match fs::read_to_string(&cache_path) {
             Ok(content) => match serde_json::from_str::<MetadataCache>(&content) {
                 Ok(cache) => {
-                    // Use configured max age from config.cache.max_age_hours
-                    let max_age = Duration::from_secs(self.config.cache.max_age_hours * 60 * 60);
-                    let max_age_days = self.config.cache.max_age_hours / 24;
+                    // Use configured max age from config.metadata.cache.max_age_hours
+                    let max_age =
+                        Duration::from_secs(self.config.metadata.cache.max_age_hours * 60 * 60);
+                    let max_age_days = self.config.metadata.cache.max_age_hours / 24;
 
                     if cache.is_stale(max_age) {
                         let age_days = chrono::Utc::now()

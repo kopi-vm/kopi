@@ -43,13 +43,13 @@ impl<'a> InstallCommand<'a> {
     /// Ensure we have a fresh cache, refreshing if necessary
     fn ensure_fresh_cache(&self, javafx_bundled: bool) -> Result<MetadataCache> {
         let cache_path = self.config.metadata_cache_path()?;
-        let max_age = Duration::from_secs(self.config.cache.max_age_hours * 3600);
+        let max_age = Duration::from_secs(self.config.metadata.cache.max_age_hours * 3600);
 
         // Check if cache needs refresh
         let should_refresh = if cache_path.exists() {
             match cache::load_cache(&cache_path) {
                 Ok(cache) => {
-                    if self.config.cache.auto_refresh {
+                    if self.config.metadata.cache.auto_refresh {
                         cache.is_stale(max_age)
                     } else {
                         false
@@ -66,7 +66,7 @@ impl<'a> InstallCommand<'a> {
         };
 
         // Refresh if needed
-        if should_refresh && self.config.cache.auto_refresh {
+        if should_refresh && self.config.metadata.cache.auto_refresh {
             info!("Refreshing package cache...");
             match cache::fetch_and_cache_metadata(javafx_bundled, self.config) {
                 Ok(cache) => Ok(cache),
@@ -380,7 +380,7 @@ impl<'a> InstallCommand<'a> {
         }
 
         // If not found and refresh_on_miss is enabled, try refreshing cache once
-        if self.config.cache.refresh_on_miss {
+        if self.config.metadata.cache.refresh_on_miss {
             info!("Package not found in cache, refreshing...");
             match cache::fetch_and_cache_metadata(javafx_bundled, self.config) {
                 Ok(new_cache) => {

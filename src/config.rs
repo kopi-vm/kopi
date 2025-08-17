@@ -50,9 +50,6 @@ pub struct KopiConfig {
     pub shims: ShimsConfig,
 
     #[serde(default)]
-    pub cache: CacheConfig,
-
-    #[serde(default)]
     pub metadata: MetadataConfig,
 }
 
@@ -81,6 +78,9 @@ pub struct MetadataCacheConfig {
 
     #[serde(default = "default_true")]
     pub auto_refresh: bool,
+
+    #[serde(default = "default_true")]
+    pub refresh_on_miss: bool,
 }
 
 impl Default for MetadataCacheConfig {
@@ -88,6 +88,7 @@ impl Default for MetadataCacheConfig {
         Self {
             max_age_hours: default_metadata_cache_max_age_hours(),
             auto_refresh: true,
+            refresh_on_miss: true,
         }
     }
 }
@@ -193,28 +194,6 @@ impl Default for ShimsConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CacheConfig {
-    #[serde(default = "default_cache_max_age_hours")]
-    pub max_age_hours: u64,
-
-    #[serde(default = "default_true")]
-    pub auto_refresh: bool,
-
-    #[serde(default = "default_true")]
-    pub refresh_on_miss: bool,
-}
-
-impl Default for CacheConfig {
-    fn default() -> Self {
-        Self {
-            max_age_hours: 720, // 30 days
-            auto_refresh: true,
-            refresh_on_miss: true,
-        }
-    }
-}
-
 // Default value functions
 fn default_true() -> bool {
     true
@@ -238,10 +217,6 @@ fn default_min_disk_space_mb() -> u64 {
 
 fn default_distribution() -> String {
     "temurin".to_string()
-}
-
-fn default_cache_max_age_hours() -> u64 {
-    720 // 30 days
 }
 
 fn default_metadata_sources() -> Vec<SourceConfig> {
@@ -331,9 +306,9 @@ impl KopiConfig {
             .set_default("shims.auto_install", false)?
             .set_default("shims.auto_install_prompt", true)?
             .set_default("shims.install_timeout", 600)?
-            .set_default("cache.max_age_hours", 720)?
-            .set_default("cache.auto_refresh", true)?
-            .set_default("cache.refresh_on_miss", true)?;
+            .set_default("metadata.cache.max_age_hours", 720)?
+            .set_default("metadata.cache.auto_refresh", true)?
+            .set_default("metadata.cache.refresh_on_miss", true)?;
 
         // Add the config file if it exists
         if config_path.exists() {
@@ -737,21 +712,21 @@ min_disk_space_mb = 2048
 
     #[test]
     #[serial]
-    fn test_cache_config_defaults() {
+    fn test_metadata_cache_config_defaults() {
         // Clear any environment variables that might affect the test
         unsafe {
-            env::remove_var("KOPI_CACHE__MAX_AGE_HOURS");
-            env::remove_var("KOPI_CACHE__AUTO_REFRESH");
-            env::remove_var("KOPI_CACHE__REFRESH_ON_MISS");
+            env::remove_var("KOPI_METADATA__CACHE__MAX_AGE_HOURS");
+            env::remove_var("KOPI_METADATA__CACHE__AUTO_REFRESH");
+            env::remove_var("KOPI_METADATA__CACHE__REFRESH_ON_MISS");
         }
 
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
 
-        // Test default cache settings
-        assert_eq!(config.cache.max_age_hours, 720); // 30 days
-        assert!(config.cache.auto_refresh);
-        assert!(config.cache.refresh_on_miss);
+        // Test default metadata cache settings
+        assert_eq!(config.metadata.cache.max_age_hours, 720); // 30 days
+        assert!(config.metadata.cache.auto_refresh);
+        assert!(config.metadata.cache.refresh_on_miss);
     }
 
     #[test]

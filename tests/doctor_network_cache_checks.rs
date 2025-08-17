@@ -269,7 +269,7 @@ fn test_cache_staleness_detection() {
     let mut cache = MetadataCache::new();
     // Set timestamp older than configured max age (default is 720 hours = 30 days)
     // We'll use 35 days to ensure it's considered stale
-    let stale_days = (config.cache.max_age_hours / 24) + 5;
+    let stale_days = (config.metadata.cache.max_age_hours / 24) + 5;
     cache.last_updated = chrono::Utc::now() - chrono::Duration::days(stale_days as i64);
 
     let cache_path = cache_dir.join("metadata.json");
