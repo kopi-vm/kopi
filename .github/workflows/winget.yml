@@ -1,0 +1,14 @@
+name: Publish to WinGet
+on:
+  release:
+    types: [released]
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: vedantmgoyal9/winget-releaser@19e706d4c9121098010096f9c495a70a7518b30f
+        with:
+          identifier: Kopi-vm.Kopi
+          installers-regex: '\.msi$'
+          token: ${{ secrets.WINGET_TOKEN }}
