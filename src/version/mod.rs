@@ -372,6 +372,7 @@ pub struct VersionRequest {
     pub version_pattern: String,
     pub distribution: Option<String>,
     pub package_type: Option<crate::models::package::PackageType>,
+    pub javafx_bundled: Option<bool>,
 }
 
 impl VersionRequest {
@@ -389,6 +390,7 @@ impl VersionRequest {
             version_pattern,
             distribution: None,
             package_type: None,
+            javafx_bundled: None,
         })
     }
 
@@ -401,13 +403,25 @@ impl VersionRequest {
         self.package_type = Some(package_type);
         self
     }
+
+    pub fn with_javafx_bundled(mut self, javafx_bundled: bool) -> Self {
+        self.javafx_bundled = Some(javafx_bundled);
+        self
+    }
 }
 
 impl std::fmt::Display for VersionRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.distribution {
-            Some(dist) => write!(f, "{}@{}", dist, self.version_pattern),
-            None => write!(f, "{}", self.version_pattern),
+        let base = match &self.distribution {
+            Some(dist) => format!("{}@{}", dist, self.version_pattern),
+            None => self.version_pattern.clone(),
+        };
+
+        // Append JavaFX suffix if specified
+        if self.javafx_bundled == Some(true) {
+            write!(f, "{base}+fx")
+        } else {
+            write!(f, "{base}")
         }
     }
 }
@@ -416,26 +430,40 @@ impl FromStr for VersionRequest {
     type Err = KopiError;
 
     fn from_str(s: &str) -> Result<Self> {
-        if s.contains('@') {
-            let parts: Vec<&str> = s.split('@').collect();
+        // Check for JavaFX suffix (+fx at the end)
+        let (javafx_bundled, remaining) = if let Some(stripped) = s.strip_suffix("+fx") {
+            (Some(true), stripped)
+        } else {
+            (None, s)
+        };
+
+        let mut request = if remaining.contains('@') {
+            let parts: Vec<&str> = remaining.split('@').collect();
             match parts.len() {
                 2 => {
                     // Legacy format: distribution@version
-                    Ok(VersionRequest::new(parts[1].to_string())?
-                        .with_distribution(parts[0].to_string()))
+                    VersionRequest::new(parts[1].to_string())?
+                        .with_distribution(parts[0].to_string())
                 }
                 3 => {
                     // New format: package_type@version@distribution
                     let package_type = crate::models::package::PackageType::from_str(parts[0])?;
-                    Ok(VersionRequest::new(parts[1].to_string())?
+                    VersionRequest::new(parts[1].to_string())?
                         .with_distribution(parts[2].to_string())
-                        .with_package_type(package_type))
+                        .with_package_type(package_type)
                 }
-                _ => Err(KopiError::InvalidVersionFormat(s.to_string())),
+                _ => return Err(KopiError::InvalidVersionFormat(s.to_string())),
             }
         } else {
-            VersionRequest::new(s.to_string())
+            VersionRequest::new(remaining.to_string())?
+        };
+
+        // Apply JavaFX bundled flag if present
+        if let Some(javafx) = javafx_bundled {
+            request = request.with_javafx_bundled(javafx);
         }
+
+        Ok(request)
     }
 }
 
@@ -477,6 +505,7 @@ pub fn build_install_request(
         distribution: Some(distribution.id().to_string()),
         version_pattern: version.to_string(),
         package_type: None,
+        javafx_bundled: None,
     }
 }
 
@@ -668,6 +697,45 @@ mod tests {
         assert!(VersionRequest::from_str("invalid@format@").is_err());
         assert!(VersionRequest::from_str("too@many@parts@here").is_err());
         assert!(VersionRequest::from_str("invalid_type@21@temurin").is_err()); // Invalid package type
+    }
+
+    #[test]
+    fn test_version_request_with_javafx() {
+        // Test version with JavaFX
+        let req = VersionRequest::from_str("21+fx").unwrap();
+        assert_eq!(req.version_pattern, "21");
+        assert_eq!(req.distribution, None);
+        assert_eq!(req.javafx_bundled, Some(true));
+
+        // Test distribution@version with JavaFX
+        let req = VersionRequest::from_str("liberica@21+fx").unwrap();
+        assert_eq!(req.version_pattern, "21");
+        assert_eq!(req.distribution, Some("liberica".to_string()));
+        assert_eq!(req.javafx_bundled, Some(true));
+
+        // Test full version with JavaFX
+        let req = VersionRequest::from_str("zulu@21.0.5+fx").unwrap();
+        assert_eq!(req.version_pattern, "21.0.5");
+        assert_eq!(req.distribution, Some("zulu".to_string()));
+        assert_eq!(req.javafx_bundled, Some(true));
+
+        // Test version with build number and JavaFX
+        let req = VersionRequest::from_str("corretto@21.0.5+11+fx").unwrap();
+        assert_eq!(req.version_pattern, "21.0.5+11");
+        assert_eq!(req.distribution, Some("corretto".to_string()));
+        assert_eq!(req.javafx_bundled, Some(true));
+
+        // Test without JavaFX
+        let req = VersionRequest::from_str("21").unwrap();
+        assert_eq!(req.javafx_bundled, None);
+
+        // Test Display format with JavaFX
+        let req = VersionRequest::from_str("liberica@21+fx").unwrap();
+        assert_eq!(req.to_string(), "liberica@21+fx");
+
+        // Test Display format without JavaFX
+        let req = VersionRequest::from_str("liberica@21").unwrap();
+        assert_eq!(req.to_string(), "liberica@21");
     }
 
     #[test]

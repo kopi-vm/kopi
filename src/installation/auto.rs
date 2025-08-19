@@ -87,6 +87,12 @@ impl<'a> AutoInstaller<'a> {
         let mut cmd = std::process::Command::new(&kopi_path);
         cmd.arg("install").arg(&version_spec);
 
+        // Add JavaFX flag if requested
+        if version_request.javafx_bundled == Some(true) {
+            cmd.arg("--javafx-bundled");
+            debug!("Adding --javafx-bundled flag to install command");
+        }
+
         // Set timeout if configured
         let timeout_secs = self.config.auto_install.timeout_secs;
         debug!("Auto-install timeout: {timeout_secs} seconds");

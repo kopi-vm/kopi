@@ -178,6 +178,7 @@ fn test_search_distribution_only() {
         distribution: Some(Distribution::Temurin),
         package_type: None,
         latest: false,
+        javafx_bundled: None,
     };
 
     let results = cache
@@ -196,6 +197,7 @@ fn test_search_latest() {
         distribution: None,
         package_type: None,
         latest: true,
+        javafx_bundled: None,
     };
 
     let results = cache
@@ -214,6 +216,7 @@ fn test_search_latest_with_distribution() {
         distribution: Some(Distribution::Temurin),
         package_type: None,
         latest: true,
+        javafx_bundled: None,
     };
 
     let results = cache
@@ -233,6 +236,7 @@ fn test_search_with_package_type_filter() {
         distribution: Some(Distribution::Temurin),
         package_type: Some(PackageType::Jdk),
         latest: false,
+        javafx_bundled: None,
     };
 
     let results = cache
@@ -503,6 +507,7 @@ fn test_latest_with_version_filter() {
         distribution: None,
         package_type: None,
         latest: true,
+        javafx_bundled: None,
     };
 
     let results = cache
@@ -691,6 +696,7 @@ fn test_search_by_distribution_version() {
         distribution: None,
         package_type: None,
         latest: false,
+        javafx_bundled: None,
     };
 
     let results = cache.search(&request, VersionSearchType::Auto).unwrap();
@@ -716,6 +722,7 @@ fn test_search_by_distribution_version() {
         distribution: None,
         package_type: None,
         latest: false,
+        javafx_bundled: None,
     };
 
     let results = cache
@@ -746,6 +753,7 @@ fn test_search_forced_java_version() {
         distribution: None,
         package_type: None,
         latest: false,
+        javafx_bundled: None,
     };
 
     // Force java_version search - should find both packages
@@ -818,6 +826,7 @@ fn test_distribution_version_boundary_matching() {
         distribution: None,
         package_type: None,
         latest: false,
+        javafx_bundled: None,
     };
 
     let results = cache

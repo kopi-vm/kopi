@@ -108,6 +108,7 @@ mod tests {
             version: Some(Version::new(21, 0, 0)),
             package_type: Some(PackageType::Jdk),
             latest: false,
+            javafx_bundled: None,
         };
 
         write_version_file(&version_file, &version_request).unwrap();
@@ -121,6 +122,7 @@ mod tests {
             version: Some(Version::new(17, 0, 0)),
             package_type: Some(PackageType::Jdk),
             latest: false,
+            javafx_bundled: None,
         };
 
         write_version_file(&version_file, &version_request2).unwrap();
@@ -139,6 +141,7 @@ mod tests {
             version: Some(Version::new(11, 0, 21)),
             package_type: Some(PackageType::Jdk),
             latest: false,
+            javafx_bundled: None,
         };
 
         write_version_file(&version_file, &version_request).unwrap();
@@ -157,6 +160,7 @@ mod tests {
             version: Some(Version::new(21, 0, 0)),
             package_type: Some(PackageType::Jdk),
             latest: false,
+            javafx_bundled: None,
         };
 
         write_version_file(&nested_path, &version_request).unwrap();
@@ -177,6 +181,7 @@ mod tests {
             version: Some(Version::new(21, 0, 0)),
             package_type: Some(PackageType::Jre),
             latest: false,
+            javafx_bundled: None,
         };
 
         write_version_file(&version_file, &version_request).unwrap();
@@ -190,6 +195,7 @@ mod tests {
             version: Some(Version::new(17, 0, 0)),
             package_type: Some(PackageType::Jre),
             latest: false,
+            javafx_bundled: None,
         };
 
         write_version_file(&version_file, &version_request2).unwrap();

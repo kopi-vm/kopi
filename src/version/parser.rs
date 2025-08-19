@@ -25,6 +25,7 @@ pub struct ParsedVersionRequest {
     pub distribution: Option<Distribution>,
     pub package_type: Option<PackageType>,
     pub latest: bool,
+    pub javafx_bundled: Option<bool>,
 }
 
 pub struct VersionParser<'a> {
@@ -54,6 +55,13 @@ impl<'a> VersionParser<'a> {
             (Some(PackageType::Jdk), trimmed)
         };
 
+        // Check for JavaFX suffix (+fx at the end)
+        let (javafx_bundled, remaining) = if let Some(stripped) = remaining.strip_suffix("+fx") {
+            (Some(true), stripped)
+        } else {
+            (None, remaining)
+        };
+
         // Check for "latest" keyword
         if remaining.eq_ignore_ascii_case("latest") {
             return Ok(ParsedVersionRequest {
@@ -61,6 +69,7 @@ impl<'a> VersionParser<'a> {
                 distribution: None,
                 package_type,
                 latest: true,
+                javafx_bundled,
             });
         }
 
@@ -96,6 +105,7 @@ impl<'a> VersionParser<'a> {
                     distribution: Some(dist),
                     package_type,
                     latest: false,
+                    javafx_bundled,
                 });
             }
 
@@ -106,6 +116,7 @@ impl<'a> VersionParser<'a> {
                     distribution: Some(dist),
                     package_type,
                     latest: true,
+                    javafx_bundled,
                 });
             }
 
@@ -129,6 +140,7 @@ impl<'a> VersionParser<'a> {
                     distribution: Some(dist),
                     package_type,
                     latest: false,
+                    javafx_bundled,
                 });
             } else {
                 // It's a version string
@@ -144,6 +156,7 @@ impl<'a> VersionParser<'a> {
             distribution,
             package_type,
             latest: false,
+            javafx_bundled,
         })
     }
 
@@ -652,5 +665,57 @@ additional_distributions = ["mycustom", "private-jdk", "company-build"]
         unsafe {
             std::env::remove_var("KOPI_HOME");
         }
+    }
+
+    #[test]
+    fn test_parse_with_javafx() {
+        let config = create_test_config();
+        let parser = VersionParser::new(&config);
+
+        // Test version with JavaFX
+        let result = parser.parse("21+fx").unwrap();
+        assert_eq!(result.javafx_bundled, Some(true));
+        assert_eq!(result.version.unwrap().to_string(), "21");
+
+        // Test distribution@version with JavaFX
+        let result = parser.parse("liberica@21+fx").unwrap();
+        assert_eq!(result.javafx_bundled, Some(true));
+        assert_eq!(result.distribution, Some(Distribution::Liberica));
+        assert_eq!(result.version.unwrap().to_string(), "21");
+
+        // Test full version with JavaFX
+        let result = parser.parse("zulu@21.0.5+fx").unwrap();
+        assert_eq!(result.javafx_bundled, Some(true));
+        assert_eq!(result.distribution, Some(Distribution::Zulu));
+        assert_eq!(result.version.unwrap().to_string(), "21.0.5");
+
+        // Test version with build number and JavaFX
+        let result = parser.parse("corretto@21.0.5+11+fx").unwrap();
+        assert_eq!(result.javafx_bundled, Some(true));
+        assert_eq!(result.distribution, Some(Distribution::Corretto));
+        let version = result.version.unwrap();
+        assert_eq!(version.components, vec![21, 0, 5]);
+        assert_eq!(version.build, Some(vec![11]));
+
+        // Test JRE with JavaFX
+        let result = parser.parse("jre@liberica@21+fx").unwrap();
+        assert_eq!(result.javafx_bundled, Some(true));
+        assert_eq!(result.package_type, Some(PackageType::Jre));
+        assert_eq!(result.distribution, Some(Distribution::Liberica));
+
+        // Test latest with JavaFX
+        let result = parser.parse("latest+fx").unwrap();
+        assert_eq!(result.javafx_bundled, Some(true));
+        assert!(result.latest);
+
+        // Test distribution@latest with JavaFX
+        let result = parser.parse("liberica@latest+fx").unwrap();
+        assert_eq!(result.javafx_bundled, Some(true));
+        assert_eq!(result.distribution, Some(Distribution::Liberica));
+        assert!(result.latest);
+
+        // Test without JavaFX (should be None)
+        let result = parser.parse("21").unwrap();
+        assert_eq!(result.javafx_bundled, None);
     }
 }
