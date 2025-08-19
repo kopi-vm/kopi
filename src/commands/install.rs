@@ -146,6 +146,7 @@ impl<'a> InstallCommand<'a> {
         let installation_dir = repository.jdk_install_path(
             &distribution,
             &jdk_metadata.distribution_version.to_string(),
+            javafx_bundled,
         )?;
 
         if dry_run {
@@ -230,11 +231,13 @@ impl<'a> InstallCommand<'a> {
             repository.prepare_jdk_installation(
                 &distribution,
                 &jdk_metadata_with_checksum.distribution_version.to_string(),
+                javafx_bundled,
             )?
         } else {
             repository.prepare_jdk_installation(
                 &distribution,
                 &jdk_metadata_with_checksum.distribution_version.to_string(),
+                javafx_bundled,
             )?
         };
 
@@ -281,6 +284,7 @@ impl<'a> InstallCommand<'a> {
             &jdk_metadata_with_checksum.distribution_version.to_string(),
             &package,
             &installation_metadata,
+            javafx_bundled,
         )?;
 
         // Clean up is automatic when download_result goes out of scope

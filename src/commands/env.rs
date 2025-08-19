@@ -289,6 +289,7 @@ mod tests {
             "temurin".to_string(),
             Version::from_str("21.0.0").unwrap(),
             jdk_root.clone(),
+            false,
         );
 
         // Test that resolve_java_home returns the Contents/Home path
@@ -317,6 +318,7 @@ mod tests {
             "liberica".to_string(),
             Version::from_str("21.0.0").unwrap(),
             jdk_root.clone(),
+            false,
         );
 
         // Test that resolve_java_home returns the root path
@@ -355,6 +357,7 @@ mod tests {
             "test".to_string(),
             Version::from_str("21.0.0").unwrap(),
             jdk_root.clone(),
+            false,
         );
 
         let java_home = jdk.resolve_java_home();
@@ -399,6 +402,7 @@ mod tests {
             "test".to_string(),
             Version::from_str("21.0.0").unwrap(),
             jdk_root.clone(),
+            false,
         );
 
         // Verify bin path resolution
@@ -421,6 +425,7 @@ mod tests {
             "test".to_string(),
             Version::from_str("21.0.0").unwrap(),
             PathBuf::from("/test/jdk"),
+            false,
         );
 
         let java_home = jdk.resolve_java_home();
@@ -458,6 +463,7 @@ mod tests {
             "broken".to_string(),
             Version::from_str("21.0.0").unwrap(),
             jdk_root.clone(),
+            false,
         );
 
         // This should return an error since bin directory is missing

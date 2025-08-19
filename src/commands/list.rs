@@ -49,11 +49,13 @@ impl<'a> ListCommand<'a> {
 
             debug!("JDK {} size: {} bytes", jdk.path.display(), size);
 
-            // Display format: "  temurin@21.0.1 (1.2 GB)"
+            // Display format: "  temurin@21.0.1 (1.2 GB)" or "  liberica@21.0.5+fx (1.2 GB)"
+            let javafx_suffix = if jdk.javafx_bundled { "+fx" } else { "" };
             println!(
-                "  {}@{} ({})",
+                "  {}@{}{} ({})",
                 jdk.distribution,
                 jdk.version,
+                javafx_suffix,
                 format_size(size)
             );
         }

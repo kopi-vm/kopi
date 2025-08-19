@@ -90,8 +90,10 @@ pub fn save_jdk_metadata_with_installation(
     distribution_version: &str,
     metadata: &Package,
     installation_metadata: &InstallationMetadata,
+    javafx_bundled: bool,
 ) -> Result<()> {
-    let dir_name = format!("{}-{distribution_version}", distribution.id());
+    let suffix = if javafx_bundled { "-fx" } else { "" };
+    let dir_name = format!("{}-{distribution_version}{suffix}", distribution.id());
     let metadata_filename = format!("{dir_name}.meta.json");
     let metadata_path = jdks_dir.join(metadata_filename);
 
@@ -277,6 +279,7 @@ mod metadata_tests {
             "21.0.1+35.1",
             &package,
             &installation_metadata,
+            false,
         );
         assert!(result.is_ok());
 
@@ -477,6 +480,7 @@ mod metadata_tests {
             "21.0.1+35.1",
             &package,
             &installation_metadata,
+            false,
         );
         assert!(result.is_ok());
 
@@ -550,6 +554,7 @@ mod metadata_tests {
             "21.0.1+35.1",
             &package,
             &installation_metadata,
+            false,
         );
 
         // Should fail due to permissions

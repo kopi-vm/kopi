@@ -366,6 +366,7 @@ mod tests {
             "temurin".to_string(),
             crate::version::Version::from_str("21.0.5").unwrap(),
             jdk_path,
+            false,
         );
 
         // Test existing tool
@@ -399,6 +400,7 @@ mod tests {
             "temurin".to_string(),
             Version::from_str("21.0.5").unwrap(),
             jdk_path,
+            false,
         );
 
         // Test various JDK tools that are created by create_test_jdk

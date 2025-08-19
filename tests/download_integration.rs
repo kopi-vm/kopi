@@ -192,7 +192,7 @@ fn test_storage_installation_workflow() {
 
     // Prepare installation
     let context = storage
-        .prepare_jdk_installation(&distribution, "21.0.1+35.1")
+        .prepare_jdk_installation(&distribution, "21.0.1+35.1", false)
         .unwrap();
 
     assert!(context.temp_path.exists());
@@ -296,7 +296,7 @@ fn test_concurrent_installation_safety() {
 
         let handle = thread::spawn(move || {
             let storage = JdkRepository::new(&config);
-            let result = storage.prepare_jdk_installation(&dist, "21.0.1+35.1");
+            let result = storage.prepare_jdk_installation(&dist, "21.0.1+35.1", false);
 
             if let Ok(context) = result {
                 // Simulate some work
@@ -341,7 +341,7 @@ fn test_disk_space_simulation() {
     let distribution = Distribution::Temurin;
 
     // The disk space check should pass on most systems
-    let result = storage.prepare_jdk_installation(&distribution, "21.0.1+35.1");
+    let result = storage.prepare_jdk_installation(&distribution, "21.0.1+35.1", false);
     assert!(result.is_ok());
 }
 

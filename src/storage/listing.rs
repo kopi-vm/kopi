@@ -26,24 +26,32 @@ pub struct InstalledJdk {
     pub distribution: String,
     pub version: Version,
     pub path: PathBuf,
+    pub javafx_bundled: bool,
     /// Cached metadata, loaded lazily on first access
     metadata_cache: RefCell<Option<InstallationMetadata>>,
 }
 
 impl InstalledJdk {
     /// Create a new InstalledJdk instance
-    pub fn new(distribution: String, version: Version, path: PathBuf) -> Self {
+    pub fn new(
+        distribution: String,
+        version: Version,
+        path: PathBuf,
+        javafx_bundled: bool,
+    ) -> Self {
         Self {
             distribution,
             version,
             path,
+            javafx_bundled,
             metadata_cache: RefCell::new(None),
         }
     }
 
     /// Load metadata from the metadata file if it exists
     fn load_metadata(&self, jdks_dir: &Path) -> Option<InstallationMetadata> {
-        let dir_name = format!("{}-{}", self.distribution, self.version);
+        let suffix = if self.javafx_bundled { "-fx" } else { "" };
+        let dir_name = format!("{}-{}{suffix}", self.distribution, self.version);
         let metadata_filename = format!("{dir_name}.meta.json");
         let metadata_path = jdks_dir.join(&metadata_filename);
 
@@ -153,8 +161,12 @@ impl InstalledJdk {
                 self.version.to_string()
             };
 
-        // Format version string
-        let version_string = format!("{}@{}", self.distribution, formatted_version);
+        // Format version string with JavaFX suffix if needed
+        let javafx_suffix = if self.javafx_bundled { "+fx" } else { "" };
+        let version_string = format!(
+            "{}@{}{}",
+            self.distribution, formatted_version, javafx_suffix
+        );
 
         // Write atomically using a temporary file
         let temp_path = path.with_extension("tmp");
@@ -333,8 +345,16 @@ impl JdkLister {
     pub fn parse_jdk_dir_name(path: &Path) -> Option<InstalledJdk> {
         let file_name = path.file_name()?.to_str()?;
 
+        // Check if JavaFX bundled (-fx suffix)
+        let (file_name_without_fx, javafx_bundled) =
+            if let Some(stripped) = file_name.strip_suffix("-fx") {
+                (stripped, true)
+            } else {
+                (file_name, false)
+            };
+
         let mut split_pos = None;
-        let chars: Vec<char> = file_name.chars().collect();
+        let chars: Vec<char> = file_name_without_fx.chars().collect();
 
         for i in 0..chars.len() - 1 {
             if chars[i] == '-' && chars[i + 1].is_numeric() {
@@ -344,8 +364,8 @@ impl JdkLister {
         }
 
         let (distribution, version) = if let Some(pos) = split_pos {
-            let dist = &file_name[..pos];
-            let ver = &file_name[pos + 1..];
+            let dist = &file_name_without_fx[..pos];
+            let ver = &file_name_without_fx[pos + 1..];
             (dist, ver)
         } else {
             return None;
@@ -360,6 +380,7 @@ impl JdkLister {
             distribution.to_string(),
             parsed_version,
             path.to_path_buf(),
+            javafx_bundled,
         ))
     }
 
@@ -438,6 +459,17 @@ mod tests {
 
         // Version with 'v' prefix should not be parsed
         assert!(JdkLister::parse_jdk_dir_name(Path::new("zulu-v11.0.21")).is_none());
+
+        // Test JavaFX bundled JDKs
+        let jdk_fx = JdkLister::parse_jdk_dir_name(Path::new("liberica-21.0.5-fx")).unwrap();
+        assert_eq!(jdk_fx.distribution, "liberica");
+        assert_eq!(jdk_fx.version.to_string(), "21.0.5");
+        assert!(jdk_fx.javafx_bundled);
+
+        let jdk_fx2 = JdkLister::parse_jdk_dir_name(Path::new("temurin-17.0.9+9-fx")).unwrap();
+        assert_eq!(jdk_fx2.distribution, "temurin");
+        assert_eq!(jdk_fx2.version.to_string(), "17.0.9+9");
+        assert!(jdk_fx2.javafx_bundled);
     }
 
     #[test]
@@ -450,12 +482,12 @@ mod tests {
         let bundle_bin_path = jdk_path.join("Contents").join("Home").join("bin");
         fs::create_dir_all(&bundle_bin_path).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "temurin".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path.clone(),
-            metadata_cache: RefCell::new(None),
-        };
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+            false,
+        );
 
         let java_home = jdk.resolve_java_home();
         assert_eq!(java_home, jdk_path.join("Contents").join("Home"));
@@ -475,6 +507,7 @@ mod tests {
             "liberica".to_string(),
             Version::new(21, 0, 1),
             jdk_path.clone(),
+            false,
         );
 
         let java_home = jdk.resolve_java_home();
@@ -491,7 +524,12 @@ mod tests {
         fs::create_dir_all(jdk_path.join("bin")).unwrap();
         fs::create_dir_all(jdk_path.join("Contents").join("Home").join("bin")).unwrap();
 
-        let jdk = InstalledJdk::new("zulu".to_string(), Version::new(21, 0, 1), jdk_path.clone());
+        let jdk = InstalledJdk::new(
+            "zulu".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+            false,
+        );
 
         // Should prefer bundle structure when both exist
         let java_home = jdk.resolve_java_home();
@@ -509,6 +547,7 @@ mod tests {
             "broken".to_string(),
             Version::new(21, 0, 1),
             jdk_path.clone(),
+            false,
         );
 
         // Should return path as-is when structure cannot be detected
@@ -526,12 +565,12 @@ mod tests {
         fs::create_dir_all(jdk_path.join("Contents").join("Home").join("bin")).unwrap();
         fs::create_dir_all(jdk_path.join("bin")).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "temurin".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path.clone(),
-            metadata_cache: RefCell::new(None),
-        };
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+            false,
+        );
 
         let java_home = jdk.resolve_java_home();
         assert_eq!(java_home, jdk_path);
@@ -546,7 +585,12 @@ mod tests {
         let bin_path = jdk_path.join("bin");
         fs::create_dir_all(&bin_path).unwrap();
 
-        let jdk = InstalledJdk::new("test".to_string(), Version::new(21, 0, 1), jdk_path.clone());
+        let jdk = InstalledJdk::new(
+            "test".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+            false,
+        );
 
         let resolved_bin = jdk.resolve_bin_path().unwrap();
         assert_eq!(resolved_bin, bin_path);
@@ -562,7 +606,12 @@ mod tests {
         let bundle_bin_path = jdk_path.join("Contents").join("Home").join("bin");
         fs::create_dir_all(&bundle_bin_path).unwrap();
 
-        let jdk = InstalledJdk::new("temurin".to_string(), Version::new(21, 0, 1), jdk_path);
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path,
+            false,
+        );
 
         let resolved_bin = jdk.resolve_bin_path().unwrap();
         assert_eq!(resolved_bin, bundle_bin_path);
@@ -574,7 +623,12 @@ mod tests {
         let jdk_path = temp_dir.path().join("broken-jdk");
         fs::create_dir_all(&jdk_path).unwrap();
 
-        let jdk = InstalledJdk::new("broken".to_string(), Version::new(21, 0, 1), jdk_path);
+        let jdk = InstalledJdk::new(
+            "broken".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path,
+            false,
+        );
 
         let result = jdk.resolve_bin_path();
         assert!(result.is_err());
@@ -635,12 +689,12 @@ mod tests {
         let metadata_path = jdks_dir.join("temurin-21.0.1.meta.json");
         fs::write(&metadata_path, metadata_content).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "temurin".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path.clone(),
-            metadata_cache: RefCell::new(None),
-        };
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+            false,
+        );
 
         // First access should load metadata
         let java_home = jdk.resolve_java_home();
@@ -668,6 +722,7 @@ mod tests {
             "liberica".to_string(),
             Version::new(21, 0, 1),
             jdk_path.clone(),
+            false,
         );
 
         // No metadata file exists, should fall back to runtime detection
@@ -696,12 +751,12 @@ mod tests {
         let metadata_path = jdks_dir.join("temurin-21.0.1.meta.json");
         fs::write(&metadata_path, "{ invalid json").unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "temurin".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path.clone(),
-            metadata_cache: RefCell::new(None),
-        };
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+            false,
+        );
 
         // Should fall back to runtime detection
         let java_home = jdk.resolve_java_home();
@@ -764,12 +819,12 @@ mod tests {
         let metadata_path = jdks_dir.join("temurin-21.0.1.meta.json");
         fs::write(&metadata_path, metadata_content).unwrap();
 
-        let jdk = InstalledJdk {
-            distribution: "temurin".to_string(),
-            version: Version::new(21, 0, 1),
-            path: jdk_path.clone(),
-            metadata_cache: RefCell::new(None),
-        };
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+            false,
+        );
 
         // First access loads metadata
         let _ = jdk.resolve_java_home();
@@ -839,6 +894,7 @@ mod tests {
             "temurin".to_string(),
             Version::new(21, 0, 1),
             jdk_path.clone(),
+            false,
         );
 
         // Note: RefCell is not thread-safe, so this test verifies
@@ -905,6 +961,7 @@ mod tests {
             "temurin".to_string(),
             Version::new(21, 0, 1),
             jdk_path.clone(),
+            false,
         );
 
         // Should fall back to runtime detection due to empty structure_type
@@ -970,6 +1027,7 @@ mod tests {
             "liberica".to_string(),
             Version::new(21, 0, 1),
             jdk_path.clone(),
+            false,
         );
 
         // Should fall back to runtime detection due to invalid metadata_version
@@ -1026,7 +1084,12 @@ mod tests {
         let metadata_path = jdks_dir.join("zulu-21.0.1.meta.json");
         fs::write(&metadata_path, invalid_metadata).unwrap();
 
-        let jdk = InstalledJdk::new("zulu".to_string(), Version::new(21, 0, 1), jdk_path.clone());
+        let jdk = InstalledJdk::new(
+            "zulu".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+            false,
+        );
 
         // Should fall back to runtime detection due to empty platform
         let java_home = jdk.resolve_java_home();
@@ -1050,6 +1113,7 @@ mod tests {
             "temurin".to_string(),
             Version::new(17, 0, 1),
             jdk_path1.clone(),
+            false,
         );
 
         // These operations should succeed without errors
@@ -1066,6 +1130,7 @@ mod tests {
             "liberica".to_string(),
             Version::new(17, 0, 1),
             jdk_path2.clone(),
+            false,
         );
 
         let java_home2 = jdk2.resolve_java_home();
@@ -1090,6 +1155,7 @@ mod tests {
             "zulu".to_string(),
             Version::new(17, 0, 1),
             jdk_path3.clone(),
+            false,
         );
 
         let java_home3 = jdk3.resolve_java_home();
@@ -1135,7 +1201,12 @@ mod tests {
         // Test missing metadata logging
         let jdk_path = jdks_dir.join("test-jdk");
         fs::create_dir_all(jdk_path.join("bin")).unwrap();
-        let jdk = InstalledJdk::new("test".to_string(), Version::new(21, 0, 1), jdk_path.clone());
+        let jdk = InstalledJdk::new(
+            "test".to_string(),
+            Version::new(21, 0, 1),
+            jdk_path.clone(),
+            false,
+        );
 
         // This should trigger fallback warning
         let _ = jdk.resolve_java_home();
@@ -1153,6 +1224,7 @@ mod tests {
             "temurin".to_string(),
             Version::new(21, 0, 1),
             temp_dir.path().join("temurin-21.0.1"),
+            false,
         );
 
         jdk.write_to(&version_file).unwrap();
@@ -1165,12 +1237,26 @@ mod tests {
             "corretto".to_string(),
             Version::new(17, 0, 9),
             temp_dir.path().join("corretto-17.0.9"),
+            false,
         );
 
         jdk2.write_to(&version_file).unwrap();
 
         let content2 = fs::read_to_string(&version_file).unwrap();
         assert_eq!(content2, "corretto@17.0.9");
+
+        // Test JavaFX version writing
+        let jdk_fx = InstalledJdk::new(
+            "liberica".to_string(),
+            Version::new(21, 0, 5),
+            temp_dir.path().join("liberica-21.0.5-fx"),
+            true,
+        );
+
+        jdk_fx.write_to(&version_file).unwrap();
+
+        let content_fx = fs::read_to_string(&version_file).unwrap();
+        assert_eq!(content_fx, "liberica@21.0.5+fx");
     }
 
     #[test]
@@ -1224,6 +1310,7 @@ mod tests {
             "temurin".to_string(),
             Version::new(21, 0, 1),
             jdk_path.clone(),
+            false,
         );
 
         // Pre-load cache
@@ -1351,7 +1438,7 @@ mod tests {
                 .join(format!("{distribution}-{version}.meta.json"));
             fs::write(&metadata_file, serde_json::to_string(&metadata).unwrap()).unwrap();
 
-            jdks.push(InstalledJdk::new(distribution, version, jdk_path));
+            jdks.push(InstalledJdk::new(distribution, version, jdk_path, false));
         }
 
         // Access all JDKs to load metadata
@@ -1503,7 +1590,12 @@ mod tests {
         let metadata_file = jdks_dir.join("temurin-21.0.0.meta.json");
         fs::write(&metadata_file, serde_json::to_string(&metadata).unwrap()).unwrap();
 
-        let jdk = InstalledJdk::new("temurin".to_string(), Version::new(21, 0, 0), jdk_path);
+        let jdk = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::new(21, 0, 0),
+            jdk_path,
+            false,
+        );
 
         // Should return error when bin directory is missing
         let bin_path_result = jdk.resolve_bin_path();
@@ -1556,6 +1648,7 @@ mod tests {
             "temurin".to_string(),
             Version::new(21, 0, 0),
             jdk_path.clone(),
+            false,
         );
 
         // Should fall back to runtime detection when metadata is invalid
@@ -1609,6 +1702,7 @@ mod tests {
             "liberica".to_string(),
             Version::new(17, 0, 9),
             jdk_path.clone(),
+            false,
         );
 
         // Should fall back to runtime detection

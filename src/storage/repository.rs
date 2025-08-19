@@ -41,8 +41,10 @@ impl<'a> JdkRepository<'a> {
         &self,
         distribution: &Distribution,
         distribution_version: &str,
+        javafx_bundled: bool,
     ) -> Result<PathBuf> {
-        let dir_name = format!("{}-{distribution_version}", distribution.id());
+        let suffix = if javafx_bundled { "-fx" } else { "" };
+        let dir_name = format!("{}-{distribution_version}{suffix}", distribution.id());
         Ok(self.config.jdks_dir()?.join(dir_name))
     }
 
@@ -50,8 +52,10 @@ impl<'a> JdkRepository<'a> {
         &self,
         distribution: &Distribution,
         distribution_version: &str,
+        javafx_bundled: bool,
     ) -> Result<InstallationContext> {
-        let install_path = self.jdk_install_path(distribution, distribution_version)?;
+        let install_path =
+            self.jdk_install_path(distribution, distribution_version, javafx_bundled)?;
 
         let disk_checker = DiskSpaceChecker::new(self.config.storage.min_disk_space_mb);
         disk_checker.check_disk_space(&install_path, self.config.kopi_home())?;
@@ -164,6 +168,7 @@ impl<'a> JdkRepository<'a> {
         distribution_version: &str,
         metadata: &Package,
         installation_metadata: &super::InstallationMetadata,
+        javafx_bundled: bool,
     ) -> Result<()> {
         let jdks_dir = self.config.jdks_dir()?;
         super::save_jdk_metadata_with_installation(
@@ -172,6 +177,7 @@ impl<'a> JdkRepository<'a> {
             distribution_version,
             metadata,
             installation_metadata,
+            javafx_bundled,
         )
     }
 
@@ -192,13 +198,20 @@ impl<'a> JdkRepository<'a> {
         // Get all installed JDKs
         let all_jdks = self.list_installed_jdks()?;
 
-        // Filter JDKs based on distribution and version pattern
+        // Filter JDKs based on distribution, version pattern, and JavaFX
         let mut matching_jdks: Vec<InstalledJdk> = all_jdks
             .into_iter()
             .filter(|jdk| {
                 // Check distribution filter if specified
                 if let Some(dist) = &request.distribution
                     && &jdk.distribution != dist
+                {
+                    return false;
+                }
+
+                // Check JavaFX filter if specified
+                if let Some(javafx) = request.javafx_bundled
+                    && jdk.javafx_bundled != javafx
                 {
                     return false;
                 }
@@ -255,7 +268,7 @@ mod tests {
         let distribution = Distribution::Temurin;
 
         let path = manager
-            .jdk_install_path(&distribution, "21.0.1+35.1")
+            .jdk_install_path(&distribution, "21.0.1+35.1", false)
             .unwrap();
         assert!(path.ends_with("jdks/temurin-21.0.1+35.1"));
     }
@@ -544,6 +557,7 @@ min_disk_space_mb = 1024
             distribution_version,
             &package,
             &installation_metadata,
+            false,
         );
         assert!(result.is_ok());
 
@@ -571,5 +585,77 @@ min_disk_space_mb = 1024
         assert_eq!(parsed["installation_metadata"]["structure_type"], "bundle");
         assert_eq!(parsed["installation_metadata"]["platform"], "macos_aarch64");
         assert_eq!(parsed["installation_metadata"]["metadata_version"], 1);
+    }
+
+    #[test]
+    fn test_javafx_directory_separation() {
+        let test_storage = TestStorage::new();
+        let manager = test_storage.manager();
+        let jdks_dir = test_storage.config.jdks_dir().unwrap();
+
+        // Create both JavaFX and non-JavaFX versions of the same JDK
+        fs::create_dir_all(jdks_dir.join("liberica-21.0.5")).unwrap();
+        fs::create_dir_all(jdks_dir.join("liberica-21.0.5-fx")).unwrap();
+
+        // List installed JDKs
+        let installed = manager.list_installed_jdks().unwrap();
+        assert_eq!(installed.len(), 2);
+
+        // Find the two JDKs and verify their properties
+        let non_fx = installed.iter().find(|jdk| !jdk.javafx_bundled).unwrap();
+        let with_fx = installed.iter().find(|jdk| jdk.javafx_bundled).unwrap();
+
+        assert_eq!(non_fx.distribution, "liberica");
+        assert_eq!(non_fx.version.to_string(), "21.0.5");
+        assert!(!non_fx.javafx_bundled);
+        assert!(non_fx.path.ends_with("liberica-21.0.5"));
+
+        assert_eq!(with_fx.distribution, "liberica");
+        assert_eq!(with_fx.version.to_string(), "21.0.5");
+        assert!(with_fx.javafx_bundled);
+        assert!(with_fx.path.ends_with("liberica-21.0.5-fx"));
+
+        // Test version request filtering by JavaFX
+        let request_no_fx = VersionRequest::new("21.0.5".to_string())
+            .unwrap()
+            .with_distribution("liberica".to_string())
+            .with_javafx_bundled(false);
+        let matches_no_fx = manager.find_matching_jdks(&request_no_fx).unwrap();
+        assert_eq!(matches_no_fx.len(), 1);
+        assert!(!matches_no_fx[0].javafx_bundled);
+
+        let request_with_fx = VersionRequest::new("21.0.5".to_string())
+            .unwrap()
+            .with_distribution("liberica".to_string())
+            .with_javafx_bundled(true);
+        let matches_with_fx = manager.find_matching_jdks(&request_with_fx).unwrap();
+        assert_eq!(matches_with_fx.len(), 1);
+        assert!(matches_with_fx[0].javafx_bundled);
+
+        // Test that without JavaFX filter, both are returned
+        let request_all = VersionRequest::new("21.0.5".to_string())
+            .unwrap()
+            .with_distribution("liberica".to_string());
+        let matches_all = manager.find_matching_jdks(&request_all).unwrap();
+        assert_eq!(matches_all.len(), 2);
+    }
+
+    #[test]
+    fn test_jdk_install_path_with_javafx() {
+        let test_storage = TestStorage::new();
+        let manager = test_storage.manager();
+        let distribution = Distribution::Liberica;
+
+        // Test non-JavaFX path
+        let path_no_fx = manager
+            .jdk_install_path(&distribution, "21.0.5", false)
+            .unwrap();
+        assert!(path_no_fx.ends_with("jdks/liberica-21.0.5"));
+
+        // Test JavaFX path
+        let path_with_fx = manager
+            .jdk_install_path(&distribution, "21.0.5", true)
+            .unwrap();
+        assert!(path_with_fx.ends_with("jdks/liberica-21.0.5-fx"));
     }
 }

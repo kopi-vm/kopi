@@ -142,6 +142,7 @@ fn test_metadata_consistency_after_uninstall() {
         "temurin".to_string(),
         Version::from_str("21.0.1").unwrap(),
         jdk_path,
+        false,
     );
 
     let report = checker.validate_removal(&removed_jdk).unwrap();
@@ -250,6 +251,7 @@ fn test_orphaned_metadata_detection_and_cleanup() {
         "temurin".to_string(),
         Version::from_str("21.0.1").unwrap(),
         jdk_path,
+        false,
     );
 
     // Check for orphaned metadata
@@ -328,6 +330,7 @@ fn test_partial_removal_detection() {
         "temurin".to_string(),
         Version::from_str("21.0.1").unwrap(),
         jdk_path.clone(),
+        false,
     );
 
     // Check if post-uninstall validation detects incomplete removal

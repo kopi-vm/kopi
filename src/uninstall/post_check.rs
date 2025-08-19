@@ -311,6 +311,7 @@ mod tests {
             distribution.to_string(),
             Version::from_str(version).unwrap(),
             jdk_path,
+            false,
         )
     }
 
@@ -450,6 +451,7 @@ mod tests {
                 "temurin".to_string(),
                 Version::from_str("21.0.1").unwrap(),
                 "/test/path".into(),
+                false,
             )],
             suggested_actions: Vec::new(),
         };

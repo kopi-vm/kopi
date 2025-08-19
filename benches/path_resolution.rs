@@ -89,6 +89,7 @@ pub fn benchmark_path_resolution_with_metadata(c: &mut Criterion) {
                     "temurin".to_string(),
                     Version::new(21, 0, 1),
                     jdk_path.clone(),
+                    false,
                 );
 
                 // Pre-load the cache by calling resolve_java_home once
@@ -126,6 +127,7 @@ pub fn benchmark_path_resolution_with_metadata(c: &mut Criterion) {
                     "liberica".to_string(),
                     Version::new(21, 0, 1),
                     jdk_path.clone(),
+                    false,
                 );
 
                 // Pre-load the cache
@@ -160,6 +162,7 @@ pub fn benchmark_path_resolution_without_metadata(c: &mut Criterion) {
                     "liberica".to_string(),
                     Version::new(21, 0, 1),
                     jdk_path.clone(),
+                    false,
                 );
 
                 (jdk, temp_dir)
@@ -185,6 +188,7 @@ pub fn benchmark_path_resolution_without_metadata(c: &mut Criterion) {
                     "temurin".to_string(),
                     Version::new(21, 0, 1),
                     jdk_path.clone(),
+                    false,
                 );
 
                 (jdk, temp_dir)
@@ -286,6 +290,7 @@ pub fn benchmark_metadata_loading(c: &mut Criterion) {
                     "temurin".to_string(),
                     Version::new(21, 0, 1),
                     jdk_path.clone(),
+                    false,
                 );
 
                 (jdk, temp_dir)
@@ -315,6 +320,7 @@ pub fn benchmark_metadata_loading(c: &mut Criterion) {
                     "broken".to_string(),
                     Version::new(21, 0, 1),
                     jdk_path.clone(),
+                    false,
                 );
 
                 (jdk, temp_dir)
@@ -367,6 +373,7 @@ pub fn benchmark_shim_startup_time(c: &mut Criterion) {
                     "temurin".to_string(),
                     Version::new(21, 0, 1),
                     jdk_path.clone(),
+                    false,
                 );
 
                 // 3. Resolve bin path
@@ -406,6 +413,7 @@ pub fn benchmark_shim_startup_time(c: &mut Criterion) {
                     "temurin".to_string(),
                     Version::new(21, 0, 1),
                     jdk_path.clone(),
+                    false,
                 );
 
                 // 3. Resolve bin path (will need structure detection)
@@ -451,7 +459,7 @@ pub fn benchmark_memory_usage(c: &mut Criterion) {
                         .join(format!("{distribution}-{version}.meta.json"));
                     fs::write(&metadata_file, serde_json::to_string(&metadata).unwrap()).unwrap();
 
-                    jdks.push(InstalledJdk::new(distribution, version, jdk_path));
+                    jdks.push(InstalledJdk::new(distribution, version, jdk_path, false));
                 }
 
                 (jdks, temp_dir)
@@ -517,6 +525,7 @@ pub fn benchmark_before_after_comparison(c: &mut Criterion) {
                     "temurin".to_string(),
                     Version::new(21, 0, 1),
                     jdk_path.clone(),
+                    false,
                 );
 
                 // Pre-load cache

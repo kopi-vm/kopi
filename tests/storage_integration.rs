@@ -76,7 +76,7 @@ fn test_full_installation_workflow() {
     let version = "21.0.1+35.1";
 
     let context = manager
-        .prepare_jdk_installation(&distribution, version)
+        .prepare_jdk_installation(&distribution, version, false)
         .unwrap();
 
     // Create multiple files at top level to test the multiple entries case
@@ -111,7 +111,7 @@ fn test_failed_installation_cleanup() {
     let version = "17.0.9";
 
     let context = manager
-        .prepare_jdk_installation(&distribution, version)
+        .prepare_jdk_installation(&distribution, version, false)
         .unwrap();
 
     fs::write(context.temp_path.join("partial_file.txt"), "incomplete").unwrap();
@@ -135,7 +135,9 @@ fn test_multiple_jdk_installations() {
     ];
 
     for (dist, version) in &installations {
-        let context = manager.prepare_jdk_installation(dist, version).unwrap();
+        let context = manager
+            .prepare_jdk_installation(dist, version, false)
+            .unwrap();
         fs::create_dir_all(context.temp_path.join("bin")).unwrap();
         manager.finalize_installation(context).unwrap();
     }
@@ -156,7 +158,7 @@ fn test_jdk_removal() {
     let version = "21.0.1";
 
     let context = manager
-        .prepare_jdk_installation(&distribution, version)
+        .prepare_jdk_installation(&distribution, version, false)
         .unwrap();
     fs::create_dir_all(context.temp_path.join("bin")).unwrap();
     let final_path = manager.finalize_installation(context).unwrap();
@@ -178,7 +180,7 @@ fn test_archive_with_single_directory() {
     let version = "21.0.1";
 
     let context = manager
-        .prepare_jdk_installation(&distribution, version)
+        .prepare_jdk_installation(&distribution, version, false)
         .unwrap();
 
     let jdk_dir = context.temp_path.join("jdk-21.0.1");

@@ -31,6 +31,7 @@ pub fn create_test_jdk(distribution: &str, version: &str) -> InstalledJdk {
         distribution.to_string(),
         Version::from_str(version).unwrap(),
         PathBuf::from(format!("/test/jdks/{distribution}-{version}")),
+        false,
     )
 }
 
@@ -48,6 +49,7 @@ pub fn create_test_jdk_with_path(distribution: &str, version: &str, path: &str) 
         distribution.to_string(),
         Version::from_str(version).unwrap(),
         PathBuf::from(path),
+        false,
     )
 }
 

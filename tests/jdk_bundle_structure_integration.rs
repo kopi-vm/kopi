@@ -150,6 +150,7 @@ fn test_installed_jdk_path_resolution() {
         "liberica".to_string(),
         Version::from_str("21.0.0").unwrap(),
         direct_jdk_path.clone(),
+        false,
     );
 
     // Test resolve_java_home
