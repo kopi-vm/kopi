@@ -67,6 +67,52 @@ impl Version {
         self
     }
 
+    /// Try to extract a build number from the version components.
+    /// For example, convert "24.0.2.12.1" to "24.0.2" with build [12].
+    /// This is useful for matching versions where build numbers are incorporated into components.
+    pub fn try_extract_build(&self) -> Option<Version> {
+        // Only attempt extraction if we have more than 3 components and no existing build
+        if self.components.len() > 3 && self.build.is_none() {
+            // Check if the 4th component could be a build number
+            if let Some(&potential_build) = self.components.get(3) {
+                // Create a new version with the first 3 components and the 4th as build
+                let new_version = Version {
+                    components: self.components[..3].to_vec(),
+                    build: Some(vec![potential_build]),
+                    pre_release: self.pre_release.clone(),
+                };
+
+                // If there are more components after the build, keep the original
+                if self.components.len() > 4 {
+                    // This handles cases like "24.0.2.12.1" where we can't cleanly extract
+                    // In this case, don't extract the build
+                    return None;
+                }
+
+                return Some(new_version);
+            }
+        }
+        None
+    }
+
+    /// Convert a version with build number to one with build incorporated into components.
+    /// For example, convert "24.0.2" with build [12] to "24.0.2.12".
+    /// This is useful for creating directory names that include the build number.
+    pub fn incorporate_build_into_components(&self) -> Version {
+        if let Some(build) = &self.build
+            && build.len() == 1
+        {
+            let mut new_components = self.components.clone();
+            new_components.push(build[0]);
+            return Version {
+                components: new_components,
+                build: None,
+                pre_release: self.pre_release.clone(),
+            };
+        }
+        self.clone()
+    }
+
     // Helper methods for backward compatibility
     pub fn major(&self) -> u32 {
         self.components.first().copied().unwrap_or(0)
@@ -84,49 +130,87 @@ impl Version {
     /// When the user specifies "21", it matches cache entries like "21.0" and "21.0.0".
     /// When the user specifies "21.0.0", it does NOT match cache entries like "21".
     /// When the user specifies "21.0", it matches cache entries like "21.0.0" and "21.0+32".
+    /// When the user specifies "X.Y.Z+B", it also matches "X.Y.Z.B" or "X.Y.Z.B.*" (build incorporated into components).
     pub fn matches_pattern(&self, pattern: &str) -> bool {
         if let Ok(pattern_version) = Version::from_str(pattern) {
-            // Compare components up to the length specified in pattern
-            for (i, pattern_comp) in pattern_version.components.iter().enumerate() {
-                match self.components.get(i) {
-                    Some(self_comp) => {
-                        if pattern_comp != self_comp {
+            // First try standard matching
+            if self.matches_standard(&pattern_version) {
+                return true;
+            }
+
+            // If pattern has a build number, try flexible build matching
+            // This handles cases where build numbers are incorporated into version components
+            // e.g., pattern "24.0.2+12" matches "24.0.2.12.1"
+            if let Some(pattern_build) = &pattern_version.build
+                && pattern_build.len() == 1
+            {
+                let build_num = pattern_build[0];
+                let pattern_comp_len = pattern_version.components.len();
+
+                // Check if self has the pattern components followed by the build number
+                if self.components.len() > pattern_comp_len {
+                    // Check that initial components match
+                    for (i, pattern_comp) in pattern_version.components.iter().enumerate() {
+                        if self.components.get(i) != Some(pattern_comp) {
                             return false;
                         }
                     }
-                    None => {
-                        // Pattern specifies more components than self has
-                        return false;
+
+                    // Check if the next component matches the build number
+                    if self.components.get(pattern_comp_len) == Some(&build_num) {
+                        // This handles cases like:
+                        // pattern "24.0.2+12" matches "24.0.2.12" or "24.0.2.12.1"
+                        return true;
                     }
                 }
             }
 
-            // Build matching if specified
-            if let Some(pattern_build) = &pattern_version.build {
-                if let Some(self_build) = &self.build {
-                    if pattern_build != self_build {
-                        return false;
-                    }
-                } else {
-                    return false;
-                }
-            }
-
-            // Pre-release matching if specified
-            if let Some(pattern_pre) = &pattern_version.pre_release {
-                if let Some(self_pre) = &self.pre_release {
-                    if pattern_pre != self_pre {
-                        return false;
-                    }
-                } else {
-                    return false;
-                }
-            }
-
-            true
+            false
         } else {
             false
         }
+    }
+
+    /// Standard version matching without flexible build handling
+    fn matches_standard(&self, pattern_version: &Version) -> bool {
+        // Compare components up to the length specified in pattern
+        for (i, pattern_comp) in pattern_version.components.iter().enumerate() {
+            match self.components.get(i) {
+                Some(self_comp) => {
+                    if pattern_comp != self_comp {
+                        return false;
+                    }
+                }
+                None => {
+                    // Pattern specifies more components than self has
+                    return false;
+                }
+            }
+        }
+
+        // Build matching if specified
+        if let Some(pattern_build) = &pattern_version.build {
+            if let Some(self_build) = &self.build {
+                if pattern_build != self_build {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        // Pre-release matching if specified
+        if let Some(pattern_pre) = &pattern_version.pre_release {
+            if let Some(self_pre) = &self.pre_release {
+                if pattern_pre != self_pre {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
@@ -609,6 +693,82 @@ mod tests {
         let v = Version::from_str("21.0.7.6.1+13").unwrap();
         assert_eq!(v.components, vec![21, 0, 7, 6, 1]);
         assert_eq!(v.build, Some(vec![13]));
+    }
+
+    #[test]
+    fn test_flexible_build_matching() {
+        // Test that X.Y.Z+B matches X.Y.Z.B and X.Y.Z.B.C
+
+        // Corretto case: 24.0.2+12 should match 24.0.2.12.1
+        let installed = Version::from_str("24.0.2.12.1").unwrap();
+        assert!(installed.matches_pattern("24.0.2+12"));
+
+        // Should also match without the .1
+        let installed = Version::from_str("24.0.2.12").unwrap();
+        assert!(installed.matches_pattern("24.0.2+12"));
+
+        // Zulu case: 21.0.5+11 should match 21.0.5.11
+        let installed = Version::from_str("21.0.5.11").unwrap();
+        assert!(installed.matches_pattern("21.0.5+11"));
+
+        // Should also match with additional components
+        let installed = Version::from_str("21.0.5.11.0.25").unwrap();
+        assert!(installed.matches_pattern("21.0.5+11"));
+
+        // Should NOT match if build number is different
+        let installed = Version::from_str("24.0.2.13.1").unwrap();
+        assert!(!installed.matches_pattern("24.0.2+12"));
+
+        // Should NOT match if base version is different
+        let installed = Version::from_str("24.0.3.12.1").unwrap();
+        assert!(!installed.matches_pattern("24.0.2+12"));
+
+        // Standard matching should still work (exact build match)
+        let installed = Version::from_str("21.0.5+11").unwrap();
+        assert!(installed.matches_pattern("21.0.5+11"));
+        assert!(!installed.matches_pattern("21.0.5+12"));
+    }
+
+    #[test]
+    fn test_try_extract_build() {
+        // Test extracting build from 4-component version
+        let v = Version::from_str("24.0.2.12").unwrap();
+        let extracted = v.try_extract_build().unwrap();
+        assert_eq!(extracted.components, vec![24, 0, 2]);
+        assert_eq!(extracted.build, Some(vec![12]));
+
+        // Should not extract from 5-component version (ambiguous)
+        let v = Version::from_str("24.0.2.12.1").unwrap();
+        assert!(v.try_extract_build().is_none());
+
+        // Should not extract from 3-component version
+        let v = Version::from_str("24.0.2").unwrap();
+        assert!(v.try_extract_build().is_none());
+
+        // Should not extract if already has build
+        let v = Version::from_str("24.0.2.12+5").unwrap();
+        assert!(v.try_extract_build().is_none());
+    }
+
+    #[test]
+    fn test_incorporate_build_into_components() {
+        // Test incorporating build into components
+        let v = Version::from_str("24.0.2+12").unwrap();
+        let incorporated = v.incorporate_build_into_components();
+        assert_eq!(incorporated.components, vec![24, 0, 2, 12]);
+        assert_eq!(incorporated.build, None);
+
+        // Should not change if no build
+        let v = Version::from_str("24.0.2").unwrap();
+        let incorporated = v.incorporate_build_into_components();
+        assert_eq!(incorporated.components, vec![24, 0, 2]);
+        assert_eq!(incorporated.build, None);
+
+        // Should not change if multi-component build
+        let v = Version::from_str("24.0.2+12.1").unwrap();
+        let incorporated = v.incorporate_build_into_components();
+        assert_eq!(incorporated.components, vec![24, 0, 2]);
+        assert_eq!(incorporated.build, Some(vec![12, 1]));
     }
 
     #[test]

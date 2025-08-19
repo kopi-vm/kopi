@@ -138,8 +138,23 @@ impl InstalledJdk {
             })?;
         }
 
+        // Try to format the version in a more user-friendly way
+        // If the version has 4 components and no build (e.g., 24.0.2.12),
+        // try to extract the build number for a cleaner format (e.g., 24.0.2+12)
+        let formatted_version =
+            if self.version.components.len() == 4 && self.version.build.is_none() {
+                // Try to extract build from the 4th component
+                if let Some(extracted) = self.version.try_extract_build() {
+                    extracted.to_string()
+                } else {
+                    self.version.to_string()
+                }
+            } else {
+                self.version.to_string()
+            };
+
         // Format version string
-        let version_string = format!("{}@{}", self.distribution, self.version);
+        let version_string = format!("{}@{}", self.distribution, formatted_version);
 
         // Write atomically using a temporary file
         let temp_path = path.with_extension("tmp");
