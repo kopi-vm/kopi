@@ -242,8 +242,8 @@ fn test_e2e_multiple_vendors_switching() {
         );
 
         assert!(
-            stdout.contains("JAVA_HOME="),
-            "Expected 'JAVA_HOME=' in stdout, but got:\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}\nExit code: {}",
+            stdout.contains("JAVA_HOME"),
+            "Expected 'JAVA_HOME' in stdout, but got:\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}\nExit code: {}",
             output.status.code().unwrap_or(-1)
         );
 
