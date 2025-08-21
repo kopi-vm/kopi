@@ -177,9 +177,19 @@ fn test_e2e_temurin_installation_workflow() {
         .current_dir(test_home.path());
 
     let output = cmd.output().expect("Failed to execute kopi current");
-    assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("temurin@21"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(
+        output.status.success(),
+        "Command failed with exit code: {:?}\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}",
+        output.status.code()
+    );
+
+    assert!(
+        stdout.contains("temurin@21"),
+        "Expected 'temurin@21' in stdout, but got:\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}"
+    );
 }
 
 #[test]
@@ -222,10 +232,20 @@ fn test_e2e_multiple_vendors_switching() {
             .current_dir(test_home.path());
 
         let output = cmd.output().expect("Failed to execute kopi env");
-        assert!(output.status.success());
-
         let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout.contains("JAVA_HOME="));
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            output.status.success(),
+            "Command failed with exit code: {:?}\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}",
+            output.status.code()
+        );
+
+        assert!(
+            stdout.contains("JAVA_HOME="),
+            "Expected 'JAVA_HOME=' in stdout, but got:\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}\nExit code: {}",
+            output.status.code().unwrap_or(-1)
+        );
 
         // Verify the JDK is correctly resolved
         let jdk = jdks.iter().find(|j| j.distribution == *vendor).unwrap();
@@ -271,9 +291,19 @@ fn test_e2e_project_hierarchy() {
         .current_dir(&project_root);
 
     let output = cmd.output().unwrap();
-    assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("temurin@21"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(
+        output.status.success(),
+        "Command failed with exit code: {:?}\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}",
+        output.status.code()
+    );
+
+    assert!(
+        stdout.contains("temurin@21"),
+        "Expected 'temurin@21' in stdout, but got:\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}"
+    );
 
     // Test from subproject (should use .java-version)
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_kopi"));
@@ -283,9 +313,21 @@ fn test_e2e_project_hierarchy() {
         .current_dir(&subproject);
 
     let output = cmd.output().unwrap();
-    assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("17.0.9"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(
+        output.status.success(),
+        "Command failed with exit code: {:?}\nSTDOUT:\n{}\nSTDERR:\n{}",
+        output.status.code(),
+        stdout,
+        stderr
+    );
+
+    assert!(
+        stdout.contains("17.0.9"),
+        "Expected '17.0.9' in stdout, but got:\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}"
+    );
 }
 
 #[test]
@@ -409,9 +451,21 @@ fn test_e2e_version_resolution_priority() {
         .current_dir(&project_dir);
 
     let output = cmd.output().unwrap();
-    assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("liberica@17"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(
+        output.status.success(),
+        "Command failed with exit code: {:?}\nSTDOUT:\n{}\nSTDERR:\n{}",
+        output.status.code(),
+        stdout,
+        stderr
+    );
+
+    assert!(
+        stdout.contains("liberica@17"),
+        "Expected 'liberica@17' in stdout, but got:\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}"
+    );
 
     // Test 3: Environment variable has highest priority
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_kopi"));
@@ -422,7 +476,17 @@ fn test_e2e_version_resolution_priority() {
         .current_dir(&project_dir);
 
     let output = cmd.output().unwrap();
-    assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("temurin@21"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(
+        output.status.success(),
+        "Command failed with exit code: {:?}\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}",
+        output.status.code()
+    );
+
+    assert!(
+        stdout.contains("temurin@21"),
+        "Expected 'temurin@21' in stdout, but got:\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}"
+    );
 }
