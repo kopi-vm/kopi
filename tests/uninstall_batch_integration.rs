@@ -212,13 +212,15 @@ fn test_partial_failure_recovery() {
     // Should succeed partially
     assert!(!jdk1_path.exists());
 
-    // Cleanup - restore permissions
+    // Cleanup - restore permissions if directory still exists
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(&jdk2_path).unwrap().permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&jdk2_path, perms).unwrap();
+        if jdk2_path.exists() {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&jdk2_path).unwrap().permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&jdk2_path, perms).unwrap();
+        }
     }
 }
 

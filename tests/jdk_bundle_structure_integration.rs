@@ -168,6 +168,7 @@ fn test_installed_jdk_path_resolution() {
             "temurin".to_string(),
             Version::from_str("21.0.0").unwrap(),
             bundle_jdk_path.clone(),
+            false,
         );
 
         // Test resolve_java_home for bundle structure

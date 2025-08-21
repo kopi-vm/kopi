@@ -287,7 +287,7 @@ fn test_install_without_cache() {
 
 #[test]
 #[serial]
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "macos")))]
 #[cfg_attr(not(feature = "integration_tests"), ignore)]
 fn test_install_permission_denied() {
     let test_home = TestHomeGuard::new();

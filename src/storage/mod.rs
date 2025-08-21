@@ -384,7 +384,7 @@ mod metadata_tests {
     }
 
     #[test]
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "macos")))]
     fn test_save_jdk_metadata_write_failure() {
         use std::os::unix::fs::PermissionsExt;
         let temp_dir = TempDir::new().unwrap();
@@ -502,7 +502,7 @@ mod metadata_tests {
     }
 
     #[test]
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "macos")))]
     fn test_save_jdk_metadata_permission_error() {
         use std::os::unix::fs::PermissionsExt;
 
