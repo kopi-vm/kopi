@@ -133,8 +133,11 @@ impl Version {
     /// When the user specifies "X.Y.Z+B", it also matches "X.Y.Z.B" or "X.Y.Z.B.*" (build incorporated into components).
     pub fn matches_pattern(&self, pattern: &str) -> bool {
         if let Ok(pattern_version) = Version::from_str(pattern) {
+            log::trace!("Matching version {self} against pattern {pattern}");
+
             // First try standard matching
             if self.matches_standard(&pattern_version) {
+                log::trace!("Standard match succeeded");
                 return true;
             }
 
@@ -147,11 +150,20 @@ impl Version {
                 let build_num = pattern_build[0];
                 let pattern_comp_len = pattern_version.components.len();
 
+                log::trace!(
+                    "Trying flexible build matching: pattern has build {build_num}, self has {} components",
+                    self.components.len()
+                );
+
                 // Check if self has the pattern components followed by the build number
                 if self.components.len() > pattern_comp_len {
                     // Check that initial components match
                     for (i, pattern_comp) in pattern_version.components.iter().enumerate() {
                         if self.components.get(i) != Some(pattern_comp) {
+                            log::trace!(
+                                "Component mismatch at index {i}: {pattern_comp} != {:?}",
+                                self.components.get(i)
+                            );
                             return false;
                         }
                     }
@@ -160,13 +172,44 @@ impl Version {
                     if self.components.get(pattern_comp_len) == Some(&build_num) {
                         // This handles cases like:
                         // pattern "24.0.2+12" matches "24.0.2.12" or "24.0.2.12.1"
+                        log::trace!("Flexible build match succeeded");
                         return true;
+                    } else {
+                        log::trace!(
+                            "Build number mismatch: expected {build_num}, got {:?}",
+                            self.components.get(pattern_comp_len)
+                        );
                     }
                 }
             }
 
+            // Also handle the reverse case: pattern without build but self has build
+            // e.g., pattern "21.0.5.11" should match self "21.0.5+11"
+            if self.build.is_some()
+                && self.build.as_ref().unwrap().len() == 1
+                && pattern_version.build.is_none()
+                && pattern_version.components.len() == self.components.len() + 1
+            {
+                // Check if pattern's last component matches our build number
+                let build_num = self.build.as_ref().unwrap()[0];
+                let pattern_last_comp = pattern_version.components.last().unwrap();
+
+                if *pattern_last_comp == build_num {
+                    // Check that all other components match
+                    for i in 0..self.components.len() {
+                        if self.components[i] != pattern_version.components[i] {
+                            return false;
+                        }
+                    }
+                    log::trace!("Reverse flexible build match succeeded");
+                    return true;
+                }
+            }
+
+            log::trace!("No match found");
             false
         } else {
+            log::trace!("Failed to parse pattern: {pattern}");
             false
         }
     }
@@ -795,6 +838,60 @@ mod tests {
         let installed = Version::from_str("21.0.5+11").unwrap();
         assert!(installed.matches_pattern("21.0.5+11"));
         assert!(!installed.matches_pattern("21.0.5+12"));
+    }
+
+    #[test]
+    fn test_reverse_build_matching() {
+        // Test the reverse case: pattern has build as component, installed has build metadata
+
+        // Pattern "21.0.5.11" should match installed "21.0.5+11"
+        let installed = Version::from_str("21.0.5+11").unwrap();
+        assert!(installed.matches_pattern("21.0.5.11"));
+
+        // Pattern "24.0.2.12" should match installed "24.0.2+12"
+        let installed = Version::from_str("24.0.2+12").unwrap();
+        assert!(installed.matches_pattern("24.0.2.12"));
+
+        // Should NOT match if build number is different
+        let installed = Version::from_str("21.0.5+12").unwrap();
+        assert!(!installed.matches_pattern("21.0.5.11"));
+
+        // Should NOT match if base version is different
+        let installed = Version::from_str("21.0.4+11").unwrap();
+        assert!(!installed.matches_pattern("21.0.5.11"));
+    }
+
+    #[test]
+    fn test_local_command_version_matching() {
+        // Specific test for the reported issue:
+        // kopi install 21.0.5+11 creates directory with version 21.0.5.11
+        // kopi local 21.0.5+11 should find it
+
+        // Simulate installed JDK with version parsed from directory name
+        let installed_version = Version::from_str("21.0.5.11").unwrap();
+
+        // User runs: kopi local 21.0.5+11
+        let search_pattern = "21.0.5+11";
+
+        // This should match
+        assert!(
+            installed_version.matches_pattern(search_pattern),
+            "Version {installed_version} should match pattern {search_pattern}"
+        );
+
+        // Also test with different vendors that format versions differently
+
+        // Temurin format
+        let temurin_installed = Version::from_str("21.0.5.11").unwrap();
+        assert!(temurin_installed.matches_pattern("21.0.5+11"));
+
+        // Corretto format (may have additional components)
+        let corretto_installed = Version::from_str("21.0.5.11.1").unwrap();
+        assert!(corretto_installed.matches_pattern("21.0.5+11"));
+
+        // Zulu format
+        let zulu_installed = Version::from_str("21.0.5.11.0.25").unwrap();
+        assert!(zulu_installed.matches_pattern("21.0.5+11"));
     }
 
     #[test]
