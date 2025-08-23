@@ -562,14 +562,15 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
                             .unwrap_or("-");
 
                         let detailed_key = format!(
-                            "{}-{}-{}-{}-{}-{}-{}",
+                            "{}-{}-{}-{}-{}-{}-{}-{}",
                             dist_name,
                             display_version,
                             lts_display,
                             status_plain,
                             package.package_type,
                             os_arch,
-                            lib_c
+                            lib_c,
+                            package.javafx_bundled
                         );
 
                         if !seen_detailed_entries.insert(detailed_key) {
@@ -577,8 +578,11 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
                             continue;
                         }
                     } else if !detailed && !json {
-                        // In compact mode, deduplicate based on version and LTS
-                        let compact_key = format!("{display_version}-{lts_display}");
+                        // In compact mode, deduplicate based on version, LTS, and JavaFX status
+                        let compact_key = format!(
+                            "{}-{}-{}",
+                            display_version, lts_display, package.javafx_bundled
+                        );
                         if !seen_compact_entries.insert(compact_key) {
                             // Already seen this combination, skip it
                             continue;
