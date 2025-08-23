@@ -201,6 +201,18 @@ jobs:
         New-Item -Path archive/pkg -ItemType Directory -Force
         Compress-Archive -Path ./target/aarch64-pc-windows-msvc/release/kopi.exe, ./target/aarch64-pc-windows-msvc/release-shim/kopi-shim.exe -DestinationPath archive/pkg/kopi-${{ github.event.inputs.version }}-windows-arm64.zip
 
+    - name: Scan with Microsoft Defender
+      run: |
+        # https://learn.microsoft.com/ja-jp/defender-endpoint/command-line-arguments-microsoft-defender-antivirus
+        $defenderPath = "${env:ProgramFiles}/Windows Defender/MpCmdRun.exe"
+
+        Write-Host "Updating Microsoft Defender signatures..."
+        & $defenderPath -SignatureUpdate
+
+        Write-Host "Scan packages..."
+        $filePath = (Resolve-Path -Path "archive/pkg").Path
+        & $defenderPath -Scan -ScanType 3 -File $filePath -DisableRemediation
+
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
