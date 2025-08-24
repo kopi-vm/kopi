@@ -16,12 +16,14 @@ pub mod factory;
 pub mod indicatif;
 pub mod silent;
 pub mod simple;
+pub mod status;
 pub mod types;
 
 pub use factory::ProgressFactory;
 pub use indicatif::IndicatifProgress;
 pub use silent::SilentProgress;
 pub use simple::SimpleProgress;
+pub use status::StatusReporter;
 pub use types::{ProgressConfig, ProgressStyle};
 
 pub trait ProgressIndicator: Send + Sync {
