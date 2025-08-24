@@ -13,9 +13,11 @@
 // limitations under the License.
 
 pub mod silent;
+pub mod simple;
 pub mod types;
 
 pub use silent::SilentProgress;
+pub use simple::SimpleProgress;
 pub use types::{ProgressConfig, ProgressStyle};
 
 pub trait ProgressIndicator: Send + Sync {
