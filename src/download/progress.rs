@@ -13,66 +13,133 @@
 // limitations under the License.
 
 use super::ProgressReporter;
-use indicatif::{ProgressBar, ProgressStyle};
-use std::time::Duration;
+use crate::indicator::{ProgressConfig, ProgressFactory, ProgressIndicator, ProgressStyle};
 
-pub struct IndicatifProgressReporter {
-    progress_bar: Option<ProgressBar>,
+pub struct DownloadProgressAdapter {
+    indicator: Box<dyn ProgressIndicator>,
+    operation: String,
+    context: String,
 }
 
-impl IndicatifProgressReporter {
-    pub fn new() -> Self {
-        Self { progress_bar: None }
+impl DownloadProgressAdapter {
+    pub fn new(no_progress: bool, operation: String, context: String) -> Self {
+        Self {
+            indicator: ProgressFactory::create(no_progress),
+            operation,
+            context,
+        }
+    }
+
+    pub fn for_jdk_download(no_progress: bool, package_name: &str) -> Self {
+        Self::new(
+            no_progress,
+            "Downloading".to_string(),
+            package_name.to_string(),
+        )
     }
 }
 
-impl Default for IndicatifProgressReporter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ProgressReporter for IndicatifProgressReporter {
+impl ProgressReporter for DownloadProgressAdapter {
     fn on_start(&mut self, total_bytes: u64) {
-        let pb = if total_bytes > 0 {
-            let pb = ProgressBar::new(total_bytes);
-            pb.set_style(
-                ProgressStyle::default_bar()
-                    .template(
-                        "{msg}\n{spinner:.green} [{elapsed_precise}] [{bar:25.cyan/blue}] \
-                         {bytes}/{total_bytes} ({bytes_per_sec}, {eta})",
-                    )
-                    .unwrap()
-                    .progress_chars("█▓░"),
-            );
-            pb.set_message("Downloading JDK");
-            pb
+        let config = if total_bytes > 0 {
+            ProgressConfig::new(&self.operation, &self.context, ProgressStyle::Bytes)
+                .with_total(total_bytes)
         } else {
-            let pb = ProgressBar::new_spinner();
-            pb.set_style(
-                ProgressStyle::default_spinner()
-                    .template(
-                        "{msg}\n{spinner:.green} [{elapsed_precise}] {bytes} ({bytes_per_sec})",
-                    )
-                    .unwrap(),
-            );
-            pb.set_message("Downloading JDK (size unknown)");
-            pb
+            ProgressConfig::new(&self.operation, &self.context, ProgressStyle::Bytes)
         };
-
-        pb.enable_steady_tick(Duration::from_millis(100));
-        self.progress_bar = Some(pb);
+        self.indicator.start(config);
     }
 
     fn on_progress(&mut self, bytes_downloaded: u64) {
-        if let Some(pb) = &self.progress_bar {
-            pb.set_position(bytes_downloaded);
-        }
+        self.indicator.update(bytes_downloaded, None);
     }
 
     fn on_complete(&mut self) {
-        if let Some(pb) = &self.progress_bar {
-            pb.finish_with_message("Download complete");
+        self.indicator
+            .complete(Some("Download complete".to_string()));
+    }
+}
+
+// Keep the old name for backward compatibility during migration
+pub type IndicatifProgressReporter = DownloadProgressAdapter;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_download_progress_with_total() {
+        let mut adapter = DownloadProgressAdapter::for_jdk_download(false, "temurin@21");
+
+        // Start with known total size
+        adapter.on_start(1024 * 1024); // 1MB
+
+        // Report some progress
+        adapter.on_progress(512 * 1024); // 512KB
+        adapter.on_progress(1024 * 1024); // 1MB
+
+        // Complete the download
+        adapter.on_complete();
+    }
+
+    #[test]
+    fn test_download_progress_without_total() {
+        let mut adapter = DownloadProgressAdapter::for_jdk_download(false, "liberica@17");
+
+        // Start with unknown total size
+        adapter.on_start(0);
+
+        // Report some progress
+        adapter.on_progress(256 * 1024); // 256KB
+        adapter.on_progress(512 * 1024); // 512KB
+
+        // Complete the download
+        adapter.on_complete();
+    }
+
+    #[test]
+    fn test_download_progress_no_progress_mode() {
+        let mut adapter = DownloadProgressAdapter::for_jdk_download(true, "corretto@11");
+
+        // Should work silently without panicking
+        adapter.on_start(2048 * 1024); // 2MB
+        adapter.on_progress(1024 * 1024); // 1MB
+        adapter.on_complete();
+    }
+
+    #[test]
+    fn test_custom_operation_context() {
+        let mut adapter = DownloadProgressAdapter::new(
+            false,
+            "Fetching".to_string(),
+            "archive.tar.gz".to_string(),
+        );
+
+        adapter.on_start(5000000);
+        adapter.on_progress(2500000);
+        adapter.on_complete();
+    }
+
+    #[test]
+    fn test_progress_reporter_trait_impl() {
+        // Verify it implements the ProgressReporter trait
+        fn accepts_reporter(_reporter: Box<dyn ProgressReporter>) {}
+
+        let adapter = DownloadProgressAdapter::for_jdk_download(false, "zulu@21");
+        accepts_reporter(Box::new(adapter));
+    }
+
+    #[test]
+    fn test_incremental_progress_updates() {
+        let mut adapter = DownloadProgressAdapter::for_jdk_download(false, "graalvm@21");
+
+        adapter.on_start(1000);
+
+        // Simulate incremental download
+        for i in 1..=10 {
+            adapter.on_progress(i * 100);
         }
+
+        adapter.on_complete();
     }
 }

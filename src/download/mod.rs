@@ -21,7 +21,7 @@ mod progress;
 pub use client::{HttpClient, HttpResponse};
 pub use http_file_downloader::{HttpFileDownloader, ProgressReporter};
 pub use options::{DEFAULT_TIMEOUT, DownloadOptions, DownloadResult, MAX_DOWNLOAD_SIZE};
-pub use progress::IndicatifProgressReporter;
+pub use progress::{DownloadProgressAdapter, IndicatifProgressReporter};
 
 use crate::error::Result;
 use std::time::Duration;
@@ -49,10 +49,11 @@ pub fn download_jdk(
             .set_timeout(Duration::from_secs(timeout));
     }
 
-    // Add progress reporter unless disabled
-    if !no_progress {
-        downloader = downloader.with_progress_reporter(Box::new(IndicatifProgressReporter::new()));
-    }
+    // Add progress reporter (handles no_progress internally)
+    let package_name = format!("{}@{}", package.distribution, package.version);
+    downloader = downloader.with_progress_reporter(Box::new(
+        DownloadProgressAdapter::for_jdk_download(no_progress, &package_name),
+    ));
 
     // Prepare download options
     let options = DownloadOptions {
