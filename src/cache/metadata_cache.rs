@@ -239,57 +239,61 @@ impl MetadataCache {
         // On macOS, prefer tar.gz to preserve symbolic links
         let is_macos = operating_system == "macos" || operating_system == "mac_os";
 
-        // Find exact match, filtering for supported archive types only
-        if is_macos {
-            // First try to find tar.gz
-            let tar_gz_match = dist_cache
-                .packages
-                .iter()
-                .find(|pkg| {
-                    pkg.version.matches_pattern(version)
-                        && pkg.architecture.to_string() == architecture
-                        && pkg.operating_system.to_string() == operating_system
-                        && (package_type.is_none() || Some(&pkg.package_type) == package_type)
-                        && (javafx_bundled.is_none() || Some(pkg.javafx_bundled) == javafx_bundled)
-                        && self.matches_platform_libc(&pkg.lib_c_type)
-                        && matches!(pkg.archive_type, ArchiveType::TarGz)
-                })
-                .cloned();
+        // Collect all matching packages
+        let mut matches: Vec<&JdkMetadata> = dist_cache
+            .packages
+            .iter()
+            .filter(|pkg| {
+                pkg.version.matches_pattern(version)
+                    && pkg.architecture.to_string() == architecture
+                    && pkg.operating_system.to_string() == operating_system
+                    && (package_type.is_none() || Some(&pkg.package_type) == package_type)
+                    && (javafx_bundled.is_none() || Some(pkg.javafx_bundled) == javafx_bundled)
+                    && self.matches_platform_libc(&pkg.lib_c_type)
+                    && if is_macos {
+                        // On macOS, accept both tar.gz and zip
+                        matches!(pkg.archive_type, ArchiveType::TarGz | ArchiveType::Zip)
+                    } else {
+                        // On other platforms, accept both tar.gz and zip
+                        matches!(pkg.archive_type, ArchiveType::TarGz | ArchiveType::Zip)
+                    }
+            })
+            .collect();
 
-            if tar_gz_match.is_some() {
-                return tar_gz_match;
+        if matches.is_empty() {
+            return None;
+        }
+
+        // Sort by priority:
+        // 1. latest_build_available (true > false > None)
+        // 2. For macOS: archive type (tar.gz > zip)
+        // 3. Version (newer > older)
+        matches.sort_by(|a, b| {
+            // First, prioritize by latest_build_available
+            match (&a.latest_build_available, &b.latest_build_available) {
+                (Some(true), Some(false)) | (Some(true), None) => return std::cmp::Ordering::Less,
+                (Some(false), Some(true)) | (None, Some(true)) => {
+                    return std::cmp::Ordering::Greater;
+                }
+                (Some(false), None) => return std::cmp::Ordering::Less,
+                (None, Some(false)) => return std::cmp::Ordering::Greater,
+                _ => {}
             }
 
-            // Fall back to zip if no tar.gz available
-            dist_cache
-                .packages
-                .iter()
-                .find(|pkg| {
-                    pkg.version.matches_pattern(version)
-                        && pkg.architecture.to_string() == architecture
-                        && pkg.operating_system.to_string() == operating_system
-                        && (package_type.is_none() || Some(&pkg.package_type) == package_type)
-                        && (javafx_bundled.is_none() || Some(pkg.javafx_bundled) == javafx_bundled)
-                        && self.matches_platform_libc(&pkg.lib_c_type)
-                        && matches!(pkg.archive_type, ArchiveType::Zip)
-                })
-                .cloned()
-        } else {
-            // For other platforms, accept both tar.gz and zip
-            dist_cache
-                .packages
-                .iter()
-                .find(|pkg| {
-                    pkg.version.matches_pattern(version)
-                        && pkg.architecture.to_string() == architecture
-                        && pkg.operating_system.to_string() == operating_system
-                        && (package_type.is_none() || Some(&pkg.package_type) == package_type)
-                        && (javafx_bundled.is_none() || Some(pkg.javafx_bundled) == javafx_bundled)
-                        && self.matches_platform_libc(&pkg.lib_c_type)
-                        && matches!(pkg.archive_type, ArchiveType::TarGz | ArchiveType::Zip)
-                })
-                .cloned()
-        }
+            // For macOS, prioritize tar.gz over zip
+            if is_macos {
+                match (&a.archive_type, &b.archive_type) {
+                    (ArchiveType::TarGz, ArchiveType::Zip) => return std::cmp::Ordering::Less,
+                    (ArchiveType::Zip, ArchiveType::TarGz) => return std::cmp::Ordering::Greater,
+                    _ => {}
+                }
+            }
+
+            // Finally, sort by version (newer first)
+            b.version.cmp(&a.version)
+        });
+
+        matches.first().cloned().cloned()
     }
 
     /// Check if the package's lib_c_type is compatible with the current platform

@@ -134,8 +134,18 @@ impl<'a> InstallCommand<'a> {
 
         // Find matching JDK package first to get the actual distribution_version
         debug!("Searching for {} version {}", distribution.name(), version);
-        let package =
-            self.find_matching_package(&distribution, version, &version_request, javafx_bundled)?;
+        // Prefer JavaFX flag from version string (+fx suffix) over command line flag
+        let effective_javafx_bundled = version_request.javafx_bundled.unwrap_or(javafx_bundled);
+        debug!(
+            "JavaFX bundled: version_request={:?}, cli_flag={}, effective={}",
+            version_request.javafx_bundled, javafx_bundled, effective_javafx_bundled
+        );
+        let package = self.find_matching_package(
+            &distribution,
+            version,
+            &version_request,
+            effective_javafx_bundled,
+        )?;
         trace!("Found package: {package:?}");
         let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
 
@@ -146,7 +156,7 @@ impl<'a> InstallCommand<'a> {
         let installation_dir = repository.jdk_install_path(
             &distribution,
             &jdk_metadata.distribution_version.to_string(),
-            javafx_bundled,
+            effective_javafx_bundled,
         )?;
 
         if dry_run {
@@ -231,13 +241,13 @@ impl<'a> InstallCommand<'a> {
             repository.prepare_jdk_installation(
                 &distribution,
                 &jdk_metadata_with_checksum.distribution_version.to_string(),
-                javafx_bundled,
+                effective_javafx_bundled,
             )?
         } else {
             repository.prepare_jdk_installation(
                 &distribution,
                 &jdk_metadata_with_checksum.distribution_version.to_string(),
-                javafx_bundled,
+                effective_javafx_bundled,
             )?
         };
 
@@ -284,7 +294,7 @@ impl<'a> InstallCommand<'a> {
             &jdk_metadata_with_checksum.distribution_version.to_string(),
             &package,
             &installation_metadata,
-            javafx_bundled,
+            effective_javafx_bundled,
         )?;
 
         // Clean up is automatic when download_result goes out of scope
