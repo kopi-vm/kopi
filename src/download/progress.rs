@@ -48,10 +48,24 @@ impl ProgressReporter for DownloadProgressAdapter {
             ProgressConfig::new(&self.operation, &self.context, ProgressStyle::Bytes)
         };
         self.indicator.start(config);
+
+        // Set initial message
+        if total_bytes > 0 {
+            self.indicator
+                .set_message(format!("0 / {total_bytes} bytes"));
+        } else {
+            self.indicator
+                .set_message("Starting download...".to_string());
+        }
     }
 
     fn on_progress(&mut self, bytes_downloaded: u64) {
         self.indicator.update(bytes_downloaded, None);
+
+        // Update message to show progress
+        let mb_downloaded = bytes_downloaded as f64 / (1024.0 * 1024.0);
+        self.indicator
+            .set_message(format!("{mb_downloaded:.1} MB downloaded"));
     }
 
     fn on_complete(&mut self) {

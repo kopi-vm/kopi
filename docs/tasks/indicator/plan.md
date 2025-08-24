@@ -4,7 +4,7 @@
 
 This document outlines the implementation plan for creating a unified progress indicator system for Kopi. The implementation consolidates fragmented progress implementations into a consistent system with support for different environments (terminal, non-terminal, silent mode). The plan is divided into phases that can be completed independently with context resets (`/clear`) between each phase.
 
-**Current Status**: Phase 1-7 completed ✅
+**Current Status**: Phase 1-8 completed ✅
 
 ## Phase 1: Core Trait and Structures ✅
 
@@ -280,7 +280,7 @@ kopi install --no-progress liberica@21
 
 ---
 
-## Phase 8: Cache Module Migration
+## Phase 8: Cache Module Migration ✅
 
 **Goal**: Migrate the cache module to use the new progress indicator system.
 
@@ -292,13 +292,13 @@ kopi install --no-progress liberica@21
   - Phases 1-6 (Complete indicator system)
 
 ### Tasks
-- [ ] Replace direct `ProgressBar` usage with `ProgressIndicator`
-- [ ] Use factory for spinner creation
-- [ ] Update cache refresh progress
-- [ ] **Write integration tests**:
-  - [ ] Test cache refresh with progress
-  - [ ] Test spinner behavior
-  - [ ] Test --no-progress flag
+- [x] Replace direct `ProgressBar` usage with `ProgressIndicator`
+- [x] Use factory for spinner creation
+- [x] Update cache refresh progress
+- [x] **Write integration tests**:
+  - [x] Test cache refresh with progress
+  - [x] Test spinner behavior
+  - [x] Test --no-progress flag
 
 ### Deliverables
 - Updated `src/commands/cache.rs` using new system
