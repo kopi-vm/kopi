@@ -434,35 +434,115 @@ impl<'a> InstallCommand<'a> {
 
         // Package not found after all attempts
         // Try to find available versions in cache for helpful error message
-        let available_versions = cache
+        let (available_with_javafx, available_without_javafx) = cache
             .distributions
             .get(distribution.id())
             .map(|dist| {
-                let mut versions: Vec<String> = dist
+                // Collect versions with JavaFX
+                let mut with_fx: Vec<String> = dist
                     .packages
                     .iter()
                     .filter(|pkg| {
                         pkg.architecture.to_string() == arch
                             && pkg.operating_system.to_string() == os
+                            && pkg.javafx_bundled
                     })
                     .map(|pkg| pkg.version.to_string())
                     .collect();
-                versions.sort();
-                versions.dedup();
-                versions
+                with_fx.sort();
+                with_fx.dedup();
+
+                // Collect versions without JavaFX
+                let mut without_fx: Vec<String> = dist
+                    .packages
+                    .iter()
+                    .filter(|pkg| {
+                        pkg.architecture.to_string() == arch
+                            && pkg.operating_system.to_string() == os
+                            && !pkg.javafx_bundled
+                    })
+                    .map(|pkg| pkg.version.to_string())
+                    .collect();
+                without_fx.sort();
+                without_fx.dedup();
+
+                (with_fx, without_fx)
             })
             .unwrap_or_default();
 
-        Err(KopiError::VersionNotAvailable(format!(
-            "{} {} not found. Available versions: {}",
-            distribution.name(),
-            version,
-            if available_versions.is_empty() {
-                "none for your platform".to_string()
+        // Build error message based on what was requested
+        let error_message = if javafx_bundled {
+            // Looking for JavaFX version
+            let mut msg = format!(
+                "{} {} (with JavaFX) not found",
+                distribution.name(),
+                version
+            );
+
+            if !available_without_javafx.is_empty() {
+                msg.push_str(&format!(
+                    ". Available versions without JavaFX: {}",
+                    available_without_javafx
+                        .iter()
+                        .take(5)
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+                if available_without_javafx.len() > 5 {
+                    msg.push_str(&format!(" and {} more", available_without_javafx.len() - 5));
+                }
+                msg.push_str(&format!(
+                    ". Try 'kopi install {}@{}' without +fx suffix",
+                    distribution.id(),
+                    version
+                ));
             } else {
-                available_versions.join(", ")
+                msg.push_str(". No versions available for your platform");
             }
-        )))
+            msg
+        } else {
+            // Looking for non-JavaFX version
+            let mut msg = format!("{} {} not found", distribution.name(), version);
+
+            if !available_with_javafx.is_empty() {
+                msg.push_str(&format!(
+                    ". Available versions with JavaFX: {}",
+                    available_with_javafx
+                        .iter()
+                        .take(5)
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+                if available_with_javafx.len() > 5 {
+                    msg.push_str(&format!(" and {} more", available_with_javafx.len() - 5));
+                }
+                msg.push_str(&format!(
+                    ". Try 'kopi install {}@{}+fx' for JavaFX version",
+                    distribution.id(),
+                    version
+                ));
+            } else if available_without_javafx.is_empty() {
+                msg.push_str(". No versions available for your platform");
+            } else {
+                msg.push_str(&format!(
+                    ". Available versions: {}",
+                    available_without_javafx
+                        .iter()
+                        .take(5)
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+                if available_without_javafx.len() > 5 {
+                    msg.push_str(&format!(" and {} more", available_without_javafx.len() - 5));
+                }
+            }
+            msg
+        };
+
+        Err(KopiError::VersionNotAvailable(error_message))
     }
 
     fn convert_package_to_metadata(
