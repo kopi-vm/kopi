@@ -31,7 +31,7 @@ type VersionSearchResult = (Option<(VersionRequest, PathBuf)>, Vec<String>);
 pub enum VersionSource {
     Environment(String),    // KOPI_JAVA_VERSION
     ProjectFile(PathBuf),   // .kopi-version or .java-version
-    GlobalDefault(PathBuf), // ~/.kopi/default-version
+    GlobalDefault(PathBuf), // ~/.kopi/version
 }
 
 pub struct VersionResolver<'a> {
