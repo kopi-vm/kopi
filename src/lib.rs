@@ -20,6 +20,7 @@ pub mod config;
 pub mod doctor;
 pub mod download;
 pub mod error;
+pub mod indicator;
 pub mod installation;
 pub mod logging;
 pub mod metadata;
