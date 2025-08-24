@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod indicatif;
 pub mod silent;
 pub mod simple;
 pub mod types;
 
+pub use indicatif::IndicatifProgress;
 pub use silent::SilentProgress;
 pub use simple::SimpleProgress;
 pub use types::{ProgressConfig, ProgressStyle};

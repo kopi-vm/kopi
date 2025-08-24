@@ -4,7 +4,7 @@
 
 This document outlines the implementation plan for creating a unified progress indicator system for Kopi. The implementation consolidates fragmented progress implementations into a consistent system with support for different environments (terminal, non-terminal, silent mode). The plan is divided into phases that can be completed independently with context resets (`/clear`) between each phase.
 
-**Current Status**: Phase 1-3 completed ✅
+**Current Status**: Phase 1-4 completed ✅
 
 ## Phase 1: Core Trait and Structures ✅
 
@@ -122,7 +122,7 @@ TERM=dumb cargo run -- cache refresh
 
 ---
 
-## Phase 4: Indicatif Implementation
+## Phase 4: Indicatif Implementation ✅
 
 **Goal**: Implement the full-featured progress indicator using the indicatif library.
 
@@ -135,19 +135,19 @@ TERM=dumb cargo run -- cache refresh
   - `/src/indicator/indicatif.rs` - Indicatif implementation
 
 ### Tasks
-- [ ] Create `IndicatifProgress` struct
-- [ ] Implement `ProgressIndicator` trait for `IndicatifProgress`
-- [ ] Create template selection based on ProgressStyle and total
-- [ ] Configure progress bar/spinner with consistent styling:
-  - [ ] Progress chars: `█▓░`
-  - [ ] Spinner chars: `⣾⣽⣻⢿⡿⣟⣯⣷`
-  - [ ] Colors: Green spinner, cyan/blue bars
-  - [ ] Tick speed: 100ms
-- [ ] **Write unit tests**:
-  - [ ] Test progress bar creation
-  - [ ] Test spinner creation
-  - [ ] Test template selection logic
-  - [ ] Test update behavior
+- [x] Create `IndicatifProgress` struct
+- [x] Implement `ProgressIndicator` trait for `IndicatifProgress`
+- [x] Create template selection based on ProgressStyle and total
+- [x] Configure progress bar/spinner with consistent styling:
+  - [x] Progress chars: `█▓░`
+  - [x] Spinner chars: `⣾⣽⣻⢿⡿⣟⣯⣷`
+  - [x] Colors: Green spinner, cyan/blue bars
+  - [x] Tick speed: 100ms
+- [x] **Write unit tests**:
+  - [x] Test progress bar creation
+  - [x] Test spinner creation
+  - [x] Test template selection logic
+  - [x] Test update behavior
 
 ### Deliverables
 - `src/indicator/indicatif.rs` - Complete indicatif implementation
