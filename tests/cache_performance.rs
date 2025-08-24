@@ -79,6 +79,7 @@ fn create_large_test_cache() -> MetadataCache {
                                     } else {
                                         ArchiveType::TarGz
                                     },
+                                    javafx_bundled: false,
                                     download_url: Some(format!(
                                         "https://example.com/{dist_id}/jdk-{major}.{minor}.{patch}.tar.gz"
                                     )),
@@ -90,7 +91,6 @@ fn create_large_test_cache() -> MetadataCache {
                                     } else {
                                         None
                                     },
-                                    javafx_bundled: false,
                                     term_of_support: if *major == 8
                                         || *major == 11
                                         || *major == 17

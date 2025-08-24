@@ -329,18 +329,13 @@ fn test_install_with_javafx() {
     test_home.setup_kopi_structure();
     let kopi_home = test_home.kopi_home();
 
-    // First refresh cache with javafx
+    // First refresh cache
     let mut cmd = get_test_command(&kopi_home);
-    cmd.arg("cache")
-        .arg("refresh")
-        .arg("--javafx-bundled")
-        .assert()
-        .success();
+    cmd.arg("cache").arg("refresh").assert().success();
 
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("install")
-        .arg("17")
-        .arg("--javafx-bundled")
+        .arg("liberica@17+fx")
         .arg("--dry-run")
         .assert();
 }

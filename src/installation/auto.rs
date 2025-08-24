@@ -72,11 +72,18 @@ impl<'a> AutoInstaller<'a> {
     /// Install a JDK by delegating to the main kopi binary
     pub fn install_jdk(&self, version_request: &VersionRequest) -> Result<()> {
         // Build the version specification for the install command
-        let version_spec = if let Some(dist) = &version_request.distribution {
+        // Append +fx if JavaFX is requested
+        let mut version_spec = if let Some(dist) = &version_request.distribution {
             format!("{}@{}", dist, version_request.version_pattern)
         } else {
             version_request.version_pattern.clone()
         };
+
+        // Add +fx suffix if JavaFX is requested
+        if version_request.javafx_bundled == Some(true) {
+            version_spec.push_str("+fx");
+            debug!("Adding +fx suffix for JavaFX bundled version");
+        }
 
         info!("Auto-installing JDK: {version_spec}");
 
@@ -86,12 +93,6 @@ impl<'a> AutoInstaller<'a> {
         // Build the install command
         let mut cmd = std::process::Command::new(&kopi_path);
         cmd.arg("install").arg(&version_spec);
-
-        // Add JavaFX flag if requested
-        if version_request.javafx_bundled == Some(true) {
-            cmd.arg("--javafx-bundled");
-            debug!("Adding --javafx-bundled flag to install command");
-        }
 
         // Set timeout if configured
         let timeout_secs = self.config.auto_install.timeout_secs;

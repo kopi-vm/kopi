@@ -62,7 +62,7 @@ pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Res
                 if let Some(version) = requested_version
                     && !loaded_cache.has_version(version)
                 {
-                    return fetch_and_cache_metadata(false, config);
+                    return fetch_and_cache_metadata(config);
                 }
                 return Ok(loaded_cache);
             }
@@ -74,26 +74,18 @@ pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Res
     }
 
     // No cache or cache load failed, fetch from API
-    fetch_and_cache_metadata(false, config)
+    fetch_and_cache_metadata(config)
 }
 
 /// Fetch metadata from API and cache it
-pub fn fetch_and_cache_metadata(
-    javafx_bundled: bool,
-    config: &KopiConfig,
-) -> Result<MetadataCache> {
+pub fn fetch_and_cache_metadata(config: &KopiConfig) -> Result<MetadataCache> {
     // Create metadata provider from config
     let provider = MetadataProvider::from_config(config)?;
 
-    // Fetch all metadata
-    let mut metadata = provider
+    // Fetch all metadata (includes both JavaFX and non-JavaFX packages)
+    let metadata = provider
         .fetch_all()
         .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch metadata from API: {e}")))?;
-
-    // Filter by javafx_bundled if needed
-    if javafx_bundled {
-        metadata.retain(|jdk| jdk.javafx_bundled);
-    }
 
     // Convert metadata to cache format
     let mut new_cache = MetadataCache::new();
@@ -131,7 +123,6 @@ pub fn fetch_and_cache_metadata(
 /// Fetch metadata for a specific distribution and update the cache
 pub fn fetch_and_cache_distribution(
     distribution_name: &str,
-    javafx_bundled: bool,
     config: &KopiConfig,
 ) -> Result<MetadataCache> {
     // Load existing cache if available or create new one
@@ -145,19 +136,14 @@ pub fn fetch_and_cache_distribution(
     // Create metadata provider from config
     let provider = MetadataProvider::from_config(config)?;
 
-    // Fetch metadata for the specific distribution
-    let mut packages = provider
+    // Fetch metadata for the specific distribution (includes both JavaFX and non-JavaFX)
+    let packages = provider
         .fetch_distribution(distribution_name)
         .map_err(|e| {
             KopiError::MetadataFetch(format!(
                 "Failed to fetch packages for {distribution_name}: {e}"
             ))
         })?;
-
-    // Filter by javafx_bundled if needed
-    if javafx_bundled {
-        packages.retain(|jdk| jdk.javafx_bundled);
-    }
 
     // Create DistributionCache
     let dist_cache = DistributionCache {

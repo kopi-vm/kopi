@@ -65,10 +65,6 @@ enum Commands {
         /// Download timeout in seconds
         #[arg(long, value_name = "SECONDS")]
         timeout: Option<u64>,
-
-        /// Include packages regardless of JavaFX bundled status
-        #[arg(long)]
-        javafx_bundled: bool,
     },
 
     /// List installed JDK versions
@@ -158,11 +154,7 @@ Examples:
 
     /// Refresh JDK metadata cache (alias for cache refresh)
     #[command(visible_alias = "r", hide = true)]
-    Refresh {
-        /// Include packages regardless of JavaFX bundled status
-        #[arg(long)]
-        javafx_bundled: bool,
-    },
+    Refresh,
 
     /// Search available JDK versions (alias for cache search)
     #[command(visible_alias = "s", aliases = ["ls-remote", "list-remote"], hide = true)]
@@ -186,10 +178,6 @@ Examples:
         /// Show only LTS versions
         #[arg(long)]
         lts_only: bool,
-
-        /// Include packages regardless of JavaFX bundled status
-        #[arg(long)]
-        javafx_bundled: bool,
     },
 
     /// Initial setup and configuration
@@ -267,17 +255,9 @@ fn main() {
                 dry_run,
                 no_progress,
                 timeout,
-                javafx_bundled,
             } => {
                 let command = InstallCommand::new(&config)?;
-                command.execute(
-                    &version,
-                    force,
-                    dry_run,
-                    no_progress,
-                    timeout,
-                    javafx_bundled,
-                )
+                command.execute(&version, force, dry_run, no_progress, timeout)
             }
             Commands::List => {
                 let command = ListCommand::new(&config)?;
@@ -317,9 +297,9 @@ fn main() {
                 command.execute(version.as_deref(), &tool, home, json)
             }
             Commands::Cache { command } => command.execute(&config),
-            Commands::Refresh { javafx_bundled } => {
+            Commands::Refresh => {
                 // Delegate to cache refresh command
-                let cache_cmd = CacheCommand::Refresh { javafx_bundled };
+                let cache_cmd = CacheCommand::Refresh;
                 cache_cmd.execute(&config)
             }
             Commands::Search {
@@ -328,7 +308,6 @@ fn main() {
                 detailed,
                 json,
                 lts_only,
-                javafx_bundled,
             } => {
                 // Delegate to cache search command
                 let cache_cmd = CacheCommand::Search {
@@ -337,7 +316,6 @@ fn main() {
                     detailed,
                     json,
                     lts_only,
-                    javafx_bundled,
                     java_version: false,
                     distribution_version: false,
                 };

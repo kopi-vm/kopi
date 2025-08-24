@@ -340,6 +340,13 @@ impl MetadataCache {
             return false;
         }
 
+        // Check JavaFX bundled if specified
+        if let Some(javafx_bundled) = request.javafx_bundled
+            && package.javafx_bundled != javafx_bundled
+        {
+            return false;
+        }
+
         // Apply platform filters if set
         if let Some(ref arch) = platform_filter.architecture
             && package.architecture.to_string() != *arch

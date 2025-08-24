@@ -40,7 +40,7 @@ fn test_fetch_and_cache_metadata() {
 
     // Fetch metadata from API and cache it
     let config = new_kopi_config().unwrap();
-    let result = fetch_and_cache_metadata(false, &config);
+    let result = fetch_and_cache_metadata(&config);
     assert!(
         result.is_ok(),
         "Failed to fetch metadata: {:?}",
@@ -102,12 +102,12 @@ fn test_cache_offline_mode() {
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
         archive_type: ArchiveType::TarGz,
+        javafx_bundled: false,
         download_url: Some("https://example.com/download".to_string()),
         checksum: None,
         checksum_type: Some(ChecksumType::Sha256),
         size: 100000000,
         lib_c_type: None,
-        javafx_bundled: false,
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
@@ -168,12 +168,12 @@ fn test_find_package_in_cache() {
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
         archive_type: ArchiveType::TarGz,
+        javafx_bundled: false,
         download_url: Some("https://example.com/download".to_string()),
         checksum: None,
         checksum_type: Some(ChecksumType::Sha256),
         size: 100000000,
         lib_c_type: None,
-        javafx_bundled: false,
         term_of_support: None,
         release_status: None,
         latest_build_available: None,
@@ -249,12 +249,12 @@ fn test_cache_with_install_command() {
         operating_system: OperatingSystem::Linux,
         package_type: PackageType::Jdk,
         archive_type: ArchiveType::TarGz,
+        javafx_bundled: false,
         download_url: Some("https://example.com/temurin-21.tar.gz".to_string()),
         checksum: Some("abc123def456".to_string()),
         checksum_type: Some(ChecksumType::Sha256),
         size: 200000000,
         lib_c_type: None,
-        javafx_bundled: false,
         term_of_support: None,
         release_status: None,
         latest_build_available: None,

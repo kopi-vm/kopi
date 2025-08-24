@@ -41,7 +41,7 @@ impl<'a> InstallCommand<'a> {
     }
 
     /// Ensure we have a fresh cache, refreshing if necessary
-    fn ensure_fresh_cache(&self, javafx_bundled: bool) -> Result<MetadataCache> {
+    fn ensure_fresh_cache(&self) -> Result<MetadataCache> {
         let cache_path = self.config.metadata_cache_path()?;
         let max_age = Duration::from_secs(self.config.metadata.cache.max_age_hours * 3600);
 
@@ -68,7 +68,7 @@ impl<'a> InstallCommand<'a> {
         // Refresh if needed
         if should_refresh && self.config.metadata.cache.auto_refresh {
             info!("Refreshing package cache...");
-            match cache::fetch_and_cache_metadata(javafx_bundled, self.config) {
+            match cache::fetch_and_cache_metadata(self.config) {
                 Ok(cache) => Ok(cache),
                 Err(e) => {
                     // If refresh fails and we have an existing cache, use it with warning
@@ -95,12 +95,11 @@ impl<'a> InstallCommand<'a> {
         dry_run: bool,
         no_progress: bool,
         timeout_secs: Option<u64>,
-        javafx_bundled: bool,
     ) -> Result<()> {
         info!("Installing JDK {version_spec}");
         debug!(
             "Install options: force={force}, dry_run={dry_run}, no_progress={no_progress}, \
-             timeout={timeout_secs:?}, javafx_bundled={javafx_bundled}"
+             timeout={timeout_secs:?}"
         );
 
         // Use config to parse version with additional distributions support
@@ -134,18 +133,13 @@ impl<'a> InstallCommand<'a> {
 
         // Find matching JDK package first to get the actual distribution_version
         debug!("Searching for {} version {}", distribution.name(), version);
-        // Prefer JavaFX flag from version string (+fx suffix) over command line flag
-        let effective_javafx_bundled = version_request.javafx_bundled.unwrap_or(javafx_bundled);
+        // Use JavaFX flag from version string (+fx suffix)
+        let javafx_bundled = version_request.javafx_bundled.unwrap_or(false);
         debug!(
-            "JavaFX bundled: version_request={:?}, cli_flag={}, effective={}",
-            version_request.javafx_bundled, javafx_bundled, effective_javafx_bundled
+            "JavaFX bundled: version_request={:?}",
+            version_request.javafx_bundled
         );
-        let package = self.find_matching_package(
-            &distribution,
-            version,
-            &version_request,
-            effective_javafx_bundled,
-        )?;
+        let package = self.find_matching_package(&distribution, version, &version_request)?;
         trace!("Found package: {package:?}");
         let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
 
@@ -156,7 +150,7 @@ impl<'a> InstallCommand<'a> {
         let installation_dir = repository.jdk_install_path(
             &distribution,
             &jdk_metadata.distribution_version.to_string(),
-            effective_javafx_bundled,
+            javafx_bundled,
         )?;
 
         if dry_run {
@@ -241,13 +235,13 @@ impl<'a> InstallCommand<'a> {
             repository.prepare_jdk_installation(
                 &distribution,
                 &jdk_metadata_with_checksum.distribution_version.to_string(),
-                effective_javafx_bundled,
+                javafx_bundled,
             )?
         } else {
             repository.prepare_jdk_installation(
                 &distribution,
                 &jdk_metadata_with_checksum.distribution_version.to_string(),
-                effective_javafx_bundled,
+                javafx_bundled,
             )?
         };
 
@@ -294,7 +288,7 @@ impl<'a> InstallCommand<'a> {
             &jdk_metadata_with_checksum.distribution_version.to_string(),
             &package,
             &installation_metadata,
-            effective_javafx_bundled,
+            javafx_bundled,
         )?;
 
         // Clean up is automatic when download_result goes out of scope
@@ -358,14 +352,13 @@ impl<'a> InstallCommand<'a> {
         distribution: &Distribution,
         version: &crate::version::Version,
         version_request: &crate::version::parser::ParsedVersionRequest,
-        javafx_bundled: bool,
     ) -> Result<crate::models::api::Package> {
         // Build query parameters
         let arch = get_current_architecture();
         let os = get_current_os();
 
         // Always ensure we have a fresh cache
-        let mut cache = self.ensure_fresh_cache(javafx_bundled)?;
+        let mut cache = self.ensure_fresh_cache()?;
 
         // Search in cache
         // First try exact match
@@ -375,7 +368,7 @@ impl<'a> InstallCommand<'a> {
             &arch,
             &os,
             version_request.package_type.as_ref(),
-            Some(javafx_bundled),
+            version_request.javafx_bundled,
         ) {
             debug!(
                 "Found exact package match: {} {}",
@@ -396,7 +389,7 @@ impl<'a> InstallCommand<'a> {
         // If not found and refresh_on_miss is enabled, try refreshing cache once
         if self.config.metadata.cache.refresh_on_miss {
             info!("Package not found in cache, refreshing...");
-            match cache::fetch_and_cache_metadata(javafx_bundled, self.config) {
+            match cache::fetch_and_cache_metadata(self.config) {
                 Ok(new_cache) => {
                     cache = new_cache;
 
@@ -407,7 +400,7 @@ impl<'a> InstallCommand<'a> {
                         &arch,
                         &os,
                         version_request.package_type.as_ref(),
-                        Some(javafx_bundled),
+                        version_request.javafx_bundled,
                     ) {
                         debug!(
                             "Found package after refresh: {} {}",
@@ -471,7 +464,7 @@ impl<'a> InstallCommand<'a> {
             .unwrap_or_default();
 
         // Build error message based on what was requested
-        let error_message = if javafx_bundled {
+        let error_message = if version_request.javafx_bundled.unwrap_or(false) {
             // Looking for JavaFX version
             let mut msg = format!(
                 "{} {} (with JavaFX) not found",

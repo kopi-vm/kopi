@@ -28,11 +28,7 @@ use std::time::Duration;
 #[derive(Subcommand, Debug)]
 pub enum CacheCommand {
     /// Refresh metadata from foojay.io API
-    Refresh {
-        /// Include packages regardless of JavaFX bundled status
-        #[arg(long)]
-        javafx_bundled: bool,
-    },
+    Refresh,
     /// Show cache information
     Info,
     /// Clear all cached data
@@ -53,9 +49,6 @@ pub enum CacheCommand {
         /// Filter to show only LTS versions
         #[arg(long)]
         lts_only: bool,
-        /// Include packages regardless of JavaFX bundled status
-        #[arg(long)]
-        javafx_bundled: bool,
         /// Force search by java_version field
         #[arg(long, conflicts_with = "distribution_version")]
         java_version: bool,
@@ -74,7 +67,6 @@ struct SearchOptions {
     detailed: bool,
     json: bool,
     lts_only: bool,
-    javafx_bundled: bool,
     force_java_version: bool,
     force_distribution_version: bool,
 }
@@ -82,7 +74,7 @@ struct SearchOptions {
 impl CacheCommand {
     pub fn execute(self, config: &KopiConfig) -> Result<()> {
         match self {
-            CacheCommand::Refresh { javafx_bundled } => refresh_cache(javafx_bundled, config),
+            CacheCommand::Refresh => refresh_cache(config),
             CacheCommand::Info => show_cache_info(config),
             CacheCommand::Clear => clear_cache(config),
             CacheCommand::Search {
@@ -91,7 +83,6 @@ impl CacheCommand {
                 detailed,
                 json,
                 lts_only,
-                javafx_bundled,
                 java_version,
                 distribution_version,
             } => {
@@ -101,7 +92,6 @@ impl CacheCommand {
                     detailed,
                     json,
                     lts_only,
-                    javafx_bundled,
                     force_java_version: java_version,
                     force_distribution_version: distribution_version,
                 };
@@ -112,7 +102,7 @@ impl CacheCommand {
     }
 }
 
-fn refresh_cache(javafx_bundled: bool, config: &KopiConfig) -> Result<()> {
+fn refresh_cache(config: &KopiConfig) -> Result<()> {
     let spinner = ProgressBar::new_spinner();
     spinner.set_style(
         ProgressStyle::default_spinner()
@@ -123,7 +113,7 @@ fn refresh_cache(javafx_bundled: bool, config: &KopiConfig) -> Result<()> {
     spinner.set_message("Refreshing metadata cache from configured sources...");
     spinner.enable_steady_tick(Duration::from_millis(100));
 
-    let cache = cache::fetch_and_cache_metadata(javafx_bundled, config)?;
+    let cache = cache::fetch_and_cache_metadata(config)?;
 
     spinner.finish_and_clear();
     println!("{} Cache refreshed successfully", "✓".green().bold());
@@ -196,7 +186,6 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
         detailed,
         json,
         lts_only,
-        javafx_bundled,
         force_java_version,
         force_distribution_version,
     } = options;
@@ -263,7 +252,7 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
                 );
             }
 
-            match cache::fetch_and_cache_distribution(canonical_name, javafx_bundled, config) {
+            match cache::fetch_and_cache_distribution(canonical_name, config) {
                 Ok(updated_cache) => {
                     cache = updated_cache;
                     if !json {
@@ -863,7 +852,6 @@ mod tests {
             detailed: false,
             json: false,
             lts_only: true,
-            javafx_bundled: false,
             force_java_version: false,
             force_distribution_version: false,
         };
@@ -931,12 +919,12 @@ mod tests {
             operating_system: OperatingSystem::Linux,
             package_type: PackageType::Jdk,
             archive_type: ArchiveType::TarGz,
+            javafx_bundled: false,
             download_url: Some("https://example.com/sap-download".to_string()),
             checksum: None,
             checksum_type: Some(ChecksumType::Sha256),
             size: 100000000,
             lib_c_type: None,
-            javafx_bundled: false,
             term_of_support: Some("lts".to_string()),
             release_status: Some("ga".to_string()),
             latest_build_available: None,
@@ -962,7 +950,6 @@ mod tests {
             detailed: false,
             json: true,
             lts_only: false,
-            javafx_bundled: false,
             force_java_version: false,
             force_distribution_version: false,
         };
