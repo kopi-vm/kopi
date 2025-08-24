@@ -1,52 +1,28 @@
-//! Progress indicator module for unified progress feedback
-//!
-//! This module provides a consistent interface for displaying progress
-//! indicators across all Kopi operations. It supports different display
-//! styles (animated progress bars, simple text, or silent) based on the
-//! environment and user preferences.
+// Copyright 2025 dentsusoken
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
+pub mod silent;
 pub mod types;
 
+pub use silent::SilentProgress;
 pub use types::{ProgressConfig, ProgressStyle};
 
-/// Core trait for progress indicator implementations
-///
-/// This trait defines the interface that all progress indicator implementations
-/// must provide. Implementations include:
-/// - `IndicatifProgress` - Full animated progress bars and spinners for terminal environments
-/// - `SimpleProgress` - Simple text output for non-terminal environments (CI/CD, logs)
-/// - `SilentProgress` - No output (Null Object pattern) for --no-progress flag
 pub trait ProgressIndicator: Send + Sync {
-    /// Start a new progress operation
-    ///
-    /// This method initializes the progress indicator with the given configuration.
-    /// For determinate operations (with total), a progress bar is shown.
-    /// For indeterminate operations (without total), a spinner is shown.
     fn start(&mut self, config: ProgressConfig);
-
-    /// Update progress for determinate operations
-    ///
-    /// # Arguments
-    /// * `current` - Current progress value
-    /// * `total` - Optional total value (can override the initial total)
     fn update(&mut self, current: u64, total: Option<u64>);
-
-    /// Update the status message
-    ///
-    /// Changes the message displayed alongside the progress indicator.
-    /// Useful for showing which item is currently being processed.
     fn set_message(&mut self, message: String);
-
-    /// Complete the progress operation successfully
-    ///
-    /// # Arguments
-    /// * `message` - Optional completion message (defaults to "Complete")
     fn complete(&mut self, message: Option<String>);
-
-    /// Handle error completion
-    ///
-    /// Marks the operation as failed and displays an error message.
-    /// The implementation should ensure the error is visible even in silent modes.
     fn error(&mut self, message: String);
 }
 
@@ -54,7 +30,6 @@ pub trait ProgressIndicator: Send + Sync {
 mod tests {
     use super::*;
 
-    /// Mock implementation for testing the trait
     struct MockProgress {
         started: bool,
         current: u64,

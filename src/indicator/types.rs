@@ -1,21 +1,26 @@
-/// Configuration for a progress indicator operation
+// Copyright 2025 dentsusoken
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #[derive(Debug, Clone)]
 pub struct ProgressConfig {
-    /// Operation name (e.g., "Downloading", "Installing", "Extracting")
     pub operation: String,
-
-    /// Context-specific message (e.g., "temurin@21", "JDK archive")
     pub context: String,
-
-    /// Total units for determinate operations (None for indeterminate/spinner)
     pub total: Option<u64>,
-
-    /// Display style
     pub style: ProgressStyle,
 }
 
 impl ProgressConfig {
-    /// Creates a new progress configuration
     pub fn new(
         operation: impl Into<String>,
         context: impl Into<String>,
@@ -29,19 +34,15 @@ impl ProgressConfig {
         }
     }
 
-    /// Sets the total for determinate operations
     pub fn with_total(mut self, total: u64) -> Self {
         self.total = Some(total);
         self
     }
 }
 
-/// Progress display style
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProgressStyle {
-    /// Progress bar with bytes display (for downloads)
     Bytes,
-    /// Progress bar with count display (for batch operations)
     Count,
 }
 
