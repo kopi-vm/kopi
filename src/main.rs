@@ -256,7 +256,7 @@ fn main() {
                 no_progress,
                 timeout,
             } => {
-                let command = InstallCommand::new(&config)?;
+                let command = InstallCommand::new(&config, no_progress)?;
                 command.execute(&version, force, dry_run, no_progress, timeout)
             }
             Commands::List => {
@@ -322,7 +322,7 @@ fn main() {
                 cache_cmd.execute(&config)
             }
             Commands::Setup { force } => {
-                let command = SetupCommand::new(&config)?;
+                let command = SetupCommand::new(&config, false)?;
                 command.execute(force)
             }
             Commands::Shim { command } => command.execute(&config),

@@ -14,6 +14,7 @@
 
 use crate::config::KopiConfig;
 use crate::error::Result;
+use crate::indicator::StatusReporter;
 use crate::platform::file_ops::make_executable;
 use crate::platform::shell::{Shell, detect_shell};
 use crate::platform::shim_binary_name;
@@ -28,15 +29,19 @@ use std::process::Command;
 
 pub struct SetupCommand<'a> {
     config: &'a KopiConfig,
+    status: StatusReporter,
 }
 
 impl<'a> SetupCommand<'a> {
-    pub fn new(config: &'a KopiConfig) -> Result<Self> {
-        Ok(Self { config })
+    pub fn new(config: &'a KopiConfig, no_progress: bool) -> Result<Self> {
+        Ok(Self {
+            config,
+            status: StatusReporter::new(no_progress),
+        })
     }
 
     pub fn execute(&self, force: bool) -> Result<()> {
-        println!("{}", "Setting up Kopi...".bold());
+        self.status.operation("Setting up", "Kopi");
 
         // Step 1: Create directories
         self.create_directories()?;
@@ -50,12 +55,12 @@ impl<'a> SetupCommand<'a> {
         // Step 4: Generate PATH update instructions
         self.show_path_instructions()?;
 
-        println!("\n{}", "Setup completed successfully!".green().bold());
+        self.status.success("Setup completed successfully!");
         Ok(())
     }
 
     fn create_directories(&self) -> Result<()> {
-        println!("Creating Kopi directories...");
+        self.status.step("Creating Kopi directories");
 
         let jdks_dir = self.config.jdks_dir()?;
         let bin_dir = self.config.bin_dir()?;
@@ -73,9 +78,9 @@ impl<'a> SetupCommand<'a> {
         for dir in dirs {
             if !dir.exists() {
                 fs::create_dir_all(dir)?;
-                println!("  Created: {}", dir.display());
+                self.status.step(&format!("Created: {}", dir.display()));
             } else {
-                println!("  Exists: {}", dir.display());
+                self.status.step(&format!("Exists: {}", dir.display()));
             }
         }
 
@@ -83,7 +88,7 @@ impl<'a> SetupCommand<'a> {
     }
 
     fn build_shim_binary(&self) -> Result<()> {
-        println!("\nBuilding kopi-shim binary...");
+        self.status.step("Building kopi-shim binary");
 
         let current_exe = env::current_exe()?;
         log::debug!("Current executable: {}", current_exe.display());
@@ -160,7 +165,7 @@ impl<'a> SetupCommand<'a> {
                     log::info!("Installed kopi-shim to: {}", dest.display());
                 }
                 Err(e) => {
-                    eprintln!("  Failed to copy file: {e}");
+                    self.status.error(&format!("Failed to copy file: {e}"));
                     log::debug!("  Source: {}", source.display());
                     log::debug!("  Destination: {}", dest.display());
 
@@ -189,7 +194,7 @@ impl<'a> SetupCommand<'a> {
     }
 
     fn install_default_shims(&self, force: bool) -> Result<()> {
-        println!("\nInstalling default shims...");
+        self.status.step("Installing default shims");
 
         let installer = ShimInstaller::new(self.config.kopi_home());
 
@@ -198,10 +203,10 @@ impl<'a> SetupCommand<'a> {
 
         for tool_name in core_tools {
             match installer.create_shim(tool_name) {
-                Ok(_) => println!("  ✓ {tool_name}"),
+                Ok(_) => self.status.step(&format!("✓ {tool_name}")),
                 Err(e) => {
                     if !force {
-                        println!("  ⚠ {tool_name} ({e})");
+                        self.status.step(&format!("⚠ {tool_name} ({e})"));
                     } else {
                         return Err(e);
                     }
@@ -325,7 +330,10 @@ mod tests {
     fn test_create_directories() {
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let setup = SetupCommand { config: &config };
+        let setup = SetupCommand {
+            config: &config,
+            status: StatusReporter::new(true), // Use silent mode for tests
+        };
 
         setup.create_directories().unwrap();
 
@@ -339,7 +347,10 @@ mod tests {
     fn test_show_path_instructions() {
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let setup = SetupCommand { config: &config };
+        let setup = SetupCommand {
+            config: &config,
+            status: StatusReporter::new(true), // Use silent mode for tests
+        };
 
         // This should not fail even if shell detection fails
         let result = setup.show_path_instructions();

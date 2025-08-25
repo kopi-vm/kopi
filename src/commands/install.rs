@@ -17,6 +17,7 @@ use crate::cache::{self, MetadataCache};
 use crate::config::KopiConfig;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
+use crate::indicator::StatusReporter;
 use crate::models::distribution::Distribution;
 use crate::models::metadata::JdkMetadata;
 use crate::platform::{
@@ -33,11 +34,15 @@ use std::time::Duration;
 
 pub struct InstallCommand<'a> {
     config: &'a KopiConfig,
+    status: StatusReporter,
 }
 
 impl<'a> InstallCommand<'a> {
-    pub fn new(config: &'a KopiConfig) -> Result<Self> {
-        Ok(Self { config })
+    pub fn new(config: &'a KopiConfig, no_progress: bool) -> Result<Self> {
+        Ok(Self {
+            config,
+            status: StatusReporter::new(no_progress),
+        })
     }
 
     /// Ensure we have a fresh cache, refreshing if necessary
@@ -129,7 +134,10 @@ impl<'a> InstallCommand<'a> {
                 .unwrap_or(Distribution::Temurin)
         };
 
-        println!("Installing {} {}...", distribution.name(), version);
+        self.status.operation(
+            "Installing",
+            &format!("{} {}", distribution.name(), version),
+        );
 
         // Find matching JDK package first to get the actual distribution_version
         debug!("Searching for {} version {}", distribution.name(), version);
@@ -154,12 +162,12 @@ impl<'a> InstallCommand<'a> {
         )?;
 
         if dry_run {
-            println!(
+            self.status.success(&format!(
                 "Would install {} {} to {}",
                 distribution.name(),
                 jdk_metadata.distribution_version,
                 installation_dir.display()
-            );
+            ));
             return Ok(());
         }
 
@@ -201,12 +209,12 @@ impl<'a> InstallCommand<'a> {
             }
         }
 
-        println!(
-            "Downloading {} {} (id: {})...",
+        self.status.step(&format!(
+            "Downloading {} {} (id: {})",
             jdk_metadata_with_checksum.distribution,
             jdk_metadata_with_checksum.version,
             jdk_metadata_with_checksum.id
-        );
+        ));
 
         // Download JDK
         info!(
@@ -224,7 +232,7 @@ impl<'a> InstallCommand<'a> {
         if let Some(checksum) = &jdk_metadata_with_checksum.checksum
             && let Some(checksum_type) = jdk_metadata_with_checksum.checksum_type
         {
-            println!("Verifying checksum...");
+            self.status.step("Verifying checksum");
             verify_checksum(download_path, checksum, checksum_type)?;
         }
 
@@ -246,7 +254,7 @@ impl<'a> InstallCommand<'a> {
         };
 
         // Extract archive to temp directory
-        println!("Extracting archive...");
+        self.status.step("Extracting archive");
         info!("Extracting archive to {:?}", context.temp_path);
         extract_archive(download_path, &context.temp_path)?;
         debug!("Extraction completed");
@@ -294,12 +302,12 @@ impl<'a> InstallCommand<'a> {
         // Clean up is automatic when download_result goes out of scope
         // The TempDir will be cleaned up automatically
 
-        println!(
+        self.status.success(&format!(
             "Successfully installed {} {} to {}",
             distribution.name(),
             jdk_metadata_with_checksum.distribution_version,
             final_path.display()
-        );
+        ));
 
         // Create shims if enabled in config
         if self.config.shims.auto_create_shims {
@@ -320,14 +328,15 @@ impl<'a> InstallCommand<'a> {
             }
 
             if !tools.is_empty() {
-                println!("\nCreating shims...");
+                self.status.step("Creating shims");
                 let shim_installer = ShimInstaller::new(self.config.kopi_home());
                 let created_shims = shim_installer.create_missing_shims(&tools)?;
 
                 if !created_shims.is_empty() {
-                    println!("Created {} new shims:", created_shims.len());
+                    self.status
+                        .step(&format!("Created {} new shims:", created_shims.len()));
                     for shim in &created_shims {
-                        println!("  - {shim}");
+                        self.status.step(&format!("  - {shim}"));
                     }
                 } else {
                     debug!("All shims already exist");
@@ -337,12 +346,13 @@ impl<'a> InstallCommand<'a> {
 
         // Show hint about using the JDK
         if VersionParser::is_lts_version(version.major()) {
-            println!(
-                "Note: {} is an LTS (Long Term Support) version.",
+            self.status.step(&format!(
+                "Note: {} is an LTS (Long Term Support) version",
                 version.major()
-            );
+            ));
         }
-        println!("\nTo use this JDK, run: kopi use {version_spec}");
+        self.status
+            .step(&format!("To use this JDK, run: kopi use {version_spec}"));
 
         Ok(())
     }
@@ -716,7 +726,7 @@ mod tests {
     #[test]
     fn test_parse_version_spec() {
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
-        let cmd = InstallCommand::new(&config);
+        let cmd = InstallCommand::new(&config, false);
         assert!(cmd.is_ok());
 
         // Test version parsing is called correctly
@@ -732,7 +742,7 @@ mod tests {
         // This would be a more complex test with mocks
         // For now, just verify the command can be created
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
-        let cmd = InstallCommand::new(&config);
+        let cmd = InstallCommand::new(&config, false);
         assert!(cmd.is_ok());
     }
 
@@ -770,7 +780,7 @@ mod tests {
         use std::str::FromStr;
 
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
-        let cmd = InstallCommand::new(&config).unwrap();
+        let cmd = InstallCommand::new(&config, false).unwrap();
 
         let metadata = JdkMetadata {
             id: "test-id".to_string(),
@@ -870,7 +880,7 @@ mod tests {
 
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let cmd = InstallCommand::new(&config).unwrap();
+        let cmd = InstallCommand::new(&config, false).unwrap();
         let repository = JdkRepository::new(&config);
 
         // Create a mock installation context
@@ -914,7 +924,7 @@ mod tests {
 
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let cmd = InstallCommand::new(&config).unwrap();
+        let cmd = InstallCommand::new(&config, false).unwrap();
         let repository = JdkRepository::new(&config);
 
         // Create a mock installation context
@@ -961,7 +971,7 @@ mod tests {
         // This test verifies that structure types are logged correctly
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let cmd = InstallCommand::new(&config).unwrap();
+        let cmd = InstallCommand::new(&config, false).unwrap();
 
         let jdks_dir = temp_dir.path().join("jdks");
         fs::create_dir_all(&jdks_dir).unwrap();
@@ -1030,7 +1040,7 @@ mod tests {
         use std::path::PathBuf;
 
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
-        let cmd = InstallCommand::new(&config).unwrap();
+        let cmd = InstallCommand::new(&config, false).unwrap();
 
         let structure_info = JdkStructureInfo {
             jdk_root: PathBuf::from("/test/jdk"),
@@ -1052,7 +1062,7 @@ mod tests {
         use std::path::PathBuf;
 
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
-        let cmd = InstallCommand::new(&config).unwrap();
+        let cmd = InstallCommand::new(&config, false).unwrap();
 
         let structure_info = JdkStructureInfo {
             jdk_root: PathBuf::from("/test/jdk"),
@@ -1074,7 +1084,7 @@ mod tests {
         use std::path::PathBuf;
 
         let config = KopiConfig::new(std::env::temp_dir()).unwrap();
-        let cmd = InstallCommand::new(&config).unwrap();
+        let cmd = InstallCommand::new(&config, false).unwrap();
 
         let structure_info = JdkStructureInfo {
             jdk_root: PathBuf::from("/test/jdk"),

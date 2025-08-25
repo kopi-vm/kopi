@@ -49,7 +49,7 @@ impl<'a> GlobalCommand<'a> {
             // Auto-installation for global command
             info!("JDK {} is not installed.", version_request.version_pattern);
 
-            let auto_installer = AutoInstaller::new(self.config);
+            let auto_installer = AutoInstaller::new(self.config, false);
 
             match auto_installer.prompt_and_install(&version_request)? {
                 InstallationResult::Installed => {

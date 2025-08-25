@@ -14,6 +14,7 @@
 
 use crate::config::KopiConfig;
 use crate::error::Result;
+use crate::indicator::StatusReporter;
 use crate::shim::installer::ShimInstaller;
 use crate::shim::tools::{ToolCategory, ToolRegistry};
 use clap::Subcommand;
@@ -59,18 +60,25 @@ pub enum ShimCommand {
 
 impl ShimCommand {
     pub fn execute(&self, config: &KopiConfig) -> Result<()> {
+        let status = StatusReporter::new(false);
         match self {
-            ShimCommand::Add { tool, force } => self.add_shim(config, tool, *force),
-            ShimCommand::Remove { tool } => self.remove_shim(config, tool),
+            ShimCommand::Add { tool, force } => self.add_shim(config, &status, tool, *force),
+            ShimCommand::Remove { tool } => self.remove_shim(config, &status, tool),
             ShimCommand::List {
                 available,
                 distribution,
-            } => self.list_shims(config, *available, distribution.as_deref()),
-            ShimCommand::Verify { fix } => self.verify_shims(config, *fix),
+            } => self.list_shims(config, &status, *available, distribution.as_deref()),
+            ShimCommand::Verify { fix } => self.verify_shims(config, &status, *fix),
         }
     }
 
-    fn add_shim(&self, config: &KopiConfig, tool_name: &str, force: bool) -> Result<()> {
+    fn add_shim(
+        &self,
+        config: &KopiConfig,
+        status: &StatusReporter,
+        tool_name: &str,
+        force: bool,
+    ) -> Result<()> {
         let installer = ShimInstaller::new(config.kopi_home());
         let registry = ToolRegistry::new();
 
@@ -82,45 +90,37 @@ impl ShimCommand {
         // Try to find the tool in the registry
         if let Some(tool_info) = registry.get_tool(tool_name) {
             installer.create_shim(tool_info.name)?;
-            println!(
-                "{}",
-                format!("Created shim for '{}'", tool_info.name)
-                    .green()
-                    .bold()
-            );
+            status.success(&format!("Created shim for '{}'", tool_info.name));
 
             if !tool_info.description.is_empty() {
-                println!("  {}", tool_info.description.dimmed());
+                status.step(tool_info.description);
             }
         } else {
             // Create shim for custom tool
             installer.create_shim(tool_name)?;
-            println!(
-                "{}",
-                format!("Created shim for '{tool_name}'").green().bold()
-            );
-            println!(
-                "  {}",
-                "Note: This is a custom tool not in the standard JDK tool list".yellow()
-            );
+            status.success(&format!("Created shim for '{tool_name}'"));
+            status.step("Note: This is a custom tool not in the standard JDK tool list");
         }
 
         Ok(())
     }
 
-    fn remove_shim(&self, config: &KopiConfig, tool_name: &str) -> Result<()> {
+    fn remove_shim(
+        &self,
+        config: &KopiConfig,
+        status: &StatusReporter,
+        tool_name: &str,
+    ) -> Result<()> {
         let installer = ShimInstaller::new(config.kopi_home());
         installer.remove_shim(tool_name)?;
-        println!(
-            "{}",
-            format!("Removed shim for '{tool_name}'").green().bold()
-        );
+        status.success(&format!("Removed shim for '{tool_name}'"));
         Ok(())
     }
 
     fn list_shims(
         &self,
         config: &KopiConfig,
+        _status: &StatusReporter,
         show_available: bool,
         distribution_filter: Option<&str>,
     ) -> Result<()> {
@@ -219,7 +219,7 @@ impl ShimCommand {
         Ok(())
     }
 
-    fn verify_shims(&self, config: &KopiConfig, fix: bool) -> Result<()> {
+    fn verify_shims(&self, config: &KopiConfig, _status: &StatusReporter, fix: bool) -> Result<()> {
         let installer = ShimInstaller::new(config.kopi_home());
         let shims = installer.list_shims()?;
 

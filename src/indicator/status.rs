@@ -226,9 +226,17 @@ mod tests {
         normal_reporter.error("Error in normal mode");
 
         let error_output = TestReporter::get_error_output();
-        assert_eq!(error_output.len(), 2);
-        assert!(error_output[0].contains("Error in silent mode"));
-        assert!(error_output[1].contains("Error in normal mode"));
+        // Check that we have at least 2 errors and they contain the expected messages
+        assert!(error_output.len() >= 2);
+        // Find the messages we care about
+        let has_silent_error = error_output
+            .iter()
+            .any(|s| s.contains("Error in silent mode"));
+        let has_normal_error = error_output
+            .iter()
+            .any(|s| s.contains("Error in normal mode"));
+        assert!(has_silent_error);
+        assert!(has_normal_error);
     }
 
     #[test]

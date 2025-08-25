@@ -281,5 +281,5 @@ fn test_cache_with_install_command() {
 
     // Verify that InstallCommand can be created with the cache
     // This tests that the command can initialize properly with the cached data
-    InstallCommand::new(&config).expect("Failed to create install command");
+    InstallCommand::new(&config, false).expect("Failed to create install command");
 }

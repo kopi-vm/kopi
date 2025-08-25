@@ -87,7 +87,7 @@ pub fn run_shim() -> Result<()> {
             } = &mut err
             {
                 // Check if auto-install is enabled
-                let auto_installer = AutoInstaller::new(&config);
+                let auto_installer = AutoInstaller::new(&config, false);
                 let auto_install_enabled = auto_installer.should_auto_install();
                 *enabled = auto_install_enabled;
 
