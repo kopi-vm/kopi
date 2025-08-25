@@ -12,6 +12,7 @@ env:
   CARGO_TERM_COLOR: always
   RUST_TEST_THREADS: 1
   RUST_BACKTRACE: full
+  SKIP_NETWORK_TESTS: 1
 
 jobs:
   ci:
