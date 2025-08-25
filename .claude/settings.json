@@ -32,5 +32,10 @@
       "Bash(git reset:*)",
       "Bash(git rebase:*)"
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccusage statusline",
+    "padding": 0
   }
 }
