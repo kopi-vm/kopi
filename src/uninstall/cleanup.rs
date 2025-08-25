@@ -83,7 +83,6 @@ impl<'a> UninstallCleanup<'a> {
         Ok(result)
     }
 
-
     /// Force cleanup of stubborn JDKs
     pub fn force_cleanup_jdk(&self, jdk_path: &Path) -> Result<()> {
         info!("Performing force cleanup of {}", jdk_path.display());
@@ -428,5 +427,4 @@ mod tests {
         assert!(!temp_path.exists());
         assert!(!metadata_path.exists());
     }
-
 }
