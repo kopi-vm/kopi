@@ -35,7 +35,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "npx -y ccusage statusline",
+    "command": "npx -y ccusage statusline --visual-burn-rate emoji",
     "padding": 0
   }
 }
