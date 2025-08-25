@@ -79,19 +79,17 @@ pub struct ProgressReporter {
 
 impl ProgressReporter {
     /// Creates a new progress reporter for single operations
-    pub fn new() -> Self {
-        // TODO: Phase 11 will add global --no-progress flag support
+    pub fn new(no_progress: bool) -> Self {
         Self {
-            no_progress: false,
+            no_progress,
             progress_indicators: Vec::new(),
         }
     }
 
     /// Creates a new progress reporter for batch operations
-    pub fn new_batch() -> Self {
-        // TODO: Phase 11 will add global --no-progress flag support
+    pub fn new_batch(no_progress: bool) -> Self {
         Self {
-            no_progress: false,
+            no_progress,
             progress_indicators: Vec::new(),
         }
     }
@@ -155,7 +153,7 @@ impl ProgressReporter {
 
 impl Default for ProgressReporter {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 
@@ -165,21 +163,21 @@ mod tests {
 
     #[test]
     fn test_new_progress_reporter() {
-        let reporter = ProgressReporter::new();
+        let reporter = ProgressReporter::new(false);
         assert!(!reporter.no_progress);
         assert!(reporter.progress_indicators.is_empty());
     }
 
     #[test]
     fn test_new_batch_progress_reporter() {
-        let reporter = ProgressReporter::new_batch();
+        let reporter = ProgressReporter::new_batch(false);
         assert!(!reporter.no_progress);
         assert!(reporter.progress_indicators.is_empty());
     }
 
     #[test]
     fn test_create_spinner() {
-        let mut reporter = ProgressReporter::new();
+        let mut reporter = ProgressReporter::new(false);
         let spinner = reporter.create_spinner("Test message");
         assert!(!spinner.is_finished());
         spinner.finish();
@@ -188,7 +186,7 @@ mod tests {
 
     #[test]
     fn test_create_bar() {
-        let mut reporter = ProgressReporter::new();
+        let mut reporter = ProgressReporter::new(false);
         let bar = reporter.create_bar(10, "Test items");
         assert!(!bar.is_finished());
         bar.finish();
@@ -197,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_create_jdk_removal_spinner() {
-        let mut reporter = ProgressReporter::new();
+        let mut reporter = ProgressReporter::new(false);
         let spinner = reporter.create_jdk_removal_spinner("/test/jdk", "512 MB");
         assert!(!spinner.is_finished());
         spinner.finish();
@@ -206,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_create_batch_removal_bar() {
-        let mut reporter = ProgressReporter::new_batch();
+        let mut reporter = ProgressReporter::new_batch(false);
         let bar = reporter.create_batch_removal_bar(5);
         assert!(!bar.is_finished());
         bar.finish();

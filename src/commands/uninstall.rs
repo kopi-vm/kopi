@@ -28,7 +28,7 @@ pub struct UninstallCommand<'a> {
 }
 
 impl<'a> UninstallCommand<'a> {
-    pub fn new(config: &'a KopiConfig) -> Result<Self> {
+    pub fn new(config: &'a KopiConfig, _no_progress: bool) -> Result<Self> {
         Ok(Self { config })
     }
 
@@ -39,18 +39,26 @@ impl<'a> UninstallCommand<'a> {
         dry_run: bool,
         all: bool,
         cleanup: bool,
+        no_progress: bool,
     ) -> Result<()> {
         debug!("Uninstall options: force={force}, dry_run={dry_run}, all={all}, cleanup={cleanup}");
 
         let repository = JdkRepository::new(self.config);
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, no_progress);
 
         // Execute normal uninstall if version is specified
         if let Some(version) = version_spec {
             info!("Uninstall command: {version}");
             if all {
                 // Batch uninstall all versions of a distribution
-                self.execute_batch_uninstall(version, force, dry_run, self.config, &repository)?;
+                self.execute_batch_uninstall(
+                    version,
+                    force,
+                    dry_run,
+                    no_progress,
+                    self.config,
+                    &repository,
+                )?;
             } else {
                 // Single JDK uninstall
                 self.execute_single_uninstall(version, force, dry_run, &handler, &repository)?;
@@ -153,10 +161,11 @@ impl<'a> UninstallCommand<'a> {
         distribution_spec: &str,
         force: bool,
         dry_run: bool,
+        no_progress: bool,
         config: &crate::config::KopiConfig,
         repository: &JdkRepository,
     ) -> Result<()> {
-        let batch_uninstaller = BatchUninstaller::new(config, repository);
+        let batch_uninstaller = BatchUninstaller::new(config, repository, no_progress);
         batch_uninstaller.uninstall_all(Some(distribution_spec), force, dry_run)
     }
 
@@ -201,7 +210,7 @@ mod tests {
     fn test_uninstall_command_creation() {
         let temp_dir = TempDir::new().unwrap();
         let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let command = UninstallCommand::new(&config);
+        let command = UninstallCommand::new(&config, false);
         assert!(command.is_ok());
     }
 }

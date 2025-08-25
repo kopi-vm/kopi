@@ -73,9 +73,9 @@ struct SearchOptions {
 }
 
 impl CacheCommand {
-    pub fn execute(self, config: &KopiConfig) -> Result<()> {
+    pub fn execute(self, config: &KopiConfig, no_progress: bool) -> Result<()> {
         match self {
-            CacheCommand::Refresh => refresh_cache(config),
+            CacheCommand::Refresh => refresh_cache(config, no_progress),
             CacheCommand::Info => show_cache_info(config),
             CacheCommand::Clear => clear_cache(config),
             CacheCommand::Search {
@@ -103,10 +103,7 @@ impl CacheCommand {
     }
 }
 
-fn refresh_cache(config: &KopiConfig) -> Result<()> {
-    // TODO: Phase 11 will add global --no-progress flag support
-    // For now, always show progress
-    let no_progress = false;
+fn refresh_cache(config: &KopiConfig, no_progress: bool) -> Result<()> {
     let mut progress = ProgressFactory::create(no_progress);
 
     // Start spinner for cache refresh (indeterminate progress)

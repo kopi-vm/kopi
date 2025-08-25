@@ -78,7 +78,7 @@ impl TestEnvironment {
 fn test_real_jdk_removal() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create a mock JDK
     let jdk_path = env.create_real_jdk("temurin", "21.0.5-11");
@@ -97,7 +97,7 @@ fn test_real_jdk_removal() {
 fn test_uninstall_nonexistent_jdk() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Try to uninstall non-existent JDK
     let result = handler.uninstall_jdk("temurin@21.0.5-11", false);
@@ -115,7 +115,7 @@ fn test_uninstall_nonexistent_jdk() {
 fn test_uninstall_with_version_pattern() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create multiple JDKs
     // Note: Using "-" as build separator instead of "+" for cross-platform compatibility
@@ -139,7 +139,7 @@ fn test_uninstall_with_version_pattern() {
 fn test_uninstall_dry_run() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create a mock JDK
     let jdk_path = env.create_real_jdk("temurin", "21.0.5-11");
@@ -201,7 +201,7 @@ fn test_permission_error_handling() {
 fn test_atomic_removal_with_recovery() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create a mock JDK
     let jdk_path = env.create_real_jdk("temurin", "21.0.5-11");
@@ -242,7 +242,7 @@ fn test_tool_dependency_check() {
 fn test_multiple_jdk_versions() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create multiple versions of the same distribution
     let jdk1 = env.create_real_jdk("temurin", "21.0.5-11");
@@ -263,7 +263,7 @@ fn test_multiple_jdk_versions() {
 fn test_partial_version_matching() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create JDK with full version
     env.create_real_jdk("temurin", "21.0.5-11");
@@ -309,7 +309,7 @@ fn test_security_validation() {
 fn test_corretto_extended_version_formats() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create Corretto JDKs with 4-5 component versions
     let jdk1 = env.create_real_jdk("corretto", "21.0.7.6");
@@ -350,7 +350,7 @@ fn test_corretto_extended_version_formats() {
 fn test_dragonwell_extended_version_formats() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create Dragonwell JDKs with 6-component versions
     let jdk1 = env.create_real_jdk("dragonwell", "21.0.7.0.7.6");
@@ -374,7 +374,7 @@ fn test_dragonwell_extended_version_formats() {
 fn test_partial_version_matching_extended() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create various JDKs with extended versions
     let corretto = env.create_real_jdk("corretto", "21.0.7.6.1");
@@ -409,7 +409,7 @@ fn test_partial_version_matching_extended() {
 fn test_complex_build_identifiers() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create JDKs with complex build identifiers
     let jetbrains = env.create_real_jdk("jetbrains", "21.0.5-13.674.11");
@@ -449,8 +449,8 @@ fn test_uninstall_command_single_jdk() {
     assert!(jdk_path.exists());
 
     // Execute uninstall command with force flag to skip confirmation
-    let command = UninstallCommand::new(&env.config).unwrap();
-    let result = command.execute(Some("temurin@21.0.5-11"), true, false, false, false);
+    let command = UninstallCommand::new(&env.config, false).unwrap();
+    let result = command.execute(Some("temurin@21.0.5-11"), true, false, false, false, false);
 
     assert!(result.is_ok());
 
@@ -471,8 +471,15 @@ fn test_uninstall_command_dry_run() {
     let jdk_path = env.create_jdk_with_metadata("corretto", "17.0.13.11.1");
 
     // Execute uninstall command with dry_run flag
-    let command = UninstallCommand::new(&env.config).unwrap();
-    let result = command.execute(Some("corretto@17.0.13.11.1"), false, true, false, false);
+    let command = UninstallCommand::new(&env.config, false).unwrap();
+    let result = command.execute(
+        Some("corretto@17.0.13.11.1"),
+        false,
+        true,
+        false,
+        false,
+        false,
+    );
 
     assert!(result.is_ok());
 
@@ -497,8 +504,8 @@ fn test_uninstall_command_all_versions() {
     let temurin_path = env.create_jdk_with_metadata("temurin", "21.0.5-11");
 
     // Execute uninstall command with --all flag
-    let command = UninstallCommand::new(&env.config).unwrap();
-    let result = command.execute(Some("zulu"), true, false, true, false);
+    let command = UninstallCommand::new(&env.config, false).unwrap();
+    let result = command.execute(Some("zulu"), true, false, true, false, false);
 
     assert!(result.is_ok());
 
@@ -521,8 +528,8 @@ fn test_uninstall_command_nonexistent_error() {
     }
 
     // Try to uninstall a JDK that doesn't exist
-    let command = UninstallCommand::new(&env.config).unwrap();
-    let result = command.execute(Some("nonexistent@1.0.0"), false, false, false, false);
+    let command = UninstallCommand::new(&env.config, false).unwrap();
+    let result = command.execute(Some("nonexistent@1.0.0"), false, false, false, false, false);
 
     assert!(result.is_err());
 
@@ -547,8 +554,8 @@ fn test_uninstall_command_ambiguous_error() {
     env.create_jdk_with_metadata("corretto", "21.0.1.12.1");
 
     // Try to uninstall with just the major version
-    let command = UninstallCommand::new(&env.config).unwrap();
-    let result = command.execute(Some("21"), false, false, false, false);
+    let command = UninstallCommand::new(&env.config, false).unwrap();
+    let result = command.execute(Some("21"), false, false, false, false, false);
 
     assert!(result.is_err());
 
@@ -572,8 +579,8 @@ fn test_uninstall_command_version_shorthand() {
     let jdk_path = env.create_jdk_with_metadata("temurin", "17.0.13-11");
 
     // Uninstall using shorthand version (should work when unambiguous)
-    let command = UninstallCommand::new(&env.config).unwrap();
-    let result = command.execute(Some("17"), true, false, false, false);
+    let command = UninstallCommand::new(&env.config, false).unwrap();
+    let result = command.execute(Some("17"), true, false, false, false, false);
 
     assert!(result.is_ok());
 

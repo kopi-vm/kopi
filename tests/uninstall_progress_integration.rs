@@ -19,7 +19,7 @@ use std::time::Duration;
 
 #[test]
 fn test_uninstall_progress_reporter_basic() {
-    let mut reporter = ProgressReporter::new();
+    let mut reporter = ProgressReporter::new(false);
 
     // Test creating a spinner
     let spinner = reporter.create_spinner("Processing files");
@@ -30,7 +30,7 @@ fn test_uninstall_progress_reporter_basic() {
 
 #[test]
 fn test_uninstall_progress_bar_with_increments() {
-    let mut reporter = ProgressReporter::new();
+    let mut reporter = ProgressReporter::new(false);
 
     // Create a progress bar with total of 10
     let bar = reporter.create_bar(10, "items");
@@ -47,7 +47,7 @@ fn test_uninstall_progress_bar_with_increments() {
 
 #[test]
 fn test_jdk_removal_spinner() {
-    let mut reporter = ProgressReporter::new();
+    let mut reporter = ProgressReporter::new(false);
 
     let spinner = reporter.create_jdk_removal_spinner("/opt/java/jdk-21", "1.2 GB");
     assert!(!spinner.is_finished());
@@ -61,7 +61,7 @@ fn test_jdk_removal_spinner() {
 
 #[test]
 fn test_batch_removal_progress() {
-    let mut reporter = ProgressReporter::new_batch();
+    let mut reporter = ProgressReporter::new_batch(false);
 
     let bar = reporter.create_batch_removal_bar(5);
     assert!(!bar.is_finished());
@@ -80,7 +80,7 @@ fn test_batch_removal_progress() {
 
 #[test]
 fn test_concurrent_progress_handles() {
-    let mut reporter = ProgressReporter::new();
+    let mut reporter = ProgressReporter::new(false);
 
     // Create multiple progress indicators
     let spinner1 = reporter.create_spinner("Task 1");
@@ -108,7 +108,7 @@ fn test_concurrent_progress_handles() {
 
 #[test]
 fn test_progress_handle_thread_safety() {
-    let mut reporter = ProgressReporter::new();
+    let mut reporter = ProgressReporter::new(false);
     let bar = Arc::new(reporter.create_bar(100, "items"));
 
     let bar_clone = Arc::clone(&bar);
@@ -132,7 +132,7 @@ fn test_progress_handle_thread_safety() {
 
 #[test]
 fn test_progress_with_error_message() {
-    let mut reporter = ProgressReporter::new();
+    let mut reporter = ProgressReporter::new(false);
     let spinner = reporter.create_spinner("Risky operation");
 
     // Simulate an error occurring
@@ -142,7 +142,7 @@ fn test_progress_with_error_message() {
 
 #[test]
 fn test_steady_tick_compatibility() {
-    let mut reporter = ProgressReporter::new();
+    let mut reporter = ProgressReporter::new(false);
     let spinner = reporter.create_spinner("Long operation");
 
     // This should not panic (compatibility method)

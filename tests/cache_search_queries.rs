@@ -200,7 +200,7 @@ fn test_search_distribution_only() {
     };
 
     // This should succeed and return all Corretto versions
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
 }
 
 #[test]
@@ -220,7 +220,7 @@ fn test_search_latest_all_distributions() {
     };
 
     // This should succeed and return the latest version from each distribution
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
 }
 
 #[test]
@@ -240,7 +240,7 @@ fn test_search_latest_specific_distribution() {
     };
 
     // This should succeed and return only the latest Temurin version
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
 }
 
 #[test]
@@ -260,7 +260,7 @@ fn test_search_backward_compatibility() {
     };
 
     // This should succeed and return version 21 (defaulting to Temurin)
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
 }
 
 #[test]
@@ -280,7 +280,7 @@ fn test_search_distribution_with_version() {
     };
 
     // This should succeed and return Corretto 17
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
 }
 
 #[test]
@@ -301,7 +301,7 @@ fn test_search_invalid_distribution() {
 
     // The command returns Ok but prints an error message
     // This is expected behavior for user-friendly error handling
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
 }
 
 #[test]
@@ -321,7 +321,7 @@ fn test_search_jre_latest() {
     };
 
     // This should succeed (even if no JRE packages exist, it should return empty results)
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
 }
 
 #[test]
@@ -339,7 +339,7 @@ fn test_search_display_modes() {
         java_version: false,
         distribution_version: false,
     };
-    assert!(cmd_compact.execute(&config).is_ok());
+    assert!(cmd_compact.execute(&config, false).is_ok());
 
     // Test detailed mode
     let cmd_detailed = CacheCommand::Search {
@@ -351,7 +351,7 @@ fn test_search_display_modes() {
         java_version: false,
         distribution_version: false,
     };
-    assert!(cmd_detailed.execute(&config).is_ok());
+    assert!(cmd_detailed.execute(&config, false).is_ok());
 
     // Test JSON mode
     let cmd_json = CacheCommand::Search {
@@ -363,5 +363,5 @@ fn test_search_display_modes() {
         java_version: false,
         distribution_version: false,
     };
-    assert!(cmd_json.execute(&config).is_ok());
+    assert!(cmd_json.execute(&config, false).is_ok());
 }

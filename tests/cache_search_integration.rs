@@ -232,7 +232,7 @@ fn test_integration_compact_display_with_lts_filter() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // The test should show only LTS versions (21, 17, 11) in compact format
 }
 
@@ -252,7 +252,7 @@ fn test_integration_detailed_display_with_distribution_search() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // The test should show all Corretto versions with detailed columns
 }
 
@@ -272,7 +272,7 @@ fn test_integration_json_output_with_javafx_filter() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // The test should output valid JSON containing only JavaFX bundled packages
 }
 
@@ -292,7 +292,7 @@ fn test_integration_latest_search_with_lts_filter() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // Should show only the latest LTS version from each distribution
 }
 
@@ -312,7 +312,7 @@ fn test_integration_version_specific_search_across_distributions() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // Should show version 21 from both Temurin and Zulu
 }
 
@@ -332,7 +332,7 @@ fn test_integration_multiple_filters_combined() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // Should show only LTS Zulu versions with detailed display
 }
 
@@ -353,7 +353,7 @@ fn test_integration_edge_case_no_matching_results() {
     };
 
     // Should execute successfully but show no results
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
 }
 
 #[test]
@@ -372,7 +372,7 @@ fn test_integration_edge_case_conflicting_display_modes() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // Should use detailed display mode
 }
 
@@ -382,7 +382,7 @@ fn test_integration_list_distributions_with_package_counts() {
     let (_test_home, config, _cache) = create_comprehensive_test_cache();
 
     let cmd = CacheCommand::ListDistributions;
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // Should list all distributions with their package counts
 }
 
@@ -402,7 +402,7 @@ fn test_integration_search_with_distribution_version_format() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // Should show only Temurin version 22
 }
 
@@ -422,7 +422,7 @@ fn test_integration_backward_compatibility_default_behavior() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // Should show all packages in default (compact) format
 }
 
@@ -525,7 +525,7 @@ fn test_integration_platform_specific_filtering() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // Should show only packages for the current platform
 }
 
@@ -545,7 +545,7 @@ fn test_integration_regression_old_search_patterns() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // Should find Corretto 17.0.12
 }
 
@@ -577,7 +577,7 @@ fn test_integration_empty_cache_handling() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // Should handle empty cache gracefully
 }
 
@@ -597,7 +597,7 @@ fn test_integration_json_output_structure_validation() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     // JSON output should be valid and contain expected fields
 }
 
@@ -672,7 +672,7 @@ fn test_integration_performance_large_cache() {
         distribution_version: false,
     };
 
-    assert!(cmd.execute(&config).is_ok());
+    assert!(cmd.execute(&config, false).is_ok());
     let duration = start.elapsed();
 
     // Search should complete quickly even with large cache

@@ -4,7 +4,7 @@
 
 This document outlines the implementation plan for creating a unified progress indicator system for Kopi. The implementation consolidates fragmented progress implementations into a consistent system with support for different environments (terminal, non-terminal, silent mode). The plan is divided into phases that can be completed independently with context resets (`/clear`) between each phase.
 
-**Current Status**: Phase 1-10 completed ✅
+**Current Status**: Phase 1-11 completed ✅
 
 ## Phase 1: Core Trait and Structures ✅
 
@@ -398,7 +398,7 @@ kopi install temurin@21 --dry-run
 
 ---
 
-## Phase 11: Global Flag Integration
+## Phase 11: Global Flag Integration ✅
 
 **Goal**: Add --no-progress as a global command-line flag that suppresses all progress indicators.
 
@@ -417,17 +417,17 @@ kopi install temurin@21 --dry-run
   - Phases 1-10 (All migrations complete)
 
 ### Tasks
-- [ ] Add `--no-progress` as global flag in clap Parser
-- [ ] Add no_progress parameter to all command execute methods
-- [ ] Update ProgressReporter constructors to accept no_progress
-- [ ] Update UninstallHandler and BatchUninstaller with no_progress
-- [ ] Update ProgressFactory to handle no_progress mode
-- [ ] Thread no_progress parameter through all progress creation
-- [ ] **Write integration tests**:
-  - [ ] Test flag parsing
-  - [ ] Test flag propagation to all commands
-  - [ ] Test progress suppression when flag is set
-  - [ ] Test help text includes global flag
+- [x] Add `--no-progress` as global flag in clap Parser
+- [x] Add no_progress parameter to all command execute methods
+- [x] Update ProgressReporter constructors to accept no_progress
+- [x] Update UninstallHandler and BatchUninstaller with no_progress
+- [x] Update ProgressFactory to handle no_progress mode
+- [x] Thread no_progress parameter through all progress creation
+- [x] **Write integration tests**:
+  - [x] Test flag parsing
+  - [x] Test flag propagation to all commands
+  - [x] Test progress suppression when flag is set
+  - [x] Test help text includes global flag
 
 ### Deliverables
 - Global --no-progress flag available on all commands
@@ -581,7 +581,7 @@ cargo doc --no-deps --open
 
 - [x] All existing progress indicators migrated (Phases 7-10 completed)
 - [x] Consistent visual style across all operations
-- [ ] --no-progress flag works globally (Phase 11 pending)
+- [x] --no-progress flag works globally (Phase 11 completed)
 - [ ] No performance regression (< 1ms overhead)
 - [x] Works correctly in CI/CD environments (Silent mode tested)
 - [ ] >90% code coverage for new code

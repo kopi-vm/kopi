@@ -36,16 +36,20 @@ pub mod selection;
 
 pub struct UninstallHandler<'a> {
     repository: &'a JdkRepository<'a>,
+    no_progress: bool,
 }
 
 impl<'a> UninstallHandler<'a> {
-    pub fn new(repository: &'a JdkRepository<'a>) -> Self {
-        Self { repository }
+    pub fn new(repository: &'a JdkRepository<'a>, no_progress: bool) -> Self {
+        Self {
+            repository,
+            no_progress,
+        }
     }
 
     /// Perform cleanup operations for failed uninstalls
     pub fn recover_from_failures(&self, force: bool) -> Result<()> {
-        let reporter = StatusReporter::new(false);
+        let reporter = StatusReporter::new(self.no_progress);
         let cleanup = UninstallCleanup::new(self.repository);
 
         let actions = cleanup.detect_and_cleanup_partial_removals()?;
@@ -85,7 +89,7 @@ impl<'a> UninstallHandler<'a> {
 
     pub fn uninstall_jdk(&self, version_spec: &str, dry_run: bool) -> Result<()> {
         info!("Uninstalling JDK {version_spec}");
-        let reporter = StatusReporter::new(false);
+        let reporter = StatusReporter::new(self.no_progress);
 
         // Resolve JDKs to uninstall
         let jdks_to_remove = self.resolve_jdks_to_uninstall(version_spec)?;
@@ -186,7 +190,7 @@ impl<'a> UninstallHandler<'a> {
 
         // Create progress bar for large removals (> 100MB)
         let pb = if size > 100 * 1024 * 1024 {
-            let mut progress_reporter = ProgressReporter::new();
+            let mut progress_reporter = ProgressReporter::new(self.no_progress);
             let pb = progress_reporter
                 .create_jdk_removal_spinner(&jdk.path.display().to_string(), &format_size(size));
             pb.enable_steady_tick(Duration::from_millis(100));
@@ -304,7 +308,7 @@ mod tests {
     fn test_resolve_jdks_by_version() {
         let setup = TestSetup::new();
         let repository = JdkRepository::new(&setup.config);
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, false);
 
         // Create test JDKs
         setup.create_mock_jdk("temurin", "21.0.5+11");
@@ -330,7 +334,7 @@ mod tests {
     fn test_atomic_removal() {
         let setup = TestSetup::new();
         let repository = JdkRepository::new(&setup.config);
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, false);
 
         let jdk_path = setup.create_mock_jdk("temurin", "21.0.5+11");
         assert!(jdk_path.exists());
@@ -357,7 +361,7 @@ mod tests {
     fn test_rollback_removal() {
         let setup = TestSetup::new();
         let repository = JdkRepository::new(&setup.config);
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, false);
 
         let jdk_path = setup.create_mock_jdk("temurin", "21.0.5+11");
         let original_exists = jdk_path.exists();

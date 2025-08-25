@@ -23,7 +23,7 @@ fn test_uninstall_javafx_jdk() {
     let temp_dir = TempDir::new().unwrap();
     let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
     let repository = JdkRepository::new(&config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create JDK directories with JavaFX suffix
     let jdks_dir = config.jdks_dir().unwrap();
@@ -79,7 +79,7 @@ fn test_uninstall_javafx_with_simplified_version() {
     let temp_dir = TempDir::new().unwrap();
     let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
     let repository = JdkRepository::new(&config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create JDK directory with JavaFX suffix but simpler version
     let jdks_dir = config.jdks_dir().unwrap();
@@ -114,7 +114,7 @@ fn test_uninstall_with_fx_no_match() {
     let temp_dir = TempDir::new().unwrap();
     let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
     let repository = JdkRepository::new(&config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create regular JDK without JavaFX
     let jdks_dir = config.jdks_dir().unwrap();

@@ -105,7 +105,7 @@ impl TestEnvironment {
 fn test_metadata_consistency_after_uninstall() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
 
     // Create JDK with metadata
     let jdk_path = env.create_jdk_with_metadata("temurin", "21.0.1");
@@ -166,7 +166,7 @@ fn test_command_integration_after_uninstall() {
     assert_eq!(jdks_before.len(), 3);
 
     // Test uninstall functionality
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
     let result = handler.uninstall_jdk("temurin@21.0.1", false);
     assert!(result.is_ok());
 
@@ -211,7 +211,7 @@ fn test_multi_command_workflow() {
     assert_eq!(jdks.len(), 2);
 
     // Step 2: Uninstall one JDK
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
     let result = handler.uninstall_jdk("temurin@21.0.1", false);
     assert!(result.is_ok());
 
@@ -242,7 +242,7 @@ fn test_orphaned_metadata_detection_and_cleanup() {
     assert!(orphaned_meta.exists());
 
     // Uninstall the JDK
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
     let result = handler.uninstall_jdk("temurin@21.0.1", false);
     assert!(result.is_ok());
 
@@ -289,7 +289,7 @@ fn test_disk_space_calculation_integration() {
     assert!(jdk2_size > 10 * 1024 * 1024); // At least 10MB
 
     // Uninstall one JDK
-    let handler = UninstallHandler::new(&repository);
+    let handler = UninstallHandler::new(&repository, false);
     let result = handler.uninstall_jdk("temurin@21.0.1", false);
     assert!(result.is_ok());
 

@@ -30,11 +30,20 @@ use std::time::Duration;
 pub struct BatchUninstaller<'a> {
     config: &'a KopiConfig,
     repository: &'a JdkRepository<'a>,
+    no_progress: bool,
 }
 
 impl<'a> BatchUninstaller<'a> {
-    pub fn new(config: &'a KopiConfig, repository: &'a JdkRepository<'a>) -> Self {
-        Self { config, repository }
+    pub fn new(
+        config: &'a KopiConfig,
+        repository: &'a JdkRepository<'a>,
+        no_progress: bool,
+    ) -> Self {
+        Self {
+            config,
+            repository,
+            no_progress,
+        }
     }
 
     pub fn uninstall_all(&self, spec: Option<&str>, force: bool, dry_run: bool) -> Result<()> {
@@ -125,7 +134,7 @@ impl<'a> BatchUninstaller<'a> {
     }
 
     fn display_batch_summary(&self, jdks: &[InstalledJdk], total_size: u64) -> Result<()> {
-        let reporter = StatusReporter::new(false);
+        let reporter = StatusReporter::new(self.no_progress);
 
         reporter.operation("JDKs to be removed", "");
 
@@ -154,7 +163,7 @@ impl<'a> BatchUninstaller<'a> {
     }
 
     fn execute_batch_removal(&self, jdks: Vec<InstalledJdk>, total_size: u64) -> Result<()> {
-        let mut progress_reporter = ProgressReporter::new_batch();
+        let mut progress_reporter = ProgressReporter::new_batch(self.no_progress);
         let overall_pb = progress_reporter.create_batch_removal_bar(jdks.len() as u64);
 
         let mut removed_count = 0;
@@ -256,7 +265,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         let repository = JdkRepository::new(&config);
-        let batch_uninstaller = BatchUninstaller::new(&config, &repository);
+        let batch_uninstaller = BatchUninstaller::new(&config, &repository, false);
 
         // Create some test directories
         let jdk1_path = temp_dir.path().join("jdks").join("temurin-21.0.5+11");
@@ -282,7 +291,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         let repository = JdkRepository::new(&config);
-        let batch_uninstaller = BatchUninstaller::new(&config, &repository);
+        let batch_uninstaller = BatchUninstaller::new(&config, &repository, false);
 
         // Test invalid version spec
         let result = batch_uninstaller.uninstall_all(Some("invalid.version"), false, false);

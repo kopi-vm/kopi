@@ -23,11 +23,15 @@ use std::str::FromStr;
 
 pub struct LocalCommand<'a> {
     config: &'a KopiConfig,
+    no_progress: bool,
 }
 
 impl<'a> LocalCommand<'a> {
-    pub fn new(config: &'a KopiConfig) -> Result<Self> {
-        Ok(Self { config })
+    pub fn new(config: &'a KopiConfig, no_progress: bool) -> Result<Self> {
+        Ok(Self {
+            config,
+            no_progress,
+        })
     }
 
     pub fn execute(&self, version_spec: &str) -> Result<()> {
@@ -47,7 +51,7 @@ impl<'a> LocalCommand<'a> {
             // Auto-installation is optional for local command
             info!("JDK {} is not installed.", version_request.version_pattern);
 
-            let auto_installer = AutoInstaller::new(self.config, false);
+            let auto_installer = AutoInstaller::new(self.config, self.no_progress);
 
             match auto_installer.prompt_and_install(&version_request)? {
                 InstallationResult::Installed => {
@@ -131,7 +135,7 @@ mod tests {
     fn test_local_command_creation() {
         let temp_dir = TempDir::new().unwrap();
         let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let command = LocalCommand::new(&config).unwrap();
+        let command = LocalCommand::new(&config, false).unwrap();
         assert!(!std::ptr::addr_of!(command).is_null());
     }
 
@@ -139,7 +143,7 @@ mod tests {
     fn test_local_version_path() {
         let temp_dir = TempDir::new().unwrap();
         let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let command = LocalCommand::new(&config).unwrap();
+        let command = LocalCommand::new(&config, false).unwrap();
         let path = command.local_version_path().unwrap();
         assert!(path.ends_with(".kopi-version"));
     }

@@ -25,11 +25,15 @@ use std::str::FromStr;
 
 pub struct ShellCommand<'a> {
     config: &'a KopiConfig,
+    no_progress: bool,
 }
 
 impl<'a> ShellCommand<'a> {
-    pub fn new(config: &'a KopiConfig) -> Result<Self> {
-        Ok(Self { config })
+    pub fn new(config: &'a KopiConfig, no_progress: bool) -> Result<Self> {
+        Ok(Self {
+            config,
+            no_progress,
+        })
     }
 
     pub fn execute(&self, version_spec: &str, shell_override: Option<&str>) -> Result<()> {
@@ -49,7 +53,7 @@ impl<'a> ShellCommand<'a> {
             // Auto-installation for shell command
             info!("JDK {} is not installed.", version_request.version_pattern);
 
-            let auto_installer = AutoInstaller::new(self.config, false);
+            let auto_installer = AutoInstaller::new(self.config, self.no_progress);
 
             match auto_installer.prompt_and_install(&version_request)? {
                 InstallationResult::Installed => {
@@ -153,7 +157,7 @@ mod tests {
     fn test_shell_command_creation() {
         let temp_dir = TempDir::new().unwrap();
         let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let command = ShellCommand::new(&config).unwrap();
+        let command = ShellCommand::new(&config, false).unwrap();
         assert!(!std::ptr::addr_of!(command).is_null());
     }
 
@@ -161,7 +165,7 @@ mod tests {
     fn test_shell_override() {
         let temp_dir = TempDir::new().unwrap();
         let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let cmd = ShellCommand::new(&config).unwrap();
+        let cmd = ShellCommand::new(&config, false).unwrap();
 
         // Test known shells
         let (shell_type, _) = cmd

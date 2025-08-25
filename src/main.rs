@@ -38,6 +38,10 @@ struct Cli {
     #[arg(short, long, action = clap::ArgAction::Count, global = true)]
     verbose: u8,
 
+    /// Disable progress indicators
+    #[arg(long, global = true)]
+    no_progress: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -57,10 +61,6 @@ enum Commands {
         /// Show what would be installed without actually installing
         #[arg(long)]
         dry_run: bool,
-
-        /// Disable progress indicators
-        #[arg(long)]
-        no_progress: bool,
 
         /// Download timeout in seconds
         #[arg(long, value_name = "SECONDS")]
@@ -253,18 +253,17 @@ fn main() {
                 version,
                 force,
                 dry_run,
-                no_progress,
                 timeout,
             } => {
-                let command = InstallCommand::new(&config, no_progress)?;
-                command.execute(&version, force, dry_run, no_progress, timeout)
+                let command = InstallCommand::new(&config, cli.no_progress)?;
+                command.execute(&version, force, dry_run, cli.no_progress, timeout)
             }
             Commands::List => {
                 let command = ListCommand::new(&config)?;
                 command.execute()
             }
             Commands::Shell { version, shell } => {
-                let command = ShellCommand::new(&config)?;
+                let command = ShellCommand::new(&config, cli.no_progress)?;
                 command.execute(&version, shell.as_deref())
             }
             Commands::Current { quiet, json } => {
@@ -280,11 +279,11 @@ fn main() {
                 command.execute(version.as_deref(), shell.as_deref(), export)
             }
             Commands::Global { version } => {
-                let command = GlobalCommand::new(&config)?;
+                let command = GlobalCommand::new(&config, cli.no_progress)?;
                 command.execute(&version)
             }
             Commands::Local { version } => {
-                let command = LocalCommand::new(&config)?;
+                let command = LocalCommand::new(&config, cli.no_progress)?;
                 command.execute(&version)
             }
             Commands::Which {
@@ -296,11 +295,11 @@ fn main() {
                 let command = WhichCommand::new(&config)?;
                 command.execute(version.as_deref(), &tool, home, json)
             }
-            Commands::Cache { command } => command.execute(&config),
+            Commands::Cache { command } => command.execute(&config, cli.no_progress),
             Commands::Refresh => {
                 // Delegate to cache refresh command
                 let cache_cmd = CacheCommand::Refresh;
-                cache_cmd.execute(&config)
+                cache_cmd.execute(&config, cli.no_progress)
             }
             Commands::Search {
                 version,
@@ -319,10 +318,10 @@ fn main() {
                     java_version: false,
                     distribution_version: false,
                 };
-                cache_cmd.execute(&config)
+                cache_cmd.execute(&config, cli.no_progress)
             }
             Commands::Setup { force } => {
-                let command = SetupCommand::new(&config, false)?;
+                let command = SetupCommand::new(&config, cli.no_progress)?;
                 command.execute(force)
             }
             Commands::Shim { command } => command.execute(&config),
@@ -333,8 +332,15 @@ fn main() {
                 all,
                 cleanup,
             } => {
-                let command = UninstallCommand::new(&config)?;
-                command.execute(version.as_deref(), force, dry_run, all, cleanup)
+                let command = UninstallCommand::new(&config, cli.no_progress)?;
+                command.execute(
+                    version.as_deref(),
+                    force,
+                    dry_run,
+                    all,
+                    cleanup,
+                    cli.no_progress,
+                )
             }
             Commands::Doctor { json, check } => {
                 let command = DoctorCommand::new(&config)?;

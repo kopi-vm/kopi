@@ -191,7 +191,7 @@ JAVA_RUNTIME_VERSION="{version}"
     fn test_complete_uninstall_workflow() {
         let setup = E2ETestSetup::new();
         let repository = setup.get_repository();
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, false);
 
         // Create a complete JDK
         let jdk_path = setup.create_full_jdk("temurin", "21.0.5+11");
@@ -221,7 +221,7 @@ JAVA_RUNTIME_VERSION="{version}"
     fn test_dry_run_workflow() {
         let setup = E2ETestSetup::new();
         let repository = setup.get_repository();
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, false);
 
         // Create a JDK
         let jdk_path = setup.create_full_jdk("corretto", "17.0.9");
@@ -243,7 +243,7 @@ JAVA_RUNTIME_VERSION="{version}"
     fn test_multiple_jdk_error_workflow() {
         let setup = E2ETestSetup::new();
         let repository = setup.get_repository();
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, false);
 
         // Create multiple JDKs with same major version
         let jdk1_path = setup.create_full_jdk("temurin", "21.0.1");
@@ -276,7 +276,7 @@ JAVA_RUNTIME_VERSION="{version}"
     fn test_nonexistent_jdk_workflow() {
         let setup = E2ETestSetup::new();
         let repository = setup.get_repository();
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, false);
 
         // Try to uninstall non-existent JDK
         let result = handler.uninstall_jdk("nonexistent@1.0.0", false);
@@ -295,7 +295,7 @@ JAVA_RUNTIME_VERSION="{version}"
     fn test_recovery_workflow() {
         let setup = E2ETestSetup::new();
         let repository = setup.get_repository();
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, false);
 
         // Create scenarios that need recovery
         let partial_jdk = setup.create_partial_jdk("temurin", "21.0.1");
@@ -321,7 +321,7 @@ JAVA_RUNTIME_VERSION="{version}"
     fn test_force_recovery_workflow() {
         let setup = E2ETestSetup::new();
         let repository = setup.get_repository();
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, false);
 
         // Create a partial JDK
         let partial_jdk = setup.create_partial_jdk("temurin", "21.0.1");
@@ -403,8 +403,8 @@ JAVA_RUNTIME_VERSION="{version}"
 
         // Simulate concurrent operations by creating multiple handlers
         let repository = setup.get_repository();
-        let handler1 = UninstallHandler::new(&repository);
-        let handler2 = UninstallHandler::new(&repository);
+        let handler1 = UninstallHandler::new(&repository, false);
+        let handler2 = UninstallHandler::new(&repository, false);
 
         // Try to perform operations simultaneously
         // Note: This is a simplified test - real concurrent testing would require threading
@@ -428,7 +428,7 @@ JAVA_RUNTIME_VERSION="{version}"
     fn test_platform_specific_scenarios() {
         let setup = E2ETestSetup::new();
         let repository = setup.get_repository();
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, false);
 
         // Create a JDK with platform-specific content
         let jdk_path = setup.create_full_jdk("temurin", "21.0.1");
@@ -487,7 +487,7 @@ JAVA_RUNTIME_VERSION="{version}"
     fn test_large_jdk_removal_with_progress() {
         let setup = E2ETestSetup::new();
         let repository = setup.get_repository();
-        let handler = UninstallHandler::new(&repository);
+        let handler = UninstallHandler::new(&repository, false);
 
         // Create a large JDK (the create_full_jdk already includes a 10MB file)
         let jdk_path = setup.create_full_jdk("temurin", "21.0.1");
