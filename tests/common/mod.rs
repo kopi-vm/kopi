@@ -15,4 +15,5 @@
 pub mod fixtures;
 pub mod test_home;
 
+#[allow(unused_imports)]
 pub use test_home::TestHomeGuard;
