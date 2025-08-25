@@ -378,16 +378,13 @@ kopi uninstall --all
 ### Tasks
 - [ ] Replace println! statements with StatusReporter
 - [ ] Standardize message formatting
-- [ ] Add --no-progress support to commands
 - [ ] **Write integration tests**:
   - [ ] Test message output
-  - [ ] Test silent mode
   - [ ] Test message consistency
 
 ### Deliverables
 - Updated command modules using StatusReporter
 - Consistent message formatting across all commands
-- Silent mode support for all operations
 
 ### Verification
 ```bash
@@ -396,31 +393,41 @@ cargo clippy --all-targets -- -D warnings
 cargo test --lib commands::tests
 # Manual testing
 kopi setup
-kopi setup --no-progress
+kopi install temurin@21 --dry-run
 ```
 
 ---
 
 ## Phase 11: Global Flag Integration
 
-**Goal**: Add --no-progress as a global command-line flag.
+**Goal**: Add --no-progress as a global command-line flag that suppresses all progress indicators.
 
 ### Input Materials
 - **Source Code to Modify**:
-  - `/src/main.rs` - CLI argument parsing
-  - `/src/cli.rs` or equivalent - Command structures
+  - `/src/main.rs` - Add global CLI flag
+  - `/src/commands/install.rs` - Add no_progress parameter
+  - `/src/commands/uninstall.rs` - Add no_progress parameter  
+  - `/src/uninstall/mod.rs` - Update UninstallHandler
+  - `/src/uninstall/batch.rs` - Update BatchUninstaller
+  - `/src/uninstall/progress.rs` - Update ProgressReporter
+  - `/src/indicator/factory.rs` - Update ProgressFactory
+  - All command modules - Thread no_progress through
 
 - **Dependencies**:
   - Phases 1-10 (All migrations complete)
 
 ### Tasks
-- [ ] Add `--no-progress` as global flag in clap
-- [ ] Pass flag to all command handlers
-- [ ] Update command signatures to accept no_progress parameter
+- [ ] Add `--no-progress` as global flag in clap Parser
+- [ ] Add no_progress parameter to all command execute methods
+- [ ] Update ProgressReporter constructors to accept no_progress
+- [ ] Update UninstallHandler and BatchUninstaller with no_progress
+- [ ] Update ProgressFactory to handle no_progress mode
+- [ ] Thread no_progress parameter through all progress creation
 - [ ] **Write integration tests**:
   - [ ] Test flag parsing
-  - [ ] Test flag propagation to subcommands
-  - [ ] Test help text includes flag
+  - [ ] Test flag propagation to all commands
+  - [ ] Test progress suppression when flag is set
+  - [ ] Test help text includes global flag
 
 ### Deliverables
 - Global --no-progress flag available on all commands
