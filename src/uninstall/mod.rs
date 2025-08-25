@@ -14,7 +14,6 @@
 
 use crate::error::{KopiError, Result};
 use crate::indicator::StatusReporter;
-use crate::models::distribution::Distribution;
 use crate::platform;
 use crate::storage::formatting::format_size;
 use crate::storage::{InstalledJdk, JdkRepository};
@@ -84,12 +83,6 @@ impl<'a> UninstallHandler<'a> {
         Ok(())
     }
 
-    /// Get cleanup suggestions for a failed uninstall
-    pub fn get_cleanup_suggestions(&self, error: &KopiError) -> Vec<String> {
-        let cleanup = UninstallCleanup::new(self.repository);
-        cleanup.suggest_cleanup_actions(error)
-    }
-
     pub fn uninstall_jdk(&self, version_spec: &str, dry_run: bool) -> Result<()> {
         info!("Uninstalling JDK {version_spec}");
         let reporter = StatusReporter::new(false);
@@ -145,16 +138,6 @@ impl<'a> UninstallHandler<'a> {
             }
             Err(e) => {
                 warn!("Uninstall failed: {e}");
-
-                // Provide cleanup suggestions
-                let suggestions = self.get_cleanup_suggestions(&e);
-                if !suggestions.is_empty() {
-                    reporter.error("Recovery suggestions:");
-                    for suggestion in suggestions {
-                        reporter.step(&format!("• {suggestion}"));
-                    }
-                }
-
                 Err(e)
             }
         }
@@ -163,48 +146,12 @@ impl<'a> UninstallHandler<'a> {
     pub fn resolve_jdks_to_uninstall(&self, version_spec: &str) -> Result<Vec<InstalledJdk>> {
         debug!("Resolving JDKs to uninstall for spec: {version_spec}");
 
-        // List all installed JDKs
-        let installed_jdks = self.repository.list_installed_jdks()?;
-        if installed_jdks.is_empty() {
-            return Ok(Vec::new());
-        }
+        // Use VersionRequest parser to handle JavaFX suffix and other special cases
+        use crate::version::VersionRequest;
+        let version_request = VersionRequest::from_str(version_spec)?;
 
-        // Parse version specification
-        let (distribution_str, version_str) = if version_spec.contains('@') {
-            let parts: Vec<&str> = version_spec.split('@').collect();
-            if parts.len() != 2 {
-                return Err(KopiError::InvalidVersionFormat(version_spec.to_string()));
-            }
-            (Some(parts[0]), Some(parts[1]))
-        } else {
-            (None, Some(version_spec))
-        };
-
-        // Filter matching JDKs
-        let matches: Vec<InstalledJdk> = installed_jdks
-            .into_iter()
-            .filter(|jdk| {
-                // Check distribution match
-                if let Some(dist_str) = distribution_str
-                    && let Ok(req_dist) = Distribution::from_str(dist_str)
-                    && let Ok(jdk_dist) = Distribution::from_str(&jdk.distribution)
-                    && req_dist != jdk_dist
-                {
-                    return false;
-                }
-
-                // Check version match
-                if let Some(ver_str) = version_str {
-                    return jdk.version.matches_pattern(ver_str);
-                }
-
-                // If no version specified but distribution matches, include it
-                version_str.is_none()
-            })
-            .collect();
-
-        debug!("Found {} matching JDKs", matches.len());
-        Ok(matches)
+        // Use repository's find_matching_jdks which handles JavaFX properly
+        self.repository.find_matching_jdks(&version_request)
     }
 
     fn remove_jdk_with_progress(&self, jdk: &InstalledJdk, size: u64) -> Result<()> {
