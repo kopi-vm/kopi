@@ -4,7 +4,7 @@
 
 This document outlines the implementation plan for creating a unified progress indicator system for Kopi. The implementation consolidates fragmented progress implementations into a consistent system with support for different environments (terminal, non-terminal, silent mode). The plan is divided into phases that can be completed independently with context resets (`/clear`) between each phase.
 
-**Current Status**: Phase 1-8 completed ✅
+**Current Status**: Phase 1-9 completed ✅
 
 ## Phase 1: Core Trait and Structures ✅
 
@@ -317,7 +317,7 @@ kopi cache refresh --no-progress
 
 ---
 
-## Phase 9: Uninstall Module Migration
+## Phase 9: Uninstall Module Migration ✅
 
 **Goal**: Migrate the uninstall module to use the new progress indicator system.
 
@@ -330,18 +330,24 @@ kopi cache refresh --no-progress
   - Phases 1-6 (Complete indicator system)
 
 ### Tasks
-- [ ] Replace custom `ProgressReporter` with new system
-- [ ] Update batch uninstall progress
-- [ ] Use Count style for batch operations
-- [ ] **Write integration tests**:
-  - [ ] Test single uninstall
-  - [ ] Test batch uninstall progress
-  - [ ] Test count formatting
+- [x] Replace custom `ProgressReporter` with new system
+- [x] Update batch uninstall progress
+- [x] Use Count style for batch operations
+- [x] Add StatusReporter to uninstall module
+- [x] Fix JavaFX version matching for uninstall
+- [x] Remove incorrect uninstall failure suggestions
+- [x] **Write integration tests**:
+  - [x] Test single uninstall
+  - [x] Test batch uninstall progress
+  - [x] Test count formatting
+  - [x] Test JavaFX uninstall
 
 ### Deliverables
 - Updated `src/uninstall/progress.rs` using new system
 - Consistent progress for batch operations
 - Integration tests for uninstall scenarios
+- Fixed JavaFX uninstall handling
+- Cleaned up error suggestions
 
 ### Verification
 ```bash
