@@ -29,16 +29,16 @@ impl IndicatifProgress {
         match (&config.total, &config.style) {
             // Progress bar with bytes display
             (Some(_), ProgressStyle::Bytes) => {
-                "{prefix}\n{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] \
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] \
                  {bytes}/{total_bytes} {msg} ({bytes_per_sec}, {eta})"
             }
             // Progress bar with count display
             (Some(_), ProgressStyle::Count) => {
-                "{prefix}\n{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] \
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] \
                  {pos}/{len} {msg}"
             }
             // Indeterminate operations (spinner only when total is None)
-            (None, _) => "{prefix}\n{spinner:.green} [{elapsed_precise}] {msg}",
+            (None, _) => "{spinner:.green} [{elapsed_precise}] {msg}",
         }
         .to_string()
     }

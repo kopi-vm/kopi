@@ -36,7 +36,8 @@ impl Default for SimpleProgress {
 
 impl ProgressIndicator for SimpleProgress {
     fn start(&mut self, config: ProgressConfig) {
-        println!("{} {}...", config.operation, config.context);
+        // Don't print on start to avoid duplication with StatusReporter
+        // The complete() method will show the final status
         self.operation = config.operation;
         self.context = config.context;
     }
@@ -129,10 +130,12 @@ mod tests {
 
         let config = ProgressConfig::new("Installing", "temurin@21", ProgressStyle::Count);
         progress.start(config);
+        progress.complete(Some("Done".to_string()));
 
         let output = TestProgress::get_output();
-        assert_eq!(output.len(), 1);
+        assert_eq!(output.len(), 2);
         assert_eq!(output[0], "Installing temurin@21...");
+        assert_eq!(output[1], "✓ Installing temurin@21 - Done");
     }
 
     #[test]
