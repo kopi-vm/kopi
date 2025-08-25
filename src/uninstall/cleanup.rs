@@ -83,44 +83,6 @@ impl<'a> UninstallCleanup<'a> {
         Ok(result)
     }
 
-    /// Provide cleanup suggestions for common errors
-    pub fn suggest_cleanup_actions(&self, error: &KopiError) -> Vec<String> {
-        let mut suggestions = Vec::new();
-
-        match error {
-            KopiError::SystemError(msg) if msg.contains("permission") => {
-                suggestions.push("Try running with administrator/root privileges".to_string());
-                suggestions.push("Check file permissions in the JDK directory".to_string());
-            }
-            KopiError::SystemError(msg) if msg.contains("in use") => {
-                suggestions.push("Close any applications using the JDK".to_string());
-                suggestions.push("Restart your system and try again".to_string());
-                suggestions.push("Use --force flag to attempt forced removal".to_string());
-            }
-            KopiError::SystemError(msg) if msg.contains("antivirus") => {
-                suggestions.push("Temporarily disable real-time antivirus protection".to_string());
-                suggestions.push("Add JDK directory to antivirus exclusions".to_string());
-            }
-            KopiError::Io(io_err) => match io_err.kind() {
-                std::io::ErrorKind::NotFound => {
-                    suggestions.push("JDK may have been partially removed".to_string());
-                    suggestions.push("Run 'kopi doctor' to check for issues".to_string());
-                }
-                std::io::ErrorKind::PermissionDenied => {
-                    suggestions.push("Check file permissions".to_string());
-                    suggestions.push("Try running as administrator".to_string());
-                }
-                _ => {
-                    suggestions.push("Check disk space and file system health".to_string());
-                }
-            },
-            _ => {
-                suggestions.push("Run 'kopi doctor' to diagnose issues".to_string());
-            }
-        }
-
-        suggestions
-    }
 
     /// Force cleanup of stubborn JDKs
     pub fn force_cleanup_jdk(&self, jdk_path: &Path) -> Result<()> {
@@ -467,17 +429,4 @@ mod tests {
         assert!(!metadata_path.exists());
     }
 
-    #[test]
-    fn test_suggest_cleanup_actions() {
-        let setup = TestSetup::new();
-        let repository = JdkRepository::new(&setup.config);
-        let cleanup = UninstallCleanup::new(&repository);
-
-        // Test permission error suggestions
-        let permission_error = KopiError::SystemError("permission denied".to_string());
-        let suggestions = cleanup.suggest_cleanup_actions(&permission_error);
-
-        assert!(suggestions.iter().any(|s| s.contains("administrator")));
-        assert!(suggestions.iter().any(|s| s.contains("permission")));
-    }
 }
