@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::error::{KopiError, Result};
+use crate::indicator::StatusReporter;
 use crate::models::distribution::Distribution;
 use crate::platform;
 use crate::storage::formatting::format_size;
@@ -45,34 +46,38 @@ impl<'a> UninstallHandler<'a> {
 
     /// Perform cleanup operations for failed uninstalls
     pub fn recover_from_failures(&self, force: bool) -> Result<()> {
+        let reporter = StatusReporter::new(false);
         let cleanup = UninstallCleanup::new(self.repository);
 
         let actions = cleanup.detect_and_cleanup_partial_removals()?;
 
         if actions.is_empty() {
-            println!("No recovery actions needed.");
+            reporter.step("No recovery actions needed.");
             return Ok(());
         }
 
-        println!("Found {} recovery actions:", actions.len());
+        reporter.operation(
+            "Found recovery actions",
+            &format!("{} actions", actions.len()),
+        );
         for action in &actions {
-            println!("  - {action:?}");
+            reporter.step(&format!("- {action:?}"));
         }
 
         let result = cleanup.execute_cleanup(actions, force)?;
 
         if result.is_success() {
-            println!("✓ Recovery completed successfully");
+            reporter.success("Recovery completed successfully");
             for success in result.successes {
-                println!("  ✓ {success}");
+                reporter.step(&format!("✓ {success}"));
             }
         } else {
-            println!("⚠ Recovery completed with errors");
+            reporter.error("Recovery completed with errors");
             for success in result.successes {
-                println!("  ✓ {success}");
+                reporter.step(&format!("✓ {success}"));
             }
             for failure in result.failures {
-                println!("  ✗ {failure}");
+                reporter.step(&format!("✗ {failure}"));
             }
         }
 
@@ -87,6 +92,7 @@ impl<'a> UninstallHandler<'a> {
 
     pub fn uninstall_jdk(&self, version_spec: &str, dry_run: bool) -> Result<()> {
         info!("Uninstalling JDK {version_spec}");
+        let reporter = StatusReporter::new(false);
 
         // Resolve JDKs to uninstall
         let jdks_to_remove = self.resolve_jdks_to_uninstall(version_spec)?;
@@ -115,12 +121,12 @@ impl<'a> UninstallHandler<'a> {
         let jdk_size = self.repository.get_jdk_size(&jdk.path)?;
 
         if dry_run {
-            println!(
+            reporter.step(&format!(
                 "Would remove {}@{} ({})",
                 jdk.distribution,
                 jdk.version,
                 format_size(jdk_size)
-            );
+            ));
             return Ok(());
         }
 
@@ -130,11 +136,11 @@ impl<'a> UninstallHandler<'a> {
         // Remove with progress
         match self.remove_jdk_with_progress(&jdk, jdk_size) {
             Ok(()) => {
-                println!(
-                    "✓ Successfully uninstalled {}@{}",
+                reporter.success(&format!(
+                    "Successfully uninstalled {}@{}",
                     jdk.distribution, jdk.version
-                );
-                println!("  Freed {} of disk space", format_size(jdk_size));
+                ));
+                reporter.step(&format!("Freed {} of disk space", format_size(jdk_size)));
                 Ok(())
             }
             Err(e) => {
@@ -143,9 +149,9 @@ impl<'a> UninstallHandler<'a> {
                 // Provide cleanup suggestions
                 let suggestions = self.get_cleanup_suggestions(&e);
                 if !suggestions.is_empty() {
-                    println!("\nRecovery suggestions:");
+                    reporter.error("Recovery suggestions:");
                     for suggestion in suggestions {
-                        println!("  • {suggestion}");
+                        reporter.step(&format!("• {suggestion}"));
                     }
                 }
 
@@ -233,7 +239,7 @@ impl<'a> UninstallHandler<'a> {
 
         // Create progress bar for large removals (> 100MB)
         let pb = if size > 100 * 1024 * 1024 {
-            let progress_reporter = ProgressReporter::new();
+            let mut progress_reporter = ProgressReporter::new();
             let pb = progress_reporter
                 .create_jdk_removal_spinner(&jdk.path.display().to_string(), &format_size(size));
             pb.enable_steady_tick(Duration::from_millis(100));

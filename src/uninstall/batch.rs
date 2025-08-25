@@ -14,6 +14,7 @@
 
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
+use crate::indicator::StatusReporter;
 use crate::models::distribution::Distribution;
 use crate::storage::formatting::format_size;
 use crate::storage::{InstalledJdk, JdkRepository};
@@ -124,21 +125,25 @@ impl<'a> BatchUninstaller<'a> {
     }
 
     fn display_batch_summary(&self, jdks: &[InstalledJdk], total_size: u64) -> Result<()> {
-        println!("JDKs to be removed:");
-        println!();
+        let reporter = StatusReporter::new(false);
+
+        reporter.operation("JDKs to be removed", "");
 
         for jdk in jdks {
             let size = self.repository.get_jdk_size(&jdk.path)?;
-            println!(
-                "  - {}@{} ({})",
+            reporter.step(&format!(
+                "- {}@{} ({})",
                 jdk.distribution,
                 jdk.version,
                 format_size(size)
-            );
+            ));
         }
 
-        println!();
-        println!("Total: {} JDKs, {}", jdks.len(), format_size(total_size));
+        reporter.step(&format!(
+            "Total: {} JDKs, {}",
+            jdks.len(),
+            format_size(total_size)
+        ));
 
         Ok(())
     }
@@ -149,7 +154,7 @@ impl<'a> BatchUninstaller<'a> {
     }
 
     fn execute_batch_removal(&self, jdks: Vec<InstalledJdk>, total_size: u64) -> Result<()> {
-        let progress_reporter = ProgressReporter::new_batch();
+        let mut progress_reporter = ProgressReporter::new_batch();
         let overall_pb = progress_reporter.create_batch_removal_bar(jdks.len() as u64);
 
         let mut removed_count = 0;

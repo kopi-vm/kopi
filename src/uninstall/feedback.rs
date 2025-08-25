@@ -13,7 +13,9 @@
 // limitations under the License.
 
 use crate::error::Result;
+use crate::indicator::StatusReporter;
 use crate::storage::InstalledJdk;
+use crate::storage::formatting::format_size;
 use std::io::{self, Write};
 
 /// Display confirmation prompt for uninstalling a JDK
@@ -90,23 +92,27 @@ pub fn display_batch_uninstall_summary(
     failed: &[(InstalledJdk, String)],
     total_disk_space: u64,
 ) {
-    println!();
-    println!("Batch uninstall summary:");
-    println!("  Succeeded: {}", succeeded.len());
-    println!("  Failed: {}", failed.len());
+    let reporter = StatusReporter::new(false);
+
+    reporter.operation("Batch uninstall summary", "");
+    reporter.step(&format!("Succeeded: {}", succeeded.len()));
+    reporter.step(&format!("Failed: {}", failed.len()));
 
     if !failed.is_empty() {
-        println!("\nFailed uninstalls:");
+        reporter.error("Failed uninstalls:");
         for (jdk, error) in failed {
-            println!("  - {}@{}: {}", jdk.distribution, jdk.version, error);
+            reporter.step(&format!(
+                "- {}@{}: {}",
+                jdk.distribution, jdk.version, error
+            ));
         }
     }
 
     if !succeeded.is_empty() {
-        println!(
-            "\nDisk space freed: {:.2} MB",
-            total_disk_space as f64 / 1_048_576.0
-        );
+        reporter.success(&format!(
+            "Disk space freed: {}",
+            format_size(total_disk_space)
+        ));
     }
 }
 
