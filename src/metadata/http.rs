@@ -143,12 +143,11 @@ impl MetadataSource for HttpMetadataSource {
         }
     }
 
-    fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
-        // TODO: Phase 3 - Add actual progress reporting
-
+    fn fetch_all(&self, progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
         let mut all_metadata = Vec::new();
 
         // Fetch index file
+        progress.set_message("Fetching metadata index from HTTP source...".to_string());
         let index = self.fetch_index()?;
 
         // Filter files for current platform
@@ -162,8 +161,20 @@ impl MetadataSource for HttpMetadataSource {
             get_foojay_libc_type()
         );
 
+        progress.set_message(format!(
+            "Processing {} metadata files for current platform",
+            platform_files.len()
+        ));
+
         // Fetch only metadata files relevant to this platform
-        for entry in platform_files {
+        for (idx, entry) in platform_files.iter().enumerate() {
+            progress.set_message(format!(
+                "Fetching metadata file {}/{}: {}",
+                idx + 1,
+                platform_files.len(),
+                entry.path
+            ));
+
             match self.fetch_metadata_file(&entry.path) {
                 Ok(metadata) => {
                     // HTTP source provides full metadata with download_url and checksums
@@ -173,19 +184,25 @@ impl MetadataSource for HttpMetadataSource {
             }
         }
 
+        progress.set_message(format!(
+            "Loaded {} packages from HTTP source",
+            all_metadata.len()
+        ));
+
         Ok(all_metadata)
     }
 
     fn fetch_distribution(
         &self,
         distribution: &str,
-        _progress: &mut dyn ProgressIndicator,
+        progress: &mut dyn ProgressIndicator,
     ) -> Result<Vec<JdkMetadata>> {
-        // TODO: Phase 3 - Add actual progress reporting
-
         let mut metadata = Vec::new();
 
         // Fetch index file
+        progress.set_message(format!(
+            "Fetching metadata index for distribution '{distribution}' from HTTP source..."
+        ));
         let index = self.fetch_index()?;
 
         // Filter for platform AND distribution
@@ -195,8 +212,20 @@ impl MetadataSource for HttpMetadataSource {
             .filter(|entry| entry.distribution == distribution)
             .collect();
 
+        progress.set_message(format!(
+            "Processing {} metadata files for distribution '{distribution}'",
+            filtered_files.len()
+        ));
+
         // Fetch only the specific distribution files
-        for entry in filtered_files {
+        for (idx, entry) in filtered_files.iter().enumerate() {
+            progress.set_message(format!(
+                "Fetching {}/{}: {}",
+                idx + 1,
+                filtered_files.len(),
+                entry.path
+            ));
+
             match self.fetch_metadata_file(&entry.path) {
                 Ok(pkg_metadata) => {
                     // HTTP source provides full metadata with download_url and checksums
@@ -206,17 +235,21 @@ impl MetadataSource for HttpMetadataSource {
             }
         }
 
+        progress.set_message(format!(
+            "Loaded {} packages for distribution '{distribution}' from HTTP source",
+            metadata.len()
+        ));
+
         Ok(metadata)
     }
 
     fn fetch_package_details(
         &self,
         _package_id: &str,
-        _progress: &mut dyn ProgressIndicator,
+        progress: &mut dyn ProgressIndicator,
     ) -> Result<PackageDetails> {
-        // TODO: Phase 3 - Add actual progress reporting
-
         // HTTP source always returns complete metadata
+        progress.set_message("HTTP source provides complete metadata".to_string());
         Err(KopiError::MetadataFetch(
             "HTTP source provides complete metadata".to_string(),
         ))
