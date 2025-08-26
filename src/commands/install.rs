@@ -46,7 +46,11 @@ impl<'a> InstallCommand<'a> {
     }
 
     /// Ensure we have a fresh cache, refreshing if necessary
-    fn ensure_fresh_cache(&self) -> Result<MetadataCache> {
+    fn ensure_fresh_cache(
+        &self,
+        progress: &mut dyn crate::indicator::ProgressIndicator,
+        current_step: &mut u64,
+    ) -> Result<MetadataCache> {
         let cache_path = self.config.metadata_cache_path()?;
         let max_age = Duration::from_secs(self.config.metadata.cache.max_age_hours * 3600);
 
@@ -73,7 +77,9 @@ impl<'a> InstallCommand<'a> {
         // Refresh if needed
         if should_refresh && self.config.metadata.cache.auto_refresh {
             info!("Refreshing package cache...");
-            match cache::fetch_and_cache_metadata(self.config) {
+            progress.set_message("Refreshing package cache...".to_string());
+            match cache::fetch_and_cache_metadata_with_progress(self.config, progress, current_step)
+            {
                 Ok(cache) => Ok(cache),
                 Err(e) => {
                     // If refresh fails and we have an existing cache, use it with warning
@@ -81,6 +87,7 @@ impl<'a> InstallCommand<'a> {
                         && let Ok(cache) = cache::load_cache(&cache_path)
                     {
                         warn!("Failed to refresh cache: {e}. Using existing cache.");
+                        progress.set_message("Using existing cache".to_string());
                         return Ok(cache);
                     }
                     Err(KopiError::MetadataFetch(format!(
@@ -147,7 +154,16 @@ impl<'a> InstallCommand<'a> {
             "JavaFX bundled: version_request={:?}",
             version_request.javafx_bundled
         );
-        let package = self.find_matching_package(&distribution, version, &version_request)?;
+        // TODO: Phase 9 - Replace with actual progress indicator from execute parameters
+        let mut progress = crate::indicator::SilentProgress;
+        let mut current_step = 0u64;
+        let package = self.find_matching_package(
+            &distribution,
+            version,
+            &version_request,
+            &mut progress,
+            &mut current_step,
+        )?;
         trace!("Found package: {package:?}");
         let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
 
@@ -362,13 +378,15 @@ impl<'a> InstallCommand<'a> {
         distribution: &Distribution,
         version: &crate::version::Version,
         version_request: &crate::version::parser::ParsedVersionRequest,
+        progress: &mut dyn crate::indicator::ProgressIndicator,
+        current_step: &mut u64,
     ) -> Result<crate::models::api::Package> {
         // Build query parameters
         let arch = get_current_architecture();
         let os = get_current_os();
 
         // Always ensure we have a fresh cache
-        let mut cache = self.ensure_fresh_cache()?;
+        let mut cache = self.ensure_fresh_cache(progress, current_step)?;
 
         // Search in cache
         // First try exact match
@@ -390,9 +408,7 @@ impl<'a> InstallCommand<'a> {
             if !jdk_metadata.is_complete() {
                 debug!("Metadata is incomplete, fetching package details...");
                 let provider = crate::metadata::MetadataProvider::from_config(self.config)?;
-                // TODO: Phase 8 - Replace with actual progress indicator
-                let mut progress = crate::indicator::SilentProgress;
-                provider.ensure_complete(&mut jdk_metadata, &mut progress)?;
+                provider.ensure_complete(&mut jdk_metadata, progress)?;
             }
 
             return Ok(self.convert_metadata_to_package(&jdk_metadata));
@@ -401,7 +417,9 @@ impl<'a> InstallCommand<'a> {
         // If not found and refresh_on_miss is enabled, try refreshing cache once
         if self.config.metadata.cache.refresh_on_miss {
             info!("Package not found in cache, refreshing...");
-            match cache::fetch_and_cache_metadata(self.config) {
+            progress.set_message("Package not found in cache, refreshing...".to_string());
+            match cache::fetch_and_cache_metadata_with_progress(self.config, progress, current_step)
+            {
                 Ok(new_cache) => {
                     cache = new_cache;
 
@@ -425,9 +443,7 @@ impl<'a> InstallCommand<'a> {
                             debug!("Metadata is incomplete, fetching package details...");
                             let provider =
                                 crate::metadata::MetadataProvider::from_config(self.config)?;
-                            // TODO: Phase 8 - Replace with actual progress indicator
-                            let mut progress = crate::indicator::SilentProgress;
-                            provider.ensure_complete(&mut jdk_metadata, &mut progress)?;
+                            provider.ensure_complete(&mut jdk_metadata, progress)?;
                         }
 
                         return Ok(self.convert_metadata_to_package(&jdk_metadata));

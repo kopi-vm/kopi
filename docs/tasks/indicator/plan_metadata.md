@@ -4,7 +4,7 @@
 
 This document outlines the implementation plan for adding progress indicator support to metadata fetching operations in Kopi. The implementation follows a bottom-up approach to maintain a compilable codebase throughout the process, with temporary `SilentProgress` instances used to resolve compilation errors during migration.
 
-**Current Status**: Phase 1 - 7 Completed ✅
+**Current Status**: Phase 1 - 8 Completed ✅
 
 ## Phase 1: MetadataSource Trait and All Implementations - Minimal Update ✅
 
@@ -330,7 +330,7 @@ kopi cache refresh --no-progress
 
 ---
 
-## Phase 8: Install Command - Cache Refresh Support
+## Phase 8: Install Command - Cache Refresh Support ✅
 
 **Goal**: Update install command's cache refresh to use progress indicators.
 
@@ -342,27 +342,32 @@ kopi cache refresh --no-progress
   - `/src/commands/install.rs` - Install command
 
 ### Tasks
-- [ ] Update `ensure_fresh_cache()` method:
-  - [ ] Add `progress: &mut dyn ProgressIndicator` parameter
-  - [ ] Pass progress to `fetch_and_cache_metadata()`
-  - [ ] Handle progress in fallback scenarios
-- [ ] Update callers of `ensure_fresh_cache()`:
-  - [ ] Pass progress indicator from execute()
-  - [ ] Handle step counting
-- [ ] **Create temporary fix for execute()**:
-  - [ ] Use local progress for now
-  - [ ] Mark with TODO for Phase 9
+- [x] Update `ensure_fresh_cache()` method:
+  - [x] Add `progress: &mut dyn ProgressIndicator` and `current_step` parameters
+  - [x] Pass progress to `fetch_and_cache_metadata_with_progress()`
+  - [x] Handle progress in fallback scenarios
+- [x] Update callers of `ensure_fresh_cache()`:
+  - [x] Update `find_matching_package()` to accept progress parameters
+  - [x] Pass progress indicator from execute()
+  - [x] Handle step counting
+- [x] **Create temporary fix for execute()**:
+  - [x] Use local SilentProgress for now
+  - [x] Mark with TODO for Phase 9
+- [x] **Update ensure_complete calls**:
+  - [x] Use same progress variable instead of creating new SilentProgress
+  - [x] Remove redundant TODO comments
 
-### Deliverables
-- Updated `ensure_fresh_cache()` with progress support
-- Progress propagation during cache refresh
-- Temporary progress usage in execute()
+### Deliverables ✅
+- ✅ Updated `ensure_fresh_cache()` with progress support
+- ✅ Progress propagation during cache refresh
+- ✅ Temporary progress usage in execute()
+- ✅ All ensure_complete calls using shared progress
 
-### Verification
+### Verification ✅
 ```bash
-cargo fmt
-cargo clippy --all-targets -- -D warnings
-cargo test --lib commands::install::tests
+cargo fmt                               # ✅ Completed
+cargo clippy --all-targets -- -D warnings  # ✅ No warnings
+cargo test --lib commands::install::tests  # ✅ All 19 tests passing
 ```
 
 ---
@@ -550,7 +555,7 @@ cargo doc --no-deps --open
 
 ### Command Integration (Phases 7-9)
 7. **Phase 7**: Cache command integration ✅
-8. **Phase 8**: Install command - cache refresh support
+8. **Phase 8**: Install command - cache refresh support ✅
 9. **Phase 9**: Install command - full progress integration
 
 ### Testing and Cleanup (Phases 10-12)
