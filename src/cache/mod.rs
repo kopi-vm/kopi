@@ -159,7 +159,7 @@ pub fn fetch_and_cache_metadata_with_progress(
 }
 
 /// Fetch metadata from API and cache it (backward compatibility wrapper)
-/// TODO: Phase 7 - Remove this wrapper
+/// TODO: Phase 8 - Remove this wrapper after install.rs is updated
 pub fn fetch_and_cache_metadata(config: &KopiConfig) -> Result<MetadataCache> {
     let mut progress = SilentProgress;
     let mut current_step = 0u64;
@@ -231,7 +231,7 @@ pub fn fetch_and_cache_distribution_with_progress(
 }
 
 /// Fetch metadata for a specific distribution and update the cache (backward compatibility wrapper)
-/// TODO: Phase 7 - Remove this wrapper
+/// TODO: Phase 8 - Remove this wrapper after all callers are updated
 pub fn fetch_and_cache_distribution(
     distribution_name: &str,
     config: &KopiConfig,

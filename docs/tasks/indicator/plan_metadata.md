@@ -4,7 +4,7 @@
 
 This document outlines the implementation plan for adding progress indicator support to metadata fetching operations in Kopi. The implementation follows a bottom-up approach to maintain a compilable codebase throughout the process, with temporary `SilentProgress` instances used to resolve compilation errors during migration.
 
-**Current Status**: Phase 1 - 4 Completed ✅
+**Current Status**: Phase 1 - 7 Completed ✅
 
 ## Phase 1: MetadataSource Trait and All Implementations - Minimal Update ✅
 
@@ -285,7 +285,7 @@ cargo test --lib cache::tests          # ✅ All tests pass (36/36)
 
 ---
 
-## Phase 7: Cache Command Integration
+## Phase 7: Cache Command Integration ✅
 
 **Goal**: Update the cache refresh command to use step-based progress indicators.
 
@@ -297,32 +297,33 @@ cargo test --lib cache::tests          # ✅ All tests pass (36/36)
   - `/src/commands/cache.rs` - Cache command implementation
 
 ### Tasks
-- [ ] Update `refresh_cache()` function:
-  - [ ] Calculate total steps: `5 + provider.source_count()`
-  - [ ] Initialize progress with `ProgressStyle::Count`
-  - [ ] Start with total steps using `with_total()`
-  - [ ] Initialize step counter
-- [ ] Implement step updates:
-  - [ ] Step 1: Initialization
-  - [ ] Steps 2-N: Source attempts (delegated)
-  - [ ] Steps N+1 to N+4: Processing steps (delegated)
-- [ ] Pass progress to `fetch_and_cache_metadata()`
-- [ ] Add summary output after completion
-- [ ] **Remove temporary wrappers**:
-  - [ ] Update to use new signatures directly
-  - [ ] Remove TODO comments
+- [x] Update `refresh_cache()` function:
+  - [x] Calculate total steps: `5 + provider.source_count()`
+  - [x] Initialize progress with `ProgressStyle::Count`
+  - [x] Start with total steps using `with_total()`
+  - [x] Initialize step counter
+- [x] Implement step updates:
+  - [x] Step 1: Initialization
+  - [x] Steps 2-N: Source attempts (delegated)
+  - [x] Steps N+1 to N+4: Processing steps (delegated)
+- [x] Pass progress to `fetch_and_cache_metadata_with_progress()`
+- [x] Add summary output after completion
+- [x] **Update for new signatures**:
+  - [x] Update cache refresh to use new signatures directly
+  - [x] Update search_cache to use new signatures for distribution fetching
+  - [x] Keep backward compatibility wrappers for Phase 8
 
-### Deliverables
-- Updated `src/commands/cache.rs` with step-based progress
-- Proper progress calculation and initialization
-- Clean removal of temporary code
+### Deliverables ✅
+- ✅ Updated `src/commands/cache.rs` with step-based progress
+- ✅ Proper progress calculation and initialization
+- ✅ Backward compatibility wrappers retained for Phase 8
 
-### Verification
+### Verification ✅
 ```bash
-cargo fmt
-cargo clippy --all-targets -- -D warnings
-cargo test --lib commands::cache::tests
-# Manual testing
+cargo fmt                              # ✅ Completed
+cargo clippy --all-targets -- -D warnings  # ✅ No warnings
+cargo test --lib commands::cache::tests    # ✅ All 8 tests passing
+# Manual testing - Ready for testing
 kopi cache refresh
 kopi cache refresh --no-progress
 ```
@@ -548,7 +549,7 @@ cargo doc --no-deps --open
 6. **Phase 6**: Cache module functions update ✅
 
 ### Command Integration (Phases 7-9)
-7. **Phase 7**: Cache command integration
+7. **Phase 7**: Cache command integration ✅
 8. **Phase 8**: Install command - cache refresh support
 9. **Phase 9**: Install command - full progress integration
 

@@ -104,27 +104,44 @@ impl CacheCommand {
 }
 
 fn refresh_cache(config: &KopiConfig, no_progress: bool) -> Result<()> {
+    // Create metadata provider to get source count
+    let provider = crate::metadata::provider::MetadataProvider::from_config(config)?;
+
+    // Calculate total steps: 5 base steps + number of sources
+    // Steps breakdown:
+    // - Steps 1 to N: One step per source (handled by provider)
+    // - Step N+1: Processing metadata
+    // - Step N+2: Grouping by distribution
+    // - Step N+3: Saving to cache
+    // - Step N+4: Completion
+    let total_steps = 5 + provider.source_count();
+
     let mut progress = ProgressFactory::create(no_progress);
 
-    // Start spinner for cache refresh (indeterminate progress)
-    let progress_config = ProgressConfig::new(
-        "Refreshing",
-        "metadata cache",
-        IndicatorStyle::Count, // Style doesn't matter for indeterminate
-    );
+    // Initialize step-based progress with total
+    let progress_config =
+        ProgressConfig::new("Refreshing", "metadata cache", IndicatorStyle::Count)
+            .with_total(total_steps as u64);
     progress.start(progress_config);
 
-    // Update progress message as we fetch
-    progress.set_message("Fetching metadata from configured sources...".to_string());
+    // Initialize step counter
+    let mut current_step = 0u64;
 
-    // Fetch metadata from API
-    let cache = cache::fetch_and_cache_metadata(config)?;
+    // Step 1: Initialization
+    current_step += 1;
+    progress.update(current_step, Some(total_steps as u64));
+    progress.set_message("Initializing metadata refresh...".to_string());
 
-    // Update message to show we're saving
-    progress.set_message("Saving metadata to cache...".to_string());
+    // Fetch metadata from API - this will handle steps 2-N internally (one per source)
+    // and steps N+1 to N+4 (processing steps)
+    let cache = cache::fetch_and_cache_metadata_with_progress(
+        config,
+        progress.as_mut(),
+        &mut current_step,
+    )?;
 
-    // Show final completion (no message to avoid duplication)
-    progress.complete(None);
+    // Complete the progress indicator
+    progress.complete(Some("Cache refreshed successfully".to_string()));
 
     // Use StatusReporter for consistent output
     let reporter = StatusReporter::new(no_progress);
@@ -264,7 +281,15 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
                 );
             }
 
-            match cache::fetch_and_cache_distribution(canonical_name, config) {
+            // Use SilentProgress for search operation (no user-visible progress needed)
+            let mut progress = crate::indicator::SilentProgress;
+            let mut current_step = 0u64;
+            match cache::fetch_and_cache_distribution_with_progress(
+                canonical_name,
+                config,
+                &mut progress,
+                &mut current_step,
+            ) {
                 Ok(updated_cache) => {
                     cache = updated_cache;
                     if !json {
