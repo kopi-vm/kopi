@@ -4,6 +4,38 @@
 
 Kopi is a JDK version management tool that integrates with your shell to seamlessly switch between different Java Development Kit versions. It uses a flexible metadata system that fetches JDK information from multiple sources including pre-generated metadata files and the Foojay API, providing comprehensive JDK availability with optimal performance similar to tools like volta, nvm, and pyenv.
 
+## Global Command-Line Flags
+
+### `--no-progress`
+
+Suppresses all progress indicators including progress bars, spinners, and status messages. This flag is useful for:
+- CI/CD environments where progress indicators can clutter logs
+- Non-interactive scripts and automation
+- Situations where terminal output needs to be minimal
+- Piping output to other commands
+
+**Usage:**
+```bash
+kopi --no-progress install 21            # Install without progress bar
+kopi --no-progress cache refresh         # Refresh cache silently
+kopi --no-progress uninstall --all       # Batch uninstall without progress
+```
+
+**Notes:**
+- This is a global flag that must come before the subcommand
+- Error messages are still displayed even with this flag
+- Combines well with other output control flags like `--quiet` or `--json`
+
+### `-v, --verbose`
+
+Enables verbose output for debugging and detailed information.
+
+**Usage:**
+```bash
+kopi -v install 21                       # Show detailed installation steps
+kopi -v doctor                           # Detailed diagnostic information
+```
+
 ## Installation & Setup Commands
 
 ### `kopi install`
@@ -57,6 +89,7 @@ kopi uninstall <distribution> --all      # Remove all versions of a distribution
 - `--dry-run`: Show what would be removed without actually removing
 - `--all`: Remove all versions of a distribution (requires distribution name)
 - `--cleanup`: Clean up failed or partial uninstall operations (can be used alone or with version)
+- `--no-progress`: Disable progress indicators for batch operations
 
 **Examples:**
 ```bash
@@ -511,7 +544,12 @@ Update the metadata cache from configured sources.
 ```bash
 kopi cache refresh                       # Refresh metadata for all distributions
 kopi cache refresh --javafx-bundled      # Include JavaFX bundled packages
+kopi --no-progress cache refresh         # Refresh without progress indicator
 ```
+
+**Notes:**
+- Shows a progress spinner by default during metadata fetch
+- Use the global `--no-progress` flag to suppress the spinner
 
 #### `kopi cache search`
 
@@ -524,6 +562,7 @@ kopi cache search <query> --compact      # Minimal display (default)
 kopi cache search <query> --detailed     # Full information display
 kopi cache search <query> --json         # JSON output for programmatic use
 kopi cache search <query> --lts-only     # Filter to show only LTS versions
+kopi --no-progress cache search <query>  # Search without progress indicators
 ```
 
 **Examples:**
