@@ -141,6 +141,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_state_management() {
         let mut progress = SimpleProgress::new();
 
@@ -170,6 +171,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_complete_with_message() {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
@@ -184,6 +186,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_complete_without_message() {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
@@ -198,6 +201,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_update_no_output() {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
@@ -232,6 +236,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_multiple_operations() {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();

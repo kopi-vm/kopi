@@ -55,8 +55,12 @@ impl LocalDirectorySource {
     }
 
     /// Read metadata from extracted directory structure
-    fn read_metadata(&self) -> Result<Vec<JdkMetadata>> {
+    fn read_metadata(&self, progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
         // Read index.json
+        progress.set_message(format!(
+            "Reading local metadata directory: {}",
+            self.directory.display()
+        ));
         let index_path = self.directory.join("index.json");
         let index_file = File::open(&index_path).map_err(|e| {
             KopiError::NotFound(format!(
@@ -73,10 +77,24 @@ impl LocalDirectorySource {
 
         // Filter files for current platform
         let platform_files = self.filter_files_for_platform(index.files, &platform_dir);
+        let file_count = platform_files.len();
+        if file_count > 0 {
+            progress.set_message(format!(
+                "Processing {file_count} metadata files for {platform_dir}"
+            ));
+        }
 
         // Read metadata files from the platform directory
         let mut all_metadata = Vec::new();
-        for file_info in platform_files {
+        for (index, file_info) in platform_files.into_iter().enumerate() {
+            // Extract just the filename for progress display
+            let filename = file_info
+                .path
+                .split('/')
+                .next_back()
+                .unwrap_or(&file_info.path);
+            progress.set_message(format!("Reading {filename} ({}/{})", index + 1, file_count));
+
             let file_path = self.directory.join(&file_info.path);
 
             if let Ok(file) = File::open(&file_path) {
@@ -98,6 +116,8 @@ impl LocalDirectorySource {
             }
         }
 
+        let package_count = all_metadata.len();
+        progress.set_message(format!("Loaded {package_count} local packages"));
         Ok(all_metadata)
     }
 
@@ -132,37 +152,41 @@ impl MetadataSource for LocalDirectorySource {
         Ok(index_path.exists())
     }
 
-    fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
-        // TODO: Phase 4 - Add actual progress reporting
-
-        self.read_metadata()
+    fn fetch_all(&self, progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
+        self.read_metadata(progress)
     }
 
     fn fetch_distribution(
         &self,
         distribution: &str,
-        _progress: &mut dyn ProgressIndicator,
+        progress: &mut dyn ProgressIndicator,
     ) -> Result<Vec<JdkMetadata>> {
-        // TODO: Phase 4 - Add actual progress reporting
-
-        let all_metadata = self.read_metadata()?;
-        Ok(all_metadata
+        progress.set_message(format!(
+            "Reading local metadata for distribution: {distribution}"
+        ));
+        let all_metadata = self.read_metadata(progress)?;
+        let filtered: Vec<JdkMetadata> = all_metadata
             .into_iter()
             .filter(|m| m.distribution == distribution)
-            .collect())
+            .collect();
+
+        let count = filtered.len();
+        progress.set_message(format!("Found {count} {distribution} packages locally"));
+        Ok(filtered)
     }
 
     fn fetch_package_details(
         &self,
         package_id: &str,
-        _progress: &mut dyn ProgressIndicator,
+        progress: &mut dyn ProgressIndicator,
     ) -> Result<PackageDetails> {
-        // TODO: Phase 4 - Add actual progress reporting
+        progress.set_message(format!("Looking up package details: {package_id}"));
 
         // Local directory source has complete metadata, so we can return details
-        let all_metadata = self.read_metadata()?;
+        let all_metadata = self.read_metadata(progress)?;
 
         // Find the package with matching ID
+        progress.set_message(format!("Searching for package: {package_id}"));
         let package = all_metadata
             .into_iter()
             .find(|m| m.id == package_id)
@@ -173,6 +197,7 @@ impl MetadataSource for LocalDirectorySource {
             KopiError::NotFound(format!("Download URL not found for package '{package_id}'"))
         })?;
 
+        progress.set_message(format!("Found package details for: {package_id}"));
         Ok(PackageDetails {
             download_url,
             checksum: package.checksum,
