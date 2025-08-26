@@ -1,0 +1,601 @@
+# Metadata Fetch Progress Indicator Implementation Plan
+
+## Overview
+
+This document outlines the implementation plan for adding progress indicator support to metadata fetching operations in Kopi. The implementation follows a bottom-up approach to maintain a compilable codebase throughout the process, with temporary `SilentProgress` instances used to resolve compilation errors during migration.
+
+**Current Status**: Planning phase
+
+## Phase 1: MetadataSource Trait and All Implementations - Minimal Update
+
+**Goal**: Update the `MetadataSource` trait and ALL implementations with new signatures to maintain compilation.
+
+### Input Materials
+- **Documentation**:
+  - `/docs/tasks/indicator/design_metadata.md` - Design specification
+  
+- **Source Code to Modify**:
+  - `/src/metadata/source.rs` - MetadataSource trait definition
+  - `/src/metadata/foojay.rs` - Foojay implementation
+  - `/src/metadata/http.rs` - HTTP implementation
+  - `/src/metadata/local.rs` - Local implementation
+  - `/src/metadata/provider_tests.rs` - Mock implementation
+
+### Tasks
+- [ ] **Update MetadataSource trait**:
+  - [ ] Add `progress: &mut dyn ProgressIndicator` to `fetch_all()`
+  - [ ] Add `progress: &mut dyn ProgressIndicator` to `fetch_distribution()`
+  - [ ] Add `progress: &mut dyn ProgressIndicator` to `ensure_complete()`
+  - [ ] Import `ProgressIndicator` trait in source.rs
+- [ ] **Minimal update to ALL implementations** (just add parameter, ignore it):
+  - [ ] FoojayMetadataSource: Add `_progress` parameter, mark with `// TODO: Phase 2`
+  - [ ] HttpMetadataSource: Add `_progress` parameter, mark with `// TODO: Phase 3`
+  - [ ] LocalDirectorySource: Add `_progress` parameter, mark with `// TODO: Phase 4`
+  - [ ] MockMetadataSource (tests): Add `_progress` parameter
+- [ ] **Fix all test calls**:
+  - [ ] Add `&mut SilentProgress` to all test invocations
+  - [ ] Import SilentProgress where needed
+- [ ] Update trait documentation
+
+### Example Implementation
+```rust
+// In foojay.rs
+impl MetadataSource for FoojayMetadataSource {
+    fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
+        // TODO: Phase 2 - Add actual progress reporting
+        
+        // Existing implementation unchanged
+        let packages = self.client.get_packages(None)?;
+        // ...
+    }
+}
+```
+
+### Deliverables
+- Updated trait with new signatures
+- All implementations updated with minimal changes
+- All tests compilable with SilentProgress
+- Fully compilable codebase
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo build --lib
+cargo test --lib metadata --no-run  # Verify compilation
+```
+
+---
+
+## Phase 2: FoojayMetadataSource Progress Implementation
+
+**Goal**: Add actual progress reporting to FoojayMetadataSource.
+
+### Input Materials
+- **Dependencies**:
+  - Phase 1 (All signatures updated)
+
+- **Source Code to Modify**:
+  - `/src/metadata/foojay.rs` - Foojay source implementation
+
+### Tasks
+- [ ] **Replace `_progress` with actual usage**:
+  - [ ] Remove underscore from parameter name
+  - [ ] Remove `// TODO: Phase 2` comment
+- [ ] **Add progress reporting in `fetch_all()`**:
+  - [ ] Before API call: `progress.set_message("Connecting to Foojay API...")`
+  - [ ] After receiving packages: `progress.set_message(format!("Retrieved {} packages from Foojay", packages.len()))`
+  - [ ] During conversion: `progress.set_message("Processing Foojay metadata...")`
+  - [ ] After completion: `progress.set_message(format!("Processed {} packages", count))`
+- [ ] **Add progress reporting in `fetch_distribution()`**:
+  - [ ] Similar progress messages for distribution-specific fetch
+- [ ] **Add progress reporting in `ensure_complete()`**:
+  - [ ] Message when fetching package details
+- [ ] **Test with actual progress** (optional):
+  - [ ] Create test using `TestProgressCapture` to verify messages
+
+### Deliverables
+- Fully implemented progress reporting in FoojayMetadataSource
+- Progress messages at key operation points
+- TODO comments removed
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib metadata::foojay::tests
+```
+
+---
+
+## Phase 3: HttpMetadataSource Progress Implementation
+
+**Goal**: Add actual progress reporting to HttpMetadataSource.
+
+### Input Materials
+- **Dependencies**:
+  - Phase 1 (All signatures updated)
+
+- **Source Code to Modify**:
+  - `/src/metadata/http.rs` - HTTP source implementation
+
+### Tasks
+- [ ] **Replace `_progress` with actual usage**:
+  - [ ] Remove underscore from parameter name
+  - [ ] Remove `// TODO: Phase 3` comment
+- [ ] **Add progress reporting in `fetch_all()`**:
+  - [ ] Start fetch: `progress.set_message("Fetching metadata from HTTP source...")`
+  - [ ] If byte counts available: Update with download progress
+  - [ ] Processing: `progress.set_message("Processing HTTP metadata...")`
+  - [ ] Completion: `progress.set_message(format!("Loaded {} packages", count))`
+- [ ] **Add progress reporting in `fetch_distribution()`**:
+  - [ ] Similar messages for distribution-specific fetch
+- [ ] **Add progress reporting in `ensure_complete()`**:
+  - [ ] Message when completing package details
+- [ ] **Consider HTTP-specific features**:
+  - [ ] Show URL being fetched (if not sensitive)
+  - [ ] Show download size if available from headers
+
+### Deliverables
+- Fully implemented progress reporting in HttpMetadataSource
+- HTTP-specific progress information (bytes, URLs)
+- TODO comments removed
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib metadata::http_tests
+```
+
+---
+
+## Phase 4: LocalDirectorySource Progress Implementation
+
+**Goal**: Add actual progress reporting to LocalDirectorySource.
+
+### Input Materials
+- **Dependencies**:
+  - Phase 1 (All signatures updated)
+
+- **Source Code to Modify**:
+  - `/src/metadata/local.rs` - Local source implementation
+
+### Tasks
+- [ ] **Replace `_progress` with actual usage**:
+  - [ ] Remove underscore from parameter name
+  - [ ] Remove `// TODO: Phase 4` comment
+- [ ] **Add progress reporting in `fetch_all()`**:
+  - [ ] Start: `progress.set_message("Reading local metadata directory...")`
+  - [ ] Per file: `progress.set_message(format!("Reading {}", filename))`
+  - [ ] After each file: Update count if multiple files
+  - [ ] Completion: `progress.set_message(format!("Loaded {} local packages", count))`
+- [ ] **Add progress reporting in `fetch_distribution()`**:
+  - [ ] Similar messages for distribution-specific loading
+- [ ] **Add progress reporting in `ensure_complete()`**:
+  - [ ] Message if additional local data needs loading
+- [ ] **Consider file system specifics**:
+  - [ ] Show directory path being scanned
+  - [ ] Show file count if known in advance
+
+### Deliverables
+- Fully implemented progress reporting in LocalDirectorySource
+- File-by-file progress updates
+- TODO comments removed
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib metadata::local::tests
+```
+
+---
+
+## Phase 5: MetadataProvider Update
+
+**Goal**: Update MetadataProvider to propagate progress indicators and manage step-based progress.
+
+### Input Materials
+- **Dependencies**:
+  - Phase 1 (All implementations have progress parameters)
+  - Phases 2-4 (Optional - sources may or may not have actual progress yet)
+
+- **Source Code to Modify**:
+  - `/src/metadata/provider.rs` - Provider implementation
+
+### Tasks
+- [ ] **Update `MetadataProvider` signatures**:
+  - [ ] Add `progress: &mut dyn ProgressIndicator` to `fetch_all()`
+  - [ ] Add `progress: &mut dyn ProgressIndicator` to `fetch_distribution()`
+  - [ ] Add `pub fn source_count(&self) -> usize` method
+- [ ] **Propagate progress to sources**:
+  - [ ] In `fetch_all()`: Pass progress to `source.fetch_all(progress)`
+  - [ ] In `fetch_distribution()`: Pass progress to `source.fetch_distribution(distribution, progress)`
+  - [ ] Remove any existing `SilentProgress` usage if present
+- [ ] **Note: No step counting yet** (will be done in caller):
+  - [ ] Just propagate progress to sources
+  - [ ] Let caller manage step counting
+- [ ] **Temporarily fix callers**:
+  - [ ] Add `&mut SilentProgress` in cache module calls
+  - [ ] Mark with `// TODO: Phase 6 - Replace with actual progress`
+
+### Deliverables
+- Updated provider methods accepting progress parameter
+- Progress properly propagated to all sources
+- `source_count()` method for caller's step calculation
+- Temporary fixes in cache module
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib metadata::provider_tests
+```
+
+---
+
+## Phase 6: Cache Module Functions Update
+
+**Goal**: Update cache module functions to support progress indicators with step tracking.
+
+### Input Materials
+- **Dependencies**:
+  - Phases 1-5 (Provider and sources updated)
+
+- **Source Code to Modify**:
+  - `/src/cache/mod.rs` - Cache module functions
+  - `/src/cache/tests.rs` - Cache tests
+
+### Tasks
+- [ ] Update function signatures:
+  - [ ] Add progress and current_step to `fetch_and_cache_metadata()`
+  - [ ] Add progress and current_step to `fetch_and_cache_distribution()`
+  - [ ] Update `get_metadata()` to use `SilentProgress` internally
+- [ ] Implement step-based progress:
+  - [ ] Processing metadata step
+  - [ ] Grouping by distribution step
+  - [ ] Saving to cache step
+  - [ ] Completion step
+- [ ] **Update tests**:
+  - [ ] Pass `SilentProgress` and step counter in tests
+  - [ ] Add progress tracking tests
+- [ ] **Create temporary wrapper functions**:
+  - [ ] Keep old signatures for backward compatibility
+  - [ ] Call new functions with `SilentProgress`
+  - [ ] Mark with TODO comments
+
+### Deliverables
+- Updated `src/cache/mod.rs` with progress support
+- Step-based progress reporting
+- Temporary wrapper functions for compatibility
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib cache::tests
+```
+
+---
+
+## Phase 7: Cache Command Integration
+
+**Goal**: Update the cache refresh command to use step-based progress indicators.
+
+### Input Materials
+- **Dependencies**:
+  - Phases 1-6 (All lower-level components)
+
+- **Source Code to Modify**:
+  - `/src/commands/cache.rs` - Cache command implementation
+
+### Tasks
+- [ ] Update `refresh_cache()` function:
+  - [ ] Calculate total steps: `5 + provider.source_count()`
+  - [ ] Initialize progress with `ProgressStyle::Count`
+  - [ ] Start with total steps using `with_total()`
+  - [ ] Initialize step counter
+- [ ] Implement step updates:
+  - [ ] Step 1: Initialization
+  - [ ] Steps 2-N: Source attempts (delegated)
+  - [ ] Steps N+1 to N+4: Processing steps (delegated)
+- [ ] Pass progress to `fetch_and_cache_metadata()`
+- [ ] Add summary output after completion
+- [ ] **Remove temporary wrappers**:
+  - [ ] Update to use new signatures directly
+  - [ ] Remove TODO comments
+
+### Deliverables
+- Updated `src/commands/cache.rs` with step-based progress
+- Proper progress calculation and initialization
+- Clean removal of temporary code
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib commands::cache::tests
+# Manual testing
+kopi cache refresh
+kopi cache refresh --no-progress
+```
+
+---
+
+## Phase 8: Install Command - Cache Refresh Support
+
+**Goal**: Update install command's cache refresh to use progress indicators.
+
+### Input Materials
+- **Dependencies**:
+  - Phases 1-7 (Cache functions updated)
+
+- **Source Code to Modify**:
+  - `/src/commands/install.rs` - Install command
+
+### Tasks
+- [ ] Update `ensure_fresh_cache()` method:
+  - [ ] Add `progress: &mut dyn ProgressIndicator` parameter
+  - [ ] Pass progress to `fetch_and_cache_metadata()`
+  - [ ] Handle progress in fallback scenarios
+- [ ] Update callers of `ensure_fresh_cache()`:
+  - [ ] Pass progress indicator from execute()
+  - [ ] Handle step counting
+- [ ] **Create temporary fix for execute()**:
+  - [ ] Use local progress for now
+  - [ ] Mark with TODO for Phase 9
+
+### Deliverables
+- Updated `ensure_fresh_cache()` with progress support
+- Progress propagation during cache refresh
+- Temporary progress usage in execute()
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib commands::install::tests
+```
+
+---
+
+## Phase 9: Install Command - Full Progress Integration
+
+**Goal**: Implement complete step-based progress for the install command.
+
+### Input Materials
+- **Dependencies**:
+  - Phase 8 (ensure_fresh_cache updated)
+
+- **Source Code to Modify**:
+  - `/src/commands/install.rs` - Full install flow
+
+### Tasks
+- [ ] Create overall progress indicator:
+  - [ ] Calculate base steps (8)
+  - [ ] Add optional steps (checksum, shims)
+  - [ ] Detect if cache refresh needed
+  - [ ] Update total steps dynamically
+- [ ] Implement step progression:
+  - [ ] Parse version step
+  - [ ] Check cache step
+  - [ ] Find package step
+  - [ ] Check installation step
+  - [ ] Download step (maintain separate progress)
+  - [ ] Extract and install steps
+  - [ ] Shim creation step (if enabled)
+- [ ] Handle download progress:
+  - [ ] Keep download progress independent
+  - [ ] Show as sub-progress of overall step
+- [ ] Complete with success message
+- [ ] **Remove all temporary code**
+
+### Deliverables
+- Full step-based progress for install command
+- Dynamic step calculation
+- Independent download progress bar
+- Clean removal of all TODOs
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --lib commands::install::tests
+# Manual testing
+kopi install temurin@21 --dry-run
+kopi install --no-progress temurin@21 --dry-run
+```
+
+---
+
+## Phase 10: Integration Tests Update
+
+**Goal**: Update all integration tests to work with new progress parameters.
+
+### Input Materials
+- **Dependencies**:
+  - Phases 1-9 (All implementations complete)
+
+- **Source Code to Modify**:
+  - `/tests/cache_integration.rs`
+  - Other integration test files
+
+### Tasks
+- [ ] Update cache integration tests:
+  - [ ] Import `SilentProgress` from indicator module
+  - [ ] Update `test_fetch_and_cache_metadata()`
+  - [ ] Add current_step parameter
+- [ ] Create new progress tests:
+  - [ ] Test step counting accuracy
+  - [ ] Test progress message content
+  - [ ] Test error handling with progress
+- [ ] Add `TestProgressCapture` helper:
+  - [ ] Create in `tests/common/mod.rs`
+  - [ ] Capture progress updates for verification
+  - [ ] Use in progress-specific tests
+- [ ] Update install integration tests (if any)
+
+### Deliverables
+- All integration tests updated and passing
+- New test helper for progress verification
+- Comprehensive progress behavior tests
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --test cache_integration
+cargo test --all
+```
+
+---
+
+## Phase 11: Cleanup and Optimization
+
+**Goal**: Remove all temporary code and optimize progress reporting.
+
+### Input Materials
+- **Dependencies**:
+  - Phases 1-10 (All code migrated)
+
+### Tasks
+- [ ] Search for remaining TODOs:
+  - [ ] `grep -r "TODO.*progress" src/`
+  - [ ] Remove all temporary `SilentProgress` usage
+  - [ ] Remove wrapper functions
+- [ ] Optimize progress updates:
+  - [ ] Reduce redundant updates
+  - [ ] Batch message updates where appropriate
+  - [ ] Profile performance impact
+- [ ] Add missing `total_packages()` method to MetadataCache
+- [ ] Ensure consistent error handling:
+  - [ ] Call `progress.error()` on failures
+  - [ ] Clean progress state properly
+- [ ] Final code review pass
+
+### Deliverables
+- Clean codebase with no temporary code
+- Optimized progress reporting
+- Consistent error handling
+
+### Verification
+```bash
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test --all
+cargo bench --bench progress_indicator_bench
+```
+
+---
+
+## Phase 12: Documentation and Examples
+
+**Goal**: Document the metadata progress implementation for developers.
+
+### Input Materials
+- **Documentation to Update**:
+  - `/docs/developer/progress-indicators.md`
+  - `/docs/tasks/indicator/design_metadata.md`
+
+### Tasks
+- [ ] Update developer guide:
+  - [ ] Add metadata fetching examples
+  - [ ] Document step calculation formula
+  - [ ] Explain progress propagation pattern
+- [ ] Create usage examples:
+  - [ ] Example of adding progress to new metadata source
+  - [ ] Example of step-based progress calculation
+  - [ ] Example of nested progress (install with download)
+- [ ] Update design document:
+  - [ ] Mark as implemented
+  - [ ] Add lessons learned
+  - [ ] Document any deviations
+- [ ] Add inline code documentation:
+  - [ ] Document progress parameters in public APIs
+  - [ ] Add examples in doc comments
+
+### Deliverables
+- Updated developer documentation
+- Code examples for common scenarios
+- Design document marked complete
+- Comprehensive inline documentation
+
+### Verification
+```bash
+cargo doc --no-deps --open
+# Review generated documentation
+```
+
+---
+
+## Implementation Order Summary
+
+### Lower-Level Components (Phases 1-4)
+1. **Phase 1**: MetadataSource trait and ALL implementations - minimal signature update (maintains compilation)
+2. **Phase 2**: FoojayMetadataSource - add actual progress reporting
+3. **Phase 3**: HttpMetadataSource - add actual progress reporting
+4. **Phase 4**: LocalDirectorySource - add actual progress reporting
+
+### Mid-Level Components (Phases 5-6)
+5. **Phase 5**: MetadataProvider update
+6. **Phase 6**: Cache module functions update
+
+### Command Integration (Phases 7-9)
+7. **Phase 7**: Cache command integration
+8. **Phase 8**: Install command - cache refresh support
+9. **Phase 9**: Install command - full progress integration
+
+### Testing and Cleanup (Phases 10-12)
+10. **Phase 10**: Integration tests update
+11. **Phase 11**: Cleanup and optimization
+12. **Phase 12**: Documentation and examples
+
+## Dependencies
+
+- Internal modules:
+  - `src/indicator/` - Progress indicator system (must be implemented first)
+  - `src/metadata/` - Metadata fetching system
+  - `src/cache/` - Cache management
+  - `src/commands/` - Command implementations
+
+## Risks & Mitigations
+
+1. **Risk**: Breaking existing functionality during migration
+   - **Mitigation**: Use SilentProgress temporarily to maintain compatibility
+   - **Fallback**: Keep old signatures until fully migrated
+
+2. **Risk**: Complex step counting logic
+   - **Mitigation**: Start with simple counting, refine iteratively
+   - **Fallback**: Use indeterminate progress if counting fails
+
+3. **Risk**: Performance impact from progress updates
+   - **Mitigation**: Batch updates, benchmark before/after
+   - **Fallback**: Reduce update frequency if needed
+
+4. **Risk**: Test failures from signature changes
+   - **Mitigation**: Update tests incrementally with each phase
+   - **Fallback**: Use test helpers to abstract progress
+
+## Success Metrics
+
+- [ ] All metadata operations show progress
+- [ ] Step-based progress with accurate counts
+- [ ] No performance regression (< 5ms overhead)
+- [ ] All tests passing with new signatures
+- [ ] Clean codebase with no temporary code
+- [ ] Download progress remains independent
+- [ ] Cache refresh shows detailed progress
+
+## Notes for Implementation
+
+- **Phase 1 is critical**: Updates ALL implementations at once to maintain compilation
+- Always keep code compilable between phases
+- Use `// TODO: Phase X` comments to mark where actual implementation will be added
+- Use `// TODO: Replace with actual progress` for temporary `SilentProgress` usage
+- Test after each phase completion
+- Commit working code at phase boundaries
+- Use `SilentProgress` in tests unless testing progress behavior
+- Maintain independent download progress bars
+- Calculate steps dynamically based on configuration
+- Phases 2-4 can be done in any order after Phase 1
