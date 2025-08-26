@@ -215,6 +215,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_set_message_no_output() {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
