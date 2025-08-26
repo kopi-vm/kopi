@@ -14,7 +14,7 @@
 
 use crate::config::{KopiConfig, MetadataConfig, SourceConfig};
 use crate::error::{KopiError, Result};
-use crate::indicator::SilentProgress;
+use crate::indicator::ProgressIndicator;
 use crate::metadata::source::MetadataSource;
 use crate::metadata::{FoojayMetadataSource, HttpMetadataSource, LocalDirectorySource};
 use crate::models::metadata::JdkMetadata;
@@ -111,11 +111,7 @@ impl MetadataProvider {
     }
 
     /// Get metadata from sources, trying each in order until one succeeds
-    pub fn fetch_all(
-        &self,
-        _progress: &mut dyn crate::indicator::ProgressIndicator,
-    ) -> Result<Vec<JdkMetadata>> {
-        // TODO: Phase 5 - Use passed progress indicator instead of SilentProgress
+    pub fn fetch_all(&self, progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
         let mut errors: Vec<(String, String)> = Vec::new();
 
         for (source_name, source) in &self.sources {
@@ -125,9 +121,7 @@ impl MetadataProvider {
             match source.is_available() {
                 Ok(true) => {
                     // Source is available, try to fetch
-                    // TODO: Phase 5 - Replace with actual progress
-                    let mut progress = SilentProgress;
-                    match source.fetch_all(&mut progress) {
+                    match source.fetch_all(progress) {
                         Ok(metadata) => {
                             if errors.is_empty() {
                                 debug!("Successfully fetched metadata from source: {source_name}");
@@ -178,9 +172,8 @@ impl MetadataProvider {
     pub fn fetch_distribution(
         &self,
         distribution: &str,
-        _progress: &mut dyn crate::indicator::ProgressIndicator,
+        progress: &mut dyn ProgressIndicator,
     ) -> Result<Vec<JdkMetadata>> {
-        // TODO: Phase 5 - Use passed progress indicator instead of SilentProgress
         let mut errors: Vec<(String, String)> = Vec::new();
 
         for (source_name, source) in &self.sources {
@@ -190,9 +183,7 @@ impl MetadataProvider {
             match source.is_available() {
                 Ok(true) => {
                     // Source is available, try to fetch
-                    // TODO: Phase 5 - Replace with actual progress
-                    let mut progress = SilentProgress;
-                    match source.fetch_distribution(distribution, &mut progress) {
+                    match source.fetch_distribution(distribution, progress) {
                         Ok(metadata) => {
                             if errors.is_empty() {
                                 debug!(
@@ -246,9 +237,13 @@ impl MetadataProvider {
     }
 
     /// Ensure metadata has all required fields (lazy loading)
-    pub fn ensure_complete(&self, metadata: &mut JdkMetadata) -> Result<()> {
+    pub fn ensure_complete(
+        &self,
+        metadata: &mut JdkMetadata,
+        progress: &mut dyn ProgressIndicator,
+    ) -> Result<()> {
         if !metadata.is_complete() {
-            let details = self.fetch_package_details(&metadata.id)?;
+            let details = self.fetch_package_details(&metadata.id, progress)?;
             metadata.download_url = Some(details.download_url);
             metadata.checksum = details.checksum;
             metadata.checksum_type = details.checksum_type;
@@ -260,6 +255,7 @@ impl MetadataProvider {
     fn fetch_package_details(
         &self,
         package_id: &str,
+        progress: &mut dyn ProgressIndicator,
     ) -> Result<crate::metadata::source::PackageDetails> {
         let mut errors: Vec<(String, String)> = Vec::new();
 
@@ -272,9 +268,7 @@ impl MetadataProvider {
             match source.is_available() {
                 Ok(true) => {
                     // Source is available, try to fetch
-                    // TODO: Phase 5 - Replace with actual progress
-                    let mut progress = SilentProgress;
-                    match source.fetch_package_details(package_id, &mut progress) {
+                    match source.fetch_package_details(package_id, progress) {
                         Ok(details) => {
                             if errors.is_empty() {
                                 debug!(
@@ -328,11 +322,15 @@ impl MetadataProvider {
     }
 
     /// Batch resolve multiple metadata entries
-    pub fn ensure_complete_batch(&self, metadata_list: &mut [JdkMetadata]) -> Result<()> {
+    pub fn ensure_complete_batch(
+        &self,
+        metadata_list: &mut [JdkMetadata],
+        progress: &mut dyn ProgressIndicator,
+    ) -> Result<()> {
         // For now, process each item individually
         // Future optimization: group by source and batch load
         for metadata in metadata_list.iter_mut() {
-            self.ensure_complete(metadata)?;
+            self.ensure_complete(metadata, progress)?;
         }
         Ok(())
     }
@@ -398,6 +396,7 @@ mod tests {
 
     #[test]
     fn test_ensure_complete_with_complete_metadata() {
+        use crate::indicator::SilentProgress;
         use crate::models::metadata::JdkMetadata;
         use crate::models::package::{ArchiveType, PackageType};
         use crate::models::platform::{Architecture, OperatingSystem};
@@ -428,7 +427,8 @@ mod tests {
         };
 
         // ensure_complete should not make any changes
-        let result = provider.ensure_complete(&mut metadata);
+        let mut progress = SilentProgress;
+        let result = provider.ensure_complete(&mut metadata, &mut progress);
         assert!(result.is_ok());
         assert!(metadata.is_complete());
         assert_eq!(

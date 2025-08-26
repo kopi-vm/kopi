@@ -283,7 +283,8 @@ mod tests {
 
         // Ensure complete should use fallback for package details
         let mut metadata = create_test_metadata("test1", false);
-        let result = provider.ensure_complete(&mut metadata);
+        let mut progress = SilentProgress;
+        let result = provider.ensure_complete(&mut metadata, &mut progress);
         assert!(result.is_ok());
         assert_eq!(
             metadata.download_url,
@@ -514,7 +515,10 @@ mod tests {
         assert!(!result[0].is_complete());
 
         // Ensure complete should use fallback for details
-        provider.ensure_complete(&mut result[0]).unwrap();
+        let mut progress = SilentProgress;
+        provider
+            .ensure_complete(&mut result[0], &mut progress)
+            .unwrap();
         assert!(result[0].is_complete());
         assert_eq!(
             result[0].download_url,
@@ -561,7 +565,8 @@ mod tests {
         ];
 
         // Batch ensure should fail on first error
-        let result = provider.ensure_complete_batch(&mut metadata_list);
+        let mut progress = SilentProgress;
+        let result = provider.ensure_complete_batch(&mut metadata_list, &mut progress);
         assert!(result.is_err());
     }
 

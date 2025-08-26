@@ -390,7 +390,9 @@ impl<'a> InstallCommand<'a> {
             if !jdk_metadata.is_complete() {
                 debug!("Metadata is incomplete, fetching package details...");
                 let provider = crate::metadata::MetadataProvider::from_config(self.config)?;
-                provider.ensure_complete(&mut jdk_metadata)?;
+                // TODO: Phase 8 - Replace with actual progress indicator
+                let mut progress = crate::indicator::SilentProgress;
+                provider.ensure_complete(&mut jdk_metadata, &mut progress)?;
             }
 
             return Ok(self.convert_metadata_to_package(&jdk_metadata));
@@ -423,7 +425,9 @@ impl<'a> InstallCommand<'a> {
                             debug!("Metadata is incomplete, fetching package details...");
                             let provider =
                                 crate::metadata::MetadataProvider::from_config(self.config)?;
-                            provider.ensure_complete(&mut jdk_metadata)?;
+                            // TODO: Phase 8 - Replace with actual progress indicator
+                            let mut progress = crate::indicator::SilentProgress;
+                            provider.ensure_complete(&mut jdk_metadata, &mut progress)?;
                         }
 
                         return Ok(self.convert_metadata_to_package(&jdk_metadata));

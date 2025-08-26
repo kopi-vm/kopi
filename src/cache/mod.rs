@@ -84,7 +84,7 @@ pub fn fetch_and_cache_metadata(config: &KopiConfig) -> Result<MetadataCache> {
     let provider = MetadataProvider::from_config(config)?;
 
     // Fetch all metadata (includes both JavaFX and non-JavaFX packages)
-    // TODO: Phase 6 - Replace with actual progress
+    // TODO: Phase 6 - Replace with actual progress indicator
     let mut progress = SilentProgress;
     let metadata = provider
         .fetch_all(&mut progress)
@@ -140,7 +140,7 @@ pub fn fetch_and_cache_distribution(
     let provider = MetadataProvider::from_config(config)?;
 
     // Fetch metadata for the specific distribution (includes both JavaFX and non-JavaFX)
-    // TODO: Phase 6 - Replace with actual progress
+    // TODO: Phase 6 - Replace with actual progress indicator
     let mut progress = SilentProgress;
     let packages = provider
         .fetch_distribution(distribution_name, &mut progress)
@@ -200,9 +200,13 @@ pub fn fetch_package_checksum(
         let provider = MetadataProvider::from_config(config)?;
 
         // Fetch the complete details
-        provider.ensure_complete(&mut metadata).map_err(|e| {
-            KopiError::MetadataFetch(format!("Failed to fetch package checksum: {e}"))
-        })?;
+        // TODO: Phase 6 - Replace with actual progress indicator
+        let mut progress = SilentProgress;
+        provider
+            .ensure_complete(&mut metadata, &mut progress)
+            .map_err(|e| {
+                KopiError::MetadataFetch(format!("Failed to fetch package checksum: {e}"))
+            })?;
     }
 
     // Extract checksum and type
