@@ -64,6 +64,7 @@ impl ProgressIndicator for SimpleProgress {
 mod tests {
     use super::*;
     use crate::indicator::ProgressStyle;
+    use serial_test::serial;
     use std::sync::Mutex;
 
     // Helper to capture stdout/stderr for testing
@@ -124,6 +125,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_message_output_format() {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
@@ -153,6 +155,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_error_handling() {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
