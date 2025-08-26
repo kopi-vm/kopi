@@ -713,7 +713,8 @@ mod tests {
             if !all_metadata.is_empty() {
                 // Use the first available package for testing
                 let package_id = &all_metadata[0].id;
-                let details = source.fetch_package_details(package_id).unwrap();
+                let mut progress = SilentProgress;
+                let details = source.fetch_package_details(package_id, &mut progress).unwrap();
                 assert!(details.download_url.starts_with("https://"));
             }
         }

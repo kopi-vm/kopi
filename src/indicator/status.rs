@@ -215,28 +215,25 @@ mod tests {
 
     #[test]
     fn test_error_always_shown() {
+        // Test silent mode error reporting
         TestReporter::clear_output();
-
-        // Test with silent mode on
         let silent_reporter = TestReporter::new(true);
         silent_reporter.error("Error in silent mode");
+        let error_output = TestReporter::get_error_output();
+        assert!(
+            error_output.iter().any(|s| s.contains("Error in silent mode")),
+            "Silent mode should still show errors"
+        );
 
-        // Test with silent mode off
+        // Test normal mode error reporting
+        TestReporter::clear_output();
         let normal_reporter = TestReporter::new(false);
         normal_reporter.error("Error in normal mode");
-
         let error_output = TestReporter::get_error_output();
-        // Check that we have at least 2 errors and they contain the expected messages
-        assert!(error_output.len() >= 2);
-        // Find the messages we care about
-        let has_silent_error = error_output
-            .iter()
-            .any(|s| s.contains("Error in silent mode"));
-        let has_normal_error = error_output
-            .iter()
-            .any(|s| s.contains("Error in normal mode"));
-        assert!(has_silent_error);
-        assert!(has_normal_error);
+        assert!(
+            error_output.iter().any(|s| s.contains("Error in normal mode")),
+            "Normal mode should show errors"
+        );
     }
 
     #[test]
