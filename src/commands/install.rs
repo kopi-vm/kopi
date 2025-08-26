@@ -45,6 +45,21 @@ impl<'a> InstallCommand<'a> {
         })
     }
 
+    /// Check if cache needs refresh without actually refreshing
+    fn check_cache_needs_refresh(&self) -> Result<bool> {
+        let cache_path = self.config.metadata_cache_path()?;
+        let max_age = Duration::from_secs(self.config.metadata.cache.max_age_hours * 3600);
+
+        if !cache_path.exists() {
+            return Ok(true);
+        }
+
+        match cache::load_cache(&cache_path) {
+            Ok(cache) => Ok(self.config.metadata.cache.auto_refresh && cache.is_stale(max_age)),
+            Err(_) => Ok(true),
+        }
+    }
+
     /// Ensure we have a fresh cache, refreshing if necessary
     fn ensure_fresh_cache(
         &self,
@@ -114,6 +129,41 @@ impl<'a> InstallCommand<'a> {
              timeout={timeout_secs:?}"
         );
 
+        // Create progress indicator
+        let mut progress = crate::indicator::ProgressFactory::create(no_progress);
+
+        // Calculate base steps for installation
+        // Base steps: parse(1) + find_package(1) + check_installed(1) +
+        //             download(1) + extract(1) + detect_structure(1) + install(1) + save_metadata(1) = 8
+        let mut total_steps = 8u64;
+
+        // Add optional steps
+        let cache_needs_refresh = self.check_cache_needs_refresh()?;
+        if cache_needs_refresh {
+            // Add cache refresh steps (handled internally by ensure_fresh_cache)
+            let provider = crate::metadata::MetadataProvider::from_config(self.config)?;
+            total_steps += 5 + provider.source_count() as u64;
+        }
+
+        // We'll add checksum verification step dynamically if checksum exists
+        // We'll add shim creation step dynamically if enabled
+
+        // Initialize progress with total steps
+        let progress_config = crate::indicator::ProgressConfig::new(
+            "Installing",
+            version_spec,
+            crate::indicator::ProgressStyle::Count,
+        )
+        .with_total(total_steps);
+        progress.start(progress_config);
+
+        let mut current_step = 0u64;
+
+        // Step 1: Parse version specification
+        current_step += 1;
+        progress.update(current_step, Some(total_steps));
+        progress.set_message("Parsing version specification".to_string());
+
         // Use config to parse version with additional distributions support
         let parser = VersionParser::new(self.config);
 
@@ -146,6 +196,11 @@ impl<'a> InstallCommand<'a> {
             &format!("{} {}", distribution.name(), version),
         );
 
+        // Step 2 (and possibly more if cache refresh needed): Find matching package
+        current_step += 1;
+        progress.update(current_step, Some(total_steps));
+        progress.set_message(format!("Searching for {} {}", distribution.name(), version));
+
         // Find matching JDK package first to get the actual distribution_version
         debug!("Searching for {} version {}", distribution.name(), version);
         // Use JavaFX flag from version string (+fx suffix)
@@ -154,14 +209,11 @@ impl<'a> InstallCommand<'a> {
             "JavaFX bundled: version_request={:?}",
             version_request.javafx_bundled
         );
-        // TODO: Phase 9 - Replace with actual progress indicator from execute parameters
-        let mut progress = crate::indicator::SilentProgress;
-        let mut current_step = 0u64;
         let package = self.find_matching_package(
             &distribution,
             version,
             &version_request,
-            &mut progress,
+            progress.as_mut(),
             &mut current_step,
         )?;
         trace!("Found package: {package:?}");
@@ -169,6 +221,11 @@ impl<'a> InstallCommand<'a> {
 
         // Create storage manager with config
         let repository = JdkRepository::new(self.config);
+
+        // Step 3: Check if already installed
+        current_step += 1;
+        progress.update(current_step, Some(total_steps));
+        progress.set_message("Checking installation status".to_string());
 
         // Check if already installed using the actual distribution_version
         let installation_dir = repository.jdk_install_path(
@@ -178,6 +235,12 @@ impl<'a> InstallCommand<'a> {
         )?;
 
         if dry_run {
+            progress.complete(Some(format!(
+                "Would install {} {} to {}",
+                distribution.name(),
+                jdk_metadata.distribution_version,
+                installation_dir.display()
+            )));
             self.status.success(&format!(
                 "Would install {} {} to {}",
                 distribution.name(),
@@ -203,7 +266,7 @@ impl<'a> InstallCommand<'a> {
                 jdk_metadata.distribution
             );
         }
-        // Fetch checksum before download
+        // Fetch checksum before download (not a separate step, part of preparation)
         let mut jdk_metadata_with_checksum = jdk_metadata.clone();
         if jdk_metadata_with_checksum.checksum.is_none() {
             debug!(
@@ -216,6 +279,9 @@ impl<'a> InstallCommand<'a> {
                     info!("Fetched checksum: {checksum} (type: {checksum_type:?})");
                     jdk_metadata_with_checksum.checksum = Some(checksum);
                     jdk_metadata_with_checksum.checksum_type = Some(checksum_type);
+                    // Add checksum verification step to total
+                    total_steps += 1;
+                    progress.update(current_step, Some(total_steps));
                 }
                 Err(e) => {
                     warn!(
@@ -223,7 +289,21 @@ impl<'a> InstallCommand<'a> {
                     );
                 }
             }
+        } else if jdk_metadata_with_checksum.checksum.is_some() {
+            // Checksum already present, add verification step
+            total_steps += 1;
+            progress.update(current_step, Some(total_steps));
         }
+
+        // Step 4: Download JDK
+        current_step += 1;
+        progress.update(current_step, Some(total_steps));
+        progress.set_message(format!(
+            "Downloading {} {} (id: {})",
+            jdk_metadata_with_checksum.distribution,
+            jdk_metadata_with_checksum.version,
+            jdk_metadata_with_checksum.id
+        ));
 
         self.status.step(&format!(
             "Downloading {} {} (id: {})",
@@ -232,7 +312,7 @@ impl<'a> InstallCommand<'a> {
             jdk_metadata_with_checksum.id
         ));
 
-        // Download JDK
+        // Download JDK (has its own progress bar for bytes)
         info!(
             "Downloading from {}",
             jdk_metadata_with_checksum
@@ -244,10 +324,13 @@ impl<'a> InstallCommand<'a> {
         let download_path = download_result.path();
         debug!("Downloaded to {download_path:?}");
 
-        // Verify checksum
+        // Step 5 (optional): Verify checksum
         if let Some(checksum) = &jdk_metadata_with_checksum.checksum
             && let Some(checksum_type) = jdk_metadata_with_checksum.checksum_type
         {
+            current_step += 1;
+            progress.update(current_step, Some(total_steps));
+            progress.set_message("Verifying checksum".to_string());
             self.status.step("Verifying checksum");
             verify_checksum(download_path, checksum, checksum_type)?;
         }
@@ -269,19 +352,26 @@ impl<'a> InstallCommand<'a> {
             )?
         };
 
-        // Extract archive to temp directory
+        // Step 6: Extract archive to temp directory
+        current_step += 1;
+        progress.update(current_step, Some(total_steps));
+        progress.set_message("Extracting archive".to_string());
         self.status.step("Extracting archive");
         info!("Extracting archive to {:?}", context.temp_path);
         extract_archive(download_path, &context.temp_path)?;
         debug!("Extraction completed");
 
-        // Detect JDK structure and move the correct directory
+        // Step 7: Detect JDK structure
+        current_step += 1;
+        progress.update(current_step, Some(total_steps));
+        progress.set_message("Detecting JDK structure".to_string());
         debug!("Detecting JDK structure");
         let structure_info = match detect_jdk_root(&context.temp_path) {
             Ok(info) => info,
             Err(e) => {
                 // Clean up the failed installation
                 let _ = repository.cleanup_failed_installation(&context);
+                progress.error(format!("Invalid JDK structure in archive: {e}"));
                 return Err(KopiError::ValidationError(format!(
                     "Invalid JDK structure in archive: {e}"
                 )));
@@ -293,6 +383,11 @@ impl<'a> InstallCommand<'a> {
             structure_info.structure_type,
             structure_info.jdk_root.display()
         );
+
+        // Step 8: Install to final location
+        current_step += 1;
+        progress.update(current_step, Some(total_steps));
+        progress.set_message("Installing to final location".to_string());
 
         // Handle different structure types when moving to final location
         let final_path = self.finalize_with_structure(
@@ -318,15 +413,17 @@ impl<'a> InstallCommand<'a> {
         // Clean up is automatic when download_result goes out of scope
         // The TempDir will be cleaned up automatically
 
-        self.status.success(&format!(
-            "Successfully installed {} {} to {}",
-            distribution.name(),
-            jdk_metadata_with_checksum.distribution_version,
-            final_path.display()
-        ));
-
-        // Create shims if enabled in config
+        // Check if we need to create shims and update total steps if needed
         if self.config.shims.auto_create_shims {
+            total_steps += 1;
+            progress.update(current_step, Some(total_steps));
+        }
+
+        // Step 9 (optional): Create shims if enabled in config
+        if self.config.shims.auto_create_shims {
+            current_step += 1;
+            progress.update(current_step, Some(total_steps));
+            progress.set_message("Creating shims".to_string());
             debug!("Auto-creating shims for newly installed JDK");
 
             // Discover JDK tools
@@ -349,6 +446,7 @@ impl<'a> InstallCommand<'a> {
                 let created_shims = shim_installer.create_missing_shims(&tools)?;
 
                 if !created_shims.is_empty() {
+                    progress.set_message(format!("Created {} new shims", created_shims.len()));
                     self.status
                         .step(&format!("Created {} new shims:", created_shims.len()));
                     for shim in &created_shims {
@@ -359,6 +457,20 @@ impl<'a> InstallCommand<'a> {
                 }
             }
         }
+
+        // Complete progress indicator
+        progress.complete(Some(format!(
+            "Successfully installed {} {}",
+            distribution.name(),
+            jdk_metadata_with_checksum.distribution_version
+        )));
+
+        self.status.success(&format!(
+            "Successfully installed {} {} to {}",
+            distribution.name(),
+            jdk_metadata_with_checksum.distribution_version,
+            final_path.display()
+        ));
 
         // Show hint about using the JDK
         if VersionParser::is_lts_version(version.major()) {
