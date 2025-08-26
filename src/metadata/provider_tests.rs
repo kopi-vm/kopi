@@ -247,7 +247,9 @@ mod tests {
 
         // Fetch distribution should use fallback
         let mut progress = SilentProgress;
-        let result = provider.fetch_distribution("temurin", &mut progress).unwrap();
+        let result = provider
+            .fetch_distribution("temurin", &mut progress)
+            .unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].id, "test1");
     }

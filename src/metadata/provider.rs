@@ -111,7 +111,10 @@ impl MetadataProvider {
     }
 
     /// Get metadata from sources, trying each in order until one succeeds
-    pub fn fetch_all(&self, _progress: &mut dyn crate::indicator::ProgressIndicator) -> Result<Vec<JdkMetadata>> {
+    pub fn fetch_all(
+        &self,
+        _progress: &mut dyn crate::indicator::ProgressIndicator,
+    ) -> Result<Vec<JdkMetadata>> {
         // TODO: Phase 5 - Use passed progress indicator instead of SilentProgress
         let mut errors: Vec<(String, String)> = Vec::new();
 
@@ -172,7 +175,11 @@ impl MetadataProvider {
     }
 
     /// Fetch metadata for a specific distribution, trying each source in order
-    pub fn fetch_distribution(&self, distribution: &str, _progress: &mut dyn crate::indicator::ProgressIndicator) -> Result<Vec<JdkMetadata>> {
+    pub fn fetch_distribution(
+        &self,
+        distribution: &str,
+        _progress: &mut dyn crate::indicator::ProgressIndicator,
+    ) -> Result<Vec<JdkMetadata>> {
         // TODO: Phase 5 - Use passed progress indicator instead of SilentProgress
         let mut errors: Vec<(String, String)> = Vec::new();
 

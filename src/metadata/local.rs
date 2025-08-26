@@ -134,7 +134,7 @@ impl MetadataSource for LocalDirectorySource {
 
     fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
         // TODO: Phase 4 - Add actual progress reporting
-        
+
         self.read_metadata()
     }
 
@@ -144,7 +144,7 @@ impl MetadataSource for LocalDirectorySource {
         _progress: &mut dyn ProgressIndicator,
     ) -> Result<Vec<JdkMetadata>> {
         // TODO: Phase 4 - Add actual progress reporting
-        
+
         let all_metadata = self.read_metadata()?;
         Ok(all_metadata
             .into_iter()
@@ -158,7 +158,7 @@ impl MetadataSource for LocalDirectorySource {
         _progress: &mut dyn ProgressIndicator,
     ) -> Result<PackageDetails> {
         // TODO: Phase 4 - Add actual progress reporting
-        
+
         // Local directory source has complete metadata, so we can return details
         let all_metadata = self.read_metadata()?;
 
@@ -707,9 +707,9 @@ mod tests {
             // On Windows, we need to test with a Windows package ID
             // First check if any Windows metadata is available
             let all_metadata = {
-            let mut progress = SilentProgress;
-            source.fetch_all(&mut progress).unwrap()
-        };
+                let mut progress = SilentProgress;
+                source.fetch_all(&mut progress).unwrap()
+            };
             if !all_metadata.is_empty() {
                 // Use the first available package for testing
                 let package_id = &all_metadata[0].id;

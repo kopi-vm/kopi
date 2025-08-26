@@ -145,7 +145,7 @@ impl MetadataSource for HttpMetadataSource {
 
     fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
         // TODO: Phase 3 - Add actual progress reporting
-        
+
         let mut all_metadata = Vec::new();
 
         // Fetch index file
@@ -182,7 +182,7 @@ impl MetadataSource for HttpMetadataSource {
         _progress: &mut dyn ProgressIndicator,
     ) -> Result<Vec<JdkMetadata>> {
         // TODO: Phase 3 - Add actual progress reporting
-        
+
         let mut metadata = Vec::new();
 
         // Fetch index file
@@ -215,7 +215,7 @@ impl MetadataSource for HttpMetadataSource {
         _progress: &mut dyn ProgressIndicator,
     ) -> Result<PackageDetails> {
         // TODO: Phase 3 - Add actual progress reporting
-        
+
         // HTTP source always returns complete metadata
         Err(KopiError::MetadataFetch(
             "HTTP source provides complete metadata".to_string(),

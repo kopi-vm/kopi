@@ -92,7 +92,11 @@ impl MetadataSource for MockMetadataSource {
         }
     }
 
-    fn fetch_distribution(&self, distribution: &str, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
+    fn fetch_distribution(
+        &self,
+        distribution: &str,
+        _progress: &mut dyn ProgressIndicator,
+    ) -> Result<Vec<JdkMetadata>> {
         *self.call_count.lock().unwrap() += 1;
         if *self.should_fail.lock().unwrap() {
             Err(KopiError::NetworkError("Mock failure".to_string()))
@@ -107,7 +111,11 @@ impl MetadataSource for MockMetadataSource {
         }
     }
 
-    fn fetch_package_details(&self, package_id: &str, _progress: &mut dyn ProgressIndicator) -> Result<PackageDetails> {
+    fn fetch_package_details(
+        &self,
+        package_id: &str,
+        _progress: &mut dyn ProgressIndicator,
+    ) -> Result<PackageDetails> {
         if *self.should_fail.lock().unwrap() {
             Err(KopiError::NetworkError("Mock failure".to_string()))
         } else if let Some(pkg) = self.metadata.iter().find(|m| m.id == package_id) {
@@ -182,7 +190,9 @@ fn test_metadata_provider_basic_search() {
 
     // Test fetching specific distribution
     let mut progress = SilentProgress;
-    let results = provider.fetch_distribution("temurin", &mut progress).unwrap();
+    let results = provider
+        .fetch_distribution("temurin", &mut progress)
+        .unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].distribution, "temurin");
 }
@@ -347,7 +357,9 @@ fn test_local_directory_integration() {
 
     // Test fetch by distribution
     let mut progress = SilentProgress;
-    let temurin_results = provider.fetch_distribution("temurin", &mut progress).unwrap();
+    let temurin_results = provider
+        .fetch_distribution("temurin", &mut progress)
+        .unwrap();
     assert_eq!(temurin_results.len(), 2);
 
     // Test version filtering would need to be done on the client side
