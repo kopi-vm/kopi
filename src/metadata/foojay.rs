@@ -106,8 +106,9 @@ impl MetadataSource for FoojayMetadataSource {
         }
     }
 
-    fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
-        // TODO: Phase 2 - Add actual progress reporting
+    fn fetch_all(&self, progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
+        // Report initial connection
+        progress.set_message("Connecting to Foojay API...".to_string());
 
         // Get all packages from the API with archive type filtering
         let query = PackageQuery {
@@ -120,19 +121,34 @@ impl MetadataSource for FoojayMetadataSource {
         };
         let packages = self.client.get_packages(Some(query))?;
 
+        // Report package count
+        progress.set_message(format!("Retrieved {} packages from Foojay", packages.len()));
+
         // Convert to JdkMetadata with is_complete=false
-        packages
+        progress.set_message("Processing Foojay metadata...".to_string());
+
+        let result: Result<Vec<JdkMetadata>> = packages
             .into_iter()
             .map(|pkg| self.convert_package_to_metadata_incomplete(pkg))
-            .collect()
+            .collect();
+
+        // Report completion
+        if let Ok(ref metadata) = result {
+            progress.set_message(format!("Processed {} packages", metadata.len()));
+        }
+
+        result
     }
 
     fn fetch_distribution(
         &self,
         distribution: &str,
-        _progress: &mut dyn ProgressIndicator,
+        progress: &mut dyn ProgressIndicator,
     ) -> Result<Vec<JdkMetadata>> {
-        // TODO: Phase 2 - Add actual progress reporting
+        // Report fetching specific distribution
+        progress.set_message(format!(
+            "Fetching {distribution} packages from Foojay API..."
+        ));
 
         let query = PackageQuery {
             distribution: Some(distribution.to_string()),
@@ -146,18 +162,36 @@ impl MetadataSource for FoojayMetadataSource {
 
         let packages = self.client.get_packages(Some(query))?;
 
-        packages
+        // Report package count for distribution
+        let count = packages.len();
+        progress.set_message(format!(
+            "Retrieved {count} {distribution} packages from Foojay"
+        ));
+
+        // Process packages
+        progress.set_message(format!("Processing {distribution} metadata..."));
+
+        let result: Result<Vec<JdkMetadata>> = packages
             .into_iter()
             .map(|pkg| self.convert_package_to_metadata_incomplete(pkg))
-            .collect()
+            .collect();
+
+        // Report completion
+        if let Ok(ref metadata) = result {
+            let count = metadata.len();
+            progress.set_message(format!("Processed {count} {distribution} packages"));
+        }
+
+        result
     }
 
     fn fetch_package_details(
         &self,
         package_id: &str,
-        _progress: &mut dyn ProgressIndicator,
+        progress: &mut dyn ProgressIndicator,
     ) -> Result<PackageDetails> {
-        // TODO: Phase 2 - Add actual progress reporting
+        // Report fetching package details
+        progress.set_message(format!("Fetching package details for {package_id}..."));
 
         // Fetch complete package info from API
         let package_info = self.client.get_package_by_id(package_id)?;
@@ -174,6 +208,9 @@ impl MetadataSource for FoojayMetadataSource {
         } else {
             None
         };
+
+        // Report completion
+        progress.set_message(format!("Retrieved details for package {package_id}"));
 
         Ok(PackageDetails {
             download_url: package_info.direct_download_uri,

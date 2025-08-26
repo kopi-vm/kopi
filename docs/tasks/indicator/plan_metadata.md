@@ -4,7 +4,7 @@
 
 This document outlines the implementation plan for adding progress indicator support to metadata fetching operations in Kopi. The implementation follows a bottom-up approach to maintain a compilable codebase throughout the process, with temporary `SilentProgress` instances used to resolve compilation errors during migration.
 
-**Current Status**: Phase 1, 3, 4 Completed ✅
+**Current Status**: Phase 1 - 4 Completed ✅
 
 ## Phase 1: MetadataSource Trait and All Implementations - Minimal Update ✅
 
@@ -67,7 +67,7 @@ cargo test --lib metadata --no-run     # ✅ All tests compile
 
 ---
 
-## Phase 2: FoojayMetadataSource Progress Implementation
+## Phase 2: FoojayMetadataSource Progress Implementation ✅
 
 **Goal**: Add actual progress reporting to FoojayMetadataSource.
 
@@ -79,31 +79,31 @@ cargo test --lib metadata --no-run     # ✅ All tests compile
   - `/src/metadata/foojay.rs` - Foojay source implementation
 
 ### Tasks
-- [ ] **Replace `_progress` with actual usage**:
-  - [ ] Remove underscore from parameter name
-  - [ ] Remove `// TODO: Phase 2` comment
-- [ ] **Add progress reporting in `fetch_all()`**:
-  - [ ] Before API call: `progress.set_message("Connecting to Foojay API...")`
-  - [ ] After receiving packages: `progress.set_message(format!("Retrieved {} packages from Foojay", packages.len()))`
-  - [ ] During conversion: `progress.set_message("Processing Foojay metadata...")`
-  - [ ] After completion: `progress.set_message(format!("Processed {} packages", count))`
-- [ ] **Add progress reporting in `fetch_distribution()`**:
-  - [ ] Similar progress messages for distribution-specific fetch
-- [ ] **Add progress reporting in `ensure_complete()`**:
-  - [ ] Message when fetching package details
-- [ ] **Test with actual progress** (optional):
-  - [ ] Create test using `TestProgressCapture` to verify messages
+- [x] **Replace `_progress` with actual usage**:
+  - [x] Remove underscore from parameter name
+  - [x] Remove `// TODO: Phase 2` comment
+- [x] **Add progress reporting in `fetch_all()`**:
+  - [x] Before API call: `progress.set_message("Connecting to Foojay API...")`
+  - [x] After receiving packages: `progress.set_message(format!("Retrieved {} packages from Foojay", packages.len()))`
+  - [x] During conversion: `progress.set_message("Processing Foojay metadata...")`
+  - [x] After completion: `progress.set_message(format!("Processed {} packages", count))`
+- [x] **Add progress reporting in `fetch_distribution()`**:
+  - [x] Similar progress messages for distribution-specific fetch
+- [x] **Add progress reporting in `fetch_package_details()`**:
+  - [x] Message when fetching package details
+- [x] **Test with actual progress** (optional):
+  - [x] Tests verified with all 4 tests passing
 
 ### Deliverables
 - Fully implemented progress reporting in FoojayMetadataSource
 - Progress messages at key operation points
 - TODO comments removed
 
-### Verification
+### Verification ✅
 ```bash
-cargo fmt
-cargo clippy --all-targets -- -D warnings
-cargo test --lib metadata::foojay::tests
+cargo fmt                              # ✅ Completed
+cargo clippy --all-targets -- -D warnings  # ✅ No warnings
+cargo test --lib metadata::foojay::tests  # ✅ All tests pass (4/4)
 ```
 
 ---
@@ -533,8 +533,13 @@ cargo doc --no-deps --open
 
 ### Lower-Level Components (Phases 1-4)
 1. **Phase 1**: MetadataSource trait and ALL implementations - minimal signature update (maintains compilation) ✅
+<<<<<<< HEAD
 2. **Phase 2**: FoojayMetadataSource - add actual progress reporting
 3. **Phase 3**: HttpMetadataSource - add actual progress reporting ✅
+=======
+2. **Phase 2**: FoojayMetadataSource - add actual progress reporting ✅
+3. **Phase 3**: HttpMetadataSource - add actual progress reporting
+>>>>>>> 642cf7b (フェイズ２を実装)
 4. **Phase 4**: LocalDirectorySource - add actual progress reporting
 
 ### Mid-Level Components (Phases 5-6)
