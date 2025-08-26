@@ -221,7 +221,9 @@ mod tests {
         silent_reporter.error("Error in silent mode");
         let error_output = TestReporter::get_error_output();
         assert!(
-            error_output.iter().any(|s| s.contains("Error in silent mode")),
+            error_output
+                .iter()
+                .any(|s| s.contains("Error in silent mode")),
             "Silent mode should still show errors"
         );
 
@@ -231,7 +233,9 @@ mod tests {
         normal_reporter.error("Error in normal mode");
         let error_output = TestReporter::get_error_output();
         assert!(
-            error_output.iter().any(|s| s.contains("Error in normal mode")),
+            error_output
+                .iter()
+                .any(|s| s.contains("Error in normal mode")),
             "Normal mode should show errors"
         );
     }

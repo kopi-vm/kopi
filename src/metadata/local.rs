@@ -714,7 +714,9 @@ mod tests {
                 // Use the first available package for testing
                 let package_id = &all_metadata[0].id;
                 let mut progress = SilentProgress;
-                let details = source.fetch_package_details(package_id, &mut progress).unwrap();
+                let details = source
+                    .fetch_package_details(package_id, &mut progress)
+                    .unwrap();
                 assert!(details.download_url.starts_with("https://"));
             }
         }
