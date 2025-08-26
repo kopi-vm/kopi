@@ -241,7 +241,7 @@ cargo test --lib metadata::provider    # ✅ All tests pass (17/17)
 
 ---
 
-## Phase 6: Cache Module Functions Update
+## Phase 6: Cache Module Functions Update ✅
 
 **Goal**: Update cache module functions to support progress indicators with step tracking.
 
@@ -254,33 +254,33 @@ cargo test --lib metadata::provider    # ✅ All tests pass (17/17)
   - `/src/cache/tests.rs` - Cache tests
 
 ### Tasks
-- [ ] Update function signatures:
-  - [ ] Add progress and current_step to `fetch_and_cache_metadata()`
-  - [ ] Add progress and current_step to `fetch_and_cache_distribution()`
-  - [ ] Update `get_metadata()` to use `SilentProgress` internally
-- [ ] Implement step-based progress:
-  - [ ] Processing metadata step
-  - [ ] Grouping by distribution step
-  - [ ] Saving to cache step
-  - [ ] Completion step
-- [ ] **Update tests**:
-  - [ ] Pass `SilentProgress` and step counter in tests
-  - [ ] Add progress tracking tests
-- [ ] **Create temporary wrapper functions**:
-  - [ ] Keep old signatures for backward compatibility
-  - [ ] Call new functions with `SilentProgress`
-  - [ ] Mark with TODO comments
+- [x] Update function signatures:
+  - [x] Add progress and current_step to `fetch_and_cache_metadata()`
+  - [x] Add progress and current_step to `fetch_and_cache_distribution()`
+  - [x] Update `get_metadata()` to use `SilentProgress` internally
+- [x] Implement step-based progress:
+  - [x] Processing metadata step
+  - [x] Grouping by distribution step
+  - [x] Saving to cache step
+  - [x] Completion step
+- [x] **Update tests**:
+  - [x] Pass `SilentProgress` and step counter in tests (not needed - using wrapper functions)
+  - [x] Add progress tracking tests (deferred to Phase 10)
+- [x] **Create temporary wrapper functions**:
+  - [x] Keep old signatures for backward compatibility
+  - [x] Call new functions with `SilentProgress`
+  - [x] Mark with TODO comments
 
 ### Deliverables
 - Updated `src/cache/mod.rs` with progress support
 - Step-based progress reporting
 - Temporary wrapper functions for compatibility
 
-### Verification
+### Verification ✅
 ```bash
-cargo fmt
-cargo clippy --all-targets -- -D warnings
-cargo test --lib cache::tests
+cargo fmt                              # ✅ Completed
+cargo clippy --all-targets -- -D warnings  # ✅ No warnings
+cargo test --lib cache::tests          # ✅ All tests pass (36/36)
 ```
 
 ---
@@ -539,18 +539,13 @@ cargo doc --no-deps --open
 
 ### Lower-Level Components (Phases 1-4)
 1. **Phase 1**: MetadataSource trait and ALL implementations - minimal signature update (maintains compilation) ✅
-<<<<<<< HEAD
-2. **Phase 2**: FoojayMetadataSource - add actual progress reporting
-3. **Phase 3**: HttpMetadataSource - add actual progress reporting ✅
-=======
 2. **Phase 2**: FoojayMetadataSource - add actual progress reporting ✅
-3. **Phase 3**: HttpMetadataSource - add actual progress reporting
->>>>>>> 642cf7b (フェイズ２を実装)
-4. **Phase 4**: LocalDirectorySource - add actual progress reporting
+3. **Phase 3**: HttpMetadataSource - add actual progress reporting ✅
+4. **Phase 4**: LocalDirectorySource - add actual progress reporting ✅
 
 ### Mid-Level Components (Phases 5-6)
 5. **Phase 5**: MetadataProvider update ✅
-6. **Phase 6**: Cache module functions update
+6. **Phase 6**: Cache module functions update ✅
 
 ### Command Integration (Phases 7-9)
 7. **Phase 7**: Cache command integration

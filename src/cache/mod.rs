@@ -26,7 +26,7 @@ use std::str::FromStr;
 
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
-use crate::indicator::SilentProgress;
+use crate::indicator::{ProgressIndicator, SilentProgress};
 use crate::metadata::provider::MetadataProvider;
 use crate::models::distribution::Distribution as JdkDistribution;
 use crate::models::metadata::JdkMetadata;
@@ -52,6 +52,7 @@ pub use storage::{load_cache, save_cache};
 // Helper functions for metadata operations
 
 /// Get metadata with optional version check
+/// Get metadata with optional version check (uses SilentProgress internally)
 pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Result<MetadataCache> {
     let cache_path = config.metadata_cache_path()?;
 
@@ -63,7 +64,14 @@ pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Res
                 if let Some(version) = requested_version
                     && !loaded_cache.has_version(version)
                 {
-                    return fetch_and_cache_metadata(config);
+                    // Use SilentProgress for internal operations
+                    let mut progress = SilentProgress;
+                    let mut current_step = 0u64;
+                    return fetch_and_cache_metadata_with_progress(
+                        config,
+                        &mut progress,
+                        &mut current_step,
+                    );
                 }
                 return Ok(loaded_cache);
             }
@@ -75,25 +83,38 @@ pub fn get_metadata(requested_version: Option<&str>, config: &KopiConfig) -> Res
     }
 
     // No cache or cache load failed, fetch from API
-    fetch_and_cache_metadata(config)
+    let mut progress = SilentProgress;
+    let mut current_step = 0u64;
+    fetch_and_cache_metadata_with_progress(config, &mut progress, &mut current_step)
 }
 
-/// Fetch metadata from API and cache it
-pub fn fetch_and_cache_metadata(config: &KopiConfig) -> Result<MetadataCache> {
+/// Fetch metadata from API and cache it with progress reporting
+pub fn fetch_and_cache_metadata_with_progress(
+    config: &KopiConfig,
+    progress: &mut dyn ProgressIndicator,
+    current_step: &mut u64,
+) -> Result<MetadataCache> {
     // Create metadata provider from config
     let provider = MetadataProvider::from_config(config)?;
 
-    // Fetch all metadata (includes both JavaFX and non-JavaFX packages)
-    // TODO: Phase 6 - Replace with actual progress indicator
-    let mut progress = SilentProgress;
+    // Step: Fetching from sources (handled by provider)
     let metadata = provider
-        .fetch_all(&mut progress)
+        .fetch_all(progress)
         .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch metadata from API: {e}")))?;
+
+    // Step: Processing metadata
+    *current_step += 1;
+    progress.update(*current_step, None);
+    progress.set_message("Processing metadata...".to_string());
 
     // Convert metadata to cache format
     let mut new_cache = MetadataCache::new();
 
-    // Group metadata by distribution
+    // Step: Grouping by distribution
+    *current_step += 1;
+    progress.update(*current_step, None);
+    progress.set_message("Grouping packages by distribution...".to_string());
+
     let mut distributions: std::collections::HashMap<String, Vec<JdkMetadata>> =
         std::collections::HashMap::new();
     for jdk in metadata {
@@ -116,19 +137,47 @@ pub fn fetch_and_cache_metadata(config: &KopiConfig) -> Result<MetadataCache> {
 
     new_cache.last_updated = Utc::now();
 
-    // Save to cache
+    // Step: Saving to cache
+    *current_step += 1;
+    progress.update(*current_step, None);
+    progress.set_message("Saving metadata to cache...".to_string());
+
     let cache_path = config.metadata_cache_path()?;
     new_cache.save(&cache_path)?;
+
+    // Step: Completion
+    *current_step += 1;
+    progress.update(*current_step, None);
+    let total_packages: usize = new_cache
+        .distributions
+        .values()
+        .map(|d| d.packages.len())
+        .sum();
+    progress.set_message(format!("Cached {total_packages} packages"));
 
     Ok(new_cache)
 }
 
-/// Fetch metadata for a specific distribution and update the cache
-pub fn fetch_and_cache_distribution(
+/// Fetch metadata from API and cache it (backward compatibility wrapper)
+/// TODO: Phase 7 - Remove this wrapper
+pub fn fetch_and_cache_metadata(config: &KopiConfig) -> Result<MetadataCache> {
+    let mut progress = SilentProgress;
+    let mut current_step = 0u64;
+    fetch_and_cache_metadata_with_progress(config, &mut progress, &mut current_step)
+}
+
+/// Fetch metadata for a specific distribution and update the cache with progress
+pub fn fetch_and_cache_distribution_with_progress(
     distribution_name: &str,
     config: &KopiConfig,
+    progress: &mut dyn ProgressIndicator,
+    current_step: &mut u64,
 ) -> Result<MetadataCache> {
-    // Load existing cache if available or create new one
+    // Step: Loading existing cache
+    *current_step += 1;
+    progress.update(*current_step, None);
+    progress.set_message("Loading existing cache...".to_string());
+
     let cache_path = config.metadata_cache_path()?;
     let mut result_cache = if cache_path.exists() {
         load_cache(&cache_path)?
@@ -139,16 +188,23 @@ pub fn fetch_and_cache_distribution(
     // Create metadata provider from config
     let provider = MetadataProvider::from_config(config)?;
 
-    // Fetch metadata for the specific distribution (includes both JavaFX and non-JavaFX)
-    // TODO: Phase 6 - Replace with actual progress indicator
-    let mut progress = SilentProgress;
+    // Step: Fetching distribution metadata
+    *current_step += 1;
+    progress.update(*current_step, None);
+    progress.set_message(format!("Fetching metadata for {distribution_name}..."));
+
     let packages = provider
-        .fetch_distribution(distribution_name, &mut progress)
+        .fetch_distribution(distribution_name, progress)
         .map_err(|e| {
             KopiError::MetadataFetch(format!(
                 "Failed to fetch packages for {distribution_name}: {e}"
             ))
         })?;
+
+    // Step: Processing distribution
+    *current_step += 1;
+    progress.update(*current_step, None);
+    progress.set_message(format!("Processing {} packages...", packages.len()));
 
     // Create DistributionCache
     let dist_cache = DistributionCache {
@@ -164,13 +220,33 @@ pub fn fetch_and_cache_distribution(
         .insert(distribution_name.to_string(), dist_cache);
     result_cache.last_updated = Utc::now();
 
-    // Save updated cache
+    // Step: Saving updated cache
+    *current_step += 1;
+    progress.update(*current_step, None);
+    progress.set_message("Saving updated cache...".to_string());
+
     result_cache.save(&cache_path)?;
 
     Ok(result_cache)
 }
 
-/// Fetch checksum for a specific JDK package
+/// Fetch metadata for a specific distribution and update the cache (backward compatibility wrapper)
+/// TODO: Phase 7 - Remove this wrapper
+pub fn fetch_and_cache_distribution(
+    distribution_name: &str,
+    config: &KopiConfig,
+) -> Result<MetadataCache> {
+    let mut progress = SilentProgress;
+    let mut current_step = 0u64;
+    fetch_and_cache_distribution_with_progress(
+        distribution_name,
+        config,
+        &mut progress,
+        &mut current_step,
+    )
+}
+
+/// Fetch checksum for a specific JDK package (uses SilentProgress internally)
 pub fn fetch_package_checksum(
     package_id: &str,
     config: &KopiConfig,
@@ -199,8 +275,7 @@ pub fn fetch_package_checksum(
         // Create metadata provider from config
         let provider = MetadataProvider::from_config(config)?;
 
-        // Fetch the complete details
-        // TODO: Phase 6 - Replace with actual progress indicator
+        // Fetch the complete details (use SilentProgress for internal operations)
         let mut progress = SilentProgress;
         provider
             .ensure_complete(&mut metadata, &mut progress)
