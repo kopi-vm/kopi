@@ -16,6 +16,7 @@
 mod tests {
     use crate::config::{MetadataConfig, SourceConfig};
     use crate::error::{KopiError, Result};
+    use crate::indicator::{ProgressIndicator, SilentProgress};
     use crate::metadata::{MetadataProvider, MetadataSource, PackageDetails, SourceHealth};
     use crate::models::metadata::JdkMetadata;
     use crate::models::package::{ArchiveType, ChecksumType, PackageType};
@@ -79,7 +80,7 @@ mod tests {
             Ok(*self.available.lock().unwrap())
         }
 
-        fn fetch_all(&self) -> Result<Vec<JdkMetadata>> {
+        fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
             let locked = self.fetch_all_result.lock().unwrap();
             match &*locked {
                 Ok(vec) => Ok(vec.clone()),
@@ -87,7 +88,11 @@ mod tests {
             }
         }
 
-        fn fetch_distribution(&self, _distribution: &str) -> Result<Vec<JdkMetadata>> {
+        fn fetch_distribution(
+            &self,
+            _distribution: &str,
+            _progress: &mut dyn ProgressIndicator,
+        ) -> Result<Vec<JdkMetadata>> {
             let locked = self.fetch_distribution_result.lock().unwrap();
             match &*locked {
                 Ok(vec) => Ok(vec.clone()),
@@ -95,7 +100,11 @@ mod tests {
             }
         }
 
-        fn fetch_package_details(&self, _package_id: &str) -> Result<PackageDetails> {
+        fn fetch_package_details(
+            &self,
+            _package_id: &str,
+            _progress: &mut dyn ProgressIndicator,
+        ) -> Result<PackageDetails> {
             let locked = self.fetch_package_details_result.lock().unwrap();
             match &*locked {
                 Ok(details) => Ok(details.clone()),
@@ -164,7 +173,8 @@ mod tests {
         };
 
         // Fetch should use fallback
-        let result = provider.fetch_all().unwrap();
+        let mut progress = SilentProgress;
+        let result = provider.fetch_all(&mut progress).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].id, "test1");
     }
@@ -188,7 +198,8 @@ mod tests {
         };
 
         // Fetch should fail
-        let result = provider.fetch_all();
+        let mut progress = SilentProgress;
+        let result = provider.fetch_all(&mut progress);
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(matches!(err, KopiError::MetadataFetch(_)));
@@ -206,7 +217,8 @@ mod tests {
         };
 
         // Fetch should fail with primary error
-        let result = provider.fetch_all();
+        let mut progress = SilentProgress;
+        let result = provider.fetch_all(&mut progress);
         assert!(result.is_err());
     }
 
@@ -234,7 +246,8 @@ mod tests {
         };
 
         // Fetch distribution should use fallback
-        let result = provider.fetch_distribution("temurin").unwrap();
+        let mut progress = SilentProgress;
+        let result = provider.fetch_distribution("temurin", &mut progress).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].id, "test1");
     }
@@ -459,7 +472,8 @@ mod tests {
         };
 
         // Should fallback successfully
-        let result = provider.fetch_all().unwrap();
+        let mut progress = SilentProgress;
+        let result = provider.fetch_all(&mut progress).unwrap();
         assert_eq!(result.len(), 1);
     }
 
@@ -492,7 +506,8 @@ mod tests {
         };
 
         // Fetch initial data from primary
-        let mut result = provider.fetch_all().unwrap();
+        let mut progress = SilentProgress;
+        let mut result = provider.fetch_all(&mut progress).unwrap();
         assert_eq!(result.len(), 1);
         assert!(!result[0].is_complete());
 
@@ -517,7 +532,8 @@ mod tests {
         };
 
         // Should return empty vector, not error
-        let result = provider.fetch_all().unwrap();
+        let mut progress = SilentProgress;
+        let result = provider.fetch_all(&mut progress).unwrap();
         assert_eq!(result.len(), 0);
     }
 
@@ -566,7 +582,8 @@ mod tests {
         for i in 0..5 {
             let provider_clone = provider.clone();
             let handle = thread::spawn(move || {
-                let result = provider_clone.fetch_all();
+                let mut progress = SilentProgress;
+                let result = provider_clone.fetch_all(&mut progress);
                 assert!(result.is_ok());
                 let data = result.unwrap();
                 assert_eq!(data.len(), 1);

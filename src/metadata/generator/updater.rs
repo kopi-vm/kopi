@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::error::{KopiError, Result};
+use crate::indicator::SilentProgress;
 use crate::metadata::index::IndexFile;
 use crate::metadata::{FoojayMetadataSource, MetadataSource};
 use crate::models::metadata::JdkMetadata;
@@ -60,7 +61,8 @@ impl UpdateHandler {
         // Step 2: Fetch current list from API (unavoidable)
         self.report_progress("Fetching current metadata list from foojay API...");
         let source = FoojayMetadataSource::new();
-        let current_list = source.fetch_all()?;
+        let mut progress = SilentProgress;
+        let current_list = source.fetch_all(&mut progress)?;
         println!("  Found {} JDK packages in API", current_list.len());
 
         // Step 3: Filter by configuration (same as generate)

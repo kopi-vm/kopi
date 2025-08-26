@@ -16,6 +16,7 @@
 //!
 //! These tests run against the real metadata server at https://kopi-vm.github.io/metadata
 
+use kopi::indicator::SilentProgress;
 use kopi::metadata::{HttpMetadataSource, MetadataSource};
 
 /// Default test URL - change this to point to your metadata server
@@ -40,7 +41,8 @@ fn test_real_github_pages_fetch_index() {
     }
 
     // Test fetch_all to verify index is working
-    match source.fetch_all() {
+    let mut progress = SilentProgress;
+    match source.fetch_all(&mut progress) {
         Ok(metadata) => {
             println!("Successfully fetched metadata");
             println!("  Total packages: {}", metadata.len());
@@ -65,7 +67,8 @@ fn test_real_github_pages_fetch_index() {
 fn test_real_github_pages_fetch_all() {
     let source = HttpMetadataSource::new(TEST_METADATA_URL.to_string());
 
-    match source.fetch_all() {
+    let mut progress = SilentProgress;
+    match source.fetch_all(&mut progress) {
         Ok(metadata) => {
             println!("Successfully fetched {} metadata entries", metadata.len());
 
@@ -105,7 +108,8 @@ fn test_real_github_pages_fetch_distribution() {
     let source = HttpMetadataSource::new(TEST_METADATA_URL.to_string());
 
     // Try to fetch temurin distribution
-    match source.fetch_distribution("temurin") {
+    let mut progress = SilentProgress;
+    match source.fetch_distribution("temurin", &mut progress) {
         Ok(metadata) => {
             println!("Successfully fetched {} temurin entries", metadata.len());
 

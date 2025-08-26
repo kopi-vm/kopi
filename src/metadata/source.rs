@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::error::Result;
+use crate::indicator::ProgressIndicator;
 use crate::models::metadata::JdkMetadata;
 use crate::models::package::ChecksumType;
 
@@ -30,14 +31,22 @@ pub trait MetadataSource: Send + Sync {
     /// Fetch all available metadata from this source
     /// For foojay: returns metadata with is_complete=false
     /// For local/GitHub: returns metadata with is_complete=true
-    fn fetch_all(&self) -> Result<Vec<JdkMetadata>>;
+    fn fetch_all(&self, progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>>;
 
     /// Fetch metadata for a specific distribution
-    fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>>;
+    fn fetch_distribution(
+        &self,
+        distribution: &str,
+        progress: &mut dyn ProgressIndicator,
+    ) -> Result<Vec<JdkMetadata>>;
 
     /// Fetch complete details for a specific package (used by MetadataProvider)
     /// Only needed for sources that return incomplete metadata
-    fn fetch_package_details(&self, package_id: &str) -> Result<PackageDetails>;
+    fn fetch_package_details(
+        &self,
+        package_id: &str,
+        progress: &mut dyn ProgressIndicator,
+    ) -> Result<PackageDetails>;
 
     /// Get the last update time of the source (if applicable)
     fn last_updated(&self) -> Result<Option<chrono::DateTime<chrono::Utc>>>;

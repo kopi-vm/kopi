@@ -18,6 +18,7 @@
 //! typically extracted from bundled metadata archives during installation.
 
 use crate::error::{KopiError, Result};
+use crate::indicator::ProgressIndicator;
 use crate::metadata::{IndexFile, IndexFileEntry, MetadataSource, PackageDetails};
 use crate::models::metadata::JdkMetadata;
 use crate::platform::{get_current_architecture, get_current_os, get_foojay_libc_type};
@@ -131,11 +132,19 @@ impl MetadataSource for LocalDirectorySource {
         Ok(index_path.exists())
     }
 
-    fn fetch_all(&self) -> Result<Vec<JdkMetadata>> {
+    fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
+        // TODO: Phase 4 - Add actual progress reporting
+        
         self.read_metadata()
     }
 
-    fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>> {
+    fn fetch_distribution(
+        &self,
+        distribution: &str,
+        _progress: &mut dyn ProgressIndicator,
+    ) -> Result<Vec<JdkMetadata>> {
+        // TODO: Phase 4 - Add actual progress reporting
+        
         let all_metadata = self.read_metadata()?;
         Ok(all_metadata
             .into_iter()
@@ -143,7 +152,13 @@ impl MetadataSource for LocalDirectorySource {
             .collect())
     }
 
-    fn fetch_package_details(&self, package_id: &str) -> Result<PackageDetails> {
+    fn fetch_package_details(
+        &self,
+        package_id: &str,
+        _progress: &mut dyn ProgressIndicator,
+    ) -> Result<PackageDetails> {
+        // TODO: Phase 4 - Add actual progress reporting
+        
         // Local directory source has complete metadata, so we can return details
         let all_metadata = self.read_metadata()?;
 
@@ -191,6 +206,7 @@ impl MetadataSource for LocalDirectorySource {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::indicator::SilentProgress;
     use crate::models::package::{ArchiveType, PackageType};
     use crate::models::platform::{Architecture, OperatingSystem};
     use crate::version::Version;
@@ -456,7 +472,10 @@ mod tests {
         let metadata_dir = setup_test_directory(&dir);
 
         let source = LocalDirectorySource::new(metadata_dir);
-        let metadata = source.fetch_all().unwrap();
+        let metadata = {
+            let mut progress = SilentProgress;
+            source.fetch_all(&mut progress).unwrap()
+        };
         // Basic check that works on all platforms
         assert!(!metadata.is_empty());
 
@@ -513,7 +532,10 @@ mod tests {
         let metadata_dir = setup_test_directory(&dir);
 
         let source = LocalDirectorySource::new(metadata_dir);
-        let metadata = source.fetch_distribution("temurin").unwrap();
+        let metadata = {
+            let mut progress = SilentProgress;
+            source.fetch_distribution("temurin", &mut progress).unwrap()
+        };
         // Basic check that works on all platforms
         assert!(!metadata.is_empty());
 
@@ -574,7 +596,10 @@ mod tests {
         }
 
         let source = LocalDirectorySource::new(metadata_dir);
-        let metadata = source.fetch_all().unwrap();
+        let metadata = {
+            let mut progress = SilentProgress;
+            source.fetch_all(&mut progress).unwrap()
+        };
         // Basic check that works on all platforms
         assert!(!metadata.is_empty());
 
@@ -631,7 +656,10 @@ mod tests {
         }
 
         let source = LocalDirectorySource::new(metadata_dir);
-        let metadata = source.fetch_all().unwrap();
+        let metadata = {
+            let mut progress = SilentProgress;
+            source.fetch_all(&mut progress).unwrap()
+        };
         // Basic check that works on all platforms
         assert!(!metadata.is_empty());
 
@@ -661,7 +689,7 @@ mod tests {
         #[cfg(target_os = "linux")]
         {
             let details = source
-                .fetch_package_details("temurin-21-linux-x64")
+                .fetch_package_details("temurin-21-linux-x64", &mut SilentProgress)
                 .unwrap();
             assert_eq!(
                 details.download_url,
@@ -678,7 +706,10 @@ mod tests {
         {
             // On Windows, we need to test with a Windows package ID
             // First check if any Windows metadata is available
-            let all_metadata = source.fetch_all().unwrap();
+            let all_metadata = {
+            let mut progress = SilentProgress;
+            source.fetch_all(&mut progress).unwrap()
+        };
             if !all_metadata.is_empty() {
                 // Use the first available package for testing
                 let package_id = &all_metadata[0].id;
@@ -688,7 +719,8 @@ mod tests {
         }
 
         // Test fetching non-existent package
-        let result = source.fetch_package_details("non-existent-package");
+        let mut progress = SilentProgress;
+        let result = source.fetch_package_details("non-existent-package", &mut progress);
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), KopiError::NotFound(_)));
     }

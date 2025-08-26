@@ -21,6 +21,7 @@ use kopi::{
     cache::MetadataCache,
     config::KopiConfig,
     error::{KopiError, Result},
+    indicator::{ProgressIndicator, SilentProgress},
     metadata::{
         MetadataSource, local::LocalDirectorySource, provider::MetadataProvider,
         source::PackageDetails,
@@ -82,7 +83,7 @@ impl MetadataSource for MockMetadataSource {
         }
     }
 
-    fn fetch_all(&self) -> Result<Vec<JdkMetadata>> {
+    fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
         *self.call_count.lock().unwrap() += 1;
         if *self.should_fail.lock().unwrap() {
             Err(KopiError::NetworkError("Mock failure".to_string()))
@@ -91,7 +92,7 @@ impl MetadataSource for MockMetadataSource {
         }
     }
 
-    fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>> {
+    fn fetch_distribution(&self, distribution: &str, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
         *self.call_count.lock().unwrap() += 1;
         if *self.should_fail.lock().unwrap() {
             Err(KopiError::NetworkError("Mock failure".to_string()))
@@ -106,7 +107,7 @@ impl MetadataSource for MockMetadataSource {
         }
     }
 
-    fn fetch_package_details(&self, package_id: &str) -> Result<PackageDetails> {
+    fn fetch_package_details(&self, package_id: &str, _progress: &mut dyn ProgressIndicator) -> Result<PackageDetails> {
         if *self.should_fail.lock().unwrap() {
             Err(KopiError::NetworkError("Mock failure".to_string()))
         } else if let Some(pkg) = self.metadata.iter().find(|m| m.id == package_id) {
@@ -175,11 +176,13 @@ fn test_metadata_provider_basic_search() {
     let provider = MetadataProvider::new_with_source(Box::new(source));
 
     // Test fetching all metadata
-    let results = provider.fetch_all().unwrap();
+    let mut progress = SilentProgress;
+    let results = provider.fetch_all(&mut progress).unwrap();
     assert_eq!(results.len(), 2);
 
     // Test fetching specific distribution
-    let results = provider.fetch_distribution("temurin").unwrap();
+    let mut progress = SilentProgress;
+    let results = provider.fetch_distribution("temurin", &mut progress).unwrap();
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].distribution, "temurin");
 }
@@ -338,15 +341,18 @@ fn test_local_directory_integration() {
     let provider = MetadataProvider::new_with_source(Box::new(local_source));
 
     // Test fetch all
-    let all_metadata = provider.fetch_all().unwrap();
+    let mut progress = SilentProgress;
+    let all_metadata = provider.fetch_all(&mut progress).unwrap();
     assert_eq!(all_metadata.len(), 3);
 
     // Test fetch by distribution
-    let temurin_results = provider.fetch_distribution("temurin").unwrap();
+    let mut progress = SilentProgress;
+    let temurin_results = provider.fetch_distribution("temurin", &mut progress).unwrap();
     assert_eq!(temurin_results.len(), 2);
 
     // Test version filtering would need to be done on the client side
-    let all_results = provider.fetch_all().unwrap();
+    let mut progress = SilentProgress;
+    let all_results = provider.fetch_all(&mut progress).unwrap();
     let v21_results: Vec<_> = all_results
         .into_iter()
         .filter(|m| m.version.major() == 21)
@@ -428,7 +434,8 @@ fn test_concurrent_metadata_access() {
 
             std::thread::spawn(move || {
                 for _ in 0..10 {
-                    if let Ok(results) = provider.fetch_distribution("concurrent")
+                    let mut progress = SilentProgress;
+                    if let Ok(results) = provider.fetch_distribution("concurrent", &mut progress)
                         && !results.is_empty()
                     {
                         success_count.fetch_add(1, Ordering::Relaxed);
@@ -475,7 +482,8 @@ fn test_error_handling_and_recovery() {
     let provider = MetadataProvider::new_with_source(Box::new(source));
 
     // Initially working
-    let result = provider.fetch_all();
+    let mut progress = SilentProgress;
+    let result = provider.fetch_all(&mut progress);
     assert!(result.is_ok());
     assert_eq!(result.unwrap().len(), 1);
 
@@ -485,7 +493,8 @@ fn test_error_handling_and_recovery() {
     let failing_provider = MetadataProvider::new_with_source(Box::new(failing_source));
 
     // Should fail
-    let result = failing_provider.fetch_all();
+    let mut progress = SilentProgress;
+    let result = failing_provider.fetch_all(&mut progress);
     assert!(result.is_err());
 }
 
@@ -503,7 +512,8 @@ fn test_corrupt_metadata_handling() {
     let provider = MetadataProvider::new_with_source(Box::new(local_source));
 
     // Should handle gracefully
-    let result = provider.fetch_all();
+    let mut progress = SilentProgress;
+    let result = provider.fetch_all(&mut progress);
     assert!(result.is_err());
 }
 

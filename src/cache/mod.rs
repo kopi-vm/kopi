@@ -26,6 +26,7 @@ use std::str::FromStr;
 
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
+use crate::indicator::SilentProgress;
 use crate::metadata::provider::MetadataProvider;
 use crate::models::distribution::Distribution as JdkDistribution;
 use crate::models::metadata::JdkMetadata;
@@ -83,8 +84,10 @@ pub fn fetch_and_cache_metadata(config: &KopiConfig) -> Result<MetadataCache> {
     let provider = MetadataProvider::from_config(config)?;
 
     // Fetch all metadata (includes both JavaFX and non-JavaFX packages)
+    // TODO: Phase 6 - Replace with actual progress
+    let mut progress = SilentProgress;
     let metadata = provider
-        .fetch_all()
+        .fetch_all(&mut progress)
         .map_err(|e| KopiError::MetadataFetch(format!("Failed to fetch metadata from API: {e}")))?;
 
     // Convert metadata to cache format
@@ -137,8 +140,10 @@ pub fn fetch_and_cache_distribution(
     let provider = MetadataProvider::from_config(config)?;
 
     // Fetch metadata for the specific distribution (includes both JavaFX and non-JavaFX)
+    // TODO: Phase 6 - Replace with actual progress
+    let mut progress = SilentProgress;
     let packages = provider
-        .fetch_distribution(distribution_name)
+        .fetch_distribution(distribution_name, &mut progress)
         .map_err(|e| {
             KopiError::MetadataFetch(format!(
                 "Failed to fetch packages for {distribution_name}: {e}"

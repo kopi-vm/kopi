@@ -14,6 +14,7 @@
 
 use crate::config::{KopiConfig, MetadataConfig, SourceConfig};
 use crate::error::{KopiError, Result};
+use crate::indicator::SilentProgress;
 use crate::metadata::source::MetadataSource;
 use crate::metadata::{FoojayMetadataSource, HttpMetadataSource, LocalDirectorySource};
 use crate::models::metadata::JdkMetadata;
@@ -110,7 +111,8 @@ impl MetadataProvider {
     }
 
     /// Get metadata from sources, trying each in order until one succeeds
-    pub fn fetch_all(&self) -> Result<Vec<JdkMetadata>> {
+    pub fn fetch_all(&self, _progress: &mut dyn crate::indicator::ProgressIndicator) -> Result<Vec<JdkMetadata>> {
+        // TODO: Phase 5 - Use passed progress indicator instead of SilentProgress
         let mut errors: Vec<(String, String)> = Vec::new();
 
         for (source_name, source) in &self.sources {
@@ -120,7 +122,9 @@ impl MetadataProvider {
             match source.is_available() {
                 Ok(true) => {
                     // Source is available, try to fetch
-                    match source.fetch_all() {
+                    // TODO: Phase 5 - Replace with actual progress
+                    let mut progress = SilentProgress;
+                    match source.fetch_all(&mut progress) {
                         Ok(metadata) => {
                             if errors.is_empty() {
                                 debug!("Successfully fetched metadata from source: {source_name}");
@@ -168,7 +172,8 @@ impl MetadataProvider {
     }
 
     /// Fetch metadata for a specific distribution, trying each source in order
-    pub fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>> {
+    pub fn fetch_distribution(&self, distribution: &str, _progress: &mut dyn crate::indicator::ProgressIndicator) -> Result<Vec<JdkMetadata>> {
+        // TODO: Phase 5 - Use passed progress indicator instead of SilentProgress
         let mut errors: Vec<(String, String)> = Vec::new();
 
         for (source_name, source) in &self.sources {
@@ -178,7 +183,9 @@ impl MetadataProvider {
             match source.is_available() {
                 Ok(true) => {
                     // Source is available, try to fetch
-                    match source.fetch_distribution(distribution) {
+                    // TODO: Phase 5 - Replace with actual progress
+                    let mut progress = SilentProgress;
+                    match source.fetch_distribution(distribution, &mut progress) {
                         Ok(metadata) => {
                             if errors.is_empty() {
                                 debug!(
@@ -258,7 +265,9 @@ impl MetadataProvider {
             match source.is_available() {
                 Ok(true) => {
                     // Source is available, try to fetch
-                    match source.fetch_package_details(package_id) {
+                    // TODO: Phase 5 - Replace with actual progress
+                    let mut progress = SilentProgress;
+                    match source.fetch_package_details(package_id, &mut progress) {
                         Ok(details) => {
                             if errors.is_empty() {
                                 debug!(

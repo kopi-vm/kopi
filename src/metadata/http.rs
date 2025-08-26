@@ -17,6 +17,7 @@ use chrono::{DateTime, Utc};
 use log::{info, warn};
 
 use crate::error::{KopiError, Result};
+use crate::indicator::ProgressIndicator;
 use crate::metadata::index::{IndexFile, IndexFileEntry};
 use crate::metadata::source::{MetadataSource, PackageDetails};
 use crate::models::metadata::JdkMetadata;
@@ -142,7 +143,9 @@ impl MetadataSource for HttpMetadataSource {
         }
     }
 
-    fn fetch_all(&self) -> Result<Vec<JdkMetadata>> {
+    fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
+        // TODO: Phase 3 - Add actual progress reporting
+        
         let mut all_metadata = Vec::new();
 
         // Fetch index file
@@ -173,7 +176,13 @@ impl MetadataSource for HttpMetadataSource {
         Ok(all_metadata)
     }
 
-    fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>> {
+    fn fetch_distribution(
+        &self,
+        distribution: &str,
+        _progress: &mut dyn ProgressIndicator,
+    ) -> Result<Vec<JdkMetadata>> {
+        // TODO: Phase 3 - Add actual progress reporting
+        
         let mut metadata = Vec::new();
 
         // Fetch index file
@@ -200,7 +209,13 @@ impl MetadataSource for HttpMetadataSource {
         Ok(metadata)
     }
 
-    fn fetch_package_details(&self, _package_id: &str) -> Result<PackageDetails> {
+    fn fetch_package_details(
+        &self,
+        _package_id: &str,
+        _progress: &mut dyn ProgressIndicator,
+    ) -> Result<PackageDetails> {
+        // TODO: Phase 3 - Add actual progress reporting
+        
         // HTTP source always returns complete metadata
         Err(KopiError::MetadataFetch(
             "HTTP source provides complete metadata".to_string(),

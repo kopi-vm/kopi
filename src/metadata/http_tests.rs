@@ -15,6 +15,7 @@
 #[cfg(test)]
 mod http_tests {
     use super::super::*;
+    use crate::indicator::SilentProgress;
     use crate::models::metadata::JdkMetadata;
     use crate::models::package::{ArchiveType, PackageType};
     use crate::models::platform::{Architecture, OperatingSystem};
@@ -173,7 +174,8 @@ mod http_tests {
             .create();
 
         let source = HttpMetadataSource::new(server.url());
-        let result = source.fetch_all();
+        let mut progress = SilentProgress;
+        let result = source.fetch_all(&mut progress);
 
         assert!(result.is_ok());
         let all_metadata = result.unwrap();
@@ -204,7 +206,8 @@ mod http_tests {
             .create();
 
         let source = HttpMetadataSource::new(server.url());
-        let result = source.fetch_distribution("temurin");
+        let mut progress = SilentProgress;
+        let result = source.fetch_distribution("temurin", &mut progress);
 
         assert!(result.is_ok());
         let dist_metadata = result.unwrap();
@@ -215,7 +218,8 @@ mod http_tests {
     #[test]
     fn test_fetch_package_details_not_supported() {
         let source = HttpMetadataSource::new("https://example.com".to_string());
-        let result = source.fetch_package_details("test-id");
+        let mut progress = SilentProgress;
+        let result = source.fetch_package_details("test-id", &mut progress);
 
         assert!(result.is_err());
         assert!(
@@ -275,7 +279,8 @@ mod http_tests {
             .create();
 
         let source = HttpMetadataSource::new(server.url());
-        let result = source.fetch_all();
+        let mut progress = SilentProgress;
+        let result = source.fetch_all(&mut progress);
 
         // Should succeed with partial results
         assert!(result.is_ok());
@@ -308,7 +313,8 @@ mod http_tests {
             .create();
 
         let source = HttpMetadataSource::new(server.url());
-        let result = source.fetch_all();
+        let mut progress = SilentProgress;
+        let result = source.fetch_all(&mut progress);
 
         assert!(result.is_ok());
         let all_metadata = result.unwrap();

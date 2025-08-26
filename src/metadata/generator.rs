@@ -19,6 +19,7 @@ pub mod validator;
 pub mod writer;
 
 use crate::error::{KopiError, Result};
+use crate::indicator::SilentProgress;
 use crate::metadata::index::{IndexFile, IndexFileEntry};
 use crate::metadata::{FoojayMetadataSource, MetadataSource};
 use crate::models::metadata::JdkMetadata;
@@ -54,7 +55,8 @@ impl MetadataGenerator {
         // Step 1: Fetch all metadata from foojay
         self.report_progress("Fetching metadata from foojay API...");
         let source = FoojayMetadataSource::new();
-        let all_metadata = source.fetch_all()?;
+        let mut progress = SilentProgress;
+        let all_metadata = source.fetch_all(&mut progress)?;
         println!("  Found {} JDK packages", all_metadata.len());
 
         // Step 2: Filter by distribution if specified
@@ -192,7 +194,8 @@ impl MetadataGenerator {
 
                     // Fetch package details if not complete
                     if !jdk.is_complete() {
-                        match source.fetch_package_details(&jdk.id) {
+                        let mut progress = SilentProgress;
+                        match source.fetch_package_details(&jdk.id, &mut progress) {
                             Ok(details) => {
                                 jdk.download_url = Some(details.download_url);
                                 jdk.checksum = details.checksum;

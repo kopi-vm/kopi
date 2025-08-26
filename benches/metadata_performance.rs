@@ -15,6 +15,7 @@
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use kopi::{
     api::client::ApiClient,
+    indicator::SilentProgress,
     metadata::{
         MetadataSource, foojay::FoojayMetadataSource, local::LocalDirectorySource,
         provider::MetadataProvider,
@@ -59,7 +60,8 @@ fn benchmark_metadata_sources(c: &mut Criterion) {
         let source = FoojayMetadataSource::new();
         b.iter(|| {
             // FoojayMetadataSource uses fetch_distribution
-            let _ = black_box(source.fetch_distribution(black_box(distribution)));
+            let mut progress = SilentProgress;
+            let _ = black_box(source.fetch_distribution(black_box(distribution), &mut progress));
         });
     });
 
@@ -68,7 +70,8 @@ fn benchmark_metadata_sources(c: &mut Criterion) {
         let foojay = Box::new(FoojayMetadataSource::new());
         let provider = MetadataProvider::new_with_source(foojay);
         b.iter(|| {
-            let _ = black_box(provider.fetch_distribution(black_box(distribution)));
+            let mut progress = SilentProgress;
+            let _ = black_box(provider.fetch_distribution(black_box(distribution), &mut progress));
         });
     });
 
@@ -95,7 +98,8 @@ fn benchmark_concurrent_access(c: &mut Criterion) {
                             let source = Arc::clone(&source);
                             std::thread::spawn(move || {
                                 let dist = if i % 2 == 0 { "temurin" } else { "zulu" };
-                                let _ = source.fetch_distribution(dist);
+                                let mut progress = SilentProgress;
+                                let _ = source.fetch_distribution(dist, &mut progress);
                             })
                         })
                         .collect();
@@ -160,14 +164,16 @@ fn benchmark_local_source(c: &mut Criterion) {
     group.bench_function("local_directory_search", |b| {
         let source = LocalDirectorySource::new(metadata_dir.to_path_buf());
         b.iter(|| {
-            let _ = black_box(source.fetch_distribution(black_box("temurin")));
+            let mut progress = SilentProgress;
+            let _ = black_box(source.fetch_distribution(black_box("temurin"), &mut progress));
         });
     });
 
     group.bench_function("local_directory_fetch_all", |b| {
         let source = LocalDirectorySource::new(metadata_dir.to_path_buf());
         b.iter(|| {
-            let _ = black_box(source.fetch_all());
+            let mut progress = SilentProgress;
+            let _ = black_box(source.fetch_all(&mut progress));
         });
     });
 
@@ -198,7 +204,8 @@ fn benchmark_provider_fallback(c: &mut Criterion) {
         let provider = MetadataProvider::new_with_source(local);
 
         b.iter(|| {
-            let _ = black_box(provider.fetch_distribution(black_box("temurin")));
+            let mut progress = SilentProgress;
+            let _ = black_box(provider.fetch_distribution(black_box("temurin"), &mut progress));
         });
     });
 

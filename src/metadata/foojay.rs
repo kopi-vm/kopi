@@ -15,6 +15,7 @@
 use crate::api::client::ApiClient;
 use crate::api::query::PackageQuery;
 use crate::error::Result;
+use crate::indicator::ProgressIndicator;
 use crate::metadata::source::{MetadataSource, PackageDetails};
 use crate::models::metadata::JdkMetadata;
 use crate::models::package::{ArchiveType, ChecksumType, PackageType};
@@ -105,7 +106,9 @@ impl MetadataSource for FoojayMetadataSource {
         }
     }
 
-    fn fetch_all(&self) -> Result<Vec<JdkMetadata>> {
+    fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
+        // TODO: Phase 2 - Add actual progress reporting
+        
         // Get all packages from the API with archive type filtering
         let query = PackageQuery {
             archive_types: Some(vec![
@@ -124,7 +127,13 @@ impl MetadataSource for FoojayMetadataSource {
             .collect()
     }
 
-    fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>> {
+    fn fetch_distribution(
+        &self,
+        distribution: &str,
+        _progress: &mut dyn ProgressIndicator,
+    ) -> Result<Vec<JdkMetadata>> {
+        // TODO: Phase 2 - Add actual progress reporting
+        
         let query = PackageQuery {
             distribution: Some(distribution.to_string()),
             archive_types: Some(vec![
@@ -143,7 +152,13 @@ impl MetadataSource for FoojayMetadataSource {
             .collect()
     }
 
-    fn fetch_package_details(&self, package_id: &str) -> Result<PackageDetails> {
+    fn fetch_package_details(
+        &self,
+        package_id: &str,
+        _progress: &mut dyn ProgressIndicator,
+    ) -> Result<PackageDetails> {
+        // TODO: Phase 2 - Add actual progress reporting
+        
         // Fetch complete package info from API
         let package_info = self.client.get_package_by_id(package_id)?;
 
