@@ -318,7 +318,7 @@ impl<'a> InstallCommand<'a> {
                 .unwrap_or(&"<URL not available>".to_string())
         );
         // Force no_progress to true for download to prevent overlapping progress bars
-        let download_result = download_jdk(&jdk_metadata_with_checksum, true, timeout_secs)?;
+        let download_result = download_jdk(&jdk_metadata_with_checksum, true, timeout_secs, None)?;
         let download_path = download_result.path();
         debug!("Downloaded to {download_path:?}");
 

@@ -30,6 +30,7 @@ pub fn download_jdk(
     package: &crate::models::metadata::JdkMetadata,
     no_progress: bool,
     timeout_secs: Option<u64>,
+    parent_progress: Option<Box<dyn crate::indicator::ProgressIndicator>>,
 ) -> Result<DownloadResult> {
     // Security validation
     let download_url = package.download_url.as_ref().ok_or_else(|| {
@@ -52,7 +53,7 @@ pub fn download_jdk(
     // Add progress reporter (handles no_progress internally)
     let package_name = format!("{}@{}", package.distribution, package.version);
     downloader = downloader.with_progress_reporter(Box::new(
-        DownloadProgressAdapter::for_jdk_download(no_progress, &package_name),
+        DownloadProgressAdapter::for_jdk_download(&package_name, parent_progress, no_progress),
     ));
 
     // Prepare download options
