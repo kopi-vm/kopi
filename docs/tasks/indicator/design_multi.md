@@ -1,8 +1,12 @@
 # Multi-Progress Support Design
 
+**Last Updated**: 2025-08-27 (Updated with spike validation results)
+
 ## Overview
 
 This document outlines the design for adding multi-progress bar support to Kopi's ProgressIndicator system. The implementation focuses on providing nested progress bars for operations that have clear parent-child relationships, improving user visibility into long-running operations.
+
+**Status**: Design validated through spike implementation. See `multiprogress_spike_report.md` for detailed findings and `multi_progress_spike.rs` for the working prototype.
 
 ## Goals
 
@@ -85,7 +89,28 @@ The IndicatifProgress struct will be enhanced to support MultiProgress operation
 2. **Child Instance**: References the parent's MultiProgress but manages its own progress bar
 3. **Bar Management**: Each instance tracks its own progress bar, with children registering their bars with the parent's MultiProgress
 
-The implementation ensures that child progress bars are properly positioned below their parent and cleaned up when complete.
+#### Implementation Details (Validated by Spike)
+
+**Template Configuration**:
+- Place `{spinner}` at the beginning of templates for line-start spinner display
+- Use template pattern: `{spinner} {prefix} [{bar:30}] {pos}/{len} {msg}`
+- Enable steady tick with `enable_steady_tick(Duration::from_millis(80))`
+
+**Visual Hierarchy**:
+- Use `insert_after()` instead of `insert_before()` for logical parent-child relationships
+- Child bars appear below parent bars, indented with spaces: `"  └─ {prefix}"`
+- Simplify progress chars to `██░` to reduce visual noise
+
+**API Considerations**:
+- No `join()` method on MultiProgress (removed from newer versions)
+- Progress bars are automatically rendered when added to MultiProgress
+- Use `finish_and_clear()` to remove bars from display entirely
+
+**Best Practices**:
+- Keep titles short to prevent interference with progress bar display
+- Add blank line after titles for better separation
+- Place dynamic messages at the end of template: `{pos}/{len} {msg}`
+- This keeps the progress bar layout stable while providing dynamic feedback
 
 ### Phase 3: Install Command Integration
 
@@ -124,19 +149,85 @@ The cache refresh command will implement child progress based on the metadata so
 
 ### Install Command with Large Download
 ```
-Installing temurin@21 [Step 3/8: Downloading]
-  ├─ Downloading temurin-21.0.5: 124.5MB / 256.3MB [48%] 2.3MB/s
+⣾ Installing temurin@21 [████████████░░░░░░] 3/8 Downloading
+  └─ ⣟ Downloading temurin-21.0.5: 124.5MB / 256.3MB [48%] 2.3MB/s
 ```
 
 ### Cache Refresh with Foojay
 ```
-Refreshing metadata cache [Step 2/5: Fetching sources]
-  ├─ Fetching Foojay packages: 1543 / 3217 [47%]
+⣽ Refreshing metadata cache [██████████░░░░░░░░] 2/5 Fetching sources
+  └─ ⣻ Fetching Foojay packages: 1543 / 3217 [47%]
 ```
 
 ### Small File (No Child Progress)
 ```
-Installing temurin@21 [Step 3/8: Downloading package (5.2MB)]
+⣿ Installing temurin@21 [████████████░░░░░░] 3/8 Downloading package (5.2MB)
+```
+
+### Nested Progress with Multiple Steps
+```
+⡿ Parent Task [██████████████████░] 2/3 Processing step 2 of 3
+  └─ Subtask 2 [███████████░░░░] 25/50
+```
+
+## Reference Implementation
+
+Based on the validated spike, the following structure is recommended:
+
+```rust
+pub struct IndicatifProgress {
+    multi: Option<Arc<MultiProgress>>,  // Shared for parent-child relationship
+    progress_bar: Option<ProgressBar>,
+    is_child: bool,
+}
+
+impl IndicatifProgress {
+    fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
+        let multi = self.multi.clone().unwrap_or_else(|| {
+            Arc::new(MultiProgress::new())
+        });
+        
+        Box::new(IndicatifProgress {
+            multi: Some(multi),
+            progress_bar: None,
+            is_child: true,
+        })
+    }
+    
+    fn start(&mut self, config: ProgressConfig) {
+        let multi = self.multi.get_or_insert_with(|| Arc::new(MultiProgress::new()));
+        
+        let pb = match config.total {
+            Some(total) => ProgressBar::new(total),
+            None => ProgressBar::new_spinner(),
+        };
+        
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template(if self.is_child {
+                    "  └─ {spinner} {prefix} [{bar:25}] {pos}/{len} {msg}"
+                } else {
+                    "{spinner} {prefix} [{bar:30}] {pos}/{len} {msg}"
+                })
+                .unwrap()
+                .progress_chars("██░")
+                .tick_chars("⣾⣽⣻⢿⡿⣟⣯⣷"),
+        );
+        
+        pb.enable_steady_tick(Duration::from_millis(80));
+        
+        // Add to parent's MultiProgress if child
+        if self.is_child {
+            if let Some(parent_pb) = &self.progress_bar {
+                multi.insert_after(parent_pb, pb.clone());
+            }
+        } else {
+            multi.add(pb.clone());
+        }
+        
+        self.progress_bar = Some(pb);
+    }
+}
 ```
 
 ## Testing Strategy
@@ -180,3 +271,24 @@ While not in current scope, the following could be considered later:
 3. Performance overhead is negligible (< 1% CPU usage for progress updates)
 4. CI/non-TTY environments continue to work without animations
 5. Code complexity remains manageable
+
+## Spike Validation Results
+
+A comprehensive spike was conducted to validate this design. Key outcomes:
+
+### Validated Capabilities
+✅ **Thread Safety**: Concurrent updates work correctly with Arc<MultiProgress>
+✅ **Dynamic Management**: Progress bars can be added/removed during execution
+✅ **Visual Hierarchy**: Parent-child relationships display correctly with indentation
+✅ **Performance**: No significant overhead observed
+✅ **Template Stability**: Dynamic messages don't disrupt layout
+
+### Key Implementation Insights
+- `insert_after()` provides more logical parent-child positioning than `insert_before()`
+- Spinner placement at template start (`{spinner}`) creates clean visual hierarchy
+- Simplified progress chars (`██░`) reduce visual noise
+- Short titles with blank line separation prevent display interference
+- `enable_steady_tick()` essential for smooth spinner animation
+
+### Ready for Implementation
+The design has been thoroughly validated and is ready for Phase 3 implementation in the actual Kopi codebase. The spike demonstrates that all success criteria can be met with the proposed architecture.

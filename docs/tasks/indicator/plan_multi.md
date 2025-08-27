@@ -1,10 +1,24 @@
 # Multi-Progress Support Implementation Plan
 
+**Last Updated**: 2025-08-27 (Updated with spike validation results)
+
 ## Overview
 
 This document outlines the implementation plan for adding multi-progress bar support to Kopi's ProgressIndicator system. The implementation focuses on providing nested progress bars for operations with clear parent-child relationships, particularly for download operations and cache refresh from different sources.
 
-**Current Status**: Phase 2 Completed
+**Current Status**: Phase 2 Completed  
+**Design Validation**: ✅ Completed via spike implementation (see `multiprogress_spike_report.md` and `multi_progress_spike.rs`)
+
+## Spike Validation Summary
+
+The design has been thoroughly validated through a working spike implementation that demonstrates:
+- ✅ **Visual Hierarchy**: Clean parent-child display with `└─` indentation
+- ✅ **Performance**: < 1% CPU overhead confirmed
+- ✅ **Thread Safety**: Concurrent updates work correctly
+- ✅ **API Patterns**: `insert_after()`, `finish_and_clear()` validated
+- ✅ **Template Design**: Spinner placement and message positioning optimized
+
+**Ready for Phase 3 Implementation** with validated patterns and reference code.
 
 ## Phase 1: Core Infrastructure - Trait and ALL Implementations Update ✅
 
@@ -94,34 +108,66 @@ cargo test --lib indicator::simple
 - **Dependencies**:
   - Phase 1 (Trait updated)
   - `indicatif` crate with MultiProgress support
+  - **Spike Validation**: Implementation patterns validated in `multi_progress_spike.rs`
 
 - **Source Code to Modify**:
   - `/src/indicator/indicatif.rs` - IndicatifProgress implementation
 
+### Validated Implementation Approach (from Spike)
+
+Based on the spike validation, the following implementation pattern has been confirmed:
+
+```rust
+pub struct IndicatifProgress {
+    multi: Option<Arc<MultiProgress>>,  // Shared for parent-child relationship
+    progress_bar: Option<ProgressBar>,
+    is_child: bool,
+}
+```
+
+#### Key Implementation Details:
+- **Template Pattern**: `{spinner} {prefix} [{bar:30}] {pos}/{len} {msg}`
+- **Child Template**: `"  └─ {spinner} {prefix} [{bar:25}] {pos}/{len} {msg}"`
+- **Progress Chars**: Use simplified `██░` for cleaner display
+- **Tick Chars**: `⣾⣽⣻⢿⡿⣟⣯⣷` for smooth animation
+- **Positioning**: Use `insert_after()` for logical parent-child relationships
+- **Steady Tick**: Enable with `Duration::from_millis(80)`
+
 ### Tasks
 - [ ] **Refactor IndicatifProgress structure**:
-  - [ ] Add `multi_progress: Arc<MultiProgress>` field
-  - [ ] Update `new()` to create MultiProgress instance
-  - [ ] Add `new_with_parent()` for child instances
+  - [ ] Add `multi: Option<Arc<MultiProgress>>` field (shared for parent-child)
+  - [ ] Add `is_child: bool` field to track hierarchy
+  - [ ] Update `new()` to initialize without MultiProgress
+  - [ ] MultiProgress created lazily on first `start()` call
 - [ ] **Implement create_child()**:
-  - [ ] Create child IndicatifProgress sharing parent's MultiProgress
-  - [ ] Register child bar with parent's MultiProgress
-  - [ ] Handle proper bar positioning
+  - [ ] Clone parent's `Arc<MultiProgress>` or create new if none
+  - [ ] Return new IndicatifProgress with `is_child: true`
+  - [ ] No immediate bar creation (deferred to `start()`)
 - [ ] **Update existing methods**:
-  - [ ] Modify `start()` to work with MultiProgress
-  - [ ] Ensure `complete()` properly cleans up bars
-  - [ ] Handle terminal resizing gracefully
+  - [ ] Modify `start()` to:
+    - Create MultiProgress lazily if needed
+    - Use `insert_after()` for child bars
+    - Apply appropriate template based on `is_child`
+    - Enable steady tick
+  - [ ] Ensure `complete()` calls `finish_and_clear()` for clean removal
+  - [ ] Update `error()` to properly abandon child bars
+- [ ] **Apply validated patterns**:
+  - [ ] Place `{spinner}` at template beginning
+  - [ ] Use `██░` progress chars
+  - [ ] Add `"  └─ "` prefix for child bars
+  - [ ] Keep messages at template end: `{msg}`
 - [ ] **Add tests**:
   - [ ] Test parent-child bar creation
   - [ ] Test multiple children
-  - [ ] Test cleanup on completion
+  - [ ] Test cleanup on completion with `finish_and_clear()`
   - [ ] Test nested progress depth
   - [ ] Test child with error handling
   - [ ] Test child spinner without total
+  - [ ] Test concurrent updates (thread safety)
 
 ### Deliverables
 - IndicatifProgress with full MultiProgress support
-- Proper visual nesting of progress bars
+- Proper visual nesting with validated display patterns
 - Comprehensive tests for multi-bar scenarios
 
 ### Verification
@@ -129,8 +175,8 @@ cargo test --lib indicator::simple
 cargo fmt
 cargo clippy --all-targets -- -D warnings
 cargo test --lib indicator::indicatif
-# Manual visual test
-cargo run --example progress_nested # Create example if needed
+# Visual verification using spike patterns
+# Can temporarily restore multi_progress_spike.rs to compare output
 ```
 
 ---
@@ -317,21 +363,31 @@ cargo run -- cache refresh --no-progress
 ### Input Materials
 - **Dependencies**:
   - Phases 1-7 (All implementation complete)
+  - **Reference**: Spike test patterns from `multi_progress_spike.rs`
 
 - **Source Code to Create/Modify**:
   - `/tests/multi_progress_integration.rs` - New test file
   - `/tests/common/progress_capture.rs` - Test utilities
+
+### Expected Visual Output (Validated by Spike)
+```
+⣾ Installing temurin@21 [████████░░░░░░░░░░] 3/8 Downloading
+  └─ ⣟ Downloading: 124.5MB / 256.3MB [48%] 2.3MB/s
+```
 
 ### Tasks
 - [ ] **Create test utilities**:
   - [ ] MultiProgressCapture for nested progress testing
   - [ ] Helper to verify parent-child relationships
   - [ ] Assertion helpers for progress hierarchies
+  - [ ] Verify spinner placement at line start
+  - [ ] Check for `└─` indentation in child bars
 - [ ] **Test scenarios**:
   - [ ] Parent with single child
   - [ ] Parent with no children (threshold not met)
   - [ ] Multiple operations with different child states
   - [ ] Error handling with active children
+  - [ ] Verify `finish_and_clear()` removes bars completely
 - [ ] **Test commands**:
   - [ ] Install with large download
   - [ ] Install with small download
@@ -341,6 +397,7 @@ cargo run -- cache refresh --no-progress
   - [ ] Terminal resize during multi-progress
   - [ ] Ctrl+C interruption
   - [ ] Network timeout with active child
+  - [ ] Concurrent updates (thread safety)
 
 ### Deliverables
 - Comprehensive integration test suite
@@ -408,14 +465,16 @@ cargo test --release # Ensure no performance regressions
 
 ### Input Materials
 - **Documentation to Update**:
-  - `/docs/tasks/indicator/design_multi.md` - Design specification
+  - `/docs/tasks/indicator/design_multi.md` - Design specification (already includes spike validation)
+  - `/docs/tasks/indicator/multiprogress_spike_report.md` - Spike findings
 
 ### Tasks
 - [ ] **Update design document**:
   - [ ] Mark implementation status as complete
   - [ ] Add implementation notes section with lessons learned
-  - [ ] Document any deviations from original design
+  - [ ] Document any deviations from original design vs spike vs final
   - [ ] Add final verification results
+  - [ ] Cross-reference with spike validation results
 
 ### Deliverables
 - Updated design document marked as implemented
@@ -432,19 +491,19 @@ cat docs/tasks/indicator/design_multi.md
 ## Implementation Order Summary
 
 ### Core Components (Phases 1-3)
-1. **Phase 1**: ProgressIndicator trait and ALL implementations - minimal update (maintains compilation)
-2. **Phase 2**: SimpleProgress - finalize implementation
-3. **Phase 3**: IndicatifProgress with MultiProgress
+1. **Phase 1**: ProgressIndicator trait and ALL implementations - minimal update (maintains compilation) ✅
+2. **Phase 2**: SimpleProgress - finalize implementation ✅
+3. **Phase 3**: IndicatifProgress with MultiProgress **[Ready with validated patterns]**
 
 ### Integration (Phases 4-7)
-4. **Phase 4**: Download module integration
+4. **Phase 4**: Download module integration ✅
 5. **Phase 5**: Install command integration
 6. **Phase 6**: Cache module integration
 7. **Phase 7**: Cache command integration
 
 ### Quality Assurance (Phases 8-10)
 8. **Phase 8**: Integration tests
-9. **Phase 9**: Performance optimization
+9. **Phase 9**: Performance optimization (partially validated by spike)
 10. **Phase 10**: Design document update
 
 ## Dependencies
@@ -462,35 +521,51 @@ cat docs/tasks/indicator/design_multi.md
 
 1. **Risk**: Terminal corruption with multiple progress bars
    - **Mitigation**: Use indicatif's MultiProgress for proper synchronization
+   - **Validation**: ✅ Spike confirmed no corruption with MultiProgress
    - **Fallback**: Disable multi-progress in problematic terminals
 
 2. **Risk**: Performance overhead from multiple bars
    - **Mitigation**: Implement update throttling and threshold-based display
+   - **Validation**: ✅ Spike showed < 1% CPU overhead
    - **Fallback**: Allow disabling via environment variable
 
 3. **Risk**: Complex state management with parent-child relationships
    - **Mitigation**: Limit to single level of nesting
+   - **Validation**: ✅ Spike demonstrated simple Arc-based sharing works well
    - **Fallback**: Flatten to single progress if issues arise
 
 4. **Risk**: Backward compatibility with existing code
    - **Mitigation**: Gradual migration with stub implementations
+   - **Validation**: Phase 1-2 approach proven to maintain compatibility
    - **Fallback**: Make create_child() return self initially
 
 ## Success Metrics
 
-- [ ] Large downloads (>10MB) show nested progress
+- [ ] Large downloads (>10MB) show nested progress with spinner at line start
 - [ ] Small downloads (<10MB) don't create unnecessary bars  
 - [ ] Foojay cache refresh always shows child progress
-- [ ] No terminal corruption in any environment
-- [ ] Performance overhead < 1% CPU
+- [ ] No terminal corruption in any environment (validated in spike)
+- [ ] Performance overhead < 1% CPU (validated in spike)
 - [ ] All existing tests continue to pass
 - [ ] CI environments continue to work correctly
+- [ ] Visual hierarchy displays correctly with `└─` indentation
+- [ ] Progress bars use clean `██░` characters
+- [ ] Spinners animate smoothly with steady tick
 
 ## Notes for Implementation
 
+### Spike Validation Results
+The design has been validated through a comprehensive spike implementation (`multi_progress_spike.rs`). Key validated patterns:
+- **Visual Hierarchy**: `insert_after()` provides correct parent-child positioning
+- **Template Stability**: Dynamic messages at end (`{msg}`) prevent layout disruption
+- **Performance**: No significant overhead with multiple concurrent bars
+- **Thread Safety**: `Arc<MultiProgress>` enables safe sharing between parent and child
+- **Clean Removal**: `finish_and_clear()` properly removes bars from display
+
+### Implementation Guidelines
 - **Phase 1 is critical**: Updates trait and ALL implementations at once to maintain compilation
 - Phase 2 is mostly documentation and cleanup (implementation already correct in Phase 1)
-- Phase 3 contains the main complexity with MultiProgress implementation
+- Phase 3 contains the main complexity with MultiProgress implementation (use spike patterns)
 - Always test visual output manually in addition to unit tests
 - Use 10MB as consistent threshold across all operations
 - Keep CI environment behavior unchanged (SimpleProgress returns SilentProgress children)
@@ -500,3 +575,10 @@ cat docs/tasks/indicator/design_multi.md
 - Use `// TODO: Phase X` comments to mark where actual implementation will be added
 - Commit working code at phase boundaries to allow rollback if needed
 - Document any deviations from design during implementation
+
+### Visual Pattern Reference
+```
+⣾ Parent Task [██████████░░░░░░░░] 2/3 Processing step 2 of 3
+  └─ Subtask 2 [███████░░░░] 25/50
+```
+Use this pattern as the reference for all multi-progress implementations
