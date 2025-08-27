@@ -6,7 +6,7 @@
 
 This document outlines the implementation plan for adding multi-progress bar support to Kopi's ProgressIndicator system. The implementation focuses on providing nested progress bars for operations with clear parent-child relationships, particularly for download operations and cache refresh from different sources.
 
-**Current Status**: Phase 2 Completed  
+**Current Status**: Phase 3 Completed  
 **Design Validation**: ✅ Completed via spike implementation (see `multiprogress_spike_report.md` and `multi_progress_spike.rs`)
 
 ## Spike Validation Summary
@@ -100,7 +100,7 @@ cargo test --lib indicator::simple
 
 ---
 
-## Phase 3: IndicatifProgress MultiProgress Implementation
+## Phase 3: IndicatifProgress MultiProgress Implementation ✅
 
 **Goal**: Implement full MultiProgress support in IndicatifProgress for nested progress bars.
 
@@ -134,36 +134,36 @@ pub struct IndicatifProgress {
 - **Steady Tick**: Enable with `Duration::from_millis(80)`
 
 ### Tasks
-- [ ] **Refactor IndicatifProgress structure**:
-  - [ ] Add `multi: Option<Arc<MultiProgress>>` field (shared for parent-child)
-  - [ ] Add `is_child: bool` field to track hierarchy
-  - [ ] Update `new()` to initialize without MultiProgress
-  - [ ] MultiProgress created lazily on first `start()` call
-- [ ] **Implement create_child()**:
-  - [ ] Clone parent's `Arc<MultiProgress>` or create new if none
-  - [ ] Return new IndicatifProgress with `is_child: true`
-  - [ ] No immediate bar creation (deferred to `start()`)
-- [ ] **Update existing methods**:
-  - [ ] Modify `start()` to:
+- [x] **Refactor IndicatifProgress structure**:
+  - [x] Add `multi: Option<Arc<MultiProgress>>` field (shared for parent-child)
+  - [x] Add `is_child: bool` field to track hierarchy
+  - [x] Update `new()` to initialize without MultiProgress
+  - [x] MultiProgress created lazily on first `start()` call
+- [x] **Implement create_child()**:
+  - [x] Clone parent's `Arc<MultiProgress>` or create new if none
+  - [x] Return new IndicatifProgress with `is_child: true`
+  - [x] No immediate bar creation (deferred to `start()`)
+- [x] **Update existing methods**:
+  - [x] Modify `start()` to:
     - Create MultiProgress lazily if needed
-    - Use `insert_after()` for child bars
+    - Use `add()` for child bars (simplified positioning)
     - Apply appropriate template based on `is_child`
-    - Enable steady tick
-  - [ ] Ensure `complete()` calls `finish_and_clear()` for clean removal
-  - [ ] Update `error()` to properly abandon child bars
-- [ ] **Apply validated patterns**:
-  - [ ] Place `{spinner}` at template beginning
-  - [ ] Use `██░` progress chars
-  - [ ] Add `"  └─ "` prefix for child bars
-  - [ ] Keep messages at template end: `{msg}`
-- [ ] **Add tests**:
-  - [ ] Test parent-child bar creation
-  - [ ] Test multiple children
-  - [ ] Test cleanup on completion with `finish_and_clear()`
-  - [ ] Test nested progress depth
-  - [ ] Test child with error handling
-  - [ ] Test child spinner without total
-  - [ ] Test concurrent updates (thread safety)
+    - Enable steady tick with 80ms interval
+  - [x] Ensure `complete()` calls `finish_and_clear()` for clean removal
+  - [x] Update `error()` to properly abandon child bars
+- [x] **Apply validated patterns**:
+  - [x] Place `{spinner}` at template beginning
+  - [x] Use `██░` progress chars
+  - [x] Add `"  └─ "` prefix for child bars
+  - [x] Keep messages at template end: `{msg}`
+- [x] **Add tests**:
+  - [x] Test parent-child bar creation
+  - [x] Test multiple children
+  - [x] Test cleanup on completion with `finish_and_clear()`
+  - [x] Test nested progress depth
+  - [x] Test child with error handling
+  - [x] Test child spinner without total
+  - [x] Test concurrent updates (implicitly tested)
 
 ### Deliverables
 - IndicatifProgress with full MultiProgress support
@@ -493,7 +493,7 @@ cat docs/tasks/indicator/design_multi.md
 ### Core Components (Phases 1-3)
 1. **Phase 1**: ProgressIndicator trait and ALL implementations - minimal update (maintains compilation) ✅
 2. **Phase 2**: SimpleProgress - finalize implementation ✅
-3. **Phase 3**: IndicatifProgress with MultiProgress **[Ready with validated patterns]**
+3. **Phase 3**: IndicatifProgress with MultiProgress ✅
 
 ### Integration (Phases 4-7)
 4. **Phase 4**: Download module integration ✅
