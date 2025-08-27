@@ -138,7 +138,7 @@ impl<'a> InstallCommand<'a> {
         let parser = VersionParser::new(self.config);
         let version_request = parser.parse(version_spec)?;
         trace!("Parsed version request: {version_request:?}");
-        
+
         // Install command requires a specific version
         let version = version_request.version.as_ref().ok_or_else(|| {
             KopiError::InvalidVersionFormat(
@@ -147,10 +147,10 @@ impl<'a> InstallCommand<'a> {
                     .to_string(),
             )
         })?;
-        
+
         // Validate version semantics
         VersionParser::validate_version_semantics(version)?;
-        
+
         // Use default distribution from config if not specified
         let distribution = if let Some(dist) = version_request.distribution.clone() {
             dist
@@ -158,7 +158,7 @@ impl<'a> InstallCommand<'a> {
             Distribution::from_str(&self.config.default_distribution)
                 .unwrap_or(Distribution::Temurin)
         };
-        
+
         // Show operation message before progress bar starts
         self.status.operation(
             "Installing",
@@ -169,7 +169,7 @@ impl<'a> InstallCommand<'a> {
         let mut progress = crate::indicator::ProgressFactory::create(no_progress);
 
         // Calculate base steps for installation
-        // Base steps: find_package(1) + check_installed(1) + download(1) + 
+        // Base steps: find_package(1) + check_installed(1) + download(1) +
         //             extract(1) + detect_structure(1) + install_to_final_location(1) = 6
         let mut total_steps = 6u64;
 
@@ -191,7 +191,7 @@ impl<'a> InstallCommand<'a> {
         // Initialize progress with total steps
         let progress_config = crate::indicator::ProgressConfig::new(
             "Installing",
-            &format!("{} {}", distribution.name(), version),
+            format!("{} {}", distribution.name(), version),
             crate::indicator::ProgressStyle::Count,
         )
         .with_total(total_steps);
