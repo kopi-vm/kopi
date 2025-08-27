@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::indicator::{ProgressConfig, ProgressIndicator, ProgressStyle};
+use crate::indicator::{ProgressConfig, ProgressIndicator, ProgressStyle, SilentProgress};
 use indicatif::ProgressBar;
 use std::time::Duration;
 
@@ -96,6 +96,11 @@ impl ProgressIndicator for IndicatifProgress {
         if let Some(pb) = &self.progress_bar {
             pb.abandon_with_message(format!("✗ {message}"));
         }
+    }
+
+    fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
+        // TODO: Phase 3 - Implement MultiProgress support
+        Box::new(SilentProgress::new())
     }
 }
 

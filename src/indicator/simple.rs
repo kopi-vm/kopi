@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::indicator::{ProgressConfig, ProgressIndicator};
+use crate::indicator::{ProgressConfig, ProgressIndicator, SilentProgress};
 
 pub struct SimpleProgress {
     operation: String,
@@ -57,6 +57,11 @@ impl ProgressIndicator for SimpleProgress {
 
     fn error(&mut self, message: String) {
         eprintln!("✗ {} {} - {}", self.operation, self.context, message);
+    }
+
+    fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
+        // TODO: Phase 2 - CI environments don't support nested progress bars
+        Box::new(SilentProgress::new())
     }
 }
 
@@ -121,6 +126,10 @@ mod tests {
                 self.inner.operation, self.inner.context, message
             );
             OUTPUT.lock().unwrap().push(output);
+        }
+
+        fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
+            self.inner.create_child()
         }
     }
 

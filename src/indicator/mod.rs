@@ -32,6 +32,7 @@ pub trait ProgressIndicator: Send + Sync {
     fn set_message(&mut self, message: String);
     fn complete(&mut self, message: Option<String>);
     fn error(&mut self, message: String);
+    fn create_child(&mut self) -> Box<dyn ProgressIndicator>;
 }
 
 #[cfg(test)]
@@ -88,6 +89,10 @@ mod tests {
         fn error(&mut self, message: String) {
             self.errored = true;
             self.message = message;
+        }
+
+        fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
+            Box::new(MockProgress::new())
         }
     }
 

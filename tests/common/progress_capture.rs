@@ -132,6 +132,10 @@ impl ProgressIndicator for TestProgressCapture {
     fn error(&mut self, message: String) {
         self.set_message(format!("[ERROR] {message}"));
     }
+
+    fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
+        Box::new(TestProgressCapture::new())
+    }
 }
 
 #[cfg(test)]

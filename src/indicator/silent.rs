@@ -48,6 +48,10 @@ impl ProgressIndicator for SilentProgress {
     fn error(&mut self, _message: String) {
         // No output - errors are handled separately by the error system
     }
+
+    fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
+        Box::new(SilentProgress::new())
+    }
 }
 
 #[cfg(test)]
