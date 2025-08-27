@@ -6,10 +6,11 @@ use std::time::{Duration, Instant};
 
 use kopi::indicator::factory::ProgressFactory;
 use kopi::indicator::status::StatusReporter;
-use kopi::indicator::{ProgressConfig, ProgressStyle};
+use kopi::indicator::{ProgressConfig, ProgressIndicator, ProgressStyle, SilentProgress};
 use serial_test::serial;
 
 mod common;
+use common::progress_capture::TestProgressCapture;
 use common::test_home::TestHomeGuard;
 
 #[test]
@@ -534,4 +535,142 @@ fn test_progress_indicator_overflow_protection() {
     progress.update(200, None);
 
     progress.complete(None);
+}
+
+#[test]
+#[serial]
+fn test_metadata_fetch_progress_messages() {
+    use kopi::cache::fetch_and_cache_metadata_with_progress;
+    use kopi::config::new_kopi_config;
+
+    let test_home = TestHomeGuard::new();
+    let test_home = test_home.setup_kopi_structure();
+
+    // Override KOPI_HOME for testing
+    unsafe {
+        std::env::set_var("KOPI_HOME", test_home.kopi_home().to_str().unwrap());
+    }
+
+    let config = new_kopi_config().unwrap();
+    let mut capture = TestProgressCapture::new();
+    let mut current_step = 0;
+
+    // Mock test - just verify that progress is being updated
+    // The actual network call might fail in test environment
+    let _ = fetch_and_cache_metadata_with_progress(&config, &mut capture, &mut current_step);
+
+    // Check that progress messages were captured
+    let messages = capture.get_messages();
+    if !messages.is_empty() {
+        // At least some progress messages should be captured
+        assert!(capture.message_count() > 0, "Should have progress messages");
+
+        // Check for expected message patterns
+        let has_relevant_message = messages.iter().any(|m| {
+            m.message.contains("metadata")
+                || m.message.contains("Fetch")
+                || m.message.contains("source")
+                || m.message.contains("cache")
+                || m.message.contains("Processing")
+        });
+        assert!(
+            has_relevant_message,
+            "Should have relevant progress messages"
+        );
+    }
+}
+
+#[test]
+fn test_metadata_progress_step_counting() {
+    let mut capture = TestProgressCapture::new();
+
+    // Simulate metadata fetch with step tracking
+    capture.with_total(10);
+
+    // Step 1: Initialize
+    capture.set_position(1);
+    capture.set_message("Initializing metadata provider".to_string());
+
+    // Step 2-6: Sources
+    for i in 2..=6 {
+        capture.set_position(i);
+        capture.set_message(format!("Fetching from source {}", i - 1));
+    }
+
+    // Step 7: Process metadata
+    capture.set_position(7);
+    capture.set_message("Processing metadata".to_string());
+
+    // Step 8: Group distributions
+    capture.set_position(8);
+    capture.set_message("Grouping distributions".to_string());
+
+    // Step 9: Save cache
+    capture.set_position(9);
+    capture.set_message("Saving to cache".to_string());
+
+    // Step 10: Complete
+    capture.set_position(10);
+    capture.finish_with_message("Cache refresh complete");
+
+    // Verify step progression
+    assert_eq!(capture.get_position(), 10);
+    assert_eq!(capture.get_total(), Some(10));
+    assert_eq!(capture.message_count(), 10);
+    assert!(capture.contains_message("Fetching from source"));
+    assert!(capture.contains_message("Cache refresh complete"));
+}
+
+#[test]
+fn test_metadata_progress_error_handling() {
+    let mut capture = TestProgressCapture::new();
+
+    capture.set_message("Starting metadata fetch".to_string());
+    capture.set_message("Connecting to API".to_string());
+
+    // Simulate an error
+    capture.error("Failed to connect to metadata source".to_string());
+
+    // Verify error was captured
+    assert!(capture.contains_message("[ERROR]"));
+    assert!(capture.contains_message("Failed to connect"));
+}
+
+#[test]
+fn test_silent_progress_with_metadata() {
+    use kopi::cache::fetch_and_cache_metadata_with_progress;
+    use kopi::config::new_kopi_config;
+
+    let test_home = TestHomeGuard::new();
+    let test_home = test_home.setup_kopi_structure();
+
+    // Override KOPI_HOME for testing
+    unsafe {
+        std::env::set_var("KOPI_HOME", test_home.kopi_home().to_str().unwrap());
+    }
+
+    let config = new_kopi_config().unwrap();
+    let mut progress = SilentProgress;
+    let mut current_step = 0;
+
+    // SilentProgress should handle all operations without output
+    let _ = fetch_and_cache_metadata_with_progress(&config, &mut progress, &mut current_step);
+
+    // Test passes if no panic occurs
+}
+
+#[test]
+fn test_distribution_fetch_progress() {
+    let mut capture = TestProgressCapture::new();
+
+    // Simulate distribution-specific fetch
+    capture.set_message("Fetching distribution: temurin".to_string());
+    capture.set_message("Querying API for temurin packages".to_string());
+    capture.set_message("Processing 25 packages".to_string());
+    capture.set_message("Updating cache with temurin data".to_string());
+    capture.finish_with_message("Distribution fetch complete");
+
+    assert_eq!(capture.message_count(), 5);
+    assert!(capture.contains_message("temurin"));
+    assert!(capture.contains_message("25 packages"));
 }

@@ -13,7 +13,10 @@
 // limitations under the License.
 
 pub mod fixtures;
+pub mod progress_capture;
 pub mod test_home;
 
+#[allow(unused_imports)]
+pub use progress_capture::TestProgressCapture;
 #[allow(unused_imports)]
 pub use test_home::TestHomeGuard;

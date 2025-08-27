@@ -14,8 +14,9 @@
 
 mod common;
 use common::TestHomeGuard;
-use kopi::cache::{MetadataCache, fetch_and_cache_metadata, get_metadata};
+use kopi::cache::{MetadataCache, fetch_and_cache_metadata_with_progress, get_metadata};
 use kopi::config::new_kopi_config;
+use kopi::indicator::SilentProgress;
 use serial_test::serial;
 use std::fs;
 use std::path::PathBuf;
@@ -40,7 +41,9 @@ fn test_fetch_and_cache_metadata() {
 
     // Fetch metadata from API and cache it
     let config = new_kopi_config().unwrap();
-    let result = fetch_and_cache_metadata(&config);
+    let mut progress = SilentProgress;
+    let mut current_step = 0;
+    let result = fetch_and_cache_metadata_with_progress(&config, &mut progress, &mut current_step);
     assert!(
         result.is_ok(),
         "Failed to fetch metadata: {:?}",
