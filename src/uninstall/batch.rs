@@ -171,7 +171,8 @@ impl<'a> BatchUninstaller<'a> {
         let mut failed_jdks = Vec::new();
         let mut removed_jdks = Vec::new();
         let mut log_messages = Vec::new(); // Collect log messages to output after progress
-        let mut status_messages = Vec::new(); // Collect status messages to show after progress
+
+        let reporter = StatusReporter::new(self.no_progress);
 
         for jdk in &jdks {
             log_messages.push(format!("Removing {}@{}", jdk.distribution, jdk.version));
@@ -190,10 +191,6 @@ impl<'a> BatchUninstaller<'a> {
                         "Safety check failed for {}@{}: {}",
                         jdk.distribution, jdk.version, e
                     ));
-                    status_messages.push(format!(
-                        "✗ Safety check failed for {}@{}",
-                        jdk.distribution, jdk.version
-                    ));
                     failed_jdks.push((jdk.clone(), e));
                     overall_pb.inc(1); // Still increment to show progress
                     continue;
@@ -205,17 +202,12 @@ impl<'a> BatchUninstaller<'a> {
                 Ok(()) => {
                     removed_count += 1;
                     removed_jdks.push(jdk.clone());
-                    status_messages.push(format!("✓ Removed {}@{}", jdk.distribution, jdk.version));
                     overall_pb.inc(1);
                 }
                 Err(e) => {
                     log_messages.push(format!(
                         "Failed to remove {}@{}: {}",
                         jdk.distribution, jdk.version, e
-                    ));
-                    status_messages.push(format!(
-                        "✗ Failed to remove {}@{}",
-                        jdk.distribution, jdk.version
                     ));
                     failed_jdks.push((jdk.clone(), e));
                     overall_pb.inc(1); // Still increment to show progress
@@ -225,9 +217,16 @@ impl<'a> BatchUninstaller<'a> {
 
         overall_pb.finish_and_clear();
 
-        // Show status messages after progress bar is done
-        for msg in status_messages {
-            println!("{msg}");
+        // Show status messages after progress bar is done using StatusReporter
+        for jdk in &removed_jdks {
+            reporter.success(&format!("Removed {}@{}", jdk.distribution, jdk.version));
+        }
+
+        for (jdk, _) in &failed_jdks {
+            reporter.error(&format!(
+                "Failed to remove {}@{}",
+                jdk.distribution, jdk.version
+            ));
         }
 
         // Now output the collected log messages after all progress indicators are finished
