@@ -94,6 +94,11 @@ impl MetadataCache {
         self.synonym_map.get(name).map(|s| s.as_str())
     }
 
+    /// Get the total number of packages across all distributions
+    pub fn total_packages(&self) -> usize {
+        self.distributions.values().map(|d| d.packages.len()).sum()
+    }
+
     /// Search for packages matching the given request
     pub fn search(
         &self,

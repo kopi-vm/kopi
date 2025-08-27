@@ -158,14 +158,6 @@ pub fn fetch_and_cache_metadata_with_progress(
     Ok(new_cache)
 }
 
-/// Fetch metadata from API and cache it (backward compatibility wrapper)
-/// TODO: Phase 8 - Remove this wrapper after install.rs is updated
-pub fn fetch_and_cache_metadata(config: &KopiConfig) -> Result<MetadataCache> {
-    let mut progress = SilentProgress;
-    let mut current_step = 0u64;
-    fetch_and_cache_metadata_with_progress(config, &mut progress, &mut current_step)
-}
-
 /// Fetch metadata for a specific distribution and update the cache with progress
 pub fn fetch_and_cache_distribution_with_progress(
     distribution_name: &str,
@@ -228,22 +220,6 @@ pub fn fetch_and_cache_distribution_with_progress(
     result_cache.save(&cache_path)?;
 
     Ok(result_cache)
-}
-
-/// Fetch metadata for a specific distribution and update the cache (backward compatibility wrapper)
-/// TODO: Phase 8 - Remove this wrapper after all callers are updated
-pub fn fetch_and_cache_distribution(
-    distribution_name: &str,
-    config: &KopiConfig,
-) -> Result<MetadataCache> {
-    let mut progress = SilentProgress;
-    let mut current_step = 0u64;
-    fetch_and_cache_distribution_with_progress(
-        distribution_name,
-        config,
-        &mut progress,
-        &mut current_step,
-    )
 }
 
 /// Fetch checksum for a specific JDK package (uses SilentProgress internally)

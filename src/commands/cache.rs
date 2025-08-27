@@ -76,8 +76,8 @@ impl CacheCommand {
     pub fn execute(self, config: &KopiConfig, no_progress: bool) -> Result<()> {
         match self {
             CacheCommand::Refresh => refresh_cache(config, no_progress),
-            CacheCommand::Info => show_cache_info(config),
-            CacheCommand::Clear => clear_cache(config),
+            CacheCommand::Info => show_cache_info(config, no_progress),
+            CacheCommand::Clear => clear_cache(config, no_progress),
             CacheCommand::Search {
                 version,
                 compact,
@@ -134,11 +134,17 @@ fn refresh_cache(config: &KopiConfig, no_progress: bool) -> Result<()> {
 
     // Fetch metadata from API - this will handle steps 2-N internally (one per source)
     // and steps N+1 to N+4 (processing steps)
-    let cache = cache::fetch_and_cache_metadata_with_progress(
+    let cache = match cache::fetch_and_cache_metadata_with_progress(
         config,
         progress.as_mut(),
         &mut current_step,
-    )?;
+    ) {
+        Ok(cache) => cache,
+        Err(e) => {
+            progress.error(format!("Failed to refresh cache: {e}"));
+            return Err(e);
+        }
+    };
 
     // Complete the progress indicator
     progress.complete(Some("Cache refreshed successfully".to_string()));
@@ -156,7 +162,7 @@ fn refresh_cache(config: &KopiConfig, no_progress: bool) -> Result<()> {
     Ok(())
 }
 
-fn show_cache_info(config: &KopiConfig) -> Result<()> {
+fn show_cache_info(config: &KopiConfig, _no_progress: bool) -> Result<()> {
     let cache_path = config.metadata_cache_path()?;
 
     if !cache_path.exists() {
@@ -191,11 +197,9 @@ fn show_cache_info(config: &KopiConfig) -> Result<()> {
     Ok(())
 }
 
-fn clear_cache(config: &KopiConfig) -> Result<()> {
+fn clear_cache(config: &KopiConfig, no_progress: bool) -> Result<()> {
     let cache_path = config.metadata_cache_path()?;
 
-    // TODO: Phase 11 will add global --no-progress flag support
-    let no_progress = false;
     let reporter = StatusReporter::new(no_progress);
 
     if cache_path.exists() {
@@ -833,7 +837,7 @@ mod tests {
         }
 
         let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let result = show_cache_info(&config);
+        let result = show_cache_info(&config, false);
         assert!(result.is_ok());
 
         unsafe {
@@ -850,7 +854,7 @@ mod tests {
         }
 
         let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
-        let result = clear_cache(&config);
+        let result = clear_cache(&config, false);
         assert!(result.is_ok());
 
         unsafe {
@@ -1023,7 +1027,7 @@ mod tests {
         ).unwrap();
 
         // Verify the function runs without panicking
-        let result = show_cache_info(&config);
+        let result = show_cache_info(&config, false);
         assert!(result.is_ok());
 
         unsafe {
