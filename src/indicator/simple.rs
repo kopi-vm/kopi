@@ -60,7 +60,6 @@ impl ProgressIndicator for SimpleProgress {
     }
 
     fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
-        // TODO: Phase 2 - CI environments don't support nested progress bars
         Box::new(SilentProgress::new())
     }
 }
@@ -266,5 +265,64 @@ mod tests {
         assert_eq!(output[1], "✓ Operation1 target1 - Complete");
         assert_eq!(output[2], "Operation2 target2...");
         assert_eq!(output[3], "✓ Operation2 target2 - Done");
+    }
+
+    #[test]
+    fn test_create_child_returns_silent() {
+        let mut progress = SimpleProgress::new();
+
+        let mut child = progress.create_child();
+
+        let config = ProgressConfig::new("Child Op", "test", ProgressStyle::Count);
+        child.start(config);
+
+        child.update(50, Some(100));
+        child.set_message("Processing".to_string());
+        child.complete(Some("Done".to_string()));
+
+        child.error("Failed".to_string())
+    }
+
+    #[test]
+    fn test_multiple_children() {
+        let mut progress = SimpleProgress::new();
+
+        let mut child1 = progress.create_child();
+        let mut child2 = progress.create_child();
+        let mut child3 = progress.create_child();
+
+        let config1 = ProgressConfig::new("Child1", "op1", ProgressStyle::Count);
+        child1.start(config1);
+        child1.complete(None);
+
+        let config2 = ProgressConfig::new("Child2", "op2", ProgressStyle::Bytes);
+        child2.start(config2);
+        child2.complete(Some("Success".to_string()));
+
+        let config3 = ProgressConfig::new("Child3", "op3", ProgressStyle::Count);
+        child3.start(config3);
+        child3.error("Failed".to_string())
+    }
+
+    #[test]
+    fn test_parent_child_interaction() {
+        TestProgress::clear_output();
+        let mut progress = TestProgress::new();
+
+        let parent_config = ProgressConfig::new("Parent", "operation", ProgressStyle::Count);
+        progress.start(parent_config);
+
+        let mut child = progress.create_child();
+        let child_config = ProgressConfig::new("Child", "subtask", ProgressStyle::Bytes);
+        child.start(child_config);
+        child.update(100, Some(200));
+        child.complete(Some("Child done".to_string()));
+
+        progress.complete(Some("All done".to_string()));
+
+        let output = TestProgress::get_output();
+        assert_eq!(output.len(), 2);
+        assert_eq!(output[0], "Parent operation...");
+        assert_eq!(output[1], "✓ Parent operation - All done");
     }
 }
