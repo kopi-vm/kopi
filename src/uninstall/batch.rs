@@ -25,7 +25,6 @@ use crate::uninstall::progress::ProgressReporter;
 use crate::version::VersionRequest;
 use log::{debug, info, warn};
 use std::str::FromStr;
-use std::time::Duration;
 
 pub struct BatchUninstaller<'a> {
     config: &'a KopiConfig,
@@ -107,10 +106,9 @@ impl<'a> BatchUninstaller<'a> {
         // Calculate total size
         let total_size = self.calculate_total_size(&jdks)?;
 
-        // Show summary
-        self.display_batch_summary(&jdks, total_size)?;
-
+        // Show summary only in dry-run mode
         if dry_run {
+            self.display_batch_summary(&jdks, total_size)?;
             return Ok(());
         }
 
@@ -120,6 +118,9 @@ impl<'a> BatchUninstaller<'a> {
                 "User cancelled operation".to_string(),
             ));
         }
+
+        // Add a newline after confirmation for cleaner output
+        println!();
 
         // Perform batch removal with transaction-like behavior
         self.execute_batch_removal(jdks, total_size)
@@ -169,14 +170,14 @@ impl<'a> BatchUninstaller<'a> {
         let mut removed_count = 0;
         let mut failed_jdks = Vec::new();
         let mut removed_jdks = Vec::new();
+        let mut log_messages = Vec::new(); // Collect log messages to output after progress
+        let mut status_messages = Vec::new(); // Collect status messages to show after progress
 
         for jdk in &jdks {
-            info!("Removing {}@{}", jdk.distribution, jdk.version);
+            log_messages.push(format!("Removing {}@{}", jdk.distribution, jdk.version));
 
-            // Create spinner for current JDK
-            let spinner = progress_reporter
-                .create_spinner(&format!("Removing {}@{}...", jdk.distribution, jdk.version));
-            spinner.enable_steady_tick(Duration::from_millis(100));
+            // Update overall progress bar message for current JDK
+            overall_pb.set_message(format!("Removing {}@{}...", jdk.distribution, jdk.version));
 
             // Perform safety checks
             match crate::uninstall::safety::perform_safety_checks(
@@ -185,12 +186,16 @@ impl<'a> BatchUninstaller<'a> {
             ) {
                 Ok(()) => {}
                 Err(e) => {
-                    warn!(
+                    log_messages.push(format!(
                         "Safety check failed for {}@{}: {}",
                         jdk.distribution, jdk.version, e
-                    );
-                    spinner.finish_and_clear();
+                    ));
+                    status_messages.push(format!(
+                        "✗ Safety check failed for {}@{}",
+                        jdk.distribution, jdk.version
+                    ));
                     failed_jdks.push((jdk.clone(), e));
+                    overall_pb.inc(1); // Still increment to show progress
                     continue;
                 }
             }
@@ -200,27 +205,40 @@ impl<'a> BatchUninstaller<'a> {
                 Ok(()) => {
                     removed_count += 1;
                     removed_jdks.push(jdk.clone());
-                    spinner.finish_with_message(format!(
-                        "✓ Removed {}@{}",
-                        jdk.distribution, jdk.version
-                    ));
+                    status_messages.push(format!("✓ Removed {}@{}", jdk.distribution, jdk.version));
                     overall_pb.inc(1);
                 }
                 Err(e) => {
-                    warn!(
+                    log_messages.push(format!(
                         "Failed to remove {}@{}: {}",
                         jdk.distribution, jdk.version, e
-                    );
-                    spinner.finish_with_message(format!(
+                    ));
+                    status_messages.push(format!(
                         "✗ Failed to remove {}@{}",
                         jdk.distribution, jdk.version
                     ));
                     failed_jdks.push((jdk.clone(), e));
+                    overall_pb.inc(1); // Still increment to show progress
                 }
             }
         }
 
         overall_pb.finish_and_clear();
+
+        // Show status messages after progress bar is done
+        for msg in status_messages {
+            println!("{msg}");
+        }
+
+        // Now output the collected log messages after all progress indicators are finished
+        for msg in log_messages {
+            if msg.starts_with("Removing ") {
+                info!("{msg}");
+            } else if msg.starts_with("Safety check failed") || msg.starts_with("Failed to remove")
+            {
+                warn!("{msg}");
+            }
+        }
 
         // Report results
         let failed_with_messages: Vec<(InstalledJdk, String)> = failed_jdks

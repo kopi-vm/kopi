@@ -60,6 +60,13 @@ impl ProgressHandle {
         }
     }
 
+    /// Set the progress message
+    pub fn set_message(&self, message: String) {
+        if let Ok(mut indicator) = self.indicator.lock() {
+            indicator.set_message(message);
+        }
+    }
+
     /// Finish the progress indicator (for tests)
     pub fn finish(&self) {
         self.finish_and_clear();
