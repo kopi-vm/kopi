@@ -93,8 +93,13 @@ impl<'a> InstallCommand<'a> {
         if should_refresh && self.config.metadata.cache.auto_refresh {
             info!("Refreshing package cache...");
             progress.set_message("Refreshing package cache...".to_string());
-            match cache::fetch_and_cache_metadata_with_progress(self.config, progress, current_step)
-            {
+            // Use SilentProgress for cache refresh to avoid nested progress bars
+            let mut silent_progress = crate::indicator::SilentProgress;
+            match cache::fetch_and_cache_metadata_with_progress(
+                self.config,
+                &mut silent_progress,
+                current_step,
+            ) {
                 Ok(cache) => Ok(cache),
                 Err(e) => {
                     // If refresh fails and we have an existing cache, use it with warning
@@ -129,13 +134,44 @@ impl<'a> InstallCommand<'a> {
              timeout={timeout_secs:?}"
         );
 
+        // Parse version specification first (before progress bar)
+        let parser = VersionParser::new(self.config);
+        let version_request = parser.parse(version_spec)?;
+        trace!("Parsed version request: {version_request:?}");
+        
+        // Install command requires a specific version
+        let version = version_request.version.as_ref().ok_or_else(|| {
+            KopiError::InvalidVersionFormat(
+                "Install command requires a specific version. Use 'kopi cache search' to browse \
+                 available versions."
+                    .to_string(),
+            )
+        })?;
+        
+        // Validate version semantics
+        VersionParser::validate_version_semantics(version)?;
+        
+        // Use default distribution from config if not specified
+        let distribution = if let Some(dist) = version_request.distribution.clone() {
+            dist
+        } else {
+            Distribution::from_str(&self.config.default_distribution)
+                .unwrap_or(Distribution::Temurin)
+        };
+        
+        // Show operation message before progress bar starts
+        self.status.operation(
+            "Installing",
+            &format!("{} {}", distribution.name(), version),
+        );
+
         // Create progress indicator
         let mut progress = crate::indicator::ProgressFactory::create(no_progress);
 
         // Calculate base steps for installation
-        // Base steps: parse(1) + find_package(1) + check_installed(1) +
-        //             download(1) + extract(1) + detect_structure(1) + install(1) + save_metadata(1) = 8
-        let mut total_steps = 8u64;
+        // Base steps: find_package(1) + check_installed(1) + download(1) + 
+        //             extract(1) + detect_structure(1) + install_to_final_location(1) = 6
+        let mut total_steps = 6u64;
 
         // Add optional steps
         let cache_needs_refresh = self.check_cache_needs_refresh()?;
@@ -145,13 +181,17 @@ impl<'a> InstallCommand<'a> {
             total_steps += 5 + provider.source_count() as u64;
         }
 
+        // Add shim creation step if enabled
+        if self.config.shims.auto_create_shims {
+            total_steps += 1;
+        }
+
         // We'll add checksum verification step dynamically if checksum exists
-        // We'll add shim creation step dynamically if enabled
 
         // Initialize progress with total steps
         let progress_config = crate::indicator::ProgressConfig::new(
             "Installing",
-            version_spec,
+            &format!("{} {}", distribution.name(), version),
             crate::indicator::ProgressStyle::Count,
         )
         .with_total(total_steps);
@@ -159,44 +199,7 @@ impl<'a> InstallCommand<'a> {
 
         let mut current_step = 0u64;
 
-        // Step 1: Parse version specification
-        current_step += 1;
-        progress.update(current_step, Some(total_steps));
-        progress.set_message("Parsing version specification".to_string());
-
-        // Use config to parse version with additional distributions support
-        let parser = VersionParser::new(self.config);
-
-        // Parse version specification
-        let version_request = parser.parse(version_spec)?;
-        trace!("Parsed version request: {version_request:?}");
-
-        // Install command requires a specific version
-        let version = version_request.version.as_ref().ok_or_else(|| {
-            KopiError::InvalidVersionFormat(
-                "Install command requires a specific version. Use 'kopi cache search' to browse \
-                 available versions."
-                    .to_string(),
-            )
-        })?;
-
-        // Validate version semantics
-        VersionParser::validate_version_semantics(version)?;
-
-        // Use default distribution from config if not specified
-        let distribution = if let Some(dist) = version_request.distribution.clone() {
-            dist
-        } else {
-            Distribution::from_str(&self.config.default_distribution)
-                .unwrap_or(Distribution::Temurin)
-        };
-
-        self.status.operation(
-            "Installing",
-            &format!("{} {}", distribution.name(), version),
-        );
-
-        // Step 2 (and possibly more if cache refresh needed): Find matching package
+        // Step 1: Find matching package
         current_step += 1;
         progress.update(current_step, Some(total_steps));
         progress.set_message(format!("Searching for {} {}", distribution.name(), version));
@@ -222,7 +225,7 @@ impl<'a> InstallCommand<'a> {
         // Create storage manager with config
         let repository = JdkRepository::new(self.config);
 
-        // Step 3: Check if already installed
+        // Step 2: Check if already installed
         current_step += 1;
         progress.update(current_step, Some(total_steps));
         progress.set_message("Checking installation status".to_string());
@@ -295,24 +298,18 @@ impl<'a> InstallCommand<'a> {
             progress.update(current_step, Some(total_steps));
         }
 
-        // Step 4: Download JDK
+        // Step 3: Download JDK
         current_step += 1;
         progress.update(current_step, Some(total_steps));
         progress.set_message(format!(
-            "Downloading {} {} (id: {})",
-            jdk_metadata_with_checksum.distribution,
-            jdk_metadata_with_checksum.version,
-            jdk_metadata_with_checksum.id
+            "Downloading {} {} (this may take a while...)",
+            jdk_metadata_with_checksum.distribution, jdk_metadata_with_checksum.version
         ));
 
-        self.status.step(&format!(
-            "Downloading {} {} (id: {})",
-            jdk_metadata_with_checksum.distribution,
-            jdk_metadata_with_checksum.version,
-            jdk_metadata_with_checksum.id
-        ));
+        // Don't output during progress bar display
+        // self.status.step would interfere with progress bar rendering
 
-        // Download JDK (has its own progress bar for bytes)
+        // Download JDK (disable separate progress bar to avoid terminal corruption)
         info!(
             "Downloading from {}",
             jdk_metadata_with_checksum
@@ -320,18 +317,19 @@ impl<'a> InstallCommand<'a> {
                 .as_ref()
                 .unwrap_or(&"<URL not available>".to_string())
         );
-        let download_result = download_jdk(&jdk_metadata_with_checksum, no_progress, timeout_secs)?;
+        // Force no_progress to true for download to prevent overlapping progress bars
+        let download_result = download_jdk(&jdk_metadata_with_checksum, true, timeout_secs)?;
         let download_path = download_result.path();
         debug!("Downloaded to {download_path:?}");
 
-        // Step 5 (optional): Verify checksum
+        // Step 4 (optional): Verify checksum
         if let Some(checksum) = &jdk_metadata_with_checksum.checksum
             && let Some(checksum_type) = jdk_metadata_with_checksum.checksum_type
         {
             current_step += 1;
             progress.update(current_step, Some(total_steps));
             progress.set_message("Verifying checksum".to_string());
-            self.status.step("Verifying checksum");
+            // Don't output during progress bar display
             verify_checksum(download_path, checksum, checksum_type)?;
         }
 
@@ -352,16 +350,16 @@ impl<'a> InstallCommand<'a> {
             )?
         };
 
-        // Step 6: Extract archive to temp directory
+        // Step 5: Extract archive to temp directory
         current_step += 1;
         progress.update(current_step, Some(total_steps));
         progress.set_message("Extracting archive".to_string());
-        self.status.step("Extracting archive");
+        // Don't output during progress bar display
         info!("Extracting archive to {:?}", context.temp_path);
         extract_archive(download_path, &context.temp_path)?;
         debug!("Extraction completed");
 
-        // Step 7: Detect JDK structure
+        // Step 6: Detect JDK structure
         current_step += 1;
         progress.update(current_step, Some(total_steps));
         progress.set_message("Detecting JDK structure".to_string());
@@ -384,7 +382,7 @@ impl<'a> InstallCommand<'a> {
             structure_info.jdk_root.display()
         );
 
-        // Step 8: Install to final location
+        // Step 7: Install to final location
         current_step += 1;
         progress.update(current_step, Some(total_steps));
         progress.set_message("Installing to final location".to_string());
@@ -413,13 +411,7 @@ impl<'a> InstallCommand<'a> {
         // Clean up is automatic when download_result goes out of scope
         // The TempDir will be cleaned up automatically
 
-        // Check if we need to create shims and update total steps if needed
-        if self.config.shims.auto_create_shims {
-            total_steps += 1;
-            progress.update(current_step, Some(total_steps));
-        }
-
-        // Step 9 (optional): Create shims if enabled in config
+        // Step 8 (optional): Create shims if enabled in config
         if self.config.shims.auto_create_shims {
             current_step += 1;
             progress.update(current_step, Some(total_steps));
@@ -441,16 +433,17 @@ impl<'a> InstallCommand<'a> {
             }
 
             if !tools.is_empty() {
-                self.status.step("Creating shims");
+                // Don't output during progress bar display
                 let shim_installer = ShimInstaller::new(self.config.kopi_home());
                 let created_shims = shim_installer.create_missing_shims(&tools)?;
 
                 if !created_shims.is_empty() {
                     progress.set_message(format!("Created {} new shims", created_shims.len()));
-                    self.status
-                        .step(&format!("Created {} new shims:", created_shims.len()));
+                    // Don't output during progress bar display
+                    // Show shim count in progress message instead
+                    debug!("Created {} new shims", created_shims.len());
                     for shim in &created_shims {
-                        self.status.step(&format!("  - {shim}"));
+                        debug!("  - {shim}");
                     }
                 } else {
                     debug!("All shims already exist");
@@ -498,7 +491,9 @@ impl<'a> InstallCommand<'a> {
         let os = get_current_os();
 
         // Always ensure we have a fresh cache
-        let mut cache = self.ensure_fresh_cache(progress, current_step)?;
+        // Use SilentProgress for cache operations to avoid nested progress bars
+        let mut silent_progress = crate::indicator::SilentProgress;
+        let mut cache = self.ensure_fresh_cache(&mut silent_progress, current_step)?;
 
         // Search in cache
         // First try exact match
@@ -520,7 +515,8 @@ impl<'a> InstallCommand<'a> {
             if !jdk_metadata.is_complete() {
                 debug!("Metadata is incomplete, fetching package details...");
                 let provider = crate::metadata::MetadataProvider::from_config(self.config)?;
-                provider.ensure_complete(&mut jdk_metadata, progress)?;
+                let mut silent_progress = crate::indicator::SilentProgress;
+                provider.ensure_complete(&mut jdk_metadata, &mut silent_progress)?;
             }
 
             return Ok(self.convert_metadata_to_package(&jdk_metadata));
@@ -530,8 +526,12 @@ impl<'a> InstallCommand<'a> {
         if self.config.metadata.cache.refresh_on_miss {
             info!("Package not found in cache, refreshing...");
             progress.set_message("Package not found in cache, refreshing...".to_string());
-            match cache::fetch_and_cache_metadata_with_progress(self.config, progress, current_step)
-            {
+            let mut silent_progress = crate::indicator::SilentProgress;
+            match cache::fetch_and_cache_metadata_with_progress(
+                self.config,
+                &mut silent_progress,
+                current_step,
+            ) {
                 Ok(new_cache) => {
                     cache = new_cache;
 
@@ -555,7 +555,8 @@ impl<'a> InstallCommand<'a> {
                             debug!("Metadata is incomplete, fetching package details...");
                             let provider =
                                 crate::metadata::MetadataProvider::from_config(self.config)?;
-                            provider.ensure_complete(&mut jdk_metadata, progress)?;
+                            let mut silent_progress = crate::indicator::SilentProgress;
+                            provider.ensure_complete(&mut jdk_metadata, &mut silent_progress)?;
                         }
 
                         return Ok(self.convert_metadata_to_package(&jdk_metadata));
