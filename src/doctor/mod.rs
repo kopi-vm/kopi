@@ -15,6 +15,8 @@
 use std::fmt;
 use std::time::{Duration, Instant};
 
+use crate::indicator::{ProgressConfig, ProgressFactory, ProgressStyle};
+
 pub mod checks;
 pub mod formatters;
 
@@ -257,52 +259,46 @@ impl<'a> DiagnosticEngine<'a> {
             .map(|cat| cat.create_checks(self.config).len())
             .sum();
 
-        // Create progress bar if requested
-        let progress_bar = if show_progress {
+        // Create progress indicator using the factory
+        let mut progress = ProgressFactory::create(!show_progress);
+
+        if show_progress {
             // Add a newline before progress bar for better visibility
             eprintln!();
-            Some(indicatif::ProgressBar::new(total_checks as u64))
-        } else {
-            None
-        };
 
-        if let Some(ref pb) = progress_bar {
-            pb.set_style(
-                indicatif::ProgressStyle::with_template(
-                    "{spinner:.green} [{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}",
-                )
-                .unwrap()
-                .progress_chars("##-")
-                .tick_chars("⣾⣽⣻⢿⡿⣟⣯⣷"),
-            );
-            pb.set_message("Starting diagnostic checks...");
-            pb.enable_steady_tick(std::time::Duration::from_millis(100));
+            // Initialize progress with configuration
+            let config = ProgressConfig::new("Running", "diagnostic checks", ProgressStyle::Count)
+                .with_total(total_checks as u64);
+            progress.start(config);
         }
+
+        let mut current_check = 0u64;
 
         // Create checks for each category and run them
         for category in categories_to_run {
             let checks = category.create_checks(self.config);
 
             for check in checks {
-                // Update progress bar message
-                if let Some(ref pb) = progress_bar {
-                    pb.set_message(format!("{}: {}", category, check.name()));
+                // Update progress message
+                if show_progress {
+                    progress.set_message(format!("{}: {}", category, check.name()));
                 }
 
                 let start = Instant::now();
                 let result = check.run(start, category);
                 results.push(result);
 
-                // Increment progress
-                if let Some(ref pb) = progress_bar {
-                    pb.inc(1);
+                // Update progress counter
+                current_check += 1;
+                if show_progress {
+                    progress.update(current_check, Some(total_checks as u64));
                 }
             }
         }
 
-        // Finish progress bar
-        if let Some(pb) = progress_bar {
-            pb.finish_with_message("All checks completed");
+        // Complete progress
+        if show_progress {
+            progress.complete(Some("All checks completed".to_string()));
             eprintln!(); // Add space after progress bar
         }
 
