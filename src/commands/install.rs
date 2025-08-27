@@ -93,7 +93,8 @@ impl<'a> InstallCommand<'a> {
         if should_refresh && self.config.metadata.cache.auto_refresh {
             info!("Refreshing package cache...");
             progress.set_message("Refreshing package cache...".to_string());
-            // Use SilentProgress for cache refresh to avoid nested progress bars
+            // Use silent progress for cache refresh to avoid nested progress bars
+            // The parent progress message is already set above
             let mut silent_progress = crate::indicator::SilentProgress;
             match cache::fetch_and_cache_metadata_with_progress(
                 self.config,
@@ -491,9 +492,8 @@ impl<'a> InstallCommand<'a> {
         let os = get_current_os();
 
         // Always ensure we have a fresh cache
-        // Use SilentProgress for cache operations to avoid nested progress bars
-        let mut silent_progress = crate::indicator::SilentProgress;
-        let mut cache = self.ensure_fresh_cache(&mut silent_progress, current_step)?;
+        // Pass the parent progress to ensure_fresh_cache which will handle child creation if needed
+        let mut cache = self.ensure_fresh_cache(progress, current_step)?;
 
         // Search in cache
         // First try exact match
@@ -526,6 +526,8 @@ impl<'a> InstallCommand<'a> {
         if self.config.metadata.cache.refresh_on_miss {
             info!("Package not found in cache, refreshing...");
             progress.set_message("Package not found in cache, refreshing...".to_string());
+            // Use silent progress for cache refresh to avoid nested progress bars
+            // The parent progress message is already set above
             let mut silent_progress = crate::indicator::SilentProgress;
             match cache::fetch_and_cache_metadata_with_progress(
                 self.config,

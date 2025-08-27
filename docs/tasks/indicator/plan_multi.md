@@ -4,7 +4,7 @@
 
 This document outlines the implementation plan for adding multi-progress bar support to Kopi's ProgressIndicator system. The implementation focuses on providing nested progress bars for operations with clear parent-child relationships, particularly for download operations and cache refresh from different sources.
 
-**Current Status**: Phase 4 Completed
+**Current Status**: Phase 2 Completed
 
 ## Phase 1: Core Infrastructure - Trait and ALL Implementations Update ✅
 
@@ -86,7 +86,7 @@ cargo test --lib indicator::simple
 
 ---
 
-## Phase 3: IndicatifProgress MultiProgress Implementation ✅
+## Phase 3: IndicatifProgress MultiProgress Implementation
 
 **Goal**: Implement full MultiProgress support in IndicatifProgress for nested progress bars.
 
@@ -99,25 +99,25 @@ cargo test --lib indicator::simple
   - `/src/indicator/indicatif.rs` - IndicatifProgress implementation
 
 ### Tasks
-- [x] **Refactor IndicatifProgress structure**:
-  - [x] Add `multi_progress: Arc<MultiProgress>` field
-  - [x] Update `new()` to create MultiProgress instance
-  - [x] Add `new_with_parent()` for child instances
-- [x] **Implement create_child()**:
-  - [x] Create child IndicatifProgress sharing parent's MultiProgress
-  - [x] Register child bar with parent's MultiProgress
-  - [x] Handle proper bar positioning
-- [x] **Update existing methods**:
-  - [x] Modify `start()` to work with MultiProgress
-  - [x] Ensure `complete()` properly cleans up bars
-  - [x] Handle terminal resizing gracefully
-- [x] **Add tests**:
-  - [x] Test parent-child bar creation
-  - [x] Test multiple children
-  - [x] Test cleanup on completion
-  - [x] Test nested progress depth
-  - [x] Test child with error handling
-  - [x] Test child spinner without total
+- [ ] **Refactor IndicatifProgress structure**:
+  - [ ] Add `multi_progress: Arc<MultiProgress>` field
+  - [ ] Update `new()` to create MultiProgress instance
+  - [ ] Add `new_with_parent()` for child instances
+- [ ] **Implement create_child()**:
+  - [ ] Create child IndicatifProgress sharing parent's MultiProgress
+  - [ ] Register child bar with parent's MultiProgress
+  - [ ] Handle proper bar positioning
+- [ ] **Update existing methods**:
+  - [ ] Modify `start()` to work with MultiProgress
+  - [ ] Ensure `complete()` properly cleans up bars
+  - [ ] Handle terminal resizing gracefully
+- [ ] **Add tests**:
+  - [ ] Test parent-child bar creation
+  - [ ] Test multiple children
+  - [ ] Test cleanup on completion
+  - [ ] Test nested progress depth
+  - [ ] Test child with error handling
+  - [ ] Test child spinner without total
 
 ### Deliverables
 - IndicatifProgress with full MultiProgress support
