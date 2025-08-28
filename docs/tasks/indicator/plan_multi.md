@@ -1,13 +1,30 @@
 # Multi-Progress Support Implementation Plan
 
-**Last Updated**: 2025-08-27 (Updated with spike validation results)
+**Last Updated**: 2025-08-28 (Updated with design refinements and trait extensions)
 
 ## Overview
 
 This document outlines the implementation plan for adding multi-progress bar support to Kopi's ProgressIndicator system. The implementation focuses on providing nested progress bars for operations with clear parent-child relationships, particularly for download operations and cache refresh from different sources.
 
-**Current Status**: Phase 3 Completed  
+**Current Status**: Phase 1-3 require revision due to design refinements  
 **Design Validation**: ✅ Completed via spike implementation (see `multiprogress_spike_report.md` and `multi_progress_spike.rs`)
+**Recent Changes**: ProgressIndicator trait extended with `suspend()` and `println()` methods
+
+## Revision Required Due to Design Changes
+
+The following design changes require revision of completed phases:
+
+1. **ProgressIndicator trait extension**: Added `suspend()` and `println()` methods for safe output
+2. **SimpleProgress refinement**: Replace Unicode symbols with ASCII-only output
+3. **IndicatifProgress architecture**: Changed from `Option<Arc<MultiProgress>>` to always-initialized `Arc<MultiProgress>`
+4. **Template management**: Templates determined at construction, not runtime
+
+**Affected Phases**:
+- **Phase 1** (trait definition): Needs implementation of new methods across all types
+- **Phase 2** (SimpleProgress): Replace Unicode ("✓"/"✗") with ASCII ("[OK]"/"[ERROR]")  
+- **Phase 3** (IndicatifProgress): Structural changes and new method implementations
+- **Phase 4** (Download): May need minor adjustments for new API
+- **Phase 5-10**: Not yet implemented, plan updated accordingly
 
 ## Spike Validation Summary
 
@@ -20,32 +37,36 @@ The design has been thoroughly validated through a working spike implementation 
 
 **Ready for Phase 3 Implementation** with validated patterns and reference code.
 
-## Phase 1: Core Infrastructure - Trait and ALL Implementations Update ✅
+## Phase 1: Core Infrastructure - Trait and ALL Implementations Update 🔄 (Requires Revision)
 
-**Goal**: Update the ProgressIndicator trait and ALL implementations with minimal changes to maintain compilation.
+**Goal**: Update the ProgressIndicator trait with new methods and ALL implementations to maintain compilation.
 
 ### Input Materials
 - **Documentation**:
-  - `/docs/tasks/indicator/design_multi.md` - Design specification
+  - `/docs/tasks/indicator/design_multi.md` - Updated design specification
   
 - **Source Code to Modify**:
   - `/src/indicator/mod.rs` - ProgressIndicator trait definition
   - `/src/indicator/silent.rs` - SilentProgress implementation
   - `/src/indicator/simple.rs` - SimpleProgress implementation
   - `/src/indicator/indicatif.rs` - IndicatifProgress implementation
+  - `/tests/common/progress_capture.rs` - Test helper implementation
 
 ### Tasks
 - [x] **Update ProgressIndicator trait**:
   - [x] Add `fn create_child(&mut self) -> Box<dyn ProgressIndicator>` method
+  - [x] Add `fn suspend(&self, f: &mut dyn FnMut())` method ✅
+  - [x] Add `fn println(&self, message: &str) -> std::io::Result<()>` method ✅
   - [x] Update trait documentation
-  - [x] Ensure Send trait bound remains
-- [x] **Minimal implementation for ALL types**:
-  - [x] SilentProgress: `Box::new(SilentProgress)`
-  - [x] SimpleProgress: `Box::new(SilentProgress)` with `// TODO: Phase 2` comment
-  - [x] IndicatifProgress: `Box::new(SilentProgress)` with `// TODO: Phase 3` comment
-- [x] **Ensure compilation**:
-  - [x] All implementations compile
-  - [x] All existing tests pass
+  - [x] Ensure Send + Sync trait bounds
+- [ ] **Implement new methods for ALL types**:
+  - [x] SilentProgress: Implement all three methods (no-op for suspend/println)
+  - [ ] SimpleProgress: Implement with ASCII symbols only, no Unicode
+  - [ ] IndicatifProgress: Implement with MultiProgress integration
+- [ ] **Ensure compilation**:
+  - [ ] All implementations compile with new methods
+  - [ ] Update test helpers in progress_capture.rs
+  - [ ] All existing tests pass
 
 ### Example Implementation
 Each implementation gets a minimal stub that maintains functionality:
@@ -68,23 +89,25 @@ cargo test --lib indicator
 
 ---
 
-## Phase 2: SimpleProgress Final Implementation ✅
+## Phase 2: SimpleProgress Final Implementation 🔄 (Requires Revision)
 
-**Goal**: Finalize `create_child()` for SimpleProgress with appropriate behavior.
+**Goal**: Finalize SimpleProgress with ASCII-only output and new trait methods.
 
 ### Input Materials
 - **Dependencies**:
-  - Phase 1 (All implementations compilable)
+  - Phase 1 (All implementations compilable with new trait methods)
 
 - **Source Code to Modify**:
   - `/src/indicator/simple.rs` - SimpleProgress implementation
 
 ### Tasks
-- [x] **Finalize SimpleProgress implementation**:
-  - [x] Keep `create_child()` returning `Box::new(SilentProgress)`
-  - [x] Remove `// TODO: Phase 2` comment
-  - [x] Add documentation explaining why children are silent in CI environments
-  - [x] Add tests for child creation behavior
+- [ ] **Update SimpleProgress implementation**:
+  - [ ] Replace Unicode symbols ("✓"/"✗") with ASCII ("[OK]"/"[ERROR]")
+  - [ ] Keep `create_child()` returning `Box::new(SilentProgress)`
+  - [ ] Implement `suspend()` method (direct execution, no suspension needed)
+  - [ ] Implement `println()` method (direct println! output)
+  - [ ] Add documentation explaining ASCII-only output for CI/NO_COLOR environments
+  - [ ] Update tests to verify ASCII symbols
 
 ### Deliverables
 - SimpleProgress with finalized `create_child()` behavior
@@ -100,28 +123,29 @@ cargo test --lib indicator::simple
 
 ---
 
-## Phase 3: IndicatifProgress MultiProgress Implementation ✅
+## Phase 3: IndicatifProgress MultiProgress Implementation 🔄 (Requires Revision)
 
-**Goal**: Implement full MultiProgress support in IndicatifProgress for nested progress bars.
+**Goal**: Implement full MultiProgress support in IndicatifProgress with refined architecture.
 
 ### Input Materials
 - **Dependencies**:
-  - Phase 1 (Trait updated)
+  - Phase 1 (Trait updated with new methods)
+  - Phase 2 (SimpleProgress finalized)
   - `indicatif` crate with MultiProgress support
-  - **Spike Validation**: Implementation patterns validated in `multi_progress_spike.rs`
+  - **Design Updates**: Refined architecture from design_multi.md
 
 - **Source Code to Modify**:
   - `/src/indicator/indicatif.rs` - IndicatifProgress implementation
 
-### Validated Implementation Approach (from Spike)
+### Updated Implementation Approach
 
-Based on the spike validation, the following implementation pattern has been confirmed:
+Based on design refinements, the implementation structure has been updated:
 
 ```rust
 pub struct IndicatifProgress {
-    multi: Option<Arc<MultiProgress>>,  // Shared for parent-child relationship
-    progress_bar: Option<ProgressBar>,
-    is_child: bool,
+    multi: Arc<MultiProgress>,           // Always initialized, no Option
+    owned_bar: Option<ProgressBar>,     // This instance's progress bar
+    template: String,                    // Template determined at construction
 }
 ```
 
@@ -134,29 +158,31 @@ pub struct IndicatifProgress {
 - **Steady Tick**: Enable with `Duration::from_millis(80)`
 
 ### Tasks
-- [x] **Refactor IndicatifProgress structure**:
-  - [x] Add `multi: Option<Arc<MultiProgress>>` field (shared for parent-child)
-  - [x] Add `is_child: bool` field to track hierarchy
-  - [x] Update `new()` to initialize without MultiProgress
-  - [x] MultiProgress created lazily on first `start()` call
-- [x] **Implement create_child()**:
-  - [x] Clone parent's `Arc<MultiProgress>` or create new if none
-  - [x] Return new IndicatifProgress with `is_child: true`
-  - [x] No immediate bar creation (deferred to `start()`)
-- [x] **Update existing methods**:
-  - [x] Modify `start()` to:
-    - Create MultiProgress lazily if needed
-    - Use `add()` for child bars (simplified positioning)
-    - Apply appropriate template based on `is_child`
+- [ ] **Refactor IndicatifProgress structure**:
+  - [ ] Change `multi` to `Arc<MultiProgress>` (always initialized, no Option)
+  - [ ] Rename `progress_bar` to `owned_bar` for clarity
+  - [ ] Remove `is_child` field (no longer needed)
+  - [ ] Add `template: String` field (determined at construction)
+  - [ ] Update `new()` to always create MultiProgress
+- [ ] **Implement create_child()**:
+  - [ ] Share parent's `Arc<MultiProgress>` via `Arc::clone()`
+  - [ ] Set child template with "  └─ " prefix
+  - [ ] No immediate bar creation (deferred to `start()`)
+- [ ] **Update existing methods**:
+  - [ ] Modify `start()` to:
+    - Use the pre-determined template from field
+    - Add bar to MultiProgress with `multi.add()`
     - Enable steady tick with 80ms interval
-  - [x] Ensure `complete()` calls `finish_and_clear()` for clean removal
-  - [x] Update `error()` to properly abandon child bars
-- [x] **Apply validated patterns**:
-  - [x] Place `{spinner}` at template beginning
-  - [x] Use `██░` progress chars
-  - [x] Add `"  └─ "` prefix for child bars
-  - [x] Keep messages at template end: `{msg}`
-- [x] **Add tests**:
+  - [ ] Ensure `complete()` calls appropriate finish method
+  - [ ] Update `error()` to properly abandon bars
+- [ ] **Implement new trait methods**:
+  - [ ] `suspend()`: Delegate to `multi.suspend()` 
+  - [ ] `println()`: Delegate to `multi.println()`
+- [ ] **Apply validated patterns**:
+  - [ ] Use `██░` progress chars
+  - [ ] Keep messages at template end: `{msg}`
+  - [ ] Template selection at construction, not runtime
+- [ ] **Add tests**:
   - [x] Test parent-child bar creation
   - [x] Test multiple children
   - [x] Test cleanup on completion with `finish_and_clear()`
@@ -490,13 +516,13 @@ cat docs/tasks/indicator/design_multi.md
 
 ## Implementation Order Summary
 
-### Core Components (Phases 1-3)
-1. **Phase 1**: ProgressIndicator trait and ALL implementations - minimal update (maintains compilation) ✅
-2. **Phase 2**: SimpleProgress - finalize implementation ✅
-3. **Phase 3**: IndicatifProgress with MultiProgress ✅
+### Core Components (Phases 1-3) - Requires Revision
+1. **Phase 1**: ProgressIndicator trait and ALL implementations - add suspend/println methods 🔄
+2. **Phase 2**: SimpleProgress - replace Unicode with ASCII symbols 🔄
+3. **Phase 3**: IndicatifProgress with refined MultiProgress architecture 🔄
 
 ### Integration (Phases 4-7)
-4. **Phase 4**: Download module integration ✅
+4. **Phase 4**: Download module integration ✅ (may need minor adjustments)
 5. **Phase 5**: Install command integration
 6. **Phase 6**: Cache module integration
 7. **Phase 7**: Cache command integration
@@ -554,6 +580,12 @@ cat docs/tasks/indicator/design_multi.md
 
 ## Notes for Implementation
 
+### Recent Design Refinements
+- **suspend()/println() methods**: Essential for safe log output during progress operations
+- **ASCII-only for SimpleProgress**: Ensures compatibility in NO_COLOR/CI environments
+- **No Option wrapper for MultiProgress**: Simplifies code by always initializing
+- **Template as field**: Reduces runtime decisions, cleaner separation of parent/child
+
 ### Spike Validation Results
 The design has been validated through a comprehensive spike implementation (`multi_progress_spike.rs`). Key validated patterns:
 - **Visual Hierarchy**: `insert_after()` provides correct parent-child positioning
@@ -563,9 +595,9 @@ The design has been validated through a comprehensive spike implementation (`mul
 - **Clean Removal**: `finish_and_clear()` properly removes bars from display
 
 ### Implementation Guidelines
-- **Phase 1 is critical**: Updates trait and ALL implementations at once to maintain compilation
-- Phase 2 is mostly documentation and cleanup (implementation already correct in Phase 1)
-- Phase 3 contains the main complexity with MultiProgress implementation (use spike patterns)
+- **Phase 1 is critical**: Updates trait with new methods and ALL implementations must compile
+- **Phase 2 focus**: Remove Unicode symbols, use ASCII only for CI/NO_COLOR compatibility
+- **Phase 3 architecture**: Always-initialized MultiProgress, template determined at construction
 - Always test visual output manually in addition to unit tests
 - Use 10MB as consistent threshold across all operations
 - Keep CI environment behavior unchanged (SimpleProgress returns SilentProgress children)
