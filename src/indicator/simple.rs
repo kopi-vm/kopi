@@ -52,14 +52,15 @@ impl ProgressIndicator for SimpleProgress {
 
     fn complete(&mut self, message: Option<String>) {
         let msg = message.unwrap_or_else(|| "Complete".to_string());
-        println!("✓ {} {} - {}", self.operation, self.context, msg);
+        println!("[OK] {} {} - {}", self.operation, self.context, msg);
     }
 
     fn error(&mut self, message: String) {
-        eprintln!("✗ {} {} - {}", self.operation, self.context, message);
+        eprintln!("[ERROR] {} {} - {}", self.operation, self.context, message);
     }
 
     fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
+        // Return SilentProgress for child operations to keep output clean
         Box::new(SilentProgress::new())
     }
 
@@ -69,7 +70,7 @@ impl ProgressIndicator for SimpleProgress {
     }
 
     fn println(&self, message: &str) -> std::io::Result<()> {
-        // SimpleProgress can output directly
+        // SimpleProgress can output directly without suspension
         println!("{message}");
         Ok(())
     }
@@ -124,7 +125,7 @@ mod tests {
         fn complete(&mut self, message: Option<String>) {
             let msg = message.unwrap_or_else(|| "Complete".to_string());
             let output = format!(
-                "✓ {} {} - {}",
+                "[OK] {} {} - {}",
                 self.inner.operation, self.inner.context, msg
             );
             OUTPUT.lock().unwrap().push(output);
@@ -132,7 +133,7 @@ mod tests {
 
         fn error(&mut self, message: String) {
             let output = format!(
-                "✗ {} {} - {}",
+                "[ERROR] {} {} - {}",
                 self.inner.operation, self.inner.context, message
             );
             OUTPUT.lock().unwrap().push(output);
@@ -164,7 +165,7 @@ mod tests {
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
         assert_eq!(output[0], "Installing temurin@21...");
-        assert_eq!(output[1], "✓ Installing temurin@21 - Done");
+        assert_eq!(output[1], "[OK] Installing temurin@21 - Done");
     }
 
     #[test]
@@ -194,7 +195,7 @@ mod tests {
 
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
-        assert_eq!(output[1], "✗ Extracting archive - Failed to extract");
+        assert_eq!(output[1], "[ERROR] Extracting archive - Failed to extract");
     }
 
     #[test]
@@ -209,7 +210,7 @@ mod tests {
 
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
-        assert_eq!(output[1], "✓ Caching metadata - Successfully cached");
+        assert_eq!(output[1], "[OK] Caching metadata - Successfully cached");
     }
 
     #[test]
@@ -224,7 +225,7 @@ mod tests {
 
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
-        assert_eq!(output[1], "✓ Processing data - Complete");
+        assert_eq!(output[1], "[OK] Processing data - Complete");
     }
 
     #[test]
@@ -281,9 +282,9 @@ mod tests {
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 4);
         assert_eq!(output[0], "Operation1 target1...");
-        assert_eq!(output[1], "✓ Operation1 target1 - Complete");
+        assert_eq!(output[1], "[OK] Operation1 target1 - Complete");
         assert_eq!(output[2], "Operation2 target2...");
-        assert_eq!(output[3], "✓ Operation2 target2 - Done");
+        assert_eq!(output[3], "[OK] Operation2 target2 - Done");
     }
 
     #[test]
@@ -342,6 +343,69 @@ mod tests {
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
         assert_eq!(output[0], "Parent operation...");
-        assert_eq!(output[1], "✓ Parent operation - All done");
+        assert_eq!(output[1], "[OK] Parent operation - All done");
+    }
+
+    #[test]
+    #[serial]
+    fn test_ascii_only_output() {
+        // Verify that SimpleProgress uses ASCII-only output for CI/NO_COLOR compatibility
+        TestProgress::clear_output();
+        let mut progress = TestProgress::new();
+
+        // Test successful completion with ASCII [OK]
+        let config = ProgressConfig::new("Testing", "ASCII", ProgressStyle::Count);
+        progress.start(config);
+        progress.complete(Some("Success".to_string()));
+
+        let output = TestProgress::get_output();
+        assert_eq!(output.len(), 2);
+        assert!(
+            output[1].starts_with("[OK]"),
+            "Should use ASCII [OK] prefix"
+        );
+        assert!(
+            !output[1].contains('✓'),
+            "Should not contain Unicode checkmark"
+        );
+
+        // Test error with ASCII [ERROR]
+        TestProgress::clear_output();
+        let mut progress = TestProgress::new();
+        let config = ProgressConfig::new("Testing", "Error", ProgressStyle::Count);
+        progress.start(config);
+        progress.error("Failed".to_string());
+
+        let output = TestProgress::get_output();
+        assert_eq!(output.len(), 2);
+        assert!(
+            output[1].starts_with("[ERROR]"),
+            "Should use ASCII [ERROR] prefix"
+        );
+        assert!(
+            !output[1].contains('✗'),
+            "Should not contain Unicode cross mark"
+        );
+    }
+
+    #[test]
+    fn test_suspend_direct_execution() {
+        let progress = SimpleProgress::new();
+        let mut executed = false;
+
+        progress.suspend(&mut || {
+            executed = true;
+        });
+
+        assert!(executed, "suspend should execute the function directly");
+    }
+
+    #[test]
+    fn test_println_output() {
+        let progress = SimpleProgress::new();
+
+        // This test just ensures println doesn't panic
+        let result = progress.println("Test message");
+        assert!(result.is_ok(), "println should return Ok");
     }
 }

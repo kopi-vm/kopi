@@ -20,8 +20,8 @@ The following design changes require revision of completed phases:
 4. **Template management**: Templates determined at construction, not runtime
 
 **Affected Phases**:
-- **Phase 1** (trait definition): Needs implementation of new methods across all types
-- **Phase 2** (SimpleProgress): Replace Unicode ("✓"/"✗") with ASCII ("[OK]"/"[ERROR]")  
+- **Phase 1** (trait definition): Needs implementation of new methods across all types ✅
+- **Phase 2** (SimpleProgress): Replace Unicode ("✓"/"✗") with ASCII ("[OK]"/"[ERROR]") ✅  
 - **Phase 3** (IndicatifProgress): Structural changes and new method implementations
 - **Phase 4** (Download): May need minor adjustments for new API
 - **Phase 5-10**: Not yet implemented, plan updated accordingly
@@ -89,7 +89,7 @@ cargo test --lib indicator
 
 ---
 
-## Phase 2: SimpleProgress Final Implementation 🔄 (Requires Revision)
+## Phase 2: SimpleProgress Final Implementation ✅
 
 **Goal**: Finalize SimpleProgress with ASCII-only output and new trait methods.
 
@@ -101,13 +101,13 @@ cargo test --lib indicator
   - `/src/indicator/simple.rs` - SimpleProgress implementation
 
 ### Tasks
-- [ ] **Update SimpleProgress implementation**:
-  - [ ] Replace Unicode symbols ("✓"/"✗") with ASCII ("[OK]"/"[ERROR]")
-  - [ ] Keep `create_child()` returning `Box::new(SilentProgress)`
-  - [ ] Implement `suspend()` method (direct execution, no suspension needed)
-  - [ ] Implement `println()` method (direct println! output)
-  - [ ] Add documentation explaining ASCII-only output for CI/NO_COLOR environments
-  - [ ] Update tests to verify ASCII symbols
+- [x] **Update SimpleProgress implementation**:
+  - [x] Replace Unicode symbols ("✓"/"✗") with ASCII ("[OK]"/"[ERROR]")
+  - [x] Keep `create_child()` returning `Box::new(SilentProgress)`
+  - [x] Implement `suspend()` method (direct execution, no suspension needed)
+  - [x] Implement `println()` method (direct println! output)
+  - [x] Add documentation explaining ASCII-only output for CI/NO_COLOR environments
+  - [x] Update tests to verify ASCII symbols
 
 ### Deliverables
 - SimpleProgress with finalized `create_child()` behavior
@@ -517,8 +517,8 @@ cat docs/tasks/indicator/design_multi.md
 ## Implementation Order Summary
 
 ### Core Components (Phases 1-3) - Requires Revision
-1. **Phase 1**: ProgressIndicator trait and ALL implementations - add suspend/println methods 🔄
-2. **Phase 2**: SimpleProgress - replace Unicode with ASCII symbols 🔄
+1. **Phase 1**: ProgressIndicator trait and ALL implementations - add suspend/println methods ✅
+2. **Phase 2**: SimpleProgress - replace Unicode with ASCII symbols ✅
 3. **Phase 3**: IndicatifProgress with refined MultiProgress architecture 🔄
 
 ### Integration (Phases 4-7)
