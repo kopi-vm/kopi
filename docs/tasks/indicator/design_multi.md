@@ -1,12 +1,12 @@
 # Multi-Progress Support Design
 
-**Last Updated**: 2025-08-28 (Updated with investigation findings and StatusReporter coexistence strategy)
+**Last Updated**: 2025-08-28 (Phase 3 completed with `is_child` field implementation)
 
 ## Overview
 
 This document outlines the design for adding multi-progress bar support to Kopi's ProgressIndicator system. The implementation focuses on providing nested progress bars for operations that have clear parent-child relationships, improving user visibility into long-running operations.
 
-**Status**: Design validated through spike implementation. See `multiprogress_spike_report.md` for detailed findings and `multi_progress_spike.rs` for the working prototype.
+**Status**: Design validated and Phase 3 (IndicatifProgress MultiProgress) implementation completed. See `multiprogress_spike_report.md` for detailed findings and `multi_progress_spike.rs` for the working prototype.
 
 ## Goals
 
@@ -210,10 +210,12 @@ The IndicatifProgress struct will be enhanced to support MultiProgress operation
 
 1. **Shared MultiProgress**: All IndicatifProgress instances (parent and children) share a single `Arc<MultiProgress>` instance
 2. **Individual Bar Ownership**: Each IndicatifProgress owns exactly one `ProgressBar` (named `owned_bar`)
-3. **Uniform Structure**: Parent and child instances use the same struct - no `is_child` flag needed
+3. **Simple Child Detection**: Uses an `is_child: bool` field to determine if this is a child progress bar
 4. **Bar Creation Timing**: ProgressBars are created and added to MultiProgress in the `start()` method, not in `new()`
 
 **Critical Design Principle**: The shared MultiProgress manages all bars' display coordination, while each IndicatifProgress is responsible only for its own bar.
+
+**Template Generation**: Templates are generated dynamically based on the `is_child` flag and the progress configuration. The `get_template_for_config()` method determines the appropriate template at runtime, allowing for flexible display formatting without storing templates as state.
 
 #### Implementation Details (Validated by Spike)
 
@@ -252,7 +254,7 @@ impl IndicatifProgress {
             // Never use lazy creation as it causes display issues
             multi: Arc::new(MultiProgress::new()),
             owned_bar: None,
-            template: "{spinner} {prefix} [{bar:30}] {pos}/{len} {msg}".to_string(),
+            is_child: false,  // Parent by default
         }
     }
 }
@@ -481,7 +483,7 @@ Based on the validated spike, the following structure is recommended:
 pub struct IndicatifProgress {
     multi: Arc<MultiProgress>,          // Shared across all instances
     owned_bar: Option<ProgressBar>,     // This instance's progress bar
-    template: String,                    // Template determined at construction
+    is_child: bool,                     // Whether this is a child progress bar
 }
 
 impl IndicatifProgress {
@@ -489,7 +491,7 @@ impl IndicatifProgress {
         Self {
             multi: Arc::new(MultiProgress::new()),
             owned_bar: None,
-            template: "{spinner} {prefix} [{bar:30}] {pos}/{len} {msg}".to_string(),
+            is_child: false,  // Parent by default
         }
     }
     
@@ -497,7 +499,7 @@ impl IndicatifProgress {
         Box::new(IndicatifProgress {
             multi: Arc::clone(&self.multi),  // Share parent's MultiProgress
             owned_bar: None,                 // Will be created in start()
-            template: "  └─ {spinner} {prefix} [{bar:25}] {pos}/{len} {msg}".to_string(),
+            is_child: true,                  // Mark as child
         })
     }
     
@@ -507,9 +509,12 @@ impl IndicatifProgress {
             None => ProgressBar::new_spinner(),
         };
         
+        // Generate template based on config and is_child flag
+        let template = self.get_template_for_config(&config);
+        
         pb.set_style(
             ProgressStyle::default_bar()
-                .template(&self.template)
+                .template(&template)
                 .unwrap()
                 .progress_chars("██░")
                 .tick_chars("⣾⣽⣻⢿⡿⣟⣯⣷"),
@@ -571,7 +576,7 @@ impl IndicatifProgress {
         Self {
             multi: Arc::new(MultiProgress::new()),  // Always create
             owned_bar: None,                        // Created in start()
-            template: "{spinner} {prefix} [{bar:30}] {pos}/{len} {msg}".to_string(),
+            is_child: false,                        // Parent by default
         }
     }
 ```
@@ -633,16 +638,17 @@ if no_progress {
 
 ### Phased Approach with StatusReporter Coexistence
 
-#### Phase 1: Infrastructure and Install Command (Current Focus)
+#### Phase 1: Infrastructure and Install Command (Phases 1-3 Completed)
 
 **Timeline**: Immediate
 
 1. **Update ProgressIndicator trait** - Add create_child(), suspend(), and println() methods ✅
-2. **Fix IndicatifProgress** - Always initialize with MultiProgress
-3. **Fix SimpleProgress** - Remove Unicode symbols ("✓"/"✗"), use ASCII only ("[OK]"/"[ERROR]")
-4. **Use existing factory** - ProgressFactory::create already handles smart selection
-5. **Test in Install command** - Validate ProgressIndicator approach
-6. **Keep StatusReporter** - No removal, maintain compatibility
+2. **Update all implementations** - SilentProgress, SimpleProgress, IndicatifProgress ✅
+3. **Fix IndicatifProgress** - Always initialize with MultiProgress ✅
+4. **Fix SimpleProgress** - Remove Unicode symbols ("✓"/"✗"), use ASCII only ("[OK]"/"[ERROR]") ✅
+5. **Use existing factory** - ProgressFactory::create already handles smart selection
+6. **Test in Install command** - Validate ProgressIndicator approach (Next phase)
+7. **Keep StatusReporter** - No removal, maintain compatibility
 
 **Validation Criteria**:
 - No display corruption in Install command
@@ -774,7 +780,7 @@ pb.enable_steady_tick(Duration::from_millis(80));
 Box::new(IndicatifProgress {
     multi: Arc::clone(&self.multi),  // Share parent's MultiProgress
     owned_bar: None,
-    template: "  └─ {spinner} {prefix} [{bar:25}] {pos}/{len} {msg}".to_string(),
+    is_child: true,                  // Mark as child
 })
 ```
 
@@ -808,6 +814,8 @@ A comprehensive spike was conducted to validate this design. Key outcomes:
 - Simplified progress chars (`██░`) reduce visual noise
 - Short titles with blank line separation prevent display interference
 - `enable_steady_tick()` essential for smooth spinner animation
+- Using `is_child: bool` field is cleaner than storing template strings as markers
+- Dynamic template generation via `get_template_for_config()` provides flexibility
 
-### Ready for Implementation
-The design has been thoroughly validated and is ready for Phase 3 implementation in the actual Kopi codebase. The spike demonstrates that all success criteria can be met with the proposed architecture.
+### Implementation Status
+✅ **Phase 3 Completed**: The IndicatifProgress MultiProgress implementation has been successfully completed with the refined architecture using `is_child: bool` field for cleaner parent-child detection. All tests pass and the implementation is ready for integration with downstream components.

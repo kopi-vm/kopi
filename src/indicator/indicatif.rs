@@ -18,22 +18,21 @@ use std::sync::Arc;
 use std::time::Duration;
 
 pub struct IndicatifProgress {
-    multi: Option<Arc<MultiProgress>>,
-    progress_bar: Option<ProgressBar>,
-    is_child: bool,
+    multi: Arc<MultiProgress>,      // Always initialized, no Option
+    owned_bar: Option<ProgressBar>, // This instance's progress bar
+    is_child: bool,                 // Whether this is a child progress
 }
 
 impl IndicatifProgress {
     pub fn new() -> Self {
         Self {
-            multi: None,
-            progress_bar: None,
+            multi: Arc::new(MultiProgress::new()),
+            owned_bar: None,
             is_child: false,
         }
     }
 
-    fn create_template(&self, config: &ProgressConfig) -> String {
-        let prefix = if self.is_child { "  └─ " } else { "" };
+    fn get_template_for_config(&self, config: &ProgressConfig) -> String {
         let bar_width = if self.is_child { 25 } else { 30 };
 
         match (&config.total, &config.style) {
@@ -51,13 +50,21 @@ impl IndicatifProgress {
             }
             // Progress bar with count display
             (Some(_), ProgressStyle::Count) => {
-                format!(
-                    "{prefix}{{spinner}} {{prefix}} [{{bar:{bar_width}}}] {{pos}}/{{len}} {{msg}}"
-                )
+                if self.is_child {
+                    format!(
+                        "  └─ {{spinner}} {{prefix}} [{{bar:{bar_width}}}] {{pos}}/{{len}} {{msg}}"
+                    )
+                } else {
+                    format!("{{spinner}} {{prefix}} [{{bar:{bar_width}}}] {{pos}}/{{len}} {{msg}}")
+                }
             }
             // Indeterminate operations (spinner only when total is None)
             (None, _) => {
-                format!("{prefix}{{spinner}} {{prefix}} {{msg}}")
+                if self.is_child {
+                    "  └─ {spinner} {prefix} {msg}".to_string()
+                } else {
+                    "{spinner} {prefix} {msg}".to_string()
+                }
             }
         }
     }
@@ -73,19 +80,17 @@ impl ProgressIndicator for IndicatifProgress {
     fn start(&mut self, config: ProgressConfig) {
         let prefix = format!("{} {}", config.operation, config.context);
 
-        // Create MultiProgress lazily if needed
-        if self.multi.is_none() && !self.is_child {
-            self.multi = Some(Arc::new(MultiProgress::new()));
-        }
-
         let pb = match config.total {
             Some(total) => ProgressBar::new(total),
             None => ProgressBar::new_spinner(),
         };
 
+        // Use the appropriate template based on config
+        let template = self.get_template_for_config(&config);
+
         pb.set_style(
             indicatif::ProgressStyle::default_bar()
-                .template(&self.create_template(&config))
+                .template(&template)
                 .unwrap()
                 .progress_chars("██░")
                 .tick_chars("⣾⣽⣻⢿⡿⣟⣯⣷"),
@@ -94,37 +99,25 @@ impl ProgressIndicator for IndicatifProgress {
         pb.set_prefix(prefix);
         pb.enable_steady_tick(Duration::from_millis(80));
 
-        // Add to MultiProgress if available
-        let pb = if let Some(multi) = &self.multi {
-            if self.is_child {
-                // For child bars, use insert_after for logical positioning
-                // Since we don't have a reference to the parent bar here,
-                // we'll use add() which adds to the end
-                multi.add(pb)
-            } else {
-                multi.add(pb)
-            }
-        } else {
-            pb
-        };
-
-        self.progress_bar = Some(pb);
+        // Add bar to MultiProgress
+        let pb = self.multi.add(pb);
+        self.owned_bar = Some(pb);
     }
 
     fn update(&mut self, current: u64, _total: Option<u64>) {
-        if let Some(pb) = &self.progress_bar {
+        if let Some(pb) = &self.owned_bar {
             pb.set_position(current);
         }
     }
 
     fn set_message(&mut self, message: String) {
-        if let Some(pb) = &self.progress_bar {
+        if let Some(pb) = &self.owned_bar {
             pb.set_message(message);
         }
     }
 
     fn complete(&mut self, message: Option<String>) {
-        if let Some(pb) = &self.progress_bar {
+        if let Some(pb) = &self.owned_bar {
             let msg = message.unwrap_or_else(|| "Complete".to_string());
             if self.is_child {
                 pb.finish_and_clear();
@@ -135,7 +128,7 @@ impl ProgressIndicator for IndicatifProgress {
     }
 
     fn error(&mut self, message: String) {
-        if let Some(pb) = &self.progress_bar {
+        if let Some(pb) = &self.owned_bar {
             if self.is_child {
                 pb.abandon();
             } else {
@@ -145,38 +138,20 @@ impl ProgressIndicator for IndicatifProgress {
     }
 
     fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
-        // Create or share the MultiProgress instance
-        let multi = if let Some(ref multi) = self.multi {
-            Arc::clone(multi)
-        } else {
-            // If parent doesn't have MultiProgress yet, create one
-            let new_multi = Arc::new(MultiProgress::new());
-            self.multi = Some(Arc::clone(&new_multi));
-            new_multi
-        };
-
+        // Share parent's MultiProgress via Arc::clone()
         Box::new(IndicatifProgress {
-            multi: Some(multi),
-            progress_bar: None,
+            multi: Arc::clone(&self.multi),
+            owned_bar: None,
             is_child: true,
         })
     }
 
     fn suspend(&self, f: &mut dyn FnMut()) {
-        if let Some(ref multi) = self.multi {
-            multi.suspend(f);
-        } else {
-            // If no MultiProgress, just execute directly
-            f();
-        }
+        self.multi.suspend(f);
     }
 
     fn println(&self, message: &str) -> std::io::Result<()> {
-        if let Some(ref multi) = self.multi {
-            multi.println(message)?;
-        } else {
-            println!("{message}");
-        }
+        self.multi.println(message)?;
         Ok(())
     }
 }
@@ -193,7 +168,7 @@ mod tests {
             ProgressConfig::new("Downloading", "temurin@21", ProgressStyle::Bytes).with_total(1024);
         progress.start(config);
 
-        assert!(progress.progress_bar.is_some());
+        assert!(progress.owned_bar.is_some());
     }
 
     #[test]
@@ -203,7 +178,7 @@ mod tests {
         let config = ProgressConfig::new("Loading", "metadata", ProgressStyle::Count);
         progress.start(config);
 
-        assert!(progress.progress_bar.is_some());
+        assert!(progress.owned_bar.is_some());
     }
 
     #[test]
@@ -211,7 +186,7 @@ mod tests {
         let progress = IndicatifProgress::new();
         let config = ProgressConfig::new("Test", "operation", ProgressStyle::Bytes).with_total(100);
 
-        let template = progress.create_template(&config);
+        let template = progress.get_template_for_config(&config);
         assert!(template.contains("{bytes}"));
         assert!(template.contains("{total_bytes}"));
         assert!(template.contains("{bytes_per_sec}"));
@@ -222,7 +197,7 @@ mod tests {
         let progress = IndicatifProgress::new();
         let config = ProgressConfig::new("Test", "operation", ProgressStyle::Count).with_total(100);
 
-        let template = progress.create_template(&config);
+        let template = progress.get_template_for_config(&config);
         assert!(template.contains("{pos}"));
         assert!(template.contains("{len}"));
         assert!(!template.contains("{bytes}"));
@@ -233,7 +208,7 @@ mod tests {
         let progress = IndicatifProgress::new();
         let config = ProgressConfig::new("Test", "operation", ProgressStyle::Bytes);
 
-        let template = progress.create_template(&config);
+        let template = progress.get_template_for_config(&config);
         assert!(!template.contains("{bar:"));
         assert!(template.contains("{spinner"));
         assert!(!template.contains("{bytes}"));
@@ -278,7 +253,7 @@ mod tests {
         progress.complete(Some("Installation successful".to_string()));
 
         // Progress bar should still exist after completion
-        assert!(progress.progress_bar.is_some());
+        assert!(progress.owned_bar.is_some());
     }
 
     #[test]
@@ -291,7 +266,7 @@ mod tests {
         progress.complete(None);
 
         // Progress bar should still exist after completion
-        assert!(progress.progress_bar.is_some());
+        assert!(progress.owned_bar.is_some());
     }
 
     #[test]
@@ -304,7 +279,7 @@ mod tests {
         progress.error("Network timeout".to_string());
 
         // Progress bar should still exist after error
-        assert!(progress.progress_bar.is_some());
+        assert!(progress.owned_bar.is_some());
     }
 
     #[test]
@@ -323,7 +298,7 @@ mod tests {
         progress.update(25, None);
         progress.complete(Some("Done".to_string()));
 
-        assert!(progress.progress_bar.is_some());
+        assert!(progress.owned_bar.is_some());
     }
 
     #[test]
@@ -333,18 +308,19 @@ mod tests {
         let config = ProgressConfig::new("Parent", "task", ProgressStyle::Count).with_total(100);
         parent.start(config);
 
-        let child = parent.create_child();
-        assert!(parent.multi.is_some());
+        let _child = parent.create_child();
+        // Parent always has multi initialized
+        assert!(Arc::strong_count(&parent.multi) > 1); // Child shares the Arc
 
         // Verify child shares the same MultiProgress
         // We can't directly check this due to Box<dyn> but we can start the child
-        let mut child = child;
+        let mut child = parent.create_child();
         let child_config =
             ProgressConfig::new("Child", "subtask", ProgressStyle::Count).with_total(50);
         child.start(child_config);
 
         // Both parent and child should have progress bars
-        assert!(parent.progress_bar.is_some());
+        assert!(parent.owned_bar.is_some());
     }
 
     #[test]
@@ -449,14 +425,14 @@ mod tests {
     fn test_child_template_has_indent() {
         let parent = IndicatifProgress::new();
         let child = IndicatifProgress {
-            multi: None,
-            progress_bar: None,
+            multi: Arc::new(MultiProgress::new()),
+            owned_bar: None,
             is_child: true,
         };
 
         let config = ProgressConfig::new("Test", "op", ProgressStyle::Count).with_total(10);
-        let parent_template = parent.create_template(&config);
-        let child_template = child.create_template(&config);
+        let parent_template = parent.get_template_for_config(&config);
+        let child_template = child.get_template_for_config(&config);
 
         // Parent template should not have indent
         assert!(!parent_template.starts_with("  └─"));
@@ -481,18 +457,20 @@ mod tests {
         parent.update(10, None);
         parent.complete(Some("Done".to_string()));
 
-        assert!(parent.progress_bar.is_some());
+        assert!(parent.owned_bar.is_some());
     }
 
     #[test]
-    fn test_parent_without_multiprogress_creates_on_child() {
-        let mut parent = IndicatifProgress::new();
-        assert!(parent.multi.is_none());
+    fn test_parent_always_has_multiprogress() {
+        let parent = IndicatifProgress::new();
+        // MultiProgress is always initialized in new()
+        assert!(Arc::strong_count(&parent.multi) == 1);
 
-        // Don't start parent yet
+        let mut parent = parent;
+        // Create child
         let _child = parent.create_child();
 
-        // Creating a child should initialize MultiProgress
-        assert!(parent.multi.is_some());
+        // After creating a child, reference count should increase
+        assert!(Arc::strong_count(&parent.multi) > 1);
     }
 }
