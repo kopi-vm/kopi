@@ -59,14 +59,14 @@ The design has been thoroughly validated through a working spike implementation 
   - [x] Add `fn println(&self, message: &str) -> std::io::Result<()>` method ✅
   - [x] Update trait documentation
   - [x] Ensure Send + Sync trait bounds
-- [ ] **Implement new methods for ALL types**:
+- [x] **Implement new methods for ALL types**:
   - [x] SilentProgress: Implement all three methods (no-op for suspend/println)
-  - [ ] SimpleProgress: Implement with ASCII symbols only, no Unicode
-  - [ ] IndicatifProgress: Implement with MultiProgress integration
-- [ ] **Ensure compilation**:
-  - [ ] All implementations compile with new methods
-  - [ ] Update test helpers in progress_capture.rs
-  - [ ] All existing tests pass
+  - [x] SimpleProgress: Implement with ASCII symbols only, no Unicode
+  - [x] IndicatifProgress: Implement with MultiProgress integration
+- [x] **Ensure compilation**:
+  - [x] All implementations compile with new methods
+  - [x] Update test helpers in progress_capture.rs
+  - [x] All existing tests pass
 
 ### Example Implementation
 Each implementation gets a minimal stub that maintains functionality:

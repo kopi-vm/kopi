@@ -33,6 +33,8 @@ pub trait ProgressIndicator: Send + Sync {
     fn complete(&mut self, message: Option<String>);
     fn error(&mut self, message: String);
     fn create_child(&mut self) -> Box<dyn ProgressIndicator>;
+    fn suspend(&self, f: &mut dyn FnMut());
+    fn println(&self, message: &str) -> std::io::Result<()>;
 }
 
 #[cfg(test)]
@@ -93,6 +95,15 @@ mod tests {
 
         fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
             Box::new(MockProgress::new())
+        }
+
+        fn suspend(&self, f: &mut dyn FnMut()) {
+            f();
+        }
+
+        fn println(&self, message: &str) -> std::io::Result<()> {
+            println!("{message}");
+            Ok(())
         }
     }
 

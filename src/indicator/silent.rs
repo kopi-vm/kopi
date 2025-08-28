@@ -52,6 +52,16 @@ impl ProgressIndicator for SilentProgress {
     fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
         Box::new(SilentProgress::new())
     }
+
+    fn suspend(&self, f: &mut dyn FnMut()) {
+        // SilentProgress doesn't need to suspend anything
+        f();
+    }
+
+    fn println(&self, _message: &str) -> std::io::Result<()> {
+        // SilentProgress doesn't output anything
+        Ok(())
+    }
 }
 
 #[cfg(test)]

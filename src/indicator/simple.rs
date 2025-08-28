@@ -62,6 +62,17 @@ impl ProgressIndicator for SimpleProgress {
     fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
         Box::new(SilentProgress::new())
     }
+
+    fn suspend(&self, f: &mut dyn FnMut()) {
+        // SimpleProgress doesn't use any terminal manipulation, just execute directly
+        f();
+    }
+
+    fn println(&self, message: &str) -> std::io::Result<()> {
+        // SimpleProgress can output directly
+        println!("{message}");
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -129,6 +140,14 @@ mod tests {
 
         fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
             self.inner.create_child()
+        }
+
+        fn suspend(&self, f: &mut dyn FnMut()) {
+            self.inner.suspend(f)
+        }
+
+        fn println(&self, message: &str) -> std::io::Result<()> {
+            self.inner.println(message)
         }
     }
 

@@ -161,6 +161,24 @@ impl ProgressIndicator for IndicatifProgress {
             is_child: true,
         })
     }
+
+    fn suspend(&self, f: &mut dyn FnMut()) {
+        if let Some(ref multi) = self.multi {
+            multi.suspend(f);
+        } else {
+            // If no MultiProgress, just execute directly
+            f();
+        }
+    }
+
+    fn println(&self, message: &str) -> std::io::Result<()> {
+        if let Some(ref multi) = self.multi {
+            multi.println(message)?;
+        } else {
+            println!("{message}");
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]

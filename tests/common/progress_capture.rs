@@ -136,6 +136,20 @@ impl ProgressIndicator for TestProgressCapture {
     fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
         Box::new(TestProgressCapture::new())
     }
+
+    fn suspend(&self, f: &mut dyn FnMut()) {
+        // TestProgressCapture doesn't need to suspend anything
+        f();
+    }
+
+    fn println(&self, message: &str) -> std::io::Result<()> {
+        // Capture println messages as regular messages
+        self.messages.lock().unwrap().push(ProgressMessage {
+            message: message.to_string(),
+            style: self.current_style,
+        });
+        Ok(())
+    }
 }
 
 #[cfg(test)]
