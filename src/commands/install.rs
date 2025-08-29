@@ -17,7 +17,6 @@ use crate::cache::{self, MetadataCache};
 use crate::config::KopiConfig;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
-use crate::indicator::StatusReporter;
 use crate::models::distribution::Distribution;
 use crate::models::metadata::JdkMetadata;
 use crate::platform::{
@@ -34,15 +33,11 @@ use std::time::Duration;
 
 pub struct InstallCommand<'a> {
     config: &'a KopiConfig,
-    status: StatusReporter,
 }
 
 impl<'a> InstallCommand<'a> {
-    pub fn new(config: &'a KopiConfig, no_progress: bool) -> Result<Self> {
-        Ok(Self {
-            config,
-            status: StatusReporter::new(no_progress),
-        })
+    pub fn new(config: &'a KopiConfig, _no_progress: bool) -> Result<Self> {
+        Ok(Self { config })
     }
 
     /// Check if cache needs refresh without actually refreshing
@@ -91,23 +86,23 @@ impl<'a> InstallCommand<'a> {
 
         // Refresh if needed
         if should_refresh && self.config.metadata.cache.auto_refresh {
-            info!("Refreshing package cache...");
+            progress.suspend(&mut || {
+                info!("Refreshing package cache...");
+            });
             progress.set_message("Refreshing package cache...".to_string());
-            // Use silent progress for cache refresh to avoid nested progress bars
-            // The parent progress message is already set above
-            let mut silent_progress = crate::indicator::SilentProgress;
-            match cache::fetch_and_cache_metadata_with_progress(
-                self.config,
-                &mut silent_progress,
-                current_step,
-            ) {
+            // Pass parent progress to enable child progress for metadata sources
+            // Child progress bars will be created for Foojay API and large HTTP sources
+            match cache::fetch_and_cache_metadata_with_progress(self.config, progress, current_step)
+            {
                 Ok(cache) => Ok(cache),
                 Err(e) => {
                     // If refresh fails and we have an existing cache, use it with warning
                     if cache_path.exists()
                         && let Ok(cache) = cache::load_cache(&cache_path)
                     {
-                        warn!("Failed to refresh cache: {e}. Using existing cache.");
+                        progress.suspend(&mut || {
+                            warn!("Failed to refresh cache: {e}. Using existing cache.");
+                        });
                         progress.set_message("Using existing cache".to_string());
                         return Ok(cache);
                     }
@@ -160,14 +155,15 @@ impl<'a> InstallCommand<'a> {
                 .unwrap_or(Distribution::Temurin)
         };
 
-        // Show operation message before progress bar starts
-        self.status.operation(
-            "Installing",
-            &format!("{} {}", distribution.name(), version),
-        );
-
         // Create progress indicator
         let mut progress = crate::indicator::ProgressFactory::create(no_progress);
+
+        // Show operation message using progress indicator
+        progress.println(&format!(
+            "Installing {} {}...",
+            distribution.name(),
+            version
+        ))?;
 
         // Calculate base steps for installation
         // Base steps: find_package(1) + check_installed(1) + download(1) +
@@ -206,13 +202,17 @@ impl<'a> InstallCommand<'a> {
         progress.set_message(format!("Searching for {} {}", distribution.name(), version));
 
         // Find matching JDK package first to get the actual distribution_version
-        debug!("Searching for {} version {}", distribution.name(), version);
+        progress.suspend(&mut || {
+            debug!("Searching for {} version {}", distribution.name(), version);
+        });
         // Use JavaFX flag from version string (+fx suffix)
         let javafx_bundled = version_request.javafx_bundled.unwrap_or(false);
-        debug!(
-            "JavaFX bundled: version_request={:?}",
-            version_request.javafx_bundled
-        );
+        progress.suspend(&mut || {
+            debug!(
+                "JavaFX bundled: version_request={:?}",
+                version_request.javafx_bundled
+            );
+        });
         let package = self.find_matching_package(
             &distribution,
             version,
@@ -220,7 +220,9 @@ impl<'a> InstallCommand<'a> {
             progress.as_mut(),
             &mut current_step,
         )?;
-        trace!("Found package: {package:?}");
+        progress.suspend(&mut || {
+            trace!("Found package: {package:?}");
+        });
         let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
 
         // Create storage manager with config
@@ -245,12 +247,13 @@ impl<'a> InstallCommand<'a> {
                 jdk_metadata.distribution_version,
                 installation_dir.display()
             )));
-            self.status.success(&format!(
-                "Would install {} {} to {}",
+            // Print the success message using progress.println()
+            progress.println(&format!(
+                "✓ Would install {} {} to {}",
                 distribution.name(),
                 jdk_metadata.distribution_version,
                 installation_dir.display()
-            ));
+            ))?;
             return Ok(());
         }
 
@@ -264,23 +267,29 @@ impl<'a> InstallCommand<'a> {
 
         // Show the actual package found (for debugging purposes)
         if jdk_metadata.distribution.to_lowercase() != distribution.id() {
-            warn!(
-                "Requested {} but found {} package",
-                distribution.name(),
-                jdk_metadata.distribution
-            );
+            progress.suspend(&mut || {
+                warn!(
+                    "Requested {} but found {} package",
+                    distribution.name(),
+                    jdk_metadata.distribution
+                );
+            });
         }
         // Fetch checksum before download (not a separate step, part of preparation)
         let mut jdk_metadata_with_checksum = jdk_metadata.clone();
         if jdk_metadata_with_checksum.checksum.is_none() {
-            debug!(
-                "Fetching checksum for package ID: {}",
-                jdk_metadata_with_checksum.id
-            );
+            progress.suspend(&mut || {
+                debug!(
+                    "Fetching checksum for package ID: {}",
+                    jdk_metadata_with_checksum.id
+                );
+            });
             match crate::cache::fetch_package_checksum(&jdk_metadata_with_checksum.id, self.config)
             {
                 Ok((checksum, checksum_type)) => {
-                    info!("Fetched checksum: {checksum} (type: {checksum_type:?})");
+                    progress.suspend(&mut || {
+                        info!("Fetched checksum: {checksum} (type: {checksum_type:?})");
+                    });
                     jdk_metadata_with_checksum.checksum = Some(checksum);
                     jdk_metadata_with_checksum.checksum_type = Some(checksum_type);
                     // Add checksum verification step to total
@@ -288,9 +297,11 @@ impl<'a> InstallCommand<'a> {
                     progress.update(current_step, Some(total_steps));
                 }
                 Err(e) => {
-                    warn!(
-                        "Failed to fetch checksum: {e}. Proceeding without checksum verification."
-                    );
+                    progress.suspend(&mut || {
+                        warn!(
+                            "Failed to fetch checksum: {e}. Proceeding without checksum verification."
+                        );
+                    });
                 }
             }
         } else if jdk_metadata_with_checksum.checksum.is_some() {
@@ -307,21 +318,29 @@ impl<'a> InstallCommand<'a> {
             jdk_metadata_with_checksum.distribution, jdk_metadata_with_checksum.version
         ));
 
-        // Don't output during progress bar display
-        // self.status.step would interfere with progress bar rendering
-
-        // Download JDK (disable separate progress bar to avoid terminal corruption)
-        info!(
-            "Downloading from {}",
-            jdk_metadata_with_checksum
-                .download_url
-                .as_ref()
-                .unwrap_or(&"<URL not available>".to_string())
-        );
-        // Force no_progress to true for download to prevent overlapping progress bars
-        let download_result = download_jdk(&jdk_metadata_with_checksum, true, timeout_secs, None)?;
+        // Download JDK with child progress support for large files
+        progress.suspend(&mut || {
+            info!(
+                "Downloading from {}",
+                jdk_metadata_with_checksum
+                    .download_url
+                    .as_ref()
+                    .unwrap_or(&"<URL not available>".to_string())
+            );
+        });
+        // Pass parent progress to enable child progress bars for files >= 10MB
+        // The download module will create a child progress bar if the file is >= 10MB
+        // For smaller files, it will update the parent's message
+        let download_result = download_jdk(
+            &jdk_metadata_with_checksum,
+            no_progress,
+            timeout_secs,
+            Some(progress.create_child()),
+        )?;
         let download_path = download_result.path();
-        debug!("Downloaded to {download_path:?}");
+        progress.suspend(&mut || {
+            debug!("Downloaded to {download_path:?}");
+        });
 
         // Step 4 (optional): Verify checksum
         if let Some(checksum) = &jdk_metadata_with_checksum.checksum
@@ -356,15 +375,21 @@ impl<'a> InstallCommand<'a> {
         progress.update(current_step, Some(total_steps));
         progress.set_message("Extracting archive".to_string());
         // Don't output during progress bar display
-        info!("Extracting archive to {:?}", context.temp_path);
+        progress.suspend(&mut || {
+            info!("Extracting archive to {:?}", context.temp_path);
+        });
         extract_archive(download_path, &context.temp_path)?;
-        debug!("Extraction completed");
+        progress.suspend(&mut || {
+            debug!("Extraction completed");
+        });
 
         // Step 6: Detect JDK structure
         current_step += 1;
         progress.update(current_step, Some(total_steps));
         progress.set_message("Detecting JDK structure".to_string());
-        debug!("Detecting JDK structure");
+        progress.suspend(&mut || {
+            debug!("Detecting JDK structure");
+        });
         let structure_info = match detect_jdk_root(&context.temp_path) {
             Ok(info) => info,
             Err(e) => {
@@ -377,11 +402,13 @@ impl<'a> InstallCommand<'a> {
             }
         };
 
-        info!(
-            "Detected JDK structure: {:?} (root: {})",
-            structure_info.structure_type,
-            structure_info.jdk_root.display()
-        );
+        progress.suspend(&mut || {
+            info!(
+                "Detected JDK structure: {:?} (root: {})",
+                structure_info.structure_type,
+                structure_info.jdk_root.display()
+            );
+        });
 
         // Step 7: Install to final location
         current_step += 1;
@@ -394,8 +421,11 @@ impl<'a> InstallCommand<'a> {
             context,
             structure_info.jdk_root.clone(),
             structure_info.structure_type.clone(),
+            progress.as_mut(),
         )?;
-        info!("JDK installed to {final_path:?}");
+        progress.suspend(&mut || {
+            info!("JDK installed to {final_path:?}");
+        });
 
         // Create installation metadata based on detected structure
         let installation_metadata = self.create_installation_metadata(&structure_info)?;
@@ -417,19 +447,25 @@ impl<'a> InstallCommand<'a> {
             current_step += 1;
             progress.update(current_step, Some(total_steps));
             progress.set_message("Creating shims".to_string());
-            debug!("Auto-creating shims for newly installed JDK");
+            progress.suspend(&mut || {
+                debug!("Auto-creating shims for newly installed JDK");
+            });
 
             // Discover JDK tools
             let mut tools = discover_jdk_tools(&final_path)?;
-            debug!("Discovered {} standard JDK tools", tools.len());
+            progress.suspend(&mut || {
+                debug!("Discovered {} standard JDK tools", tools.len());
+            });
 
             // Discover distribution-specific tools
             let extra_tools = discover_distribution_tools(&final_path, Some(distribution.id()))?;
             if !extra_tools.is_empty() {
-                debug!(
-                    "Discovered {} distribution-specific tools",
-                    extra_tools.len()
-                );
+                progress.suspend(&mut || {
+                    debug!(
+                        "Discovered {} distribution-specific tools",
+                        extra_tools.len()
+                    );
+                });
                 tools.extend(extra_tools);
             }
 
@@ -442,12 +478,16 @@ impl<'a> InstallCommand<'a> {
                     progress.set_message(format!("Created {} new shims", created_shims.len()));
                     // Don't output during progress bar display
                     // Show shim count in progress message instead
-                    debug!("Created {} new shims", created_shims.len());
-                    for shim in &created_shims {
-                        debug!("  - {shim}");
-                    }
+                    progress.suspend(&mut || {
+                        debug!("Created {} new shims", created_shims.len());
+                        for shim in &created_shims {
+                            debug!("  - {shim}");
+                        }
+                    });
                 } else {
-                    debug!("All shims already exist");
+                    progress.suspend(&mut || {
+                        debug!("All shims already exist");
+                    });
                 }
             }
         }
@@ -459,22 +499,22 @@ impl<'a> InstallCommand<'a> {
             jdk_metadata_with_checksum.distribution_version
         )));
 
-        self.status.success(&format!(
-            "Successfully installed {} {} to {}",
+        // Print final success message and hints using progress.println()
+        progress.println(&format!(
+            "✓ Successfully installed {} {} to {}",
             distribution.name(),
             jdk_metadata_with_checksum.distribution_version,
             final_path.display()
-        ));
+        ))?;
 
         // Show hint about using the JDK
         if VersionParser::is_lts_version(version.major()) {
-            self.status.step(&format!(
-                "Note: {} is an LTS (Long Term Support) version",
+            progress.println(&format!(
+                "  Note: {} is an LTS (Long Term Support) version",
                 version.major()
-            ));
+            ))?;
         }
-        self.status
-            .step(&format!("To use this JDK, run: kopi use {version_spec}"));
+        progress.println(&format!("  To use this JDK, run: kopi use {version_spec}"))?;
 
         Ok(())
     }
@@ -505,15 +545,19 @@ impl<'a> InstallCommand<'a> {
             version_request.package_type.as_ref(),
             version_request.javafx_bundled,
         ) {
-            debug!(
-                "Found exact package match: {} {}",
-                distribution.name(),
-                version
-            );
+            progress.suspend(&mut || {
+                debug!(
+                    "Found exact package match: {} {}",
+                    distribution.name(),
+                    version
+                );
+            });
 
             // Ensure metadata is complete before using it
             if !jdk_metadata.is_complete() {
-                debug!("Metadata is incomplete, fetching package details...");
+                progress.suspend(&mut || {
+                    debug!("Metadata is incomplete, fetching package details...");
+                });
                 let provider = crate::metadata::MetadataProvider::from_config(self.config)?;
                 let mut silent_progress = crate::indicator::SilentProgress;
                 provider.ensure_complete(&mut jdk_metadata, &mut silent_progress)?;
@@ -524,16 +568,14 @@ impl<'a> InstallCommand<'a> {
 
         // If not found and refresh_on_miss is enabled, try refreshing cache once
         if self.config.metadata.cache.refresh_on_miss {
-            info!("Package not found in cache, refreshing...");
+            progress.suspend(&mut || {
+                info!("Package not found in cache, refreshing...");
+            });
             progress.set_message("Package not found in cache, refreshing...".to_string());
-            // Use silent progress for cache refresh to avoid nested progress bars
-            // The parent progress message is already set above
-            let mut silent_progress = crate::indicator::SilentProgress;
-            match cache::fetch_and_cache_metadata_with_progress(
-                self.config,
-                &mut silent_progress,
-                current_step,
-            ) {
+            // Pass parent progress to enable child progress for metadata sources
+            // Child progress bars will be created for Foojay API and large HTTP sources
+            match cache::fetch_and_cache_metadata_with_progress(self.config, progress, current_step)
+            {
                 Ok(new_cache) => {
                     cache = new_cache;
 
@@ -546,15 +588,19 @@ impl<'a> InstallCommand<'a> {
                         version_request.package_type.as_ref(),
                         version_request.javafx_bundled,
                     ) {
-                        debug!(
-                            "Found package after refresh: {} {}",
-                            distribution.name(),
-                            version
-                        );
+                        progress.suspend(&mut || {
+                            debug!(
+                                "Found package after refresh: {} {}",
+                                distribution.name(),
+                                version
+                            );
+                        });
 
                         // Ensure metadata is complete before using it
                         if !jdk_metadata.is_complete() {
-                            debug!("Metadata is incomplete, fetching package details...");
+                            progress.suspend(&mut || {
+                                debug!("Metadata is incomplete, fetching package details...");
+                            });
                             let provider =
                                 crate::metadata::MetadataProvider::from_config(self.config)?;
                             let mut silent_progress = crate::indicator::SilentProgress;
@@ -565,7 +611,9 @@ impl<'a> InstallCommand<'a> {
                     }
                 }
                 Err(e) => {
-                    warn!("Failed to refresh cache on miss: {e}");
+                    progress.suspend(&mut || {
+                        warn!("Failed to refresh cache on miss: {e}");
+                    });
                 }
             }
         }
@@ -731,11 +779,12 @@ impl<'a> InstallCommand<'a> {
         context: crate::storage::InstallationContext,
         jdk_root: std::path::PathBuf,
         structure_type: JdkStructureType,
+        progress: &mut dyn crate::indicator::ProgressIndicator,
     ) -> Result<std::path::PathBuf> {
         use std::fs;
 
         // Log the structure type for debugging
-        match structure_type {
+        progress.suspend(&mut || match structure_type {
             JdkStructureType::Direct => {
                 info!("Installing JDK with direct structure");
             }
@@ -745,15 +794,17 @@ impl<'a> InstallCommand<'a> {
             JdkStructureType::Hybrid => {
                 info!("Installing JDK with hybrid structure (symlinks to bundle)");
             }
-        }
+        });
 
         // If the JDK root is not the same as the temp path, we need to move it
         if jdk_root != context.temp_path {
-            debug!(
-                "JDK root ({}) differs from extraction path ({})",
-                jdk_root.display(),
-                context.temp_path.display()
-            );
+            progress.suspend(&mut || {
+                debug!(
+                    "JDK root ({}) differs from extraction path ({})",
+                    jdk_root.display(),
+                    context.temp_path.display()
+                );
+            });
 
             // Move the JDK root directly to the final location
             if let Some(parent) = context.final_path.parent() {
@@ -1036,11 +1087,13 @@ mod tests {
         };
 
         // Test direct structure finalization
+        let mut progress = crate::indicator::SilentProgress;
         let result = cmd.finalize_with_structure(
             &repository,
             context,
             jdk_root.clone(),
             JdkStructureType::Direct,
+            &mut progress,
         );
 
         assert!(result.is_ok());
@@ -1082,11 +1135,13 @@ mod tests {
 
         // Test bundle structure finalization
         // The bundle_root should be what gets moved, not Contents/Home
+        let mut progress = crate::indicator::SilentProgress;
         let result = cmd.finalize_with_structure(
             &repository,
             context,
             bundle_root.clone(),
             JdkStructureType::Bundle,
+            &mut progress,
         );
 
         assert!(result.is_ok());
@@ -1134,8 +1189,14 @@ mod tests {
             }
 
             let repo = JdkRepository::new(&config);
-            let result =
-                cmd.finalize_with_structure(&repo, ctx, jdk_root.clone(), structure_type.clone());
+            let mut progress = crate::indicator::SilentProgress;
+            let result = cmd.finalize_with_structure(
+                &repo,
+                ctx,
+                jdk_root.clone(),
+                structure_type.clone(),
+                &mut progress,
+            );
 
             // The function should handle all structure types
             assert!(

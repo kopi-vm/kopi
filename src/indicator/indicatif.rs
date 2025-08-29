@@ -85,9 +85,13 @@ impl ProgressIndicator for IndicatifProgress {
             None => ProgressBar::new_spinner(),
         };
 
+        // Add bar to MultiProgress first to get the managed reference
+        let pb = self.multi.add(pb);
+
         // Use the appropriate template based on config
         let template = self.get_template_for_config(&config);
 
+        // Apply styling to the MultiProgress-managed ProgressBar
         pb.set_style(
             indicatif::ProgressStyle::default_bar()
                 .template(&template)
@@ -99,8 +103,6 @@ impl ProgressIndicator for IndicatifProgress {
         pb.set_prefix(prefix);
         pb.enable_steady_tick(Duration::from_millis(80));
 
-        // Add bar to MultiProgress
-        let pb = self.multi.add(pb);
         self.owned_bar = Some(pb);
     }
 
@@ -151,7 +153,12 @@ impl ProgressIndicator for IndicatifProgress {
     }
 
     fn println(&self, message: &str) -> std::io::Result<()> {
-        self.multi.println(message)?;
+        if let Some(pb) = &self.owned_bar {
+            pb.println(message);
+        } else {
+            // If no progress bar is active, print directly
+            println!("{message}");
+        }
         Ok(())
     }
 }
@@ -296,9 +303,10 @@ mod tests {
         let config2 = ProgressConfig::new("Op2", "target2", ProgressStyle::Count).with_total(50);
         progress.start(config2);
         progress.update(25, None);
+        assert!(progress.owned_bar.is_some()); // Should exist before completion
         progress.complete(Some("Done".to_string()));
 
-        assert!(progress.owned_bar.is_some());
+        assert!(progress.owned_bar.is_some()); // Should still exist after completion
     }
 
     #[test]
@@ -457,7 +465,7 @@ mod tests {
         parent.update(10, None);
         parent.complete(Some("Done".to_string()));
 
-        assert!(parent.owned_bar.is_some());
+        assert!(parent.owned_bar.is_some()); // Should still exist after completion
     }
 
     #[test]

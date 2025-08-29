@@ -107,10 +107,24 @@ impl MetadataSource for FoojayMetadataSource {
     }
 
     fn fetch_all(&self, progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
-        // Report initial connection
-        progress.set_message("Connecting to Foojay API...".to_string());
+        // Create child progress for Foojay API operations
+        // Foojay always creates child progress according to Phase 5 requirements
+        let mut child = progress.create_child();
 
-        // Get all packages from the API with archive type filtering
+        // Initialize child progress for API operations
+        let config = crate::indicator::ProgressConfig::new(
+            "Fetching",
+            "Foojay metadata".to_string(),
+            crate::indicator::ProgressStyle::Count,
+        )
+        .with_total(4); // Connect, fetch, process, complete
+        child.start(config);
+
+        // Step 1: Report initial connection
+        child.update(1, Some(4));
+        child.set_message("Connecting to Foojay API...".to_string());
+
+        // Step 2: Get all packages from the API with archive type filtering
         let query = PackageQuery {
             archive_types: Some(vec![
                 "tar.gz".to_string(),
@@ -119,22 +133,31 @@ impl MetadataSource for FoojayMetadataSource {
             ]),
             ..Default::default()
         };
+
+        child.update(2, Some(4));
+        child.set_message("Fetching package list...".to_string());
         let packages = self.client.get_packages(Some(query))?;
 
-        // Report package count
-        progress.set_message(format!("Retrieved {} packages from Foojay", packages.len()));
-
-        // Convert to JdkMetadata with is_complete=false
-        progress.set_message("Processing Foojay metadata...".to_string());
+        // Step 3: Convert to JdkMetadata
+        child.update(3, Some(4));
+        child.set_message(format!("Processing {} packages...", packages.len()));
 
         let result: Result<Vec<JdkMetadata>> = packages
             .into_iter()
             .map(|pkg| self.convert_package_to_metadata_incomplete(pkg))
             .collect();
 
-        // Report completion
+        // Step 4: Report completion
+        child.update(4, Some(4));
         if let Ok(ref metadata) = result {
-            progress.set_message(format!("Processed {} packages", metadata.len()));
+            child.complete(Some(format!(
+                "Retrieved {} packages from Foojay",
+                metadata.len()
+            )));
+            // Update parent message too
+            progress.set_message(format!("Retrieved {} packages from Foojay", metadata.len()));
+        } else {
+            child.error("Failed to process Foojay metadata".to_string());
         }
 
         result
@@ -145,8 +168,22 @@ impl MetadataSource for FoojayMetadataSource {
         distribution: &str,
         progress: &mut dyn ProgressIndicator,
     ) -> Result<Vec<JdkMetadata>> {
-        // Report fetching specific distribution
-        progress.set_message(format!(
+        // Create child progress for Foojay API operations
+        // Foojay always creates child progress according to Phase 5 requirements
+        let mut child = progress.create_child();
+
+        // Initialize child progress for API operations
+        let config = crate::indicator::ProgressConfig::new(
+            "Fetching",
+            format!("{distribution} metadata"),
+            crate::indicator::ProgressStyle::Count,
+        )
+        .with_total(4); // Connect, fetch, process, complete
+        child.start(config);
+
+        // Step 1: Report fetching specific distribution
+        child.update(1, Some(4));
+        child.set_message(format!(
             "Fetching {distribution} packages from Foojay API..."
         ));
 
@@ -160,26 +197,34 @@ impl MetadataSource for FoojayMetadataSource {
             ..Default::default()
         };
 
+        // Step 2: Fetch packages
+        child.update(2, Some(4));
+        child.set_message(format!("Fetching {distribution} package list..."));
         let packages = self.client.get_packages(Some(query))?;
 
-        // Report package count for distribution
+        // Step 3: Process packages
         let count = packages.len();
-        progress.set_message(format!(
-            "Retrieved {count} {distribution} packages from Foojay"
-        ));
-
-        // Process packages
-        progress.set_message(format!("Processing {distribution} metadata..."));
+        child.update(3, Some(4));
+        child.set_message(format!("Processing {count} {distribution} packages..."));
 
         let result: Result<Vec<JdkMetadata>> = packages
             .into_iter()
             .map(|pkg| self.convert_package_to_metadata_incomplete(pkg))
             .collect();
 
-        // Report completion
+        // Step 4: Report completion
+        child.update(4, Some(4));
         if let Ok(ref metadata) = result {
             let count = metadata.len();
-            progress.set_message(format!("Processed {count} {distribution} packages"));
+            child.complete(Some(format!(
+                "Retrieved {count} {distribution} packages from Foojay"
+            )));
+            // Update parent message too
+            progress.set_message(format!(
+                "Retrieved {count} {distribution} packages from Foojay"
+            ));
+        } else {
+            child.error(format!("Failed to process {distribution} metadata"));
         }
 
         result
