@@ -112,12 +112,8 @@ impl MetadataSource for FoojayMetadataSource {
         let mut child = progress.create_child();
 
         // Initialize child progress for API operations
-        let config = crate::indicator::ProgressConfig::new(
-            "Fetching",
-            "Foojay metadata".to_string(),
-            crate::indicator::ProgressStyle::Count,
-        )
-        .with_total(4); // Connect, fetch, process, complete
+        let config = crate::indicator::ProgressConfig::new(crate::indicator::ProgressStyle::Count)
+            .with_total(4); // Connect, fetch, process, complete
         child.start(config);
 
         // Step 1: Report initial connection
@@ -173,12 +169,8 @@ impl MetadataSource for FoojayMetadataSource {
         let mut child = progress.create_child();
 
         // Initialize child progress for API operations
-        let config = crate::indicator::ProgressConfig::new(
-            "Fetching",
-            format!("{distribution} metadata"),
-            crate::indicator::ProgressStyle::Count,
-        )
-        .with_total(4); // Connect, fetch, process, complete
+        let config = crate::indicator::ProgressConfig::new(crate::indicator::ProgressStyle::Count)
+            .with_total(4); // Connect, fetch, process, complete
         child.start(config);
 
         // Step 1: Report fetching specific distribution

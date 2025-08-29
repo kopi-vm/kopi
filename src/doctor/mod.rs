@@ -267,8 +267,7 @@ impl<'a> DiagnosticEngine<'a> {
             eprintln!();
 
             // Initialize progress with configuration
-            let config = ProgressConfig::new("Running", "diagnostic checks", ProgressStyle::Count)
-                .with_total(total_checks as u64);
+            let config = ProgressConfig::new(ProgressStyle::Count).with_total(total_checks as u64);
             progress.start(config);
         }
 

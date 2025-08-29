@@ -168,12 +168,9 @@ impl MetadataSource for HttpMetadataSource {
         // Create child progress if total size >= 10MB
         let mut child_progress = if total_size >= CHILD_PROGRESS_THRESHOLD {
             let mut child = progress.create_child();
-            let config = crate::indicator::ProgressConfig::new(
-                "Fetching",
-                "HTTP metadata files".to_string(),
-                crate::indicator::ProgressStyle::Count,
-            )
-            .with_total(platform_files.len() as u64);
+            let config =
+                crate::indicator::ProgressConfig::new(crate::indicator::ProgressStyle::Count)
+                    .with_total(platform_files.len() as u64);
             child.start(config);
             Some(child)
         } else {
@@ -250,12 +247,9 @@ impl MetadataSource for HttpMetadataSource {
         // Create child progress if total size >= 10MB
         let mut child_progress = if total_size >= CHILD_PROGRESS_THRESHOLD {
             let mut child = progress.create_child();
-            let config = crate::indicator::ProgressConfig::new(
-                "Fetching",
-                format!("{distribution} metadata"),
-                crate::indicator::ProgressStyle::Count,
-            )
-            .with_total(filtered_files.len() as u64);
+            let config =
+                crate::indicator::ProgressConfig::new(crate::indicator::ProgressStyle::Count)
+                    .with_total(filtered_files.len() as u64);
             child.start(config);
             Some(child)
         } else {

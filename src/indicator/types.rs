@@ -14,24 +14,13 @@
 
 #[derive(Debug, Clone)]
 pub struct ProgressConfig {
-    pub operation: String,
-    pub context: String,
     pub total: Option<u64>,
     pub style: ProgressStyle,
 }
 
 impl ProgressConfig {
-    pub fn new(
-        operation: impl Into<String>,
-        context: impl Into<String>,
-        style: ProgressStyle,
-    ) -> Self {
-        Self {
-            operation: operation.into(),
-            context: context.into(),
-            total: None,
-            style,
-        }
+    pub fn new(style: ProgressStyle) -> Self {
+        Self { total: None, style }
     }
 
     pub fn with_total(mut self, total: u64) -> Self {
@@ -67,16 +56,14 @@ mod tests {
 
     #[test]
     fn test_progress_config_construction() {
-        let config = ProgressConfig::new("Downloading", "temurin@21", ProgressStyle::Bytes);
-        assert_eq!(config.operation, "Downloading");
-        assert_eq!(config.context, "temurin@21");
+        let config = ProgressConfig::new(ProgressStyle::Bytes);
         assert_eq!(config.style, ProgressStyle::Bytes);
         assert_eq!(config.total, None);
     }
 
     #[test]
     fn test_progress_config_with_total() {
-        let config = ProgressConfig::new("Installing", "JDK", ProgressStyle::Count).with_total(100);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
         assert_eq!(config.total, Some(100));
     }
 
@@ -93,11 +80,8 @@ mod tests {
 
     #[test]
     fn test_progress_config_clone() {
-        let config =
-            ProgressConfig::new("Testing", "unit test", ProgressStyle::Count).with_total(50);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(50);
         let cloned = config.clone();
-        assert_eq!(cloned.operation, config.operation);
-        assert_eq!(cloned.context, config.context);
         assert_eq!(cloned.style, config.style);
         assert_eq!(cloned.total, config.total);
     }

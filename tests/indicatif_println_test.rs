@@ -22,8 +22,7 @@ fn test_println_with_active_progress() {
     let mut progress = ProgressFactory::create(false);
 
     // Start progress bar
-    let config =
-        ProgressConfig::new("Processing", "data".to_string(), ProgressStyle::Count).with_total(10);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(10);
     progress.start(config);
 
     // Test println while progress bar is active
@@ -58,14 +57,12 @@ fn test_println_with_child_progress() {
     // Create parent progress
     let mut parent = ProgressFactory::create(false);
 
-    let config =
-        ProgressConfig::new("Parent", "task".to_string(), ProgressStyle::Count).with_total(10);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(10);
     parent.start(config);
 
     // Create child progress
     let mut child = parent.create_child();
-    let child_config =
-        ProgressConfig::new("Child", "subtask".to_string(), ProgressStyle::Count).with_total(5);
+    let child_config = ProgressConfig::new(ProgressStyle::Count).with_total(5);
     child.start(child_config);
 
     // Both parent and child should be able to use println

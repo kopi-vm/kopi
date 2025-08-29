@@ -16,12 +16,7 @@ fn benchmark_progress_factory_creation(c: &mut Criterion) {
 fn benchmark_progress_operations(c: &mut Criterion) {
     c.bench_function("progress_start_complete_silent", |b| {
         let mut progress = ProgressFactory::create(true);
-        let config = ProgressConfig {
-            operation: "Benchmark".to_string(),
-            context: "Silent mode".to_string(),
-            total: Some(1000),
-            style: ProgressStyle::Count,
-        };
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(1000);
 
         b.iter(|| {
             progress.start(config.clone());
@@ -31,12 +26,7 @@ fn benchmark_progress_operations(c: &mut Criterion) {
 
     c.bench_function("progress_update_silent", |b| {
         let mut progress = ProgressFactory::create(true);
-        let config = ProgressConfig {
-            operation: "Benchmark".to_string(),
-            context: "Silent mode".to_string(),
-            total: Some(1000),
-            style: ProgressStyle::Count,
-        };
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(1000);
 
         progress.start(config);
 
@@ -49,12 +39,7 @@ fn benchmark_progress_operations(c: &mut Criterion) {
 
     c.bench_function("progress_message_update_silent", |b| {
         let mut progress = ProgressFactory::create(true);
-        let config = ProgressConfig {
-            operation: "Benchmark".to_string(),
-            context: "Silent mode".to_string(),
-            total: None,
-            style: ProgressStyle::Count,
-        };
+        let config = ProgressConfig::new(ProgressStyle::Count);
 
         progress.start(config);
 
@@ -67,12 +52,7 @@ fn benchmark_progress_operations(c: &mut Criterion) {
 
     c.bench_function("progress_update_with_total_silent", |b| {
         let mut progress = ProgressFactory::create(true);
-        let config = ProgressConfig {
-            operation: "Benchmark".to_string(),
-            context: "Silent mode".to_string(),
-            total: None,
-            style: ProgressStyle::Count,
-        };
+        let config = ProgressConfig::new(ProgressStyle::Count);
 
         progress.start(config);
 
@@ -89,12 +69,7 @@ fn benchmark_progress_styles(c: &mut Criterion) {
         let mut progress = ProgressFactory::create(true);
 
         b.iter_batched(
-            || ProgressConfig {
-                operation: "Download".to_string(),
-                context: "file.tar.gz".to_string(),
-                total: Some(100_000_000),
-                style: ProgressStyle::Bytes,
-            },
+            || ProgressConfig::new(ProgressStyle::Bytes).with_total(100_000_000),
             |config| {
                 progress.start(config);
                 for i in 0..10 {
@@ -110,12 +85,7 @@ fn benchmark_progress_styles(c: &mut Criterion) {
         let mut progress = ProgressFactory::create(true);
 
         b.iter_batched(
-            || ProgressConfig {
-                operation: "Processing".to_string(),
-                context: "items".to_string(),
-                total: Some(1000),
-                style: ProgressStyle::Count,
-            },
+            || ProgressConfig::new(ProgressStyle::Count).with_total(1000),
             |config| {
                 progress.start(config);
                 for i in 0..10 {
@@ -161,12 +131,7 @@ fn benchmark_status_reporter(c: &mut Criterion) {
 fn benchmark_progress_large_operations(c: &mut Criterion) {
     c.bench_function("progress_1m_updates", |b| {
         let mut progress = ProgressFactory::create(true);
-        let config = ProgressConfig {
-            operation: "Large operation".to_string(),
-            context: "1M updates".to_string(),
-            total: Some(1_000_000),
-            style: ProgressStyle::Count,
-        };
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(1_000_000);
 
         b.iter(|| {
             progress.start(config.clone());
@@ -189,12 +154,7 @@ fn benchmark_progress_large_operations(c: &mut Criterion) {
             for _ in 0..4 {
                 let handle = thread::spawn(move || {
                     let mut progress = ProgressFactory::create(true);
-                    let config = ProgressConfig {
-                        operation: "Concurrent".to_string(),
-                        context: "Thread".to_string(),
-                        total: Some(100),
-                        style: ProgressStyle::Count,
-                    };
+                    let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
 
                     progress.start(config);
                     for i in 0..100 {
@@ -215,12 +175,7 @@ fn benchmark_progress_large_operations(c: &mut Criterion) {
 fn benchmark_progress_memory_allocation(c: &mut Criterion) {
     c.bench_function("progress_config_creation", |b| {
         b.iter(|| {
-            black_box(ProgressConfig {
-                operation: "Test operation".to_string(),
-                context: "Test context".to_string(),
-                total: Some(1000),
-                style: ProgressStyle::Count,
-            })
+            black_box(ProgressConfig::new(ProgressStyle::Count).with_total(1000))
         });
     });
 
@@ -238,12 +193,7 @@ fn benchmark_real_world_scenarios(c: &mut Criterion) {
         let mut progress = ProgressFactory::create(true);
 
         b.iter(|| {
-            let config = ProgressConfig {
-                operation: "Downloading".to_string(),
-                context: "openjdk-21.tar.gz".to_string(),
-                total: Some(195_000_000), // ~195MB
-                style: ProgressStyle::Bytes,
-            };
+            let config = ProgressConfig::new(ProgressStyle::Bytes).with_total(195_000_000); // ~195MB
 
             progress.start(config);
 
@@ -263,12 +213,7 @@ fn benchmark_real_world_scenarios(c: &mut Criterion) {
         let mut progress = ProgressFactory::create(true);
 
         b.iter(|| {
-            let config = ProgressConfig {
-                operation: "Uninstalling JDKs".to_string(),
-                context: "Batch operation".to_string(),
-                total: Some(10),
-                style: ProgressStyle::Count,
-            };
+            let config = ProgressConfig::new(ProgressStyle::Count).with_total(10);
 
             progress.start(config);
 
@@ -285,12 +230,7 @@ fn benchmark_real_world_scenarios(c: &mut Criterion) {
         let mut progress = ProgressFactory::create(true);
 
         b.iter(|| {
-            let config = ProgressConfig {
-                operation: "Refreshing cache".to_string(),
-                context: "Fetching metadata".to_string(),
-                total: None,
-                style: ProgressStyle::Count,
-            };
+            let config = ProgressConfig::new(ProgressStyle::Count);
 
             progress.start(config);
 
@@ -322,3 +262,4 @@ criterion_group!(
 );
 
 criterion_main!(benches);
+

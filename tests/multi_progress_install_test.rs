@@ -21,8 +21,7 @@ use kopi::indicator::{ProgressConfig, ProgressFactory, ProgressStyle};
 fn test_download_creates_child_for_large_file() {
     // Create parent progress
     let mut parent = ProgressFactory::create(false);
-    let config = ProgressConfig::new("Installing", "temurin@21".to_string(), ProgressStyle::Count)
-        .with_total(8);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(8);
     parent.start(config);
 
     // Create download progress adapter with parent
@@ -45,8 +44,7 @@ fn test_download_creates_child_for_large_file() {
 fn test_download_no_child_for_small_file() {
     // Create parent progress
     let mut parent = ProgressFactory::create(false);
-    let config = ProgressConfig::new("Installing", "tool@1.0".to_string(), ProgressStyle::Count)
-        .with_total(8);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(8);
     parent.start(config);
 
     // Create download progress adapter with parent
@@ -71,8 +69,7 @@ fn test_foojay_creates_child_progress() {
 
     // Create parent progress
     let mut parent = ProgressFactory::create(false);
-    let config =
-        ProgressConfig::new("Refreshing", "cache".to_string(), ProgressStyle::Count).with_total(5);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(5);
     parent.start(config);
 
     // FoojayMetadataSource should always create child progress
@@ -87,8 +84,7 @@ fn test_http_source_child_for_large_metadata() {
     // Test that HTTP source creates child progress for large total size
     // This tests the threshold logic for multiple files
     let mut parent = ProgressFactory::create(false);
-    let config =
-        ProgressConfig::new("Fetching", "metadata".to_string(), ProgressStyle::Count).with_total(5);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(5);
     parent.start(config);
 
     // In real usage, HttpMetadataSource would check total file size
@@ -111,8 +107,7 @@ fn test_cache_refresh_with_parent_progress() {
     let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
 
     let mut parent = ProgressFactory::create(false);
-    let config_progress =
-        ProgressConfig::new("Refreshing", "cache".to_string(), ProgressStyle::Count).with_total(10);
+    let config_progress = ProgressConfig::new(ProgressStyle::Count).with_total(10);
     parent.start(config_progress);
 
     let mut current_step = 0u64;

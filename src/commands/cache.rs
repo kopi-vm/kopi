@@ -119,9 +119,7 @@ fn refresh_cache(config: &KopiConfig, no_progress: bool) -> Result<()> {
     let mut progress = ProgressFactory::create(no_progress);
 
     // Initialize step-based progress with total
-    let progress_config =
-        ProgressConfig::new("Refreshing", "metadata cache", IndicatorStyle::Count)
-            .with_total(total_steps as u64);
+    let progress_config = ProgressConfig::new(IndicatorStyle::Count).with_total(total_steps as u64);
     progress.start(progress_config);
 
     // Initialize step counter
@@ -1042,13 +1040,13 @@ mod tests {
         use crate::indicator::{ProgressConfig, ProgressFactory, ProgressStyle as IndicatorStyle};
 
         let mut progress = ProgressFactory::create(false);
-        let config = ProgressConfig::new("Testing", "cache operations", IndicatorStyle::Count);
+        let config = ProgressConfig::new(IndicatorStyle::Count);
         progress.start(config);
         progress.complete(Some("Test complete".to_string()));
 
         // Also test with no_progress mode
         let mut silent_progress = ProgressFactory::create(true);
-        let config = ProgressConfig::new("Testing", "silent mode", IndicatorStyle::Count);
+        let config = ProgressConfig::new(IndicatorStyle::Count);
         silent_progress.start(config);
         silent_progress.complete(None);
     }

@@ -186,12 +186,9 @@ impl<'a> InstallCommand<'a> {
         // We'll add checksum verification step dynamically if checksum exists
 
         // Initialize progress with total steps
-        let progress_config = crate::indicator::ProgressConfig::new(
-            "Installing",
-            format!("{} {}", distribution.name(), version),
-            crate::indicator::ProgressStyle::Count,
-        )
-        .with_total(total_steps);
+        let progress_config =
+            crate::indicator::ProgressConfig::new(crate::indicator::ProgressStyle::Count)
+                .with_total(total_steps);
         progress.start(progress_config);
 
         let mut current_step = 0u64;

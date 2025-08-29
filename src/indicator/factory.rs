@@ -112,7 +112,7 @@ mod tests {
 
         // Test that it's actually SilentProgress by checking behavior
         let mut p = progress;
-        let config = ProgressConfig::new("Test", "op", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         p.start(config); // Should not panic
         p.complete(None); // Should not panic
     }
@@ -128,7 +128,7 @@ mod tests {
         // The type should be SimpleProgress but we can't directly check that
         // We can verify it's not silent by the fact it would produce output
         let mut p = progress;
-        let config = ProgressConfig::new("Test", "op", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         p.start(config);
         p.complete(None);
     }
@@ -143,7 +143,7 @@ mod tests {
         let progress = ProgressFactory::create(false);
 
         let mut p = progress;
-        let config = ProgressConfig::new("Test", "op", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         p.start(config);
         p.complete(None);
     }
@@ -159,7 +159,7 @@ mod tests {
         let progress = ProgressFactory::create(false);
 
         let mut p = progress;
-        let config = ProgressConfig::new("Test", "op", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         p.start(config);
         p.complete(None);
     }
@@ -177,7 +177,7 @@ mod tests {
         let progress = ProgressFactory::create(false);
 
         let mut p = progress;
-        let config = ProgressConfig::new("Test", "op", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         p.start(config);
         p.complete(None);
     }
@@ -225,7 +225,7 @@ mod tests {
         let progress = ProgressFactory::create(true);
 
         let mut p = progress;
-        let config = ProgressConfig::new("Test", "op", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         p.start(config);
         p.complete(None);
     }

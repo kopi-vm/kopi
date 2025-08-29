@@ -73,7 +73,7 @@ mod tests {
     fn test_no_panic_on_calls() {
         let mut progress = SilentProgress::new();
 
-        let config = ProgressConfig::new("Test", "operation", ProgressStyle::Count).with_total(100);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
 
         // None of these should panic
         progress.start(config);
@@ -137,9 +137,8 @@ mod tests {
         let mut progress = SilentProgress::new();
 
         // Simulate multiple operations
-        for i in 0..3 {
-            let config =
-                ProgressConfig::new(format!("Operation {i}"), "test", ProgressStyle::Bytes);
+        for _i in 0..3 {
+            let config = ProgressConfig::new(ProgressStyle::Bytes);
             progress.start(config);
 
             for j in 0..10 {

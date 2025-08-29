@@ -106,7 +106,6 @@ impl ProgressIndicator for TestProgressCapture {
         self.current_style = Some(config.style);
         self.total = config.total;
         self.position = 0;
-        self.set_message(format!("{} {}", config.operation, config.context));
     }
 
     fn update(&mut self, current: u64, total: Option<u64>) {

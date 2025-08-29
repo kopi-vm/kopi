@@ -118,18 +118,17 @@ impl ProgressReporter {
     }
 
     /// Creates a spinner progress bar for long-running operations
-    pub fn create_spinner(&mut self, message: &str) -> ProgressHandle {
+    pub fn create_spinner(&mut self, _message: &str) -> ProgressHandle {
         let mut indicator = ProgressFactory::create(self.no_progress);
-        let config = ProgressConfig::new("Processing", message, ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         indicator.start(config);
         self.create_progress_handle(indicator, None)
     }
 
     /// Creates a progress bar for operations with known total steps
-    pub fn create_bar(&mut self, total: u64, message: &str) -> ProgressHandle {
+    pub fn create_bar(&mut self, total: u64, _message: &str) -> ProgressHandle {
         let mut indicator = ProgressFactory::create(self.no_progress);
-        let config =
-            ProgressConfig::new("Removing", message, ProgressStyle::Count).with_total(total);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(total);
         indicator.start(config);
         self.create_progress_handle(indicator, Some(total))
     }
@@ -141,18 +140,18 @@ impl ProgressReporter {
         formatted_size: &str,
     ) -> ProgressHandle {
         let mut indicator = ProgressFactory::create(self.no_progress);
-        let context = format!("{jdk_path} ({formatted_size})");
-        let config = ProgressConfig::new("Removing", &context, ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         indicator.start(config);
-        indicator.set_message("Preparing removal...".to_string());
+        indicator.set_message(format!(
+            "Preparing removal of {jdk_path} ({formatted_size})..."
+        ));
         self.create_progress_handle(indicator, None)
     }
 
     /// Creates a progress bar for batch JDK removal operations
     pub fn create_batch_removal_bar(&mut self, total_jdks: u64) -> ProgressHandle {
         let mut indicator = ProgressFactory::create(self.no_progress);
-        let config =
-            ProgressConfig::new("Removing", "JDKs", ProgressStyle::Count).with_total(total_jdks);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(total_jdks);
         indicator.start(config);
         self.create_progress_handle(indicator, Some(total_jdks))
     }

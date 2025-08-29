@@ -20,24 +20,14 @@ fn test_progress_factory_terminal_detection() {
     let mut progress = ProgressFactory::create(true);
 
     // Silent progress should handle all operations without panicking
-    let config = ProgressConfig {
-        operation: "Test".to_string(),
-        context: "Silent mode".to_string(),
-        total: Some(100),
-        style: ProgressStyle::Count,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
     progress.start(config);
     progress.update(50, None);
     progress.complete(None);
 
     // Without no_progress flag - behavior depends on terminal detection
     let mut progress = ProgressFactory::create(false);
-    let config = ProgressConfig {
-        operation: "Test".to_string(),
-        context: "Normal mode".to_string(),
-        total: Some(100),
-        style: ProgressStyle::Count,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
     progress.start(config);
     progress.update(50, None);
     progress.complete(None);
@@ -50,12 +40,7 @@ fn test_progress_indicator_with_install_simulation() {
     // Simulate install operation with progress
     let mut progress = ProgressFactory::create(false);
 
-    let config = ProgressConfig {
-        operation: "Installing JDK".to_string(),
-        context: "temurin@21".to_string(),
-        total: Some(150_000_000), // 150MB
-        style: ProgressStyle::Bytes,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Bytes).with_total(150_000_000); // 150MB
 
     progress.start(config);
 
@@ -77,12 +62,7 @@ fn test_progress_indicator_with_cache_operations() {
 
     let mut progress = ProgressFactory::create(false);
 
-    let config = ProgressConfig {
-        operation: "Refreshing cache".to_string(),
-        context: "Fetching metadata".to_string(),
-        total: None, // Spinner mode
-        style: ProgressStyle::Count,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Count);
 
     progress.start(config);
 
@@ -104,12 +84,7 @@ fn test_progress_indicator_batch_operations() {
 
     let mut progress = ProgressFactory::create(false);
 
-    let config = ProgressConfig {
-        operation: "Uninstalling JDKs".to_string(),
-        context: "Batch operation".to_string(),
-        total: Some(5), // 5 JDKs to uninstall
-        style: ProgressStyle::Count,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(5);
 
     progress.start(config);
 
@@ -131,12 +106,7 @@ fn test_no_progress_mode_across_commands() {
     let mut progress = ProgressFactory::create(true);
 
     // All operations should be silent
-    let config = ProgressConfig {
-        operation: "Test Operation".to_string(),
-        context: "Should be silent".to_string(),
-        total: Some(100),
-        style: ProgressStyle::Bytes,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Bytes).with_total(100);
 
     progress.start(config);
     progress.update(50, None);
@@ -160,12 +130,7 @@ fn test_progress_in_ci_environment() {
     let mut progress = ProgressFactory::create(false);
 
     // In CI, should use simple progress (not indicatif with fancy bars)
-    let config = ProgressConfig {
-        operation: "CI Operation".to_string(),
-        context: "Running in CI".to_string(),
-        total: Some(100),
-        style: ProgressStyle::Count,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
 
     progress.start(config);
     progress.update(100, None);
@@ -194,12 +159,7 @@ fn test_progress_with_dumb_terminal() {
     let mut progress = ProgressFactory::create(false);
 
     // Should use simple progress for dumb terminals
-    let config = ProgressConfig {
-        operation: "Dumb Terminal Operation".to_string(),
-        context: "TERM=dumb".to_string(),
-        total: Some(50),
-        style: ProgressStyle::Bytes,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Bytes).with_total(50);
 
     progress.start(config);
     progress.update(25, None);
@@ -220,12 +180,7 @@ fn test_progress_indicator_error_handling() {
 
     let mut progress = ProgressFactory::create(false);
 
-    let config = ProgressConfig {
-        operation: "Operation with error".to_string(),
-        context: "Testing error".to_string(),
-        total: Some(100),
-        style: ProgressStyle::Count,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
 
     progress.start(config);
     progress.update(50, None);
@@ -246,18 +201,13 @@ fn test_progress_indicator_concurrent_operations() {
     let mut handles = vec![];
 
     // Spawn multiple threads with progress indicators
-    for i in 0..3 {
+    for _i in 0..3 {
         let finished = Arc::clone(&finished);
 
         let handle = thread::spawn(move || {
             let mut progress = ProgressFactory::create(false);
 
-            let config = ProgressConfig {
-                operation: format!("Thread {i} operation"),
-                context: format!("Concurrent test {i}"),
-                total: Some(50),
-                style: ProgressStyle::Count,
-            };
+            let config = ProgressConfig::new(ProgressStyle::Count).with_total(50);
 
             progress.start(config);
 
@@ -322,12 +272,7 @@ fn test_progress_styles() {
     // Test Bytes style
     {
         let mut progress = ProgressFactory::create(false);
-        let config = ProgressConfig {
-            operation: "Download".to_string(),
-            context: "file.tar.gz".to_string(),
-            total: Some(1_000_000),
-            style: ProgressStyle::Bytes,
-        };
+        let config = ProgressConfig::new(ProgressStyle::Bytes).with_total(1_000_000);
 
         progress.start(config);
         progress.update(500_000, None);
@@ -337,12 +282,7 @@ fn test_progress_styles() {
     // Test Count style
     {
         let mut progress = ProgressFactory::create(false);
-        let config = ProgressConfig {
-            operation: "Processing".to_string(),
-            context: "items".to_string(),
-            total: Some(100),
-            style: ProgressStyle::Count,
-        };
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
 
         progress.start(config);
         progress.update(50, None);
@@ -356,12 +296,7 @@ fn test_progress_with_message_updates() {
 
     let mut progress = ProgressFactory::create(false);
 
-    let config = ProgressConfig {
-        operation: "Multi-step operation".to_string(),
-        context: "Testing messages".to_string(),
-        total: None,
-        style: ProgressStyle::Count,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Count);
 
     progress.start(config);
 
@@ -389,12 +324,7 @@ fn test_progress_indicator_memory_usage() {
     for _ in 0..100 {
         let mut progress = ProgressFactory::create(false);
 
-        let config = ProgressConfig {
-            operation: "Memory test".to_string(),
-            context: "Checking for leaks".to_string(),
-            total: Some(10),
-            style: ProgressStyle::Count,
-        };
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(10);
 
         progress.start(config);
         progress.update(5, None);
@@ -410,12 +340,7 @@ fn test_progress_indicator_performance() {
 
     let mut progress = ProgressFactory::create(true); // Use silent mode for consistent timing
 
-    let config = ProgressConfig {
-        operation: "Performance test".to_string(),
-        context: "Measuring overhead".to_string(),
-        total: Some(1_000_000),
-        style: ProgressStyle::Count,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(1_000_000);
 
     let start = Instant::now();
 
@@ -446,12 +371,7 @@ fn test_progress_with_long_operations() {
     let mut progress = ProgressFactory::create(false);
 
     // Simulate a long-running operation
-    let config = ProgressConfig {
-        operation: "Long operation".to_string(),
-        context: "Processing large dataset".to_string(),
-        total: Some(1_000_000_000), // 1GB
-        style: ProgressStyle::Bytes,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Bytes).with_total(1_000_000_000); // 1GB
 
     progress.start(config);
 
@@ -472,12 +392,7 @@ fn test_progress_indicator_state_transitions() {
     let mut progress = ProgressFactory::create(false);
 
     // Test state transitions: not started -> started -> completed
-    let config = ProgressConfig {
-        operation: "State test".to_string(),
-        context: "Testing transitions".to_string(),
-        total: Some(100),
-        style: ProgressStyle::Count,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
 
     // Start
     progress.start(config.clone());
@@ -503,12 +418,7 @@ fn test_progress_indicator_zero_total() {
     let mut progress = ProgressFactory::create(false);
 
     // Test with zero total (should handle gracefully)
-    let config = ProgressConfig {
-        operation: "Zero total test".to_string(),
-        context: "Edge case".to_string(),
-        total: Some(0),
-        style: ProgressStyle::Count,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(0);
 
     progress.start(config);
     progress.update(0, None);
@@ -521,12 +431,7 @@ fn test_progress_indicator_overflow_protection() {
 
     let mut progress = ProgressFactory::create(false);
 
-    let config = ProgressConfig {
-        operation: "Overflow test".to_string(),
-        context: "Testing bounds".to_string(),
-        total: Some(100),
-        style: ProgressStyle::Count,
-    };
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
 
     progress.start(config);
 

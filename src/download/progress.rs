@@ -20,43 +20,29 @@ const CHILD_PROGRESS_THRESHOLD: u64 = 10 * 1024 * 1024; // 10MB
 
 pub struct DownloadProgressAdapter {
     indicator: Box<dyn ProgressIndicator>,
-    operation: String,
-    context: String,
     parent_indicator: Option<Box<dyn ProgressIndicator>>,
     child_indicator: Option<Box<dyn ProgressIndicator>>,
 }
 
 impl DownloadProgressAdapter {
-    pub fn new(
-        operation: String,
-        context: String,
-        parent: Option<Box<dyn ProgressIndicator>>,
-        no_progress: bool,
-    ) -> Self {
+    pub fn new(parent: Option<Box<dyn ProgressIndicator>>, no_progress: bool) -> Self {
         Self {
             indicator: if parent.is_none() {
                 ProgressFactory::create(no_progress)
             } else {
                 ProgressFactory::create(false) // Not used when we have parent
             },
-            operation,
-            context,
             parent_indicator: parent,
             child_indicator: None,
         }
     }
 
     pub fn for_jdk_download(
-        package_name: &str,
+        _package_name: &str,
         parent: Option<Box<dyn ProgressIndicator>>,
         no_progress: bool,
     ) -> Self {
-        Self::new(
-            "Downloading".to_string(),
-            package_name.to_string(),
-            parent,
-            no_progress,
-        )
+        Self::new(parent, no_progress)
     }
 }
 
@@ -69,9 +55,7 @@ impl ProgressReporter for DownloadProgressAdapter {
                 self.parent_indicator = Some(parent);
                 let mut child = self.parent_indicator.as_mut().unwrap().create_child();
 
-                let config =
-                    ProgressConfig::new(&self.operation, &self.context, ProgressStyle::Bytes)
-                        .with_total(total_bytes);
+                let config = ProgressConfig::new(ProgressStyle::Bytes).with_total(total_bytes);
                 child.start(config);
 
                 if total_bytes > 0 {
@@ -85,23 +69,18 @@ impl ProgressReporter for DownloadProgressAdapter {
                 // Small file - update parent message instead
                 self.parent_indicator = Some(parent);
                 let msg = if total_bytes == 0 {
-                    format!("Downloading {} (unknown size)", self.context)
+                    "Downloading (unknown size)".to_string()
                 } else {
-                    format!(
-                        "Downloading {} ({})",
-                        self.context,
-                        format_size(total_bytes)
-                    )
+                    format!("Downloading ({})", format_size(total_bytes))
                 };
                 self.parent_indicator.as_mut().unwrap().set_message(msg);
             }
         } else {
             // No parent - use regular indicator
             let config = if total_bytes > 0 {
-                ProgressConfig::new(&self.operation, &self.context, ProgressStyle::Bytes)
-                    .with_total(total_bytes)
+                ProgressConfig::new(ProgressStyle::Bytes).with_total(total_bytes)
             } else {
-                ProgressConfig::new(&self.operation, &self.context, ProgressStyle::Bytes)
+                ProgressConfig::new(ProgressStyle::Bytes)
             };
             self.indicator.start(config);
 
@@ -124,7 +103,7 @@ impl ProgressReporter for DownloadProgressAdapter {
         } else if self.parent_indicator.is_some() {
             // Small file - just update parent message
             let mb_downloaded = bytes_downloaded as f64 / (1024.0 * 1024.0);
-            let msg = format!("Downloading {} ({:.1} MB)", self.context, mb_downloaded);
+            let msg = format!("Downloading ({mb_downloaded:.1} MB)");
             self.parent_indicator.as_mut().unwrap().set_message(msg);
         } else {
             // No parent - use regular indicator
@@ -141,7 +120,7 @@ impl ProgressReporter for DownloadProgressAdapter {
             child.complete(Some("Download complete".to_string()));
         } else if self.parent_indicator.is_some() {
             // Small file - update parent message
-            let msg = format!("Downloaded {}", self.context);
+            let msg = "Downloaded".to_string();
             self.parent_indicator.as_mut().unwrap().set_message(msg);
         } else {
             // No parent - use regular indicator
@@ -200,12 +179,7 @@ mod tests {
 
     #[test]
     fn test_custom_operation_context() {
-        let mut adapter = DownloadProgressAdapter::new(
-            "Fetching".to_string(),
-            "archive.tar.gz".to_string(),
-            None,
-            false,
-        );
+        let mut adapter = DownloadProgressAdapter::new(None, false);
 
         adapter.on_start(5000000);
         adapter.on_progress(2500000);

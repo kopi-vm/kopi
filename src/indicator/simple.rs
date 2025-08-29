@@ -14,17 +14,11 @@
 
 use crate::indicator::{ProgressConfig, ProgressIndicator, SilentProgress};
 
-pub struct SimpleProgress {
-    operation: String,
-    context: String,
-}
+pub struct SimpleProgress {}
 
 impl SimpleProgress {
     pub fn new() -> Self {
-        Self {
-            operation: String::new(),
-            context: String::new(),
-        }
+        Self {}
     }
 }
 
@@ -35,28 +29,26 @@ impl Default for SimpleProgress {
 }
 
 impl ProgressIndicator for SimpleProgress {
-    fn start(&mut self, config: ProgressConfig) {
+    fn start(&mut self, _config: ProgressConfig) {
         // Don't print on start to avoid duplication with StatusReporter
         // The complete() method will show the final status
-        self.operation = config.operation;
-        self.context = config.context;
     }
 
     fn update(&mut self, _current: u64, _total: Option<u64>) {
         // No update output in simple mode to avoid log spam
     }
 
-    fn set_message(&mut self, _message: String) {
-        // No intermediate messages to keep logs clean
+    fn set_message(&mut self, message: String) {
+        println!("{message}");
     }
 
     fn complete(&mut self, message: Option<String>) {
         let msg = message.unwrap_or_else(|| "Complete".to_string());
-        println!("[OK] {} {} - {}", self.operation, self.context, msg);
+        println!("[OK] {msg}");
     }
 
     fn error(&mut self, message: String) {
-        eprintln!("[ERROR] {} {} - {}", self.operation, self.context, message);
+        eprintln!("[ERROR] {message}");
     }
 
     fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
@@ -108,10 +100,9 @@ mod tests {
 
     impl ProgressIndicator for TestProgress {
         fn start(&mut self, config: ProgressConfig) {
-            let msg = format!("{} {}...", config.operation, config.context);
+            let msg = "Starting...".to_string();
             OUTPUT.lock().unwrap().push(msg);
-            self.inner.operation = config.operation;
-            self.inner.context = config.context;
+            self.inner.start(config);
         }
 
         fn update(&mut self, current: u64, total: Option<u64>) {
@@ -119,23 +110,18 @@ mod tests {
         }
 
         fn set_message(&mut self, message: String) {
+            OUTPUT.lock().unwrap().push(message.clone());
             self.inner.set_message(message);
         }
 
         fn complete(&mut self, message: Option<String>) {
             let msg = message.unwrap_or_else(|| "Complete".to_string());
-            let output = format!(
-                "[OK] {} {} - {}",
-                self.inner.operation, self.inner.context, msg
-            );
+            let output = format!("[OK] {msg}");
             OUTPUT.lock().unwrap().push(output);
         }
 
         fn error(&mut self, message: String) {
-            let output = format!(
-                "[ERROR] {} {} - {}",
-                self.inner.operation, self.inner.context, message
-            );
+            let output = format!("[ERROR] {message}");
             OUTPUT.lock().unwrap().push(output);
         }
 
@@ -158,14 +144,14 @@ mod tests {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
 
-        let config = ProgressConfig::new("Installing", "temurin@21", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config);
         progress.complete(Some("Done".to_string()));
 
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
-        assert_eq!(output[0], "Installing temurin@21...");
-        assert_eq!(output[1], "[OK] Installing temurin@21 - Done");
+        assert_eq!(output[0], "Starting...");
+        assert_eq!(output[1], "[OK] Done");
     }
 
     #[test]
@@ -173,14 +159,11 @@ mod tests {
     fn test_state_management() {
         let mut progress = SimpleProgress::new();
 
-        assert_eq!(progress.operation, "");
-        assert_eq!(progress.context, "");
-
-        let config = ProgressConfig::new("Downloading", "JDK", ProgressStyle::Bytes);
+        // SimpleProgress no longer has state
+        let config = ProgressConfig::new(ProgressStyle::Bytes);
         progress.start(config);
 
-        assert_eq!(progress.operation, "Downloading");
-        assert_eq!(progress.context, "JDK");
+        // Just verify it doesn't panic
     }
 
     #[test]
@@ -189,13 +172,13 @@ mod tests {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
 
-        let config = ProgressConfig::new("Extracting", "archive", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config);
         progress.error("Failed to extract".to_string());
 
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
-        assert_eq!(output[1], "[ERROR] Extracting archive - Failed to extract");
+        assert_eq!(output[1], "[ERROR] Failed to extract");
     }
 
     #[test]
@@ -204,13 +187,13 @@ mod tests {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
 
-        let config = ProgressConfig::new("Caching", "metadata", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config);
         progress.complete(Some("Successfully cached".to_string()));
 
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
-        assert_eq!(output[1], "[OK] Caching metadata - Successfully cached");
+        assert_eq!(output[1], "[OK] Successfully cached");
     }
 
     #[test]
@@ -219,13 +202,13 @@ mod tests {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
 
-        let config = ProgressConfig::new("Processing", "data", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config);
         progress.complete(None);
 
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
-        assert_eq!(output[1], "[OK] Processing data - Complete");
+        assert_eq!(output[1], "[OK] Complete");
     }
 
     #[test]
@@ -234,7 +217,7 @@ mod tests {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
 
-        let config = ProgressConfig::new("Loading", "files", ProgressStyle::Count).with_total(100);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
         progress.start(config);
 
         // Updates should not produce output
@@ -248,19 +231,21 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_set_message_no_output() {
+    fn test_set_message_output() {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
 
-        let config = ProgressConfig::new("Scanning", "directories", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config);
 
-        // Set message should not produce output
+        // Set message should now produce output
         progress.set_message("Processing file 1".to_string());
         progress.set_message("Processing file 2".to_string());
 
         let output = TestProgress::get_output();
-        assert_eq!(output.len(), 1); // Only the start message
+        assert_eq!(output.len(), 3); // Start message + 2 messages
+        assert_eq!(output[1], "Processing file 1");
+        assert_eq!(output[2], "Processing file 2");
     }
 
     #[test]
@@ -270,21 +255,21 @@ mod tests {
         let mut progress = TestProgress::new();
 
         // First operation
-        let config1 = ProgressConfig::new("Operation1", "target1", ProgressStyle::Bytes);
+        let config1 = ProgressConfig::new(ProgressStyle::Bytes);
         progress.start(config1);
         progress.complete(None);
 
         // Second operation
-        let config2 = ProgressConfig::new("Operation2", "target2", ProgressStyle::Count);
+        let config2 = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config2);
         progress.complete(Some("Done".to_string()));
 
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 4);
-        assert_eq!(output[0], "Operation1 target1...");
-        assert_eq!(output[1], "[OK] Operation1 target1 - Complete");
-        assert_eq!(output[2], "Operation2 target2...");
-        assert_eq!(output[3], "[OK] Operation2 target2 - Done");
+        assert_eq!(output[0], "Starting...");
+        assert_eq!(output[1], "[OK] Complete");
+        assert_eq!(output[2], "Starting...");
+        assert_eq!(output[3], "[OK] Done");
     }
 
     #[test]
@@ -293,7 +278,7 @@ mod tests {
 
         let mut child = progress.create_child();
 
-        let config = ProgressConfig::new("Child Op", "test", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         child.start(config);
 
         child.update(50, Some(100));
@@ -311,15 +296,15 @@ mod tests {
         let mut child2 = progress.create_child();
         let mut child3 = progress.create_child();
 
-        let config1 = ProgressConfig::new("Child1", "op1", ProgressStyle::Count);
+        let config1 = ProgressConfig::new(ProgressStyle::Count);
         child1.start(config1);
         child1.complete(None);
 
-        let config2 = ProgressConfig::new("Child2", "op2", ProgressStyle::Bytes);
+        let config2 = ProgressConfig::new(ProgressStyle::Bytes);
         child2.start(config2);
         child2.complete(Some("Success".to_string()));
 
-        let config3 = ProgressConfig::new("Child3", "op3", ProgressStyle::Count);
+        let config3 = ProgressConfig::new(ProgressStyle::Count);
         child3.start(config3);
         child3.error("Failed".to_string())
     }
@@ -329,11 +314,11 @@ mod tests {
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
 
-        let parent_config = ProgressConfig::new("Parent", "operation", ProgressStyle::Count);
+        let parent_config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(parent_config);
 
         let mut child = progress.create_child();
-        let child_config = ProgressConfig::new("Child", "subtask", ProgressStyle::Bytes);
+        let child_config = ProgressConfig::new(ProgressStyle::Bytes);
         child.start(child_config);
         child.update(100, Some(200));
         child.complete(Some("Child done".to_string()));
@@ -342,8 +327,8 @@ mod tests {
 
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
-        assert_eq!(output[0], "Parent operation...");
-        assert_eq!(output[1], "[OK] Parent operation - All done");
+        assert_eq!(output[0], "Starting...");
+        assert_eq!(output[1], "[OK] All done");
     }
 
     #[test]
@@ -354,7 +339,7 @@ mod tests {
         let mut progress = TestProgress::new();
 
         // Test successful completion with ASCII [OK]
-        let config = ProgressConfig::new("Testing", "ASCII", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config);
         progress.complete(Some("Success".to_string()));
 
@@ -372,7 +357,7 @@ mod tests {
         // Test error with ASCII [ERROR]
         TestProgress::clear_output();
         let mut progress = TestProgress::new();
-        let config = ProgressConfig::new("Testing", "Error", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config);
         progress.error("Failed".to_string());
 

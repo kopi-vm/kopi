@@ -24,20 +24,14 @@ fn test_multiprogress_add_before_styling() {
     let mut parent = ProgressFactory::create(false);
 
     // Start parent progress
-    let config = ProgressConfig::new("Installing", "temurin@21".to_string(), ProgressStyle::Count)
-        .with_total(10);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(10);
     parent.start(config);
 
     // Create a child progress
     let mut child = parent.create_child();
 
     // Start child progress (this will test the fixed ordering)
-    let child_config = ProgressConfig::new(
-        "Downloading",
-        "package.tar.gz".to_string(),
-        ProgressStyle::Bytes,
-    )
-    .with_total(1024 * 1024);
+    let child_config = ProgressConfig::new(ProgressStyle::Bytes).with_total(1024 * 1024);
     child.start(child_config);
 
     // Update both progress bars
@@ -60,16 +54,14 @@ fn test_multiprogress_spinner_with_child() {
     let mut parent = ProgressFactory::create(false);
 
     // Start parent as spinner
-    let config = ProgressConfig::new("Processing", "metadata".to_string(), ProgressStyle::Count); // No total = spinner
+    let config = ProgressConfig::new(ProgressStyle::Count); // No total = spinner
     parent.start(config);
 
     parent.set_message("Fetching from API...".to_string());
 
     // Create child with determinate progress
     let mut child = parent.create_child();
-    let child_config =
-        ProgressConfig::new("Fetching", "packages".to_string(), ProgressStyle::Count)
-            .with_total(100);
+    let child_config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
     child.start(child_config);
 
     // Update child progress
@@ -87,8 +79,7 @@ fn test_multiprogress_println_and_suspend() {
     // Test println and suspend methods with MultiProgress
     let mut progress = ProgressFactory::create(false);
 
-    let config = ProgressConfig::new("Testing", "operations".to_string(), ProgressStyle::Count)
-        .with_total(5);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(5);
     progress.start(config);
 
     // Test println - should work without corrupting the progress bar

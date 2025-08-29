@@ -67,7 +67,6 @@ mod tests {
         fn start(&mut self, config: ProgressConfig) {
             self.started = true;
             self.total = config.total;
-            self.message = format!("{} {}", config.operation, config.context);
         }
 
         fn update(&mut self, current: u64, total: Option<u64>) {
@@ -112,11 +111,10 @@ mod tests {
         let mut progress = MockProgress::new();
 
         // Test start
-        let config = ProgressConfig::new("Testing", "mock", ProgressStyle::Count).with_total(100);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
         progress.start(config);
         assert!(progress.started);
         assert_eq!(progress.total, Some(100));
-        assert_eq!(progress.message, "Testing mock");
 
         // Test update
         progress.update(50, None);
@@ -142,7 +140,7 @@ mod tests {
     fn test_error_handling() {
         let mut progress = MockProgress::new();
 
-        let config = ProgressConfig::new("Testing", "error", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config);
 
         progress.error("Something went wrong".to_string());
@@ -155,7 +153,7 @@ mod tests {
         let mut progress = MockProgress::new();
 
         // Start without total (indeterminate)
-        let config = ProgressConfig::new("Loading", "data", ProgressStyle::Bytes);
+        let config = ProgressConfig::new(ProgressStyle::Bytes);
         progress.start(config);
         assert!(progress.started);
         assert_eq!(progress.total, None);

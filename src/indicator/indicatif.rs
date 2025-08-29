@@ -40,11 +40,11 @@ impl IndicatifProgress {
             (Some(_), ProgressStyle::Bytes) => {
                 if self.is_child {
                     format!(
-                        "  └─ {{spinner}} {{prefix}} [{{bar:{bar_width}}}] {{bytes}}/{{total_bytes}} {{msg}}"
+                        "  └─ {{spinner}} {{elapsed_precise}} [{{bar:{bar_width}}}] {{bytes}}/{{total_bytes}} {{msg}}"
                     )
                 } else {
                     format!(
-                        "{{spinner}} {{prefix}} [{{bar:{bar_width}}}] {{bytes}}/{{total_bytes}} {{msg}} ({{bytes_per_sec}}, {{eta}})"
+                        "{{spinner}} {{elapsed_precise}} [{{bar:{bar_width}}}] {{bytes}}/{{total_bytes}} {{msg}} ({{bytes_per_sec}}, {{eta}})"
                     )
                 }
             }
@@ -52,18 +52,20 @@ impl IndicatifProgress {
             (Some(_), ProgressStyle::Count) => {
                 if self.is_child {
                     format!(
-                        "  └─ {{spinner}} {{prefix}} [{{bar:{bar_width}}}] {{pos}}/{{len}} {{msg}}"
+                        "  └─ {{spinner}} {{elapsed_precise}} [{{bar:{bar_width}}}] {{pos}}/{{len}} {{msg}}"
                     )
                 } else {
-                    format!("{{spinner}} {{prefix}} [{{bar:{bar_width}}}] {{pos}}/{{len}} {{msg}}")
+                    format!(
+                        "{{spinner}} {{elapsed_precise}} [{{bar:{bar_width}}}] {{pos}}/{{len}} {{msg}}"
+                    )
                 }
             }
             // Indeterminate operations (spinner only when total is None)
             (None, _) => {
                 if self.is_child {
-                    "  └─ {spinner} {prefix} {msg}".to_string()
+                    "  └─ {spinner} {elapsed_precise} {msg}".to_string()
                 } else {
-                    "{spinner} {prefix} {msg}".to_string()
+                    "{spinner} {elapsed_precise} {msg}".to_string()
                 }
             }
         }
@@ -78,8 +80,6 @@ impl Default for IndicatifProgress {
 
 impl ProgressIndicator for IndicatifProgress {
     fn start(&mut self, config: ProgressConfig) {
-        let prefix = format!("{} {}", config.operation, config.context);
-
         let pb = match config.total {
             Some(total) => ProgressBar::new(total),
             None => ProgressBar::new_spinner(),
@@ -100,7 +100,6 @@ impl ProgressIndicator for IndicatifProgress {
                 .tick_chars("⣾⣽⣻⢿⡿⣟⣯⣷"),
         );
 
-        pb.set_prefix(prefix);
         pb.enable_steady_tick(Duration::from_millis(80));
 
         self.owned_bar = Some(pb);
@@ -119,23 +118,25 @@ impl ProgressIndicator for IndicatifProgress {
     }
 
     fn complete(&mut self, message: Option<String>) {
-        if let Some(pb) = &self.owned_bar {
+        if let Some(pb) = self.owned_bar.take() {
             let msg = message.unwrap_or_else(|| "Complete".to_string());
             if self.is_child {
                 pb.finish_and_clear();
             } else {
                 pb.finish_with_message(msg);
             }
+            // Note: We don't call multi.remove() per user's request
         }
     }
 
     fn error(&mut self, message: String) {
-        if let Some(pb) = &self.owned_bar {
+        if let Some(pb) = self.owned_bar.take() {
             if self.is_child {
                 pb.abandon();
             } else {
                 pb.abandon_with_message(format!("✗ {message}"));
             }
+            // Note: We don't call multi.remove() per user's request
         }
     }
 
@@ -171,8 +172,7 @@ mod tests {
     fn test_progress_bar_creation() {
         let mut progress = IndicatifProgress::new();
 
-        let config =
-            ProgressConfig::new("Downloading", "temurin@21", ProgressStyle::Bytes).with_total(1024);
+        let config = ProgressConfig::new(ProgressStyle::Bytes).with_total(1024);
         progress.start(config);
 
         assert!(progress.owned_bar.is_some());
@@ -182,7 +182,7 @@ mod tests {
     fn test_spinner_creation() {
         let mut progress = IndicatifProgress::new();
 
-        let config = ProgressConfig::new("Loading", "metadata", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config);
 
         assert!(progress.owned_bar.is_some());
@@ -191,42 +191,44 @@ mod tests {
     #[test]
     fn test_template_selection_bytes_with_total() {
         let progress = IndicatifProgress::new();
-        let config = ProgressConfig::new("Test", "operation", ProgressStyle::Bytes).with_total(100);
+        let config = ProgressConfig::new(ProgressStyle::Bytes).with_total(100);
 
         let template = progress.get_template_for_config(&config);
         assert!(template.contains("{bytes}"));
         assert!(template.contains("{total_bytes}"));
         assert!(template.contains("{bytes_per_sec}"));
+        assert!(template.contains("{elapsed_precise}"));
     }
 
     #[test]
     fn test_template_selection_count_with_total() {
         let progress = IndicatifProgress::new();
-        let config = ProgressConfig::new("Test", "operation", ProgressStyle::Count).with_total(100);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
 
         let template = progress.get_template_for_config(&config);
         assert!(template.contains("{pos}"));
         assert!(template.contains("{len}"));
         assert!(!template.contains("{bytes}"));
+        assert!(template.contains("{elapsed_precise}"));
     }
 
     #[test]
     fn test_template_selection_indeterminate() {
         let progress = IndicatifProgress::new();
-        let config = ProgressConfig::new("Test", "operation", ProgressStyle::Bytes);
+        let config = ProgressConfig::new(ProgressStyle::Bytes);
 
         let template = progress.get_template_for_config(&config);
         assert!(!template.contains("{bar:"));
         assert!(template.contains("{spinner"));
         assert!(!template.contains("{bytes}"));
+        assert!(template.contains("{elapsed_precise}"));
     }
 
     #[test]
     fn test_update_behavior() {
         let mut progress = IndicatifProgress::new();
 
-        let config =
-            ProgressConfig::new("Processing", "files", ProgressStyle::Count).with_total(100);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
         progress.start(config);
 
         // Should not panic
@@ -239,7 +241,7 @@ mod tests {
     fn test_message_updates() {
         let mut progress = IndicatifProgress::new();
 
-        let config = ProgressConfig::new("Working", "task", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config);
 
         // Should not panic
@@ -252,41 +254,40 @@ mod tests {
     fn test_complete_with_message() {
         let mut progress = IndicatifProgress::new();
 
-        let config =
-            ProgressConfig::new("Installing", "package", ProgressStyle::Count).with_total(100);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
         progress.start(config);
 
         progress.update(100, None);
         progress.complete(Some("Installation successful".to_string()));
 
-        // Progress bar should still exist after completion
-        assert!(progress.owned_bar.is_some());
+        // Progress bar should be None after completion (taken by complete())
+        assert!(progress.owned_bar.is_none());
     }
 
     #[test]
     fn test_complete_without_message() {
         let mut progress = IndicatifProgress::new();
 
-        let config = ProgressConfig::new("Building", "project", ProgressStyle::Count);
+        let config = ProgressConfig::new(ProgressStyle::Count);
         progress.start(config);
 
         progress.complete(None);
 
-        // Progress bar should still exist after completion
-        assert!(progress.owned_bar.is_some());
+        // Progress bar should be None after completion (taken by complete())
+        assert!(progress.owned_bar.is_none());
     }
 
     #[test]
     fn test_error_handling() {
         let mut progress = IndicatifProgress::new();
 
-        let config = ProgressConfig::new("Fetching", "data", ProgressStyle::Bytes);
+        let config = ProgressConfig::new(ProgressStyle::Bytes);
         progress.start(config);
 
         progress.error("Network timeout".to_string());
 
-        // Progress bar should still exist after error
-        assert!(progress.owned_bar.is_some());
+        // Progress bar should be None after error (taken by error())
+        assert!(progress.owned_bar.is_none());
     }
 
     #[test]
@@ -294,26 +295,26 @@ mod tests {
         let mut progress = IndicatifProgress::new();
 
         // First operation
-        let config1 = ProgressConfig::new("Op1", "target1", ProgressStyle::Bytes).with_total(1000);
+        let config1 = ProgressConfig::new(ProgressStyle::Bytes).with_total(1000);
         progress.start(config1);
         progress.update(500, None);
         progress.complete(None);
 
         // Second operation (reuses same struct)
-        let config2 = ProgressConfig::new("Op2", "target2", ProgressStyle::Count).with_total(50);
+        let config2 = ProgressConfig::new(ProgressStyle::Count).with_total(50);
         progress.start(config2);
         progress.update(25, None);
         assert!(progress.owned_bar.is_some()); // Should exist before completion
         progress.complete(Some("Done".to_string()));
 
-        assert!(progress.owned_bar.is_some()); // Should still exist after completion
+        assert!(progress.owned_bar.is_none()); // Should be None after completion (taken by complete())
     }
 
     #[test]
     fn test_create_child() {
         let mut parent = IndicatifProgress::new();
 
-        let config = ProgressConfig::new("Parent", "task", ProgressStyle::Count).with_total(100);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
         parent.start(config);
 
         let _child = parent.create_child();
@@ -323,8 +324,7 @@ mod tests {
         // Verify child shares the same MultiProgress
         // We can't directly check this due to Box<dyn> but we can start the child
         let mut child = parent.create_child();
-        let child_config =
-            ProgressConfig::new("Child", "subtask", ProgressStyle::Count).with_total(50);
+        let child_config = ProgressConfig::new(ProgressStyle::Count).with_total(50);
         child.start(child_config);
 
         // Both parent and child should have progress bars
@@ -335,7 +335,7 @@ mod tests {
     fn test_multiple_children() {
         let mut parent = IndicatifProgress::new();
 
-        let config = ProgressConfig::new("Parent", "main", ProgressStyle::Count).with_total(100);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
         parent.start(config);
 
         // Create multiple children
@@ -344,9 +344,9 @@ mod tests {
         let mut child3 = parent.create_child();
 
         // Start all children
-        child1.start(ProgressConfig::new("Child1", "task1", ProgressStyle::Count).with_total(25));
-        child2.start(ProgressConfig::new("Child2", "task2", ProgressStyle::Count).with_total(50));
-        child3.start(ProgressConfig::new("Child3", "task3", ProgressStyle::Count));
+        child1.start(ProgressConfig::new(ProgressStyle::Count).with_total(25));
+        child2.start(ProgressConfig::new(ProgressStyle::Count).with_total(50));
+        child3.start(ProgressConfig::new(ProgressStyle::Count));
 
         // Update and complete children
         child1.update(25, None);
@@ -365,14 +365,11 @@ mod tests {
     fn test_child_with_error() {
         let mut parent = IndicatifProgress::new();
 
-        let config =
-            ProgressConfig::new("Parent", "operation", ProgressStyle::Bytes).with_total(1024);
+        let config = ProgressConfig::new(ProgressStyle::Bytes).with_total(1024);
         parent.start(config);
 
         let mut child = parent.create_child();
-        child.start(
-            ProgressConfig::new("Download", "file.zip", ProgressStyle::Bytes).with_total(512),
-        );
+        child.start(ProgressConfig::new(ProgressStyle::Bytes).with_total(512));
 
         child.update(256, None);
         child.error("Connection timeout".to_string());
@@ -385,17 +382,12 @@ mod tests {
         let mut parent = IndicatifProgress::new();
 
         // Parent with progress bar
-        let config =
-            ProgressConfig::new("Installing", "package", ProgressStyle::Count).with_total(5);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(5);
         parent.start(config);
 
         // Child with spinner (no total)
         let mut child = parent.create_child();
-        child.start(ProgressConfig::new(
-            "Extracting",
-            "archive",
-            ProgressStyle::Count,
-        ));
+        child.start(ProgressConfig::new(ProgressStyle::Count));
 
         child.set_message("Processing files...".to_string());
         child.set_message("Nearly done...".to_string());
@@ -409,20 +401,16 @@ mod tests {
     fn test_nested_progress_depth() {
         let mut root = IndicatifProgress::new();
 
-        root.start(ProgressConfig::new("Root", "level0", ProgressStyle::Count).with_total(100));
+        root.start(ProgressConfig::new(ProgressStyle::Count).with_total(100));
 
         // Create first level child
         let mut level1 = root.create_child();
-        level1.start(ProgressConfig::new("Level1", "child", ProgressStyle::Count).with_total(50));
+        level1.start(ProgressConfig::new(ProgressStyle::Count).with_total(50));
 
         // Although we support only single level nesting in practice,
         // test that creating a child of a child doesn't panic
         let mut level2 = level1.create_child();
-        level2.start(ProgressConfig::new(
-            "Level2",
-            "grandchild",
-            ProgressStyle::Count,
-        ));
+        level2.start(ProgressConfig::new(ProgressStyle::Count));
 
         level2.complete(None);
         level1.complete(None);
@@ -438,7 +426,7 @@ mod tests {
             is_child: true,
         };
 
-        let config = ProgressConfig::new("Test", "op", ProgressStyle::Count).with_total(10);
+        let config = ProgressConfig::new(ProgressStyle::Count).with_total(10);
         let parent_template = parent.get_template_for_config(&config);
         let child_template = child.get_template_for_config(&config);
 
@@ -453,10 +441,10 @@ mod tests {
     fn test_child_cleanup_on_completion() {
         let mut parent = IndicatifProgress::new();
 
-        parent.start(ProgressConfig::new("Parent", "main", ProgressStyle::Count).with_total(10));
+        parent.start(ProgressConfig::new(ProgressStyle::Count).with_total(10));
 
         let mut child = parent.create_child();
-        child.start(ProgressConfig::new("Child", "sub", ProgressStyle::Count).with_total(5));
+        child.start(ProgressConfig::new(ProgressStyle::Count).with_total(5));
 
         child.update(5, None);
         // Child should use finish_and_clear
@@ -465,7 +453,7 @@ mod tests {
         parent.update(10, None);
         parent.complete(Some("Done".to_string()));
 
-        assert!(parent.owned_bar.is_some()); // Should still exist after completion
+        assert!(parent.owned_bar.is_none()); // Should be None after completion (taken by complete())
     }
 
     #[test]
