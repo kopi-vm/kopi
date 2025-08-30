@@ -238,15 +238,10 @@ impl<'a> InstallCommand<'a> {
         )?;
 
         if dry_run {
-            progress.complete(Some(format!(
+            progress.complete(Some("Dry run complete".to_string()));
+            // Print the success message using progress.success()
+            progress.success(&format!(
                 "Would install {} {} to {}",
-                distribution.name(),
-                jdk_metadata.distribution_version,
-                installation_dir.display()
-            )));
-            // Print the success message using progress.println()
-            progress.println(&format!(
-                "✓ Would install {} {} to {}",
                 distribution.name(),
                 jdk_metadata.distribution_version,
                 installation_dir.display()
@@ -490,28 +485,15 @@ impl<'a> InstallCommand<'a> {
         }
 
         // Complete progress indicator
-        progress.complete(Some(format!(
-            "Successfully installed {} {}",
-            distribution.name(),
-            jdk_metadata_with_checksum.distribution_version
-        )));
+        progress.complete(Some("Installation complete".to_string()));
 
-        // Print final success message and hints using progress.println()
-        progress.println(&format!(
-            "✓ Successfully installed {} {} to {}",
+        // Print final success message using progress.success()
+        progress.success(&format!(
+            "Successfully installed {} {} to {}",
             distribution.name(),
             jdk_metadata_with_checksum.distribution_version,
             final_path.display()
         ))?;
-
-        // Show hint about using the JDK
-        if VersionParser::is_lts_version(version.major()) {
-            progress.println(&format!(
-                "  Note: {} is an LTS (Long Term Support) version",
-                version.major()
-            ))?;
-        }
-        progress.println(&format!("  To use this JDK, run: kopi use {version_spec}"))?;
 
         Ok(())
     }

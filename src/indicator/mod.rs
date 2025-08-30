@@ -31,6 +31,7 @@ pub trait ProgressIndicator: Send + Sync {
     fn update(&mut self, current: u64, total: Option<u64>);
     fn set_message(&mut self, message: String);
     fn complete(&mut self, message: Option<String>);
+    fn success(&self, message: &str) -> std::io::Result<()>;
     fn error(&mut self, message: String);
     fn create_child(&mut self) -> Box<dyn ProgressIndicator>;
     fn suspend(&self, f: &mut dyn FnMut());
@@ -85,6 +86,11 @@ mod tests {
             if let Some(msg) = message {
                 self.message = msg;
             }
+        }
+
+        fn success(&self, message: &str) -> std::io::Result<()> {
+            println!("✓ {message}");
+            Ok(())
         }
 
         fn error(&mut self, message: String) {

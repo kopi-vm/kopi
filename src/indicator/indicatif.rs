@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::indicator::{ProgressConfig, ProgressIndicator, ProgressStyle};
+use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar};
 use std::sync::Arc;
 use std::time::Duration;
@@ -40,11 +41,11 @@ impl IndicatifProgress {
             (Some(_), ProgressStyle::Bytes) => {
                 if self.is_child {
                     format!(
-                        "  └─ {{spinner}} {{elapsed_precise}} [{{bar:{bar_width}}}] {{bytes}}/{{total_bytes}} {{msg}}"
+                        "  └─ {{spinner:.green}} [{{elapsed_precise}}] [{{bar:{bar_width}.cyan/blue}}] {{bytes}}/{{total_bytes}} {{msg}}"
                     )
                 } else {
                     format!(
-                        "{{spinner}} {{elapsed_precise}} [{{bar:{bar_width}}}] {{bytes}}/{{total_bytes}} {{msg}} ({{bytes_per_sec}}, {{eta}})"
+                        "{{spinner:.green}} [{{elapsed_precise}}] [{{bar:{bar_width}.cyan/blue}}] {{bytes}}/{{total_bytes}} {{msg}} ({{bytes_per_sec}}, {{eta}})"
                     )
                 }
             }
@@ -52,20 +53,20 @@ impl IndicatifProgress {
             (Some(_), ProgressStyle::Count) => {
                 if self.is_child {
                     format!(
-                        "  └─ {{spinner}} {{elapsed_precise}} [{{bar:{bar_width}}}] {{pos}}/{{len}} {{msg}}"
+                        "  └─ {{spinner:.green}} [{{elapsed_precise}}] [{{bar:{bar_width}.cyan/blue}}] {{pos}}/{{len}} {{msg}}"
                     )
                 } else {
                     format!(
-                        "{{spinner}} {{elapsed_precise}} [{{bar:{bar_width}}}] {{pos}}/{{len}} {{msg}}"
+                        "{{spinner:.green}} [{{elapsed_precise}}] [{{bar:{bar_width}.cyan/blue}}] {{pos}}/{{len}} {{msg}}"
                     )
                 }
             }
             // Indeterminate operations (spinner only when total is None)
             (None, _) => {
                 if self.is_child {
-                    "  └─ {spinner} {elapsed_precise} {msg}".to_string()
+                    "  └─ {spinner:.green} [{elapsed_precise}] {msg}".to_string()
                 } else {
-                    "{spinner} {elapsed_precise} {msg}".to_string()
+                    "{spinner:.green} [{elapsed_precise}] {msg}".to_string()
                 }
             }
         }
@@ -153,6 +154,11 @@ impl ProgressIndicator for IndicatifProgress {
         self.multi.suspend(f);
     }
 
+    fn success(&self, message: &str) -> std::io::Result<()> {
+        let formatted = format!("{} {message}", "✓".green().bold());
+        self.println(&formatted)
+    }
+
     fn println(&self, message: &str) -> std::io::Result<()> {
         if let Some(pb) = &self.owned_bar {
             pb.println(message);
@@ -197,7 +203,9 @@ mod tests {
         assert!(template.contains("{bytes}"));
         assert!(template.contains("{total_bytes}"));
         assert!(template.contains("{bytes_per_sec}"));
-        assert!(template.contains("{elapsed_precise}"));
+        assert!(template.contains("[{elapsed_precise}]"));
+        assert!(template.contains("{spinner:.green}"));
+        assert!(template.contains(".cyan/blue}"));
     }
 
     #[test]
@@ -209,7 +217,9 @@ mod tests {
         assert!(template.contains("{pos}"));
         assert!(template.contains("{len}"));
         assert!(!template.contains("{bytes}"));
-        assert!(template.contains("{elapsed_precise}"));
+        assert!(template.contains("[{elapsed_precise}]"));
+        assert!(template.contains("{spinner:.green}"));
+        assert!(template.contains(".cyan/blue}"));
     }
 
     #[test]
@@ -219,9 +229,9 @@ mod tests {
 
         let template = progress.get_template_for_config(&config);
         assert!(!template.contains("{bar:"));
-        assert!(template.contains("{spinner"));
+        assert!(template.contains("{spinner:.green}"));
         assert!(!template.contains("{bytes}"));
-        assert!(template.contains("{elapsed_precise}"));
+        assert!(template.contains("[{elapsed_precise}]"));
     }
 
     #[test]
@@ -435,6 +445,16 @@ mod tests {
 
         // Child template should have indent
         assert!(child_template.contains("└─"));
+
+        // Both should have green spinner and cyan/blue progress bar
+        assert!(parent_template.contains("{spinner:.green}"));
+        assert!(child_template.contains("{spinner:.green}"));
+        assert!(parent_template.contains(".cyan/blue}"));
+        assert!(child_template.contains(".cyan/blue}"));
+
+        // Both should have brackets around elapsed time
+        assert!(parent_template.contains("[{elapsed_precise}]"));
+        assert!(child_template.contains("[{elapsed_precise}]"));
     }
 
     #[test]

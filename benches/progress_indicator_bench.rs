@@ -174,9 +174,7 @@ fn benchmark_progress_large_operations(c: &mut Criterion) {
 
 fn benchmark_progress_memory_allocation(c: &mut Criterion) {
     c.bench_function("progress_config_creation", |b| {
-        b.iter(|| {
-            black_box(ProgressConfig::new(ProgressStyle::Count).with_total(1000))
-        });
+        b.iter(|| black_box(ProgressConfig::new(ProgressStyle::Count).with_total(1000)));
     });
 
     c.bench_function("progress_factory_allocation", |b| {
@@ -262,4 +260,3 @@ criterion_group!(
 );
 
 criterion_main!(benches);
-

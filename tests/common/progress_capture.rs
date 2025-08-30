@@ -128,6 +128,14 @@ impl ProgressIndicator for TestProgressCapture {
         }
     }
 
+    fn success(&self, message: &str) -> std::io::Result<()> {
+        self.messages.lock().unwrap().push(ProgressMessage {
+            message: format!("✓ {message}"),
+            style: self.current_style,
+        });
+        Ok(())
+    }
+
     fn error(&mut self, message: String) {
         self.set_message(format!("[ERROR] {message}"));
     }

@@ -45,6 +45,11 @@ impl ProgressIndicator for SilentProgress {
         // No output
     }
 
+    fn success(&self, _message: &str) -> std::io::Result<()> {
+        // No output
+        Ok(())
+    }
+
     fn error(&mut self, _message: String) {
         // No output - errors are handled separately by the error system
     }

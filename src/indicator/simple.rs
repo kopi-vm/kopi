@@ -44,7 +44,12 @@ impl ProgressIndicator for SimpleProgress {
 
     fn complete(&mut self, message: Option<String>) {
         let msg = message.unwrap_or_else(|| "Complete".to_string());
-        println!("[OK] {msg}");
+        println!("{msg}");
+    }
+
+    fn success(&self, message: &str) -> std::io::Result<()> {
+        println!("[OK] {message}");
+        Ok(())
     }
 
     fn error(&mut self, message: String) {
@@ -116,8 +121,13 @@ mod tests {
 
         fn complete(&mut self, message: Option<String>) {
             let msg = message.unwrap_or_else(|| "Complete".to_string());
-            let output = format!("[OK] {msg}");
+            OUTPUT.lock().unwrap().push(msg);
+        }
+
+        fn success(&self, message: &str) -> std::io::Result<()> {
+            let output = format!("[OK] {message}");
             OUTPUT.lock().unwrap().push(output);
+            Ok(())
         }
 
         fn error(&mut self, message: String) {
@@ -151,7 +161,7 @@ mod tests {
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
         assert_eq!(output[0], "Starting...");
-        assert_eq!(output[1], "[OK] Done");
+        assert_eq!(output[1], "Done");
     }
 
     #[test]
@@ -193,7 +203,7 @@ mod tests {
 
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
-        assert_eq!(output[1], "[OK] Successfully cached");
+        assert_eq!(output[1], "Successfully cached");
     }
 
     #[test]
@@ -208,7 +218,7 @@ mod tests {
 
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
-        assert_eq!(output[1], "[OK] Complete");
+        assert_eq!(output[1], "Complete");
     }
 
     #[test]
@@ -267,9 +277,9 @@ mod tests {
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 4);
         assert_eq!(output[0], "Starting...");
-        assert_eq!(output[1], "[OK] Complete");
+        assert_eq!(output[1], "Complete");
         assert_eq!(output[2], "Starting...");
-        assert_eq!(output[3], "[OK] Done");
+        assert_eq!(output[3], "Done");
     }
 
     #[test]
@@ -328,7 +338,7 @@ mod tests {
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
         assert_eq!(output[0], "Starting...");
-        assert_eq!(output[1], "[OK] All done");
+        assert_eq!(output[1], "All done");
     }
 
     #[test]
@@ -346,8 +356,8 @@ mod tests {
         let output = TestProgress::get_output();
         assert_eq!(output.len(), 2);
         assert!(
-            output[1].starts_with("[OK]"),
-            "Should use ASCII [OK] prefix"
+            !output[1].starts_with("[OK]"),
+            "Should NOT have [OK] prefix in complete()"
         );
         assert!(
             !output[1].contains('✓'),
@@ -392,5 +402,21 @@ mod tests {
         // This test just ensures println doesn't panic
         let result = progress.println("Test message");
         assert!(result.is_ok(), "println should return Ok");
+    }
+
+    #[test]
+    #[serial]
+    fn test_success_method() {
+        TestProgress::clear_output();
+        let mut progress = TestProgress::new();
+
+        let config = ProgressConfig::new(ProgressStyle::Count);
+        progress.start(config);
+        progress.success("Operation succeeded").unwrap();
+
+        let output = TestProgress::get_output();
+        assert_eq!(output.len(), 2);
+        assert_eq!(output[0], "Starting...");
+        assert_eq!(output[1], "[OK] Operation succeeded");
     }
 }
