@@ -135,7 +135,7 @@ impl ProgressIndicator for IndicatifProgress {
             if self.is_child {
                 pb.abandon();
             } else {
-                pb.abandon_with_message(format!("✗ {message}"));
+                pb.abandon_with_message(format!("{} {message}", "✗".red().bold()));
             }
             // Note: We don't call multi.remove() per user's request
         }

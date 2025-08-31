@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use colored::Colorize;
 use std::env;
 use std::io::IsTerminal;
 
@@ -59,13 +60,21 @@ impl StatusReporter {
 
     pub fn success(&self, message: &str) {
         if !self.silent {
-            let symbol = if self.use_color { "✓" } else { "[OK]" };
+            let symbol = if self.use_color {
+                "✓".green().bold().to_string()
+            } else {
+                "[OK]".to_string()
+            };
             println!("{symbol} {message}");
         }
     }
 
     pub fn error(&self, message: &str) {
-        let symbol = if self.use_color { "✗" } else { "[ERROR]" };
+        let symbol = if self.use_color {
+            "✗".red().bold().to_string()
+        } else {
+            "[ERROR]".to_string()
+        };
         eprintln!("{symbol} {message}");
     }
 }
@@ -147,16 +156,20 @@ mod tests {
 
         pub fn success(&self, message: &str) {
             if !self.inner.silent {
-                let symbol = if self.inner.use_color { "✓" } else { "[OK]" };
+                let symbol = if self.inner.use_color {
+                    "✓".green().bold().to_string()
+                } else {
+                    "[OK]".to_string()
+                };
                 OUTPUT.lock().unwrap().push(format!("{symbol} {message}"));
             }
         }
 
         pub fn error(&self, message: &str) {
             let symbol = if self.inner.use_color {
-                "✗"
+                "✗".red().bold().to_string()
             } else {
-                "[ERROR]"
+                "[ERROR]".to_string()
             };
             ERROR_OUTPUT
                 .lock()

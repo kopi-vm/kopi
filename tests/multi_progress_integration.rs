@@ -198,8 +198,7 @@ fn test_install_with_large_download() {
 
     // Simulate install command with large JDK download
     let mut parent = ProgressFactory::create(false);
-    let config = ProgressConfig::new(ProgressStyle::Count)
-        .with_total(8);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(8);
     parent.start(config);
     parent.set_message("Installing temurin@21".to_string());
 
@@ -209,8 +208,7 @@ fn test_install_with_large_download() {
 
     // Create child for large download
     let mut download_child = parent.create_child();
-    let download_config = ProgressConfig::new(ProgressStyle::Bytes)
-        .with_total(150 * 1024 * 1024); // 150MB
+    let download_config = ProgressConfig::new(ProgressStyle::Bytes).with_total(150 * 1024 * 1024); // 150MB
     download_child.start(download_config);
     download_child.set_message("temurin-21.0.1".to_string());
 
@@ -240,8 +238,7 @@ fn test_install_with_small_download() {
 
     // Simulate install with small tool download
     let mut parent = ProgressFactory::create(false);
-    let config = ProgressConfig::new(ProgressStyle::Count)
-        .with_total(8);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(8);
     parent.start(config);
     parent.set_message("Installing maven@3.9".to_string());
 
@@ -268,8 +265,7 @@ fn test_cache_refresh_multiple_sources() {
 
     // Simulate cache refresh with multiple metadata sources
     let mut parent = ProgressFactory::create(false);
-    let config = ProgressConfig::new(ProgressStyle::Count)
-        .with_total(5);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(5);
     parent.start(config);
     parent.set_message("Refreshing cache".to_string());
 
@@ -278,8 +274,7 @@ fn test_cache_refresh_multiple_sources() {
     parent.set_message("Fetching from Foojay API...".to_string());
 
     let mut foojay_child = parent.create_child();
-    let foojay_config = ProgressConfig::new(ProgressStyle::Count)
-        .with_total(100);
+    let foojay_config = ProgressConfig::new(ProgressStyle::Count).with_total(100);
     foojay_child.start(foojay_config);
     foojay_child.set_message("Foojay".to_string());
 
@@ -295,8 +290,7 @@ fn test_cache_refresh_multiple_sources() {
     parent.set_message("Fetching HTTP metadata...".to_string());
 
     let mut http_child = parent.create_child();
-    let http_config = ProgressConfig::new(ProgressStyle::Bytes)
-        .with_total(12 * 1024 * 1024); // 12MB
+    let http_config = ProgressConfig::new(ProgressStyle::Bytes).with_total(12 * 1024 * 1024); // 12MB
     http_child.start(http_config);
     http_child.set_message("HTTP Source".to_string());
 
@@ -318,8 +312,7 @@ fn test_cache_refresh_single_source() {
 
     // Test with only Foojay source
     let mut parent = ProgressFactory::create(false);
-    let config = ProgressConfig::new(ProgressStyle::Count)
-        .with_total(3);
+    let config = ProgressConfig::new(ProgressStyle::Count).with_total(3);
     parent.start(config);
     parent.set_message("Cache refresh".to_string());
 
