@@ -284,7 +284,7 @@ fn search_cache(options: SearchOptions, config: &KopiConfig) -> Result<()> {
             // Use SilentProgress for search operation (no user-visible progress needed)
             let mut progress = crate::indicator::SilentProgress;
             let mut current_step = 0u64;
-            match cache::fetch_and_cache_distribution_with_progress(
+            match cache::fetch_and_cache_distribution(
                 canonical_name,
                 config,
                 &mut progress,

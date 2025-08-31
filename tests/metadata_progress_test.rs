@@ -221,11 +221,11 @@ fn test_http_creates_child_for_large_files() {
 }
 
 #[test]
-fn test_http_no_child_for_small_files() {
+fn test_http_always_creates_child_progress() {
     let mut server = Server::new();
 
-    // Create index with total size < 10MB
-    let small_index = create_test_index_with_size(5 * 1024 * 1024); // 5MB
+    // Create index with any size (HTTP always creates child progress now)
+    let small_index = create_test_index_with_size(5 * 1024 * 1024); // 5MB example
     let metadata = vec![create_test_metadata()];
 
     // Mock index.json
@@ -257,14 +257,11 @@ fn test_http_no_child_for_small_files() {
     let result = source.fetch_all(&mut tracker);
     assert!(result.is_ok());
 
-    // HTTP should NOT create child progress for files < 10MB
+    // HTTP should always create child progress (regardless of size)
     assert!(
-        !tracker.child_created,
-        "HTTP should not create child progress for small files"
+        tracker.child_created,
+        "HTTP should always create child progress"
     );
-
-    // Should update parent message instead
-    assert!(tracker.parent.contains_message("Processing"));
 }
 
 #[test]

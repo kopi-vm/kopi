@@ -158,8 +158,8 @@ pub fn fetch_and_cache_metadata_with_progress(
     Ok(new_cache)
 }
 
-/// Fetch metadata for a specific distribution and update the cache with progress
-pub fn fetch_and_cache_distribution_with_progress(
+/// Fetch metadata for a specific distribution and update the cache
+pub fn fetch_and_cache_distribution(
     distribution_name: &str,
     config: &KopiConfig,
     progress: &mut dyn ProgressIndicator,

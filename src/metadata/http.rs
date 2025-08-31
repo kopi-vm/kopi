@@ -161,39 +161,16 @@ impl MetadataSource for HttpMetadataSource {
             get_foojay_libc_type()
         );
 
-        // Calculate total size to determine if we need child progress
-        let total_size: u64 = platform_files.iter().map(|f| f.size).sum();
-        const CHILD_PROGRESS_THRESHOLD: u64 = 10 * 1024 * 1024; // 10MB
-
-        // Create child progress if total size >= 10MB
-        let mut child_progress = if total_size >= CHILD_PROGRESS_THRESHOLD {
-            let mut child = progress.create_child();
-            let config =
-                crate::indicator::ProgressConfig::new(crate::indicator::ProgressStyle::Count)
-                    .with_total(platform_files.len() as u64);
-            child.start(config);
-            Some(child)
-        } else {
-            progress.set_message(format!(
-                "Processing {} metadata files for current platform",
-                platform_files.len()
-            ));
-            None
-        };
+        // Always create child progress for HTTP source
+        let mut child = progress.create_child();
+        let config = crate::indicator::ProgressConfig::new(crate::indicator::ProgressStyle::Count)
+            .with_total(platform_files.len() as u64);
+        child.start(config);
 
         // Fetch only metadata files relevant to this platform
         for (idx, entry) in platform_files.iter().enumerate() {
-            if let Some(ref mut child) = child_progress {
-                child.update(idx as u64, Some(platform_files.len() as u64));
-                child.set_message(format!("Fetching {}: {}", idx + 1, entry.path));
-            } else {
-                progress.set_message(format!(
-                    "Fetching metadata file {}/{}: {}",
-                    idx + 1,
-                    platform_files.len(),
-                    entry.path
-                ));
-            }
+            child.update(idx as u64, Some(platform_files.len() as u64));
+            child.set_message(format!("Fetching {}: {}", idx + 1, entry.path));
 
             match self.fetch_metadata_file(&entry.path) {
                 Ok(metadata) => {
@@ -204,13 +181,11 @@ impl MetadataSource for HttpMetadataSource {
             }
         }
 
-        // Complete child progress if used
-        if let Some(mut child) = child_progress {
-            child.complete(Some(format!(
-                "Loaded {} packages from HTTP source",
-                all_metadata.len()
-            )));
-        }
+        // Complete child progress
+        child.complete(Some(format!(
+            "Loaded {} packages from HTTP source",
+            all_metadata.len()
+        )));
 
         progress.set_message(format!(
             "Loaded {} packages from HTTP source",
@@ -240,39 +215,16 @@ impl MetadataSource for HttpMetadataSource {
             .filter(|entry| entry.distribution == distribution)
             .collect();
 
-        // Calculate total size to determine if we need child progress
-        let total_size: u64 = filtered_files.iter().map(|f| f.size).sum();
-        const CHILD_PROGRESS_THRESHOLD: u64 = 10 * 1024 * 1024; // 10MB
-
-        // Create child progress if total size >= 10MB
-        let mut child_progress = if total_size >= CHILD_PROGRESS_THRESHOLD {
-            let mut child = progress.create_child();
-            let config =
-                crate::indicator::ProgressConfig::new(crate::indicator::ProgressStyle::Count)
-                    .with_total(filtered_files.len() as u64);
-            child.start(config);
-            Some(child)
-        } else {
-            progress.set_message(format!(
-                "Processing {} metadata files for distribution '{distribution}'",
-                filtered_files.len()
-            ));
-            None
-        };
+        // Always create child progress for HTTP source
+        let mut child = progress.create_child();
+        let config = crate::indicator::ProgressConfig::new(crate::indicator::ProgressStyle::Count)
+            .with_total(filtered_files.len() as u64);
+        child.start(config);
 
         // Fetch only the specific distribution files
         for (idx, entry) in filtered_files.iter().enumerate() {
-            if let Some(ref mut child) = child_progress {
-                child.update(idx as u64, Some(filtered_files.len() as u64));
-                child.set_message(format!("Fetching {}: {}", idx + 1, entry.path));
-            } else {
-                progress.set_message(format!(
-                    "Fetching {}/{}: {}",
-                    idx + 1,
-                    filtered_files.len(),
-                    entry.path
-                ));
-            }
+            child.update(idx as u64, Some(filtered_files.len() as u64));
+            child.set_message(format!("Fetching {}: {}", idx + 1, entry.path));
 
             match self.fetch_metadata_file(&entry.path) {
                 Ok(pkg_metadata) => {
@@ -283,13 +235,11 @@ impl MetadataSource for HttpMetadataSource {
             }
         }
 
-        // Complete child progress if used
-        if let Some(mut child) = child_progress {
-            child.complete(Some(format!(
-                "Loaded {} packages for '{distribution}' from HTTP source",
-                metadata.len()
-            )));
-        }
+        // Complete child progress
+        child.complete(Some(format!(
+            "Loaded {} packages for '{distribution}' from HTTP source",
+            metadata.len()
+        )));
 
         progress.set_message(format!(
             "Loaded {} packages for distribution '{distribution}' from HTTP source",
