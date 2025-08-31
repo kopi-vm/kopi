@@ -1,162 +1,273 @@
 # [Feature/Task Name] Implementation Plan
 
-**Last Updated**: YYYY-MM-DD (Initial draft / Updated with ...)
+## Metadata
+- Owner: [Person or role]
+- Reviewers: [Names/roles]
+- Status: [Not Started / Phase X In Progress / Blocked / Under Review / Completed]
+- Last Updated: YYYY-MM-DD
+- Links: [Issue], [PR], [ADR], [Design], [Related tasks]
 
 ## Overview
 
 [Brief description of the feature/task and its purpose]
 
-**Current Status**: [Not Started / Phase X In Progress / Phase X Completed / Completed]
+### Scope
+- Goal: [Outcome to achieve]
+- Non-Goals: [Explicitly out of scope]
+- Assumptions: [Operational/technical assumptions]
+- Constraints: [Time/tech/platform/compliance]
 
-## Phase 1: [Core Component/Foundation Name]
+### Success Metrics
+- [ ] [Measurable success criterion]
+- [ ] [Performance target if applicable]
+- [ ] [User experience improvement]
+- [ ] All existing tests pass; no regressions in [area]
 
-**Goal**: [What this phase aims to achieve]
+### Plan Summary
+- Phases: [Short list of phases and intent]
+- Timeline (optional): [Milestones/estimates]
 
-### Input Materials
-- **Documentation**:
-  - `/docs/...` - [Description]
-  
-- **Source Code to Modify**:
-  - `/src/...` - [Description]
-  - `/src/...` - [Description]
+---
+
+## Phase 1: [Core Component/Foundation]
+
+### Goal
+- [What this phase aims to achieve]
+
+### Inputs
+- Documentation:
+  - `/docs/...` – [Purpose]
+- Source Code to Modify:
+  - `/src/...` – [Purpose]
+  - `/src/...` – [Purpose]
+- Dependencies:
+  - Internal: `src/[module]/` – [Description]
+  - External crates: `[crate_name]` – [Purpose]
 
 ### Tasks
-- [ ] **[Task Group Name]**:
+- [ ] **[Task group]**
   - [ ] [Specific subtask]
   - [ ] [Specific subtask]
-- [ ] **[Task Group Name]**:
+- [ ] **[Task group]**
   - [ ] [Specific subtask]
   - [ ] [Specific subtask]
 
 ### Deliverables
-- [What will be delivered]
-- [Expected outcomes]
+- [Artifacts/changes produced]
 
 ### Verification
 ```bash
-# Commands to verify the implementation
+# Build and checks
+cargo check
 cargo fmt
 cargo clippy --all-targets -- -D warnings
+# Focused unit tests
 cargo test --lib --quiet [module_name]
+# If integration relevant
+cargo it        # alias: test --quiet --features integration_tests
 ```
+
+### Acceptance Criteria (Phase Gate)
+- [Observable, testable criteria required to exit this phase]
+
+### Rollback/Fallback
+- [How to revert; alternative approach if needed]
 
 ---
 
-## Phase 2: [Next Component Name]
+## Phase 2: [Next Component]
 
-**Goal**: [What this phase aims to achieve]
+### Goal
+- [What this phase aims to achieve]
 
-### Input Materials
-- **Dependencies**:
-  - Phase 1 ([Dependency description])
+### Inputs
+- Dependencies:
+  - Phase 1: [Dependency description]
   - [Other dependencies]
-
-- **Source Code to Modify**:
-  - `/src/...` - [Description]
+- Source Code to Modify:
+  - `/src/...` – [Purpose]
 
 ### Tasks
-- [ ] **[Task Group Name]**:
+- [ ] **[Task group]**
   - [ ] [Specific subtask]
   - [ ] [Specific subtask]
 
 ### Deliverables
-- [What will be delivered]
+- [Artifacts/changes produced]
 
 ### Verification
 ```bash
+cargo check
 cargo fmt
 cargo clippy --all-targets -- -D warnings
 cargo test --lib --quiet [module_name]
+# Optional: broader runs
+cargo it
 ```
+
+### Acceptance Criteria (Phase Gate)
+- [Observable, testable criteria required to exit this phase]
+
+### Rollback/Fallback
+- [How to revert; alternative approach if needed]
 
 ---
 
-## Phase 3: Integration Tests
+## Phase 3: Testing & Integration
 
-**Goal**: Create comprehensive tests for the new functionality.
+### Goal
+- Create comprehensive tests and validate integration boundaries.
 
 ### Tasks
-- [ ] **Create test utilities**:
-  - [ ] [Test helper functions]
-  - [ ] [Mock objects if needed]
-- [ ] **Test scenarios**:
-  - [ ] [Happy path scenario]
-  - [ ] [Error handling scenario]
-  - [ ] [Edge case scenario]
-- [ ] **Test edge cases**:
-  - [ ] [Boundary conditions]
-  - [ ] [Concurrent operations]
-  - [ ] [Resource cleanup]
+- [ ] Test utilities
+  - [ ] [Helper functions]
+  - [ ] [Fixtures/mocks as needed]
+- [ ] Scenarios
+  - [ ] Happy path
+  - [ ] Error handling
+  - [ ] Edge cases
+- [ ] Concurrency & cleanup
+  - [ ] Boundary conditions
+  - [ ] Concurrent operations (honor RUST_TEST_THREADS=4)
+  - [ ] Resource cleanup
 
 ### Deliverables
-- Comprehensive test suite
-- Test coverage report
+- Comprehensive automated tests for new behavior
+- Documented known limitations and follow-ups (if any)
 
 ### Verification
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
-cargo test --quiet --features integration_tests
-cargo test --quiet # Run all tests
+# Integration tests
+cargo it
+# Full test suite (consider runtime)
+cargo test --quiet
 ```
+
+### Acceptance Criteria (Phase Gate)
+- [Coverage of critical paths; green on unit + integration runs]
 
 ---
 
-## Implementation Order Summary
+## Testing Strategy
 
-### Core Components
-1. **Phase 1**: [Component] - [Brief description]
-2. **Phase 2**: [Component] - [Brief description]
+### Unit Tests
+- Place unit tests next to code using `#[cfg(test)]`. Focus on critical logic and edge cases.
 
-### Integration
-3. **Phase 3**: [Integration task] - [Brief description]
+### Integration Tests
+- Add broader scenarios under `tests/`. Use `cargo it` alias for quick runs.
 
-### Quality Assurance
-4. **Phase X**: Integration tests
-5. **Phase X**: Performance optimization (if applicable)
-6. **Phase X**: Documentation update
+### External API Parsing (if applicable)
+- Include at least one unit test with captured JSON from the real API (curl) stored inline as a string and parsed with serde; assert key fields.
+
+### Performance & Benchmarks (if applicable)
+- Perf tests: enable `perf_tests` feature. Run `cargo perf`.
+- Benchmarks: run `cargo bench` and note trends/regressions.
+- Avoid brittle assumptions around thread counts; tests run with `RUST_TEST_THREADS=4`.
+
+---
+
+## Platform Matrix (if applicable)
+
+### Unix
+- [Paths/permissions/behavior]
+
+### Windows
+- [Registry, junctions/symlinks, path separators]
+
+### Filesystem
+- [Case sensitivity, long paths]
+
+---
 
 ## Dependencies
 
-- External crates:
-  - `[crate_name]` - [Purpose]
-  
-- Internal modules:
-  - `src/[module]/` - [Description]
+### External Crates
+- `[crate_name]` – [Purpose]
+- [Prefer minimal features where possible]
+
+### Internal Modules
+- `src/[module]/` – [Description]
+
+---
 
 ## Risks & Mitigations
 
-1. **Risk**: [Description of potential risk]
-   - **Mitigation**: [How to prevent or handle]
-   - **Validation**: [How to verify mitigation works]
-   - **Fallback**: [Alternative approach if needed]
+1. Risk: [Description]
+   - Mitigation: [Plan]
+   - Validation: [How to prove it works]
+   - Fallback: [Alternative]
 
-2. **Risk**: [Description of potential risk]
-   - **Mitigation**: [How to prevent or handle]
-   - **Validation**: [How to verify mitigation works]
-   - **Fallback**: [Alternative approach if needed]
+2. Risk: [Description]
+   - Mitigation: [Plan]
+   - Validation: [How to prove it works]
+   - Fallback: [Alternative]
 
-## Success Metrics
+---
 
-- [ ] [Measurable success criterion]
-- [ ] [Performance benchmark if applicable]
-- [ ] [User experience improvement]
-- [ ] All existing tests continue to pass
-- [ ] No regression in [relevant functionality]
+## Documentation & Change Management
 
-## Notes for Implementation
+### CLI/Behavior Changes
+- Update `docs/reference.md` when commands, flags, or outputs change.
+- If user-facing behavior changes, update user docs in `../kopi-vm.github.io/`.
 
-### Key Considerations
-- [Important architectural decision or constraint]
-- [Performance consideration]
-- [Compatibility requirement]
+### ADR Impact
+- Add or update ADRs under `/docs/adr/` for material design decisions; include rationale and alternatives.
 
-### Implementation Guidelines
-- [Coding standard or pattern to follow]
-- [Testing approach]
-- [Review checkpoint]
+### Change Log
+- [Key decisions and reasons]
 
-### Visual/UI Reference (if applicable)
+---
+
+## Implementation Guidelines
+
+### Error Handling
+- Use `KopiError` variants; keep messages clear, actionable, and in English.
+- Rely on the `ErrorContext` system; ensure correct exit codes for each error type.
+
+### Naming & Structure
+- Avoid vague terms like "manager" or "util". Prefer specific, descriptive names.
+- Prefer functions for stateless behavior; introduce structs only when state/traits are required.
+
+### Safety & Clarity
+- Do not use `unsafe`. Prefer correct ownership and readability over micro-optimizations; avoid patterns like `Box::leak()`.
+
+---
+
+## Definition of Done
+
+- [ ] `cargo check`
+- [ ] `cargo fmt`
+- [ ] `cargo clippy --all-targets -- -D warnings`
+- [ ] `cargo test --lib --quiet`
+- [ ] Integration/perf/bench (as applicable): `cargo it`, `cargo perf`, `cargo bench`
+- [ ] `docs/reference.md` updated; user docs updated if user-facing
+- [ ] ADRs added/updated for design decisions
+- [ ] Error messages actionable and in English; exit codes correct
+- [ ] Platform verification completed (if platform-touching)
+- [ ] No `unsafe` and no vague naming (no "manager"/"util")
+
+---
+
+## Status Tracking
+
+- Not Started: Work hasn't begun
+- Phase X In Progress: Currently working on a specific phase
+- Phase X Completed: Phase finished; moving to next
+- Blocked: Waiting on external dependency
+- Under Review: Implementation complete; awaiting review
+- Completed: All phases done and verified
+
+---
+
+## Open Questions
+
+- [Question] → [Owner] → [Due/next step]
+
+---
+
+## Visual/UI Reference (optional)
 ```
 [ASCII diagram or example output]
 ```
@@ -167,20 +278,11 @@ cargo test --quiet # Run all tests
 
 When using this template for a new feature:
 
-1. **Replace placeholders**: Fill in all sections marked with brackets []
-2. **Adjust phases**: Add or remove phases based on complexity
-3. **Update tasks**: Break down work into specific, actionable items
-4. **Set verification**: Define clear success criteria for each phase
-5. **Consider risks**: Think through potential issues early
-6. **Keep updated**: Mark completed items and update status regularly
-7. **Phase independence**: Each phase should be self-contained with all necessary information, as `/clear` command will be executed at phase boundaries to reset context
-
-### Status Tracking
-
-Use these status indicators consistently:
-- **Not Started**: Work hasn't begun
-- **Phase X In Progress**: Currently working on specific phase
-- **Phase X Completed**: Phase finished, moving to next
-- **Blocked**: Waiting on external dependency
-- **Under Review**: Implementation complete, awaiting review
-- **Completed**: All phases done and verified
+1. Replace placeholders in all bracketed sections.
+2. Adjust the number of phases based on complexity.
+3. Break down tasks into specific, testable items.
+4. Define verification commands and phase acceptance criteria.
+5. Identify risks early, with mitigation and fallback.
+6. Keep status updated as work progresses.
+7. Phase independence: Ensure each phase is self-contained; the `/clear` command may be executed at phase boundaries to reset context.
+8. Update or add ADRs when design decisions change.
