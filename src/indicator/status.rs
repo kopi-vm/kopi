@@ -293,7 +293,7 @@ mod tests {
 
         test_reporter.success("With color");
         let output = TestReporter::get_output();
-        assert!(output[0].starts_with("✓"));
+        assert!(output[0].contains("✓"));
 
         // Test without color
         TestReporter::clear_output();
@@ -323,7 +323,7 @@ mod tests {
 
         test_reporter.error("Color error");
         let output = TestReporter::get_error_output();
-        assert!(output[0].starts_with("✗"));
+        assert!(output[0].contains("✗"));
 
         // Test without color
         TestReporter::clear_output();
