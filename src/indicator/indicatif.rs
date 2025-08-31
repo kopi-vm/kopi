@@ -16,12 +16,14 @@ use crate::indicator::{ProgressConfig, ProgressIndicator, ProgressStyle};
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 pub struct IndicatifProgress {
     multi: Arc<MultiProgress>,      // Always initialized, no Option
     owned_bar: Option<ProgressBar>, // This instance's progress bar
     is_child: bool,                 // Whether this is a child progress
+    last_update: Option<Instant>,   // Track last update time for throttling
+    update_threshold: Duration,     // Minimum time between updates
 }
 
 impl IndicatifProgress {
@@ -30,6 +32,8 @@ impl IndicatifProgress {
             multi: Arc::new(MultiProgress::new()),
             owned_bar: None,
             is_child: false,
+            last_update: None,
+            update_threshold: Duration::from_millis(50), // Update at most 20 times per second
         }
     }
 
@@ -81,6 +85,9 @@ impl Default for IndicatifProgress {
 
 impl ProgressIndicator for IndicatifProgress {
     fn start(&mut self, config: ProgressConfig) {
+        // Reset tracking state for new operation
+        self.last_update = None;
+
         let pb = match config.total {
             Some(total) => ProgressBar::new(total),
             None => ProgressBar::new_spinner(),
@@ -101,25 +108,58 @@ impl ProgressIndicator for IndicatifProgress {
                 .tick_chars("⣾⣽⣻⢿⡿⣟⣯⣷"),
         );
 
-        pb.enable_steady_tick(Duration::from_millis(80));
+        // Use different tick rates for parent vs child to reduce CPU usage
+        let tick_rate = if self.is_child {
+            Duration::from_millis(120) // Slower tick for children (8.3 Hz)
+        } else {
+            Duration::from_millis(80) // Normal tick for parent (12.5 Hz)
+        };
+        pb.enable_steady_tick(tick_rate);
 
         self.owned_bar = Some(pb);
     }
 
     fn update(&mut self, current: u64, _total: Option<u64>) {
         if let Some(pb) = &self.owned_bar {
+            // Throttle updates for child progress bars
+            if self.is_child {
+                let now = Instant::now();
+                if let Some(last) = self.last_update
+                    && now.duration_since(last) < self.update_threshold
+                {
+                    // Skip this update, too soon since last one
+                    return;
+                }
+                self.last_update = Some(now);
+            }
+
             pb.set_position(current);
         }
     }
 
     fn set_message(&mut self, message: String) {
         if let Some(pb) = &self.owned_bar {
+            // Throttle message updates for child progress bars as well
+            if self.is_child {
+                let now = Instant::now();
+                if let Some(last) = self.last_update
+                    && now.duration_since(last) < self.update_threshold
+                {
+                    // Skip this message update, too soon since last one
+                    return;
+                }
+                self.last_update = Some(now);
+            }
+
             pb.set_message(message);
         }
     }
 
     fn complete(&mut self, message: Option<String>) {
         if let Some(pb) = self.owned_bar.take() {
+            // Force final update by resetting last_update
+            self.last_update = None;
+
             let msg = message.unwrap_or_else(|| "Complete".to_string());
             if self.is_child {
                 pb.finish_and_clear();
@@ -132,6 +172,9 @@ impl ProgressIndicator for IndicatifProgress {
 
     fn error(&mut self, message: String) {
         if let Some(pb) = self.owned_bar.take() {
+            // Force final update by resetting last_update
+            self.last_update = None;
+
             if self.is_child {
                 pb.abandon();
             } else {
@@ -147,6 +190,8 @@ impl ProgressIndicator for IndicatifProgress {
             multi: Arc::clone(&self.multi),
             owned_bar: None,
             is_child: true,
+            last_update: None,
+            update_threshold: Duration::from_millis(100), // Children update less frequently (10 Hz)
         })
     }
 
@@ -434,6 +479,8 @@ mod tests {
             multi: Arc::new(MultiProgress::new()),
             owned_bar: None,
             is_child: true,
+            last_update: None,
+            update_threshold: Duration::from_millis(100),
         };
 
         let config = ProgressConfig::new(ProgressStyle::Count).with_total(10);
