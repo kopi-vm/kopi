@@ -27,6 +27,7 @@
     ],
     "deny": [
       "Bash(sudo:*)",
+      "Bash(git add:*)",
       "Bash(git push:*)",
       "Bash(git commit:*)",
       "Bash(git reset:*)",
