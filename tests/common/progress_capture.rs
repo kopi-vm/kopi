@@ -23,6 +23,7 @@ pub struct ProgressMessage {
 }
 
 /// Test helper that captures progress indicator updates for verification
+#[derive(Clone)]
 pub struct TestProgressCapture {
     messages: Arc<Mutex<Vec<ProgressMessage>>>,
     current_style: Option<ProgressStyle>,
