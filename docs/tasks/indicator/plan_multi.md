@@ -221,19 +221,19 @@ cargo test --lib indicator::indicatif
 
 ### Tasks
 - [x] **Analyze current download progress**:
-  - [x] Identify where progress is created and used
-  - [x] Determine Content-Length retrieval points
+  - [x] Identify where progress is created and used (src/download/mod.rs:55-56)
+  - [x] Determine Content-Length retrieval points (src/download/progress.rs:50)
 - [x] **Update download functions**:
-  - [x] Add parent progress parameter where needed
-  - [x] Check Content-Length for 10MB threshold
-  - [x] Create child progress when appropriate
+  - [x] Add parent progress parameter where needed (src/download/mod.rs:33)
+  - [x] Check Content-Length for 10MB threshold (src/download/progress.rs:53)
+  - [x] Create child progress when appropriate (src/download/progress.rs:54-67)
 - [x] **Update DownloadProgressAdapter**:
-  - [x] Support being created as a child
-  - [x] Maintain backward compatibility
+  - [x] Support being created as a child (src/download/progress.rs:28-38)
+  - [x] Maintain backward compatibility (src/download/progress.rs:134)
 - [x] **Handle edge cases**:
-  - [x] Unknown Content-Length (no child progress)
-  - [x] Small files < 10MB (no child progress)
-  - [x] Network errors during download
+  - [x] Unknown Content-Length (no child progress) (src/download/progress.rs:71-72)
+  - [x] Small files < 10MB (no child progress) (src/download/progress.rs:69-76)
+  - [x] Network errors during download (handled by HttpFileDownloader)
 
 ### Deliverables
 - Download module with conditional child progress support
@@ -249,7 +249,7 @@ cargo test --lib download
 
 ---
 
-## Phase 5: Install Command - Download Progress Integration
+## Phase 5: Install Command - Download Progress Integration ✅
 
 **Goal**: Integrate child progress bars for download operations in the install command.
 
@@ -261,24 +261,24 @@ cargo test --lib download
   - `/src/commands/install.rs` - Install command implementation
 
 ### Tasks
-- [ ] **Identify download locations**:
-  - [ ] Find where `download_jdk()` is called
-  - [ ] Locate where `no_progress=true` is forced
-- [ ] **Remove forced suppression**:
-  - [ ] Remove `no_progress=true` for downloads
-  - [ ] Pass actual progress indicator
-- [ ] **Implement threshold logic**:
-  - [ ] Check package size before download
-  - [ ] Create child progress for files >= 10MB
-  - [ ] Update parent message for files < 10MB
-- [ ] **Handle cache refresh**:
-  - [ ] When using Foojay API, create child progress
-  - [ ] Show package processing count
-- [ ] **Test various scenarios**:
-  - [ ] Large JDK download (> 10MB)
-  - [ ] Small tool download (< 10MB)
-  - [ ] Unknown size download
-  - [ ] Cache refresh during install
+- [x] **Identify download locations**:
+  - [x] Find where `download_jdk()` is called (src/commands/install.rs:326)
+  - [x] Locate where `no_progress=true` is forced (not forced, passed as parameter)
+- [x] **Remove forced suppression**:
+  - [x] Remove `no_progress=true` for downloads (not forced)
+  - [x] Pass actual progress indicator (src/commands/install.rs:330)
+- [x] **Implement threshold logic**:
+  - [x] Check package size before download (src/download/progress.rs:53)
+  - [x] Create child progress for files >= 10MB (src/download/progress.rs:54-67)
+  - [x] Update parent message for files < 10MB (src/download/progress.rs:69-76)
+- [x] **Handle cache refresh**:
+  - [x] When using Foojay API, create child progress (src/commands/install.rs:95,556)
+  - [x] Show package processing count (via parent progress updates)
+- [x] **Test various scenarios**:
+  - [x] Large JDK download (> 10MB) (tests/multi_progress_install_test.rs:21)
+  - [x] Small tool download (< 10MB) (tests/multi_progress_install_test.rs:44)
+  - [x] Unknown size download (src/download/progress.rs tests)
+  - [x] Cache refresh during install (tests/multi_progress_install_test.rs:100)
 
 ### Deliverables
 - Install command with child progress for large downloads
@@ -516,14 +516,14 @@ cat docs/tasks/indicator/design_multi.md
 
 ## Implementation Order Summary
 
-### Core Components (Phases 1-3) - Requires Revision
+### Core Components (Phases 1-3) - Completed
 1. **Phase 1**: ProgressIndicator trait and ALL implementations - add suspend/println methods ✅
 2. **Phase 2**: SimpleProgress - replace Unicode with ASCII symbols ✅
-3. **Phase 3**: IndicatifProgress with refined MultiProgress architecture 🔄
+3. **Phase 3**: IndicatifProgress with refined MultiProgress architecture ✅
 
 ### Integration (Phases 4-7)
-4. **Phase 4**: Download module integration ✅ (may need minor adjustments)
-5. **Phase 5**: Install command integration
+4. **Phase 4**: Download module integration ✅
+5. **Phase 5**: Install command integration ✅
 6. **Phase 6**: Cache module integration
 7. **Phase 7**: Cache command integration
 
