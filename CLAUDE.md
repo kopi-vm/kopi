@@ -95,6 +95,8 @@ Address any errors from each command before proceeding to the next. All must pas
   - `test` profile: Tests run with optimization level 1 and limited debug info
   - `release-fast` profile: Fast release builds without LTO for development
 
+@AGENTS.md
+
 ## Architecture
 
 ### Project Structure
