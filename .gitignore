@@ -9,3 +9,5 @@ benchmarks/results/
 !benchmarks/baselines/
 
 *.local.json
+
+.serena/
