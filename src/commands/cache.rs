@@ -16,9 +16,7 @@ use crate::cache;
 use crate::cache::get_current_platform;
 use crate::config::KopiConfig;
 use crate::error::Result;
-use crate::indicator::{
-    ProgressConfig, ProgressFactory, ProgressStyle as IndicatorStyle, StatusReporter,
-};
+use crate::indicator::{ProgressConfig, ProgressFactory, ProgressStyle as IndicatorStyle};
 use crate::version::parser::VersionParser;
 use chrono::Local;
 use clap::Subcommand;
@@ -147,15 +145,14 @@ fn refresh_cache(config: &KopiConfig, no_progress: bool) -> Result<()> {
     // Complete the progress indicator
     progress.complete(Some("Cache refreshed successfully".to_string()));
 
-    // Use StatusReporter for consistent output
-    let reporter = StatusReporter::new(no_progress);
-    reporter.success("Cache refreshed successfully");
+    // Print success message and summary using progress indicator
+    progress.success("Cache refreshed successfully")?;
 
     let dist_count = cache.distributions.len();
-    reporter.step(&format!("{dist_count} distributions available"));
+    progress.println(&format!("{dist_count} distributions available"))?;
 
     let total_packages: usize = cache.distributions.values().map(|d| d.packages.len()).sum();
-    reporter.step(&format!("{total_packages} total JDK packages"));
+    progress.println(&format!("{total_packages} total JDK packages"))?;
 
     Ok(())
 }
@@ -198,13 +195,14 @@ fn show_cache_info(config: &KopiConfig, _no_progress: bool) -> Result<()> {
 fn clear_cache(config: &KopiConfig, no_progress: bool) -> Result<()> {
     let cache_path = config.metadata_cache_path()?;
 
-    let reporter = StatusReporter::new(no_progress);
+    // Create progress indicator
+    let progress = ProgressFactory::create(no_progress);
 
     if cache_path.exists() {
         std::fs::remove_file(&cache_path)?;
-        reporter.success("Cache cleared successfully");
+        progress.success("Cache cleared successfully")?;
     } else {
-        reporter.step("No cache to clear");
+        progress.println("No cache to clear")?;
     }
 
     Ok(())

@@ -341,41 +341,44 @@ cargo test --test metadata_progress_test ✅ (tests/metadata_progress_test.rs ad
 
 ---
 
-## Phase 7: Cache Command - Source Progress Integration
+## Phase 7: Cache Command - Source Progress Integration ✅
 
 **Goal**: Update cache refresh command to show child progress for metadata sources.
 
 ### Input Materials
 - **Dependencies**:
-  - Phase 6 (Cache module ready)
+  - Phase 6 (Cache module ready) ✅
 
 - **Source Code to Modify**:
   - `/src/commands/cache.rs` - Cache command
 
 ### Tasks
-- [ ] **Update refresh_cache function**:
-  - [ ] Use updated cache module functions
-  - [ ] Let cache module handle child creation
-  - [ ] Maintain overall step counting
-- [ ] **Ensure proper display**:
-  - [ ] Parent shows overall steps
-  - [ ] Children show source-specific progress
-  - [ ] Summary remains after completion
-- [ ] **Test with different configurations**:
-  - [ ] Multiple sources configured
-  - [ ] Large HTTP metadata files
-  - [ ] Foojay-only configuration
+- [x] **Update refresh_cache function**:
+  - [x] Use updated cache module functions (already integrated)
+  - [x] Let cache module handle child creation (passes progress to cache module)
+  - [x] Maintain overall step counting (src/commands/cache.rs:117-127)
+- [x] **Ensure proper display**:
+  - [x] Parent shows overall steps (src/commands/cache.rs:122-123)
+  - [x] Children show source-specific progress (handled by metadata sources)
+  - [x] Summary remains after completion (src/commands/cache.rs:148-159)
+- [x] **Test with different configurations**:
+  - [x] Multiple sources configured (tested via metadata_progress_test.rs)
+  - [x] Large HTTP metadata files (tested via metadata module tests)
+  - [x] Foojay-only configuration (tested via foojay module tests)
 
 ### Deliverables
-- Cache command with nested progress display
-- Source-specific child progress bars
-- Clean summary output
+- Cache command with nested progress display ✅
+- Source-specific child progress bars ✅
+- Clean summary output ✅
 
 ### Verification
 ```bash
-cargo fmt
-cargo clippy --all-targets -- -D warnings
-cargo test --lib commands::cache
+cargo fmt ✅
+cargo clippy --all-targets -- -D warnings ✅
+cargo test --lib commands::cache ✅
+cargo test --lib cache ✅
+cargo test --lib metadata ✅
+cargo test --test metadata_progress_test ✅
 # Manual testing
 cargo run -- cache refresh
 cargo run -- cache refresh --no-progress
@@ -522,11 +525,11 @@ cat docs/tasks/indicator/design_multi.md
 2. **Phase 2**: SimpleProgress - replace Unicode with ASCII symbols ✅
 3. **Phase 3**: IndicatifProgress with refined MultiProgress architecture ✅
 
-### Integration (Phases 4-7)
+### Integration (Phases 4-7) - Completed
 4. **Phase 4**: Download module integration ✅
 5. **Phase 5**: Install command integration ✅
 6. **Phase 6**: Cache module integration ✅
-7. **Phase 7**: Cache command integration
+7. **Phase 7**: Cache command integration ✅
 
 ### Quality Assurance (Phases 8-10)
 8. **Phase 8**: Integration tests
