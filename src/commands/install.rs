@@ -33,11 +33,15 @@ use std::time::Duration;
 
 pub struct InstallCommand<'a> {
     config: &'a KopiConfig,
+    no_progress: bool,
 }
 
 impl<'a> InstallCommand<'a> {
-    pub fn new(config: &'a KopiConfig, _no_progress: bool) -> Result<Self> {
-        Ok(Self { config })
+    pub fn new(config: &'a KopiConfig, no_progress: bool) -> Result<Self> {
+        Ok(Self {
+            config,
+            no_progress,
+        })
     }
 
     /// Check if cache needs refresh without actually refreshing
@@ -121,13 +125,13 @@ impl<'a> InstallCommand<'a> {
         version_spec: &str,
         force: bool,
         dry_run: bool,
-        no_progress: bool,
         timeout_secs: Option<u64>,
     ) -> Result<()> {
         info!("Installing JDK {version_spec}");
         debug!(
-            "Install options: force={force}, dry_run={dry_run}, no_progress={no_progress}, \
-             timeout={timeout_secs:?}"
+            "Install options: force={force}, dry_run={dry_run}, no_progress={}, \
+             timeout={timeout_secs:?}",
+            self.no_progress
         );
 
         // Parse version specification first (before progress bar)
@@ -156,7 +160,7 @@ impl<'a> InstallCommand<'a> {
         };
 
         // Create progress indicator
-        let mut progress = crate::indicator::ProgressFactory::create(no_progress);
+        let mut progress = crate::indicator::ProgressFactory::create(self.no_progress);
 
         // Show operation message using progress indicator
         progress.println(&format!(
@@ -325,7 +329,7 @@ impl<'a> InstallCommand<'a> {
         // For smaller files, it will update the parent's message
         let download_result = download_jdk(
             &jdk_metadata_with_checksum,
-            no_progress,
+            self.no_progress,
             timeout_secs,
             Some(progress.create_child()),
         )?;

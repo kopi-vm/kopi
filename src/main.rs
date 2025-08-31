@@ -256,7 +256,7 @@ fn main() {
                 timeout,
             } => {
                 let command = InstallCommand::new(&config, cli.no_progress)?;
-                command.execute(&version, force, dry_run, cli.no_progress, timeout)
+                command.execute(&version, force, dry_run, timeout)
             }
             Commands::List => {
                 let command = ListCommand::new(&config)?;
