@@ -10,45 +10,155 @@ kopi/
 │   ├── bin/             # Binary executables (kopi-shim)
 │   ├── cache/           # Metadata caching functionality
 │   ├── commands/        # Command implementations
+│   ├── doctor/          # Doctor command for system diagnostics
+│   │   └── checks/      # Individual diagnostic checks
 │   ├── download/        # Download management and progress reporting
 │   ├── error/           # Error handling and formatting
+│   ├── indicator/       # Progress indicator and user feedback
+│   ├── installation/    # JDK installation management
+│   ├── metadata/        # Metadata management and parsing
+│   │   └── generator/   # Metadata generation utilities
 │   ├── models/          # Data models and structures
 │   ├── platform/        # Platform-specific functionality
-│   ├── search/          # JDK search functionality
 │   ├── security/        # Security validation and HTTPS verification
 │   ├── shim/            # Shim management
 │   ├── storage/         # Storage and disk space management
+│   ├── test/            # Test utilities and helpers
+│   ├── uninstall/       # JDK uninstallation functionality
 │   └── version/         # Version parsing and handling
 ├── tests/               # Integration tests
 │   └── common/          # Common test utilities
 ├── benches/             # Performance benchmarks
 ├── benchmarks/          # Benchmark results and history
+│   └── baselines/       # Baseline benchmark data
 ├── docs/
+│   ├── analysis/        # Problem exploration and requirement discovery (TDL)
+│   │   └── archive/     # Archived analysis documents
+│   ├── requirements/    # Formal requirements (FR-####, NFR-####)
 │   ├── adr/             # Architecture Decision Records
+│   ├── tasks/           # Task-specific design and planning documents
+│   │   └── <task>/      # Per-task directory containing:
+│   │       ├── design.md # Technical design document
+│   │       └── plan.md   # Implementation plan
+│   ├── templates/       # TDL document templates
+│   │   └── examples/    # Template usage examples
+│   ├── images/          # Documentation images and diagrams
 │   ├── reviews/         # Code and design reviews
-│   └── tasks/           # Task planning documents
+│   └── traceability.md  # Central requirements-to-tasks mapping
+├── pkg/                 # Packaging configurations
+│   ├── nfpm/            # nfpm package manager configs
+│   └── wix/             # Windows installer configs
 ├── scripts/             # Development and CI scripts
-└── Cargo.toml           # Project dependencies and metadata
+├── .cargo/              # Cargo configuration
+├── .github/             # GitHub Actions workflows
+│   └── workflows/       # CI/CD pipeline definitions
+├── AGENTS.md            # AI agent instructions and workflow
+├── CLAUDE.md            # Claude Code guidance and conventions
+├── Cargo.toml           # Project dependencies and metadata
+├── Cargo.lock           # Dependency lock file
+├── README.md            # Project documentation
+├── LICENSE              # Project license
+└── rust-toolchain.toml  # Rust toolchain specification
 ```
 
 ## Key Files
 
-- `/src/main.rs` - Application entry point with CLI command parsing
-- `/src/lib.rs` - Library entry point for shared functionality
-- `/src/config.rs` - Configuration management
-- `/src/bin/kopi-shim.rs` - Shim binary for transparent JDK switching
-- `/docs/adr/` - Architecture Decision Records documenting design choices
-- `/docs/reference.md` - User reference manual with command documentation
-- Uses `clap` v4.5.40 with derive feature for CLI argument parsing
+### Core Entry Points
+- `src/main.rs` - Main application entry point with CLI command parsing (uses `clap` v4.5.40 with derive feature)
+- `src/lib.rs` - Library entry point exposing shared functionality
+- `src/bin/kopi-shim.rs` - Shim binary for transparent JDK version switching
+- `src/bin/kopi-metadata-gen.rs` - Metadata generation utility
+
+### Configuration & Models
+- `src/config.rs` - Global configuration management and loading
+- `src/models/` - Core data models:
+  - `api.rs` - API response structures
+  - `distribution.rs` - JDK distribution definitions
+  - `metadata.rs` - Metadata structures
+  - `package.rs` - Package information
+  - `platform.rs` - Platform-specific models
+
+### Command Implementations
+- `src/commands/mod.rs` - Command registry and dispatch
+- `src/commands/install.rs` - JDK installation logic
+- `src/commands/cache.rs` - Cache management commands
+- `src/commands/current.rs` - Display current JDK version
+- `src/commands/env.rs` - Shell environment setup
+
+### Documentation & Process
+- `CLAUDE.md` - Repository conventions and AI assistant guidance
+- `AGENTS.md` - AI agent workflow instructions
+- `docs/templates/README.md` - Traceable Development Lifecycle (TDL) documentation
+- `docs/traceability.md` - Requirements-to-implementation mapping
+- `docs/adr/` - Architecture Decision Records directory
+
+### Development & Build
+- `Cargo.toml` - Project dependencies and metadata
+- `rust-toolchain.toml` - Rust version specification
+- `.cargo/config.toml` - Cargo build configuration
+- `.github/workflows/` - CI/CD pipeline definitions
 
 ## Key Architectural Components
 
-- **Command Interface**: Subcommand-based CLI using clap derive API
-- **JDK Metadata**: Fetches available JDK versions from foojay.io API
-- **Version Management**: Installs and manages multiple JDK versions in `~/.kopi/jdks/<vendor>-<version>/`
-- **Shell Integration**: Creates shims in `~/.kopi/shims/` for Java executables
-- **Project Configuration**: Reads `.kopi-version` (native format with `@` separator) or `.java-version` (compatibility)
-- **Metadata Caching**: Stores JDK metadata in `~/.kopi/cache/metadata.json` with hybrid caching strategy
+### Command System
+- **CLI Interface**: Subcommand-based architecture using `clap` derive API
+- **Command Registry**: Centralized command dispatch in `src/commands/mod.rs`
+- **Subcommands**: Install, uninstall, cache, current, env, doctor, shell, local, global, etc.
+- **Exit Codes**: Standardized error codes for different failure scenarios (see `src/error/exit_codes.rs`)
+
+### Metadata Management
+- **Data Sources**: Primary source from foojay.io API, with local index fallback
+- **Caching Strategy**: Hybrid approach with `~/.kopi/cache/metadata.json`
+  - Network-first with fallback to cache
+  - Automatic refresh on cache commands
+  - TTL-based invalidation
+- **Metadata Generation**: Dedicated tool (`kopi-metadata-gen`) for offline metadata creation
+- **Provider Abstraction**: Flexible provider system supporting HTTP and local sources
+
+### JDK Installation & Storage
+- **Installation Path**: `~/.kopi/jdks/<vendor>-<version>/`
+- **Archive Support**: TAR and ZIP extraction with platform-specific handling
+- **Download Management**: Progress reporting with resumable downloads
+- **Storage Repository**: Centralized JDK management with disk space validation
+- **Uninstallation**: Safe batch uninstall with dependency checking
+
+### Version Resolution
+- **Version Files**: `.kopi-version` (native with `@` separator) and `.java-version` (compatibility)
+- **Resolution Order**:
+  1. Environment variable (`KOPI_JAVA_VERSION`)
+  2. Local project file (`.kopi-version` or `.java-version`)
+  3. Global default version
+- **Version Parser**: Flexible parsing supporting vendor@version format
+
+### Shell Integration
+- **Shim System**: Transparent executable proxies in `~/.kopi/shims/`
+- **Shim Binary**: Lightweight Rust binary (`kopi-shim`) for JDK switching
+- **Tool Discovery**: Automatic detection of Java tools (java, javac, jar, etc.)
+- **Shell Support**: Bash, Zsh, Fish with environment setup commands
+
+### User Feedback & Progress
+- **Progress Indicators**: Configurable indicators (simple, fancy, silent)
+- **Status Reporting**: Real-time feedback during long operations
+- **Diagnostic Tool**: `doctor` command for system health checks
+- **Error Formatting**: Context-aware error messages with actionable suggestions
+
+### Platform Abstraction
+- **OS Detection**: Runtime platform detection for OS-specific behavior
+- **Path Handling**: Cross-platform path manipulation
+- **Symlink Management**: Platform-specific symlink creation and validation
+- **Process Execution**: Abstracted process spawning for cross-platform support
+
+### Security & Validation
+- **HTTPS Enforcement**: All downloads use verified HTTPS connections
+- **Archive Validation**: Security checks before extraction
+- **Permission Checks**: File system permission validation
+- **Shim Security**: Protection against path traversal and injection
+
+### Error Handling
+- **Error Context**: Rich error context with cause chains
+- **Recovery Suggestions**: Actionable error messages with fix hints
+- **Graceful Degradation**: Fallback strategies for network failures
+- **Structured Exit Codes**: Consistent exit codes for scripting
 
 ## Storage Locations
 
@@ -62,12 +172,3 @@ kopi/
 - Global config stored at `~/.kopi/config.toml`
 - Loaded automatically by components via `KopiConfig::load()`
 - Uses sensible defaults when config file is missing
-
-## Performance Considerations
-
-- **Test execution** is limited to 4 threads by default (configured in `.cargo/config.toml`)
-- **Incremental compilation** is enabled for faster rebuilds
-- **Build profiles** are optimized:
-  - `dev` profile: Dependencies are optimized at level 2
-  - `test` profile: Tests run with optimization level 1 and limited debug info
-  - `release-fast` profile: Fast release builds without LTO for development
