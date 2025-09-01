@@ -1,14 +1,16 @@
 # AGENTS.md
 
-## Template-Driven Workflow
+## Traceable Development Lifecycle (TDL)
 
-This project follows a structured development process using templates for all documentation. The complete workflow documentation and templates are maintained in:
+*Structured phases, linked artifacts, verifiable outcomes*
 
-📚 **[`docs/templates/README.md`](docs/templates/README.md)** - Full workflow documentation, template descriptions, and usage instructions
+This project follows the Traceable Development Lifecycle (TDL), a structured development process with full traceability from requirements to implementation. The complete TDL documentation and supporting templates are maintained in:
+
+📚 **[`docs/templates/README.md`](docs/templates/README.md)** - Full TDL documentation, template descriptions, and usage instructions
 
 ## Quick Reference
 
-### Workflow Overview
+### TDL Process Overview
 ```mermaid
 graph LR
     A[Analysis] --> R[Requirements]
@@ -31,8 +33,8 @@ graph LR
 ### Essential Guidelines
 - All documentation must be in English (per `CLAUDE.md`)
 - For repository conventions (commands, architecture, error handling), see `CLAUDE.md`
-- Follow the template-driven workflow for all non-trivial changes
+- Follow the Traceable Development Lifecycle (TDL) for all non-trivial changes
 - Maintain traceability through requirement IDs (FR-####/NFR-####) and ADR references
 - Small changes can use simplified workflow (see templates README)
 
-For detailed workflow steps, template usage instructions, pull request checklists, and archive policies, refer to the comprehensive documentation in [`docs/templates/README.md`](docs/templates/README.md).
+For detailed TDL phases, template usage instructions, pull request checklists, and archive policies, refer to the comprehensive documentation in [`docs/templates/README.md`](docs/templates/README.md).

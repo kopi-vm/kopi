@@ -1,12 +1,14 @@
 # Kopi Development Templates
 
-This folder provides templates for the template-driven workflow, covering the full development lifecycle from analysis to implementation. All documents must be in English (see `CLAUDE.md` for the documentation language policy and repo-wide guidance).
+This folder provides templates for the Traceable Development Lifecycle (TDL), covering the full development lifecycle from analysis to implementation with complete traceability. All documents must be in English (see `CLAUDE.md` for the documentation language policy and repo-wide guidance).
 
 Note: For repository-specific conventions (commands, workflow, architecture, error handling, naming), consult `CLAUDE.md` as the authoritative reference.
 
-## Template-Driven Workflow
+## Traceable Development Lifecycle (TDL)
 
-The workflow progresses through distinct phases, each with specific deliverables:
+*Structured phases, linked artifacts, verifiable outcomes*
+
+The TDL progresses through distinct phases, each with specific deliverables:
 
 ```mermaid
 graph LR
@@ -189,6 +191,8 @@ These requirements apply to ALL documentation templates (Requirements, Design, P
 - **Superseded ADRs**: Update status and link to superseding ADR
 
 ## Template Usage Instructions
+
+These templates support the Traceable Development Lifecycle (TDL) by providing structured formats for each phase's artifacts.
 
 ### Analysis Template (`analysis.md`)
 1. Use for exploring problem spaces and discovering requirements
