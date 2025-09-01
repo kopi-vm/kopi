@@ -31,223 +31,6 @@ Key features:
 
 The user-facing documentation for Kopi is maintained in a separate repository at `../kopi-vm.github.io/`. This repository uses MkDocs to generate and publish documentation for end users.
 
-## Development Commands
-
-### Build and Run
-- `cargo build` - Build the project in debug mode (fastest compilation)
-- `cargo run` - Build and run the application
-- `cargo build --profile release-fast` - Fast release build for development
-- `cargo build --release` - Build optimized release version for production
-- `cargo run --release` - Run the release build
-- `cargo build --benches` - Build benchmark tests
-
-### Code Quality
-- `cargo fmt` - Format code using rustfmt
-- `cargo clippy` - Run linter for code improvements
-- `cargo check` - Fast error checking without building
-
-### Testing
-- `cargo test --quiet` - Run all tests with optimized test profile
-- `cargo test --lib --quiet` - Run only unit tests (fastest)
-- `cargo test --quiet -- --nocapture` - Run tests with stdout/stderr output
-- `cargo test --quiet [test_name]` - Run specific test
-- `cargo test --quiet --features perf-tests` - Run performance tests (usually ignored)
-- `cargo bench` - Run benchmark tests
-- `cargo build --benches` - Build benchmark tests without running them
-
-**Test Organization**:
-- Unit tests should be placed in the same file as the code being tested using `#[cfg(test)]`
-- Integration tests go in the `tests/` directory
-- Example:
-```rust
-// src/jdk.rs
-pub fn parse_version(version: &str) -> Result<Version> {
-    // implementation
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_version() {
-        assert_eq!(parse_version("11.0.2"), Ok(Version::new(11, 0, 2)));
-    }
-}
-```
-
-## Development Workflow
-
-### Completing Work
-When finishing any coding task, always run the following commands in order and fix any issues:
-
-1. `cargo fmt` - Auto-format code
-2. `cargo clippy --all-targets -- -D warnings` - Check for linting errors in test code
-3. `cargo test --lib --quiet` - Run unit tests (faster than full test suite)
-
-Address any errors from each command before proceeding to the next. All must pass successfully before considering the work complete.
-
-### Performance Considerations
-- **Test execution** is limited to 4 threads by default (configured in `.cargo/config.toml`)
-- **Incremental compilation** is enabled for faster rebuilds
-- **Build profiles** are optimized:
-  - `dev` profile: Dependencies are optimized at level 2
-  - `test` profile: Tests run with optimization level 1 and limited debug info
-  - `release-fast` profile: Fast release builds without LTO for development
-
-@AGENTS.md
-
-## Architecture
-
-### Project Structure
-
-```
-kopi/
-├── src/
-│   ├── api/             # API integration with foojay.io
-│   ├── archive/         # Archive extraction functionality (TAR/ZIP)
-│   ├── bin/             # Binary executables (kopi-shim)
-│   ├── cache/           # Metadata caching functionality
-│   ├── commands/        # Command implementations
-│   ├── download/        # Download management and progress reporting
-│   ├── error/           # Error handling and formatting
-│   ├── models/          # Data models and structures
-│   ├── platform/        # Platform-specific functionality
-│   ├── search/          # JDK search functionality
-│   ├── security/        # Security validation and HTTPS verification
-│   ├── shim/            # Shim management
-│   ├── storage/         # Storage and disk space management
-│   └── version/         # Version parsing and handling
-├── tests/               # Integration tests
-│   └── common/          # Common test utilities
-├── benches/             # Performance benchmarks
-├── benchmarks/          # Benchmark results and history
-├── docs/
-│   ├── adr/             # Architecture Decision Records
-│   ├── reviews/         # Code and design reviews
-│   └── tasks/           # Task planning documents
-├── scripts/             # Development and CI scripts
-└── Cargo.toml           # Project dependencies and metadata
-```
-
-Key files:
-- `/src/main.rs` - Application entry point with CLI command parsing
-- `/src/lib.rs` - Library entry point for shared functionality
-- `/src/config.rs` - Configuration management
-- `/src/bin/kopi-shim.rs` - Shim binary for transparent JDK switching
-- `/docs/adr/` - Architecture Decision Records documenting design choices
-- `/docs/reference.md` - User reference manual with command documentation
-- Uses `clap` v4.5.40 with derive feature for CLI argument parsing
-
-Key architectural components:
-- **Command Interface**: Subcommand-based CLI using clap derive API
-- **JDK Metadata**: Fetches available JDK versions from foojay.io API
-- **Version Management**: Installs and manages multiple JDK versions in `~/.kopi/jdks/<vendor>-<version>/`
-- **Shell Integration**: Creates shims in `~/.kopi/shims/` for Java executables
-- **Project Configuration**: Reads `.kopi-version` (native format with `@` separator) or `.java-version` (compatibility)
-- **Metadata Caching**: Stores JDK metadata in `~/.kopi/cache/metadata.json` with hybrid caching strategy
-
-Storage locations:
-- JDKs: `~/.kopi/jdks/<vendor>-<version>/`
-- Shims: `~/.kopi/shims/`
-- Config: `~/.kopi/config.toml`
-- Cache: `~/.kopi/cache/`
-
-Configuration System:
-- Global config stored at `~/.kopi/config.toml`
-- Loaded automatically by components via `KopiConfig::load()`
-- Uses sensible defaults when config file is missing
-
-## Key Dependencies
-
-Core functionality:
-- `clap`: CLI argument parsing with derive API
-- `attohttpc`: HTTP client for foojay.io API calls
-- `serde`/`serde_json`: JSON parsing for API responses and metadata
-- `indicatif`: Progress bars and spinners for download feedback
-
-Archive handling:
-- `tar`: Extract JDK tar archives
-- `zip`: Extract JDK zip archives
-- `tempfile`: Safe temporary file handling during downloads
-
-Platform integration:
-- `dirs`: Platform-specific directory paths
-- `which`: Find executables in PATH
-- `walkdir`: Recursive directory traversal
-- Platform-specific: `winreg` (Windows registry), `junction` (Windows symlinks)
-
-## Error Handling Guidelines
-
-### Error Types
-1. **User Errors**: Invalid input, missing arguments, or incorrect usage
-   - Return clear, actionable error messages
-   - Include examples of correct usage
-   - Exit codes: 2 (invalid format/config), 3 (no local version), 4 (JDK not installed)
-
-2. **Network Errors**: Failed API calls or downloads
-   - Implement retry logic with exponential backoff
-   - Provide offline fallback when possible (cached metadata)
-   - Show progress indicators for long operations
-   - Exit code: 20
-
-3. **System Errors**: Permission issues, disk space, missing dependencies
-   - Check permissions before operations
-   - Validate available disk space before downloads
-   - Provide platform-specific guidance
-   - Exit codes: 13 (permission denied), 28 (disk space), 127 (command not found)
-
-### Error Message Format
-```rust
-// Use thiserror for strongly-typed error handling
-use thiserror::Error;
-
-// Define specific error types with clear messages
-#[derive(Error, Debug)]
-pub enum KopiError {
-    #[error("Failed to download JDK: {0}")]
-    Download(String),
-    
-    #[error("JDK version '{0}' is not available")]
-    VersionNotAvailable(String),
-    
-    #[error("Network error: {0}")]
-    NetworkError(String),
-    
-    #[error(transparent)]
-    Http(#[from] attohttpc::Error),
-}
-
-// Return specific error types
-operation()
-    .map_err(|e| KopiError::Download(e.to_string()))?;
-```
-
-### Error Context System
-The codebase includes an `ErrorContext` system that provides helpful suggestions and details based on error types:
-
-```rust
-use crate::error::{ErrorContext, format_error_with_color};
-
-// Errors are automatically enriched with context when displayed
-match result {
-    Err(e) => {
-        let context = ErrorContext::new(&e);
-        eprintln!("{}", format_error_with_color(&e, std::io::stderr().is_terminal()));
-        std::process::exit(get_exit_code(&e));
-    }
-    Ok(_) => {}
-}
-```
-
-The `ErrorContext` system automatically provides:
-- User-friendly suggestions for common errors (e.g., "Run 'kopi cache search' to see available versions")
-- Platform-specific guidance (e.g., different commands for Windows vs Unix)  
-- Detailed error information when available
-- Proper exit codes based on error type (see `get_exit_code`)
-
-Note: Most error handling is done automatically by the framework. When creating new errors, simply use the appropriate `KopiError` variant and the context system will handle the rest.
-
 ## Developer Principles
 
 ### Memory Safety Over Micro-optimization
@@ -323,3 +106,31 @@ fn test_parse_foojay_api_response() {
   - `CommonUtils` → Split into specific modules based on functionality
   - `util_function()` → Name based on what it does: `validate_input()`, `format_output()`
 - This principle ensures code is self-documenting and responsibilities are clear
+
+## Development Workflow
+
+### Traceable Development Lifecycle (TDL)
+This project follows the Traceable Development Lifecycle (TDL), a template-based development process that ensures full traceability from requirements to implementation. TDL uses structured document templates at each phase to maintain consistency and completeness.
+
+**See [`docs/templates/README.md`](docs/templates/README.md)** for complete TDL documentation, templates, and workflow instructions.
+
+### Completing Work
+When finishing any coding task, always run the following commands in order and fix any issues:
+
+1. `cargo fmt` - Auto-format code
+2. `cargo clippy --all-targets -- -D warnings` - Check for linting errors in test code
+3. `cargo test --lib --quiet` - Run unit tests (faster than full test suite)
+
+Address any errors from each command before proceeding to the next. All must pass successfully before considering the work complete.
+
+## Essential Commands
+
+- **Format**: `cargo fmt` - Format code using rustfmt
+- **Lint**: `cargo clippy --all-targets -- -D warnings` - Run linter with strict warnings
+- **Build**: `cargo build` (debug), `cargo build --release` (production)
+- **Test**: `cargo test --lib --quiet` - Run unit tests efficiently
+
+## Additional Documentation
+
+- **Architecture & Structure**: [`docs/architecture.md`](docs/architecture.md) - Project structure, components, and storage locations
+- **Error Handling**: [`docs/error_handling.md`](docs/error_handling.md) - Error types, exit codes, and context system
