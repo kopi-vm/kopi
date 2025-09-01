@@ -79,13 +79,18 @@ The `ErrorContext` system automatically provides:
 
 | Code | Meaning | Context |
 |------|---------|---------|
-| 2 | Invalid format/config | User error - malformed input or configuration |
+| 1 | General error | Default exit code for unspecified errors |
+| 2 | Invalid format/config | User error - malformed input, configuration, or validation error |
 | 3 | No local version | No `.kopi-version` or `.java-version` file found |
 | 4 | JDK not installed | Requested JDK version is not installed |
+| 5 | Tool not found | Required tool (e.g., java, javac) not found in JDK |
+| 6 | Shell detection error | Failed to detect the current shell |
+| 7 | Unsupported shell | Shell is not supported by Kopi |
 | 13 | Permission denied | System error - insufficient permissions |
-| 20 | Network error | Failed API calls or downloads |
+| 17 | Already exists | Resource already exists (e.g., JDK already installed) |
+| 20 | Network error | Failed API calls, downloads, or metadata fetching |
 | 28 | Disk space | Insufficient disk space for operation |
-| 127 | Command not found | System error - missing dependencies |
+| 127 | Command not found | Kopi command not found or shell not found |
 
 ## Best Practices
 
