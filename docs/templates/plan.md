@@ -1,29 +1,38 @@
 # [Feature/Task Name] Implementation Plan
 
 ## Metadata
+- Type: Implementation Plan
 - Owner: [Person or role]
 - Reviewers: [Names/roles]
-- Status: [Not Started / Phase X In Progress / Blocked / Under Review / Completed]
-- Last Updated: YYYY-MM-DD
-- Links: [Issue], [PR], [ADR], [Design], [Related tasks]
+- Status: Not Started / Phase X In Progress / Blocked / Under Review / Completed
+  <!-- Not Started: Planning complete, awaiting start | Phase X In Progress: Actively working | Blocked: External dependency | Under Review: Implementation complete | Completed: All phases done and verified -->
+- Date Created: YYYY-MM-DD
+
+## Links
+<!-- Internal project artifacts only. For external resources, see External References section -->
+- Requirements: [`docs/tasks/<task>/requirements.md`](requirements.md) | N/A – <reason>
+- Design: [`docs/tasks/<task>/design.md`](design.md) | N/A – <reason>
+- Related ADRs: ADR-XXX, ADR-YYY | N/A – No related ADRs
+- Issue: #XXX | N/A – <reason>
+- PR: #XXX | N/A – <reason>
 
 ## Overview
 
 [Brief description of the feature/task and its purpose]
 
-### Scope
-- Goal: [Outcome to achieve]
-- Non-Goals: [Explicitly out of scope]
-- Assumptions: [Operational/technical assumptions]
-- Constraints: [Time/tech/platform/compliance]
-
-### Success Metrics
+## Success Metrics
 - [ ] [Measurable success criterion]
 - [ ] [Performance target if applicable]
 - [ ] [User experience improvement]
 - [ ] All existing tests pass; no regressions in [area]
 
-### Plan Summary
+## Scope
+- Goal: [Outcome to achieve]
+- Non-Goals: [Explicitly out of scope]
+- Assumptions: [Operational/technical assumptions]
+- Constraints: [Time/tech/platform/compliance]
+
+## Plan Summary
 - Phases: [Short list of phases and intent]
 - Timeline (optional): [Milestones/estimates]
 
@@ -215,9 +224,6 @@ cargo test --quiet
 ### ADR Impact
 - Add or update ADRs under `/docs/adr/` for material design decisions; include rationale and alternatives.
 
-### Change Log
-- [Key decisions and reasons]
-
 ---
 
 ## Implementation Guidelines
@@ -261,6 +267,10 @@ cargo test --quiet
 
 ---
 
+## External References (optional)
+<!-- External standards, specifications, articles, or documentation -->
+- [External resource title](URL) - Brief description
+
 ## Open Questions
 
 - [Question] → [Owner] → [Due/next step]
@@ -274,15 +284,6 @@ cargo test --quiet
 
 ---
 
-## Template Usage Instructions
+## Template Usage
 
-When using this template for a new feature:
-
-1. Replace placeholders in all bracketed sections.
-2. Adjust the number of phases based on complexity.
-3. Break down tasks into specific, testable items.
-4. Define verification commands and phase acceptance criteria.
-5. Identify risks early, with mitigation and fallback.
-6. Keep status updated as work progresses.
-7. Phase independence: Ensure each phase is self-contained; the `/clear` command may be executed at phase boundaries to reset context.
-8. Update or add ADRs when design decisions change.
+For detailed instructions on using this template, see [Template Usage Instructions](README.md#plan-template-planmd) in the templates README.

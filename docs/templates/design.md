@@ -1,17 +1,26 @@
 # [Component/Feature] Design
 
 ## Metadata
+- Type: Design
 - Owner: [Person or role]
 - Reviewers: [Names/roles]
-- Status: [Draft / In Review / Approved]
-- Last Updated: YYYY-MM-DD
-- Links: [Requirements], [Issue], [PR], [ADR], [Implementation Plan], [Related Tasks]
+- Status: Draft / In Review / Approved
+  <!-- Draft: Work in progress | In Review: Awaiting technical review | Approved: Ready for implementation -->
+- Date Created: YYYY-MM-DD
+
+## Links
+<!-- Internal project artifacts only. For external resources, see External References section -->
+- Requirements: [`docs/tasks/<task>/requirements.md`](requirements.md) | N/A – <reason>
+- Plan: [`docs/tasks/<task>/plan.md`](plan.md) | N/A – <reason>
+- Related ADRs: ADR-XXX, ADR-YYY | N/A – No related ADRs
+- Issue: #XXX | N/A – <reason>
+- PR: #XXX | N/A – <reason>
 
 ## Overview
 
 [One-paragraph summary of the problem, motivation, and expected outcome.]
 
-### Success Metrics
+## Success Metrics
 - [ ] [Measurable product/engineering impact]
 - [ ] [Performance target (e.g., <X ms, <Y MB)]
 - [ ] [Reliability target (e.g., zero regressions)]
@@ -100,6 +109,15 @@ Implementation Notes
 #### Filesystem
 - [Case sensitivity; long paths; temp files]
 
+## ADR References
+
+<!-- Map key design decisions to ADRs -->
+| Design Decision | ADR | Status |
+|-----------------|-----|--------|
+| [Error handling approach] | ADR-004 | Accepted |
+| [Caching strategy] | ADR-XXX | Proposed |
+| [New decision needed] | TBD | Draft needed |
+
 ## Alternatives Considered
 
 1. Alternative A
@@ -155,6 +173,10 @@ Decision Rationale
 - Update user docs in `../kopi-vm.github.io/` if user-facing.
 - Add or update `/docs/adr/` entries for design decisions (rationale and alternatives).
 
+## External References (optional)
+<!-- External standards, specifications, articles, or documentation -->
+- [External resource title](URL) - Brief description
+
 ## Open Questions
 
 - [Question] → [Owner] → [Due/next step]
@@ -176,11 +198,6 @@ Decision Rationale
 
 ---
 
-## Template Usage Instructions
+## Template Usage
 
-1. Replace placeholders across all sections; keep English for all documentation.
-2. Link to relevant ADRs and create new ones when this design introduces material decisions.
-3. Capture concrete acceptance/success metrics to enable verification.
-4. Call out platform differences explicitly when touching shell, shims, filesystem, or paths.
-5. Specify testing strategy early, including external API parsing tests if applicable.
-6. Prefer clarity and safety over micro-optimizations; avoid `unsafe`, avoid vague names like "manager"/"util", and prefer functions for stateless behavior.
+For detailed instructions on using this template, see [Template Usage Instructions](README.md#design-template-designmd) in the templates README.

@@ -1,147 +1,130 @@
-# [Component/Feature] Requirements
+# [FR-####/NFR-####]: [Requirement Title]
 
 ## Metadata
+- ID: [FR-#### or NFR-####]
+- Type: Functional Requirement | Non-Functional Requirement  
+- Category: [e.g., Performance, Security, Usability, API, CLI, Platform]
+- Priority: P0 (Critical) | P1 (High) | P2 (Medium) | P3 (Low)
 - Owner: [Person or role]
 - Reviewers: [Names/roles]
-- Status: [Draft / In Review / Approved]
-- Last Updated: YYYY-MM-DD
-- Links: [Issue], [PR], [ADR], [Design], [Implementation Plan]
+- Status: Proposed | Accepted | Implemented | Verified | Deprecated
+  <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
+- Date Created: YYYY-MM-DD
+- Date Modified: YYYY-MM-DD
 
-## Problem Statement
+## Links
+<!-- Internal project artifacts only. For external resources, see External References section -->
+- Implemented by Tasks: [`task-name-1`](../../tasks/task-name-1/), [`task-name-2`](../../tasks/task-name-2/) | N/A – Not yet implemented
+- Related Requirements: FR-####, NFR-#### | N/A – Standalone requirement
+- Related ADRs: [ADR-###](../../adr/###-title.md) | N/A – No related ADRs
+- Tests: `test_name_fr_####`, `bench_name_nfr_####` | N/A – Not yet tested
+- Issue: #XXX | N/A – <reason>
+- PR: #XXX | N/A – <reason>
 
-[Brief description of the user problem, motivation, and value. Who is impacted and why this matters now.]
+## Requirement Statement
 
-## Objectives & Success Metrics
+[Clear, concise, unambiguous statement of what is required. One requirement per document. Be specific and measurable.]
 
-- [ ] Objective 1: [SMART metric, e.g., “render <150 ms for 10k rows”]
-- [ ] Objective 2: [Measurable UX/quality target]
-- [ ] No regressions in existing functionality
+Examples:
+- FR: "The system shall provide a command to list all installed JDK versions"
+- NFR: "JDK installation shall complete within 60 seconds for versions under 500MB"
 
-## Scope
+## Rationale
 
-### Goals
-- [Concrete outcomes this work must achieve]
+[Why this requirement exists. What problem does it solve? What value does it provide?]
 
-### Non-Goals
-- [Explicitly out of scope to avoid drift]
+## User Story (if applicable)
 
-### Assumptions
-- [Technical/organizational assumptions]
+[For functional requirements]
+As a [persona], I want [capability], so that [benefit].
 
-### Constraints
-- [Time/tech/platform/policy constraints]
-
-## Stakeholders & Personas (optional)
-
-- [Primary user], [Secondary stakeholders]
-
-## User Stories / Use Cases
-
-- As a [persona], I want [capability], so that [benefit]. (FR-001)
-- As a [persona], I want [capability], so that [benefit]. (FR-002)
-
-## Functional Requirements (FR)
-
-Use IDs and priority tags for traceability (e.g., FR-001 [Must], FR-010 [Should]).
-
-- FR-001 [Must]: [Requirement text]
-- FR-002 [Must]: [Requirement text]
-- FR-010 [Should]: [Requirement text]
-- FR-020 [Could]: [Requirement text]
-
-## Non-Functional Requirements (NFR)
-
-- NFR-001 [Performance]: [Target and measurement method]
-- NFR-002 [Security]: [TLS/verification, permissions, checksum validation]
-- NFR-003 [Reliability]: [Retry strategy, idempotency, failure modes]
-- NFR-004 [Compatibility]: [Unix/Windows/filesystem specifics]
-- NFR-005 [UX]: [English messages, help clarity, CLI ergonomics]
-- NFR-006 [Observability] (optional): [Logs, metrics]
-
-## CLI/UX Requirements (if applicable)
-
-### Command Syntax
-```bash
-kopi <command> [options]
-```
-
-### Options
-- `--flag`: [Description]
-- `--option <value>`: [Description]
-
-### Examples
-```bash
-kopi <command> <example-1>
-kopi <command> <example-2> --flag
-```
-
-### Help & Messages
-- English only; concise and actionable.
-
-## Data/API Requirements (if applicable)
-
-- Data models: [Key fields and formats]
-- External API: [Endpoints, parameters]
-- Include at least one captured JSON example for parsing tests.
-
-## Platform Matrix
-
-### Unix
-- [Paths/permissions/behavior]
-
-### Windows
-- [Registry/junctions; path separators; ACLs]
-
-### Filesystem
-- [Case sensitivity; long paths; temp files]
-
-## Dependencies
-
-- Internal modules: `src/[module]/` – [Role]
-- External crates: `[name]` – [Purpose], with minimal features enabled
-
-## Risks & Mitigations
-
-1. Risk: [Description]
-   - Mitigation: [Plan]
-   - Validation: [How to verify]
-   - Fallback: [Alternative]
+[For non-functional requirements]
+The system shall [constraint/quality attribute] to ensure [benefit/goal].
 
 ## Acceptance Criteria
 
-- Criteria reference FR/NFR IDs and are objectively verifiable.
-- [ ] Satisfies FR-001 (measured by …)
-- [ ] Satisfies FR-002 (measured by …)
-- [ ] Meets NFR-001 (<= X ms on …)
-- [ ] Error messages: English, actionable, correct exit codes (NFR-005)
+[Specific, measurable, testable conditions that must be met]
 
-## Verification Plan
+- [ ] [Criterion 1 - be specific and testable]
+- [ ] [Criterion 2 - include metrics where applicable]  
+- [ ] [Criterion 3 - reference test names when known]
+- [ ] [Criterion 4 - platform-specific behavior if needed]
 
-- Unit tests: `cargo test --lib --quiet` (link to test IDs)
-- Integration tests: `cargo it` scenarios covering FR-###
-- Performance: `cargo perf`, `cargo bench` thresholds for NFR-###
-- Platform: Verification notes for Unix/Windows/filesystem
+## Technical Details (if applicable)
 
-## Traceability (optional)
+### Functional Requirement Details
+[For FRs: Detailed behavior, inputs/outputs, error conditions]
 
-| Requirement | Design Section | Test(s) / Benchmarks | Status |
-|-------------|----------------|----------------------|--------|
-| FR-001 | [Design §] | tests/[...], it #[...] | Pending |
-| NFR-001 | [Design §] | bench: [...], perf #[...] | Pending |
+### Non-Functional Requirement Details
+[For NFRs: Specific constraints, thresholds, standards]
+- Performance: [Latency/throughput targets]
+- Security: [Security requirements, standards]
+- Reliability: [Availability, retry behavior]
+- Compatibility: [Platform-specific requirements]
+- Usability: [UX requirements, message standards]
 
-## Open Questions
+## Verification Method
 
-- [Question] → [Owner] → [Due/next step]
+### Test Strategy
+- Test Type: Unit | Integration | Benchmark | Manual | E2E
+- Test Location: `tests/[file].rs` or `src/[module].rs#[cfg(test)]`
+- Test Names: `test_fr_####_description` or `bench_nfr_####_metric`
 
-## Change Log
+### Verification Commands
+```bash
+# Specific commands to verify this requirement
+cargo test test_fr_####
+cargo bench bench_nfr_####
+# Platform-specific verification if needed
+```
 
-- YYYY-MM-DD: [Change summary]
+### Success Metrics
+[How to measure that the requirement is successfully implemented]
+- Metric 1: [Specific measurement and target]
+- Metric 2: [Specific measurement and target]
+
+## Dependencies
+
+- Depends on: FR-####, NFR-#### | N/A – No dependencies
+- Blocks: FR-####, NFR-#### | N/A – Blocks nothing
+
+## Platform Considerations
+
+### Unix
+[Unix-specific behavior or requirements] | N/A – Platform agnostic
+
+### Windows  
+[Windows-specific behavior or requirements] | N/A – Platform agnostic
+
+### Cross-Platform
+[Behavior that must be consistent across platforms] | N/A – Platform agnostic
+
+## Risks & Mitigation
+
+| Risk | Impact | Likelihood | Mitigation | Validation |
+|------|--------|------------|------------|------------|
+| [Risk description] | High/Medium/Low | High/Medium/Low | [Mitigation strategy] | [How to verify mitigation] |
+
+## Implementation Notes
+
+[Any guidance for implementers. This is NOT a design document but can include:]
+- Preferred approaches or patterns to follow
+- Known pitfalls to avoid
+- Related code areas or modules
+- Suggested libraries or tools
+
+## External References
+<!-- Only external resources. Internal documents go in Links section -->
+- [External specification or standard](URL) - Description | N/A – No external references
+
+## Change History
+
+[Tracked via Git. Major changes can be noted here for convenience]
+- YYYY-MM-DD: Initial version
+- YYYY-MM-DD: [Major change description]
 
 ---
 
-## Template Usage Instructions
+## Template Usage
 
-1. Define FR/NFR with IDs and measurable criteria; keep brief and testable.
-2. Link this requirements doc from the corresponding Design and Plan documents.
-3. Keep acceptance criteria and verification here; Design should reference FR/NFR rather than duplicate.
-4. Prefer clarity and safety: English-only messaging, avoid "manager"/"util" naming, do not use `unsafe`.
+For detailed instructions, see [Template Usage Instructions](README.md#individual-requirement-template-requirementsmd) in the templates README.
