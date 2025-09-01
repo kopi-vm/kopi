@@ -32,6 +32,11 @@
       "Bash(git commit:*)",
       "Bash(git reset:*)",
       "Bash(git rebase:*)"
+    ],
+    "additionalDirectories": [
+      "/workspaces/kopi-workspace/ppa-kopi",
+      "/workspaces/kopi-workspace/kopi-vm.github.io",
+      "/workspaces/kopi-workspace/metadata"
     ]
   },
   "statusLine": {
