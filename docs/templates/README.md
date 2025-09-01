@@ -106,6 +106,10 @@ graph LR
 - **Location**: `docs/tasks/<task>/plan.md` (task-scoped)
 - **Naming**: Task directory + fixed name (e.g., `docs/tasks/cache-refresh/plan.md`)
 - **Transition**: Execute the plan, updating status and traceability matrix
+- **Phase Independence**: Each phase must be self-contained and executable independently:
+  - Context may be reset between phases (`/clear` command)
+  - Critical information must be documented in phase deliverables
+  - Dependencies between phases must be explicitly stated
 
 ## Cross-Reference Requirements
 
@@ -152,18 +156,27 @@ These requirements apply to ALL documentation templates (Requirements, Design, P
   - Affected task folder(s) under `docs/tasks/<task>`
   - Related ADRs
   - Updated rows in `docs/traceability.md`
-- Verify DoD in the plan is satisfied:
-  - `cargo check`, `cargo fmt`, `cargo clippy --all-targets -- -D warnings`
-  - Unit/integration/perf/bench tests as applicable
-  - Error messages clear and in English (per `CLAUDE.md`)
-  - Documentation updated (`docs/reference.md`, user docs if needed)
-  - ADRs added/updated for design decisions
-  - Platform behavior validated when relevant
-  - Traceability matrix updated with new/changed links
+- Automated Verification Checklist:
+  - [ ] Format verified: `cargo fmt --check`
+  - [ ] Linting clean: `cargo clippy --all-targets -- -D warnings`
+  - [ ] All test commands pass: `cargo test --lib --quiet`
+  - [ ] Requirements traced: All FR/NFR IDs referenced in code comments where applicable
+  - [ ] ADR references: Design decisions linked to ADR numbers
+- Manual Verification:
+  - [ ] Error messages clear and in English (per `CLAUDE.md`)
+  - [ ] Documentation updated (`docs/reference.md`, user docs if needed)
+  - [ ] Platform behavior validated when relevant
+  - [ ] Traceability matrix updated with new/changed links
 
 ## Small Changes Variant
 
-- For trivial fixes (e.g., typo, log message, small refactor), you may skip the full workflow
+- For trivial fixes, you may skip the full workflow if **ALL** these criteria apply:
+  - Code changes < 50 lines
+  - No new dependencies
+  - No API changes  
+  - No architectural impact
+  - Single file modification
+  - Estimated execution time < 30 minutes
 - Create minimal `docs/tasks/<task>/plan.md` with a short Phase and DoD
 - Ensure all verification commands pass
 - Update `docs/traceability.md` only if requirements ↔ tasks linkage changes
@@ -202,22 +215,23 @@ See Step 1 in Development Workflow Steps for approach and principles.
 #### Quick ADR Template Selection Checklist
 
 **Use Full ADR if ANY of these apply:**
-- ☐ Affects 3+ modules or components
-- ☐ Has security/privacy implications
-- ☐ Requires platform-specific handling (Unix/Windows differences)
-- ☐ Has 3+ viable alternatives with significant trade-offs
-- ☐ Establishes patterns used across the codebase
-- ☐ Changes public API or CLI interface
-- ☐ Impacts error handling or exit codes
-- ☐ Requires monitoring/logging considerations
+- [ ] Affects 3+ modules or components (quantitative threshold)
+- [ ] Has security/privacy implications (risk level: Medium/High)
+- [ ] Requires platform-specific handling (Unix/Windows differences)
+- [ ] Has 3+ viable alternatives with significant trade-offs
+- [ ] Establishes patterns used across the codebase
+- [ ] Changes public API or CLI interface
+- [ ] Impacts error handling or exit codes
+- [ ] Requires monitoring/logging considerations
+- [ ] Reversibility effort > 8 hours of work
 
 **Use Lite ADR if ALL of these apply:**
-- ☐ Affects single module/component
-- ☐ Clear best practice exists
-- ☐ Low risk (easily reversible)
-- ☐ No significant trade-offs
-- ☐ No platform-specific considerations
-- ☐ Internal implementation detail only
+- [ ] Affects single module/component
+- [ ] Clear best practice exists
+- [ ] Low risk (easily reversible, < 8 hours to revert)
+- [ ] No significant trade-offs (< 3 alternatives)
+- [ ] No platform-specific considerations
+- [ ] Internal implementation detail only
 
 #### Detailed ADR Selection Criteria
 - Use the Full ADR when decisions are:
@@ -247,6 +261,12 @@ See Step 1 in Development Workflow Steps for approach and principles.
 6. Keep status updated as work progresses
 7. Phase independence: Ensure each phase is self-contained; the `/clear` command may be executed at phase boundaries to reset context
 8. Update or add ADRs when design decisions change
+9. Error Recovery Patterns:
+   - When blocked during implementation:
+     a. Document blocker in current phase status
+     b. Create new analysis document for the blocker if needed
+     c. Generate new requirements if applicable (e.g., NFR for error handling)
+     d. Update plan with mitigation steps
 
 ## Examples
 
