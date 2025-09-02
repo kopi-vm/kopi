@@ -4,7 +4,7 @@
 - Type: Implementation Plan
 - Owner: Development Team
 - Reviewers: Project Maintainers
-- Status: Not Started
+- Status: Phase 1 Completed
   <!-- Not Started: Planning complete, awaiting start | Phase X In Progress: Actively working | Blocked: External dependency | Under Review: Implementation complete | Completed: All phases done and verified -->
 - Date Created: 2025-09-02
 
@@ -63,22 +63,22 @@ This plan migrates existing ADR files and task directories to archive structures
   - `/docs/tasks/archive/` – Archive location for existing task directories
 
 ### Tasks
-- [ ] **Create archive directories**
-  - [ ] Create `/docs/adr/archive/` directory
-  - [ ] Create `/docs/tasks/archive/` directory
-  - [ ] Add README.md to ADR archive directory explaining its purpose
-  - [ ] Add README.md to tasks archive directory explaining its purpose
-- [ ] **Update documentation with new naming conventions**
-  - [ ] Update docs/templates/README.md Document Organization table with new naming conventions
-    - [ ] Add new naming format: ADR-####-<title> for future ADRs
-    - [ ] Add new naming format: T-####-<name> for task directories
-    - [ ] Add new naming format: AN-####-<title> for analysis documents
-    - [ ] Note that FR/NFR formats remain unchanged (already compliant)
-    - [ ] Update ADR location to note both main directory (for new) and archive (for existing)
-  - [ ] Update AGENTS.md
-    - [ ] Update ADR reference format from `###-<title>` to `ADR-####-<title>` for future ADRs
-    - [ ] Add note about archived ADRs location
-  - [ ] Remove docs/adr/MIGRATION.md as obsolete
+- [x] **Create archive directories**
+  - [x] Create `/docs/adr/archive/` directory
+  - [x] Create `/docs/tasks/archive/` directory
+  - [x] Add README.md to ADR archive directory explaining its purpose
+  - [x] Add README.md to tasks archive directory explaining its purpose
+- [x] **Update documentation with new naming conventions**
+  - [x] Update docs/templates/README.md Document Organization table with new naming conventions
+    - [x] Add new naming format: ADR-####-<title> for future ADRs
+    - [x] Add new naming format: T-####-<name> for task directories
+    - [x] Add new naming format: AN-####-<title> for analysis documents
+    - [x] Note that FR/NFR formats remain unchanged (already compliant)
+    - [x] Update ADR location to note both main directory (for new) and archive (for existing)
+  - [x] Update AGENTS.md
+    - [x] Update ADR reference format from `###-<title>` to `ADR-####-<title>` for future ADRs
+    - [x] Add note about archived ADRs location
+  - [x] Remove docs/adr/MIGRATION.md as obsolete
 
 ### Deliverables
 - Archive directory structure created
@@ -353,7 +353,7 @@ This plan archives existing ADRs and task directories to maintain historical doc
 - Existing ADRs will be in: `docs/adr/archive/`
 - Existing task directories will be in: `docs/tasks/archive/`
 - New ADRs will use: `ADR-####-<title>.md` in the main `docs/adr/` directory
-- New tasks will use: `T-####-<name>/` in the main `docs/tasks/` directory
+- New tasks will use: `T-####-<name>/` in the main `docs/tasks/` directory with `design.md` and `plan.md` files
 - The archives preserve the original names and git history
 - docs-migration task remains in main directory as the current active task
 

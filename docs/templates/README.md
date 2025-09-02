@@ -31,11 +31,12 @@ graph LR
 
 | Document Type | Template | Created Files Location | Naming Convention | Lifecycle |
 |--------------|----------|------------------------|-------------------|-----------|
-| Analysis | `analysis.md` | `docs/analysis/<topic>.md` | Descriptive names (e.g., `cache-optimization.md`) | Temporary, archived after requirements formalized |
+| Analysis | `analysis.md` | `docs/analysis/AN-####-<topic>.md` | `AN-####-<topic>` (e.g., `AN-0001-cache-optimization.md`) | Temporary, archived after requirements formalized |
 | Requirements | `requirements.md` | `docs/requirements/FR-####.md`<br>`docs/requirements/NFR-####.md` | 4-digit IDs (e.g., `FR-0001.md`) | Long-lived, evolve independently |
-| ADRs | `adr.md`<br>`adr-lite.md` | `docs/adr/###-<title>.md` | 3-digit number + title (e.g., `015-cache-storage-format.md`) | Long-lived, document decisions |
-| Task Design | `design.md` | `docs/tasks/<task>/design.md` | Task directory + fixed name | Task-scoped |
-| Task Plan | `plan.md` | `docs/tasks/<task>/plan.md` | Task directory + fixed name | Task-scoped |
+| ADRs | `adr.md`<br>`adr-lite.md` | `docs/adr/ADR-####-<title>.md` | `ADR-####-<title>` (e.g., `ADR-0020-cache-storage-format.md`) | Long-lived, document decisions |
+| Task Directory | N/A | `docs/tasks/T-####-<name>/` | `T-####-<name>` (e.g., `T-0001-cache-refresh/`) | Task-scoped container |
+| Task Design | `design.md` | `docs/tasks/T-####-<name>/design.md` | Fixed name `design.md` within task directory | Task-scoped |
+| Task Plan | `plan.md` | `docs/tasks/T-####-<name>/plan.md` | Fixed name `plan.md` within task directory | Task-scoped |
 | Traceability | N/A (not a template) | `docs/traceability.md` | Single file (project document) | Long-lived, central N:M mapping |
 
 ## Development Workflow Steps
@@ -50,8 +51,8 @@ graph LR
   - Transition discovered requirements to formal FR/NFR documents when ready
 - **Template**: [`analysis.md`](analysis.md) - Template for exploratory analysis and problem space investigation. Used to discover requirements through research and stakeholder analysis
 - **Output**: List of discovered requirements (FR-DRAFT, NFR-DRAFT) and architectural concerns
-- **Location**: `docs/analysis/<topic>.md` (move to `archive/` when complete)
-- **Naming**: Descriptive names like `cache-optimization.md`, `javafx-support.md`
+- **Location**: `docs/analysis/AN-####-<topic>.md` (move to `archive/` when complete)
+- **Naming**: `AN-####-<topic>` format like `AN-0001-cache-optimization.md`, `AN-0002-javafx-support.md`
 - **Transition**: Analysis can lead to:
   - Creating formal requirements from discoveries
   - Identifying architectural decisions that need to be made
@@ -76,8 +77,8 @@ graph LR
   - [`adr.md`](adr.md) - Full ADR template for architecturally significant decisions, broad impact, or important trade-offs
   - [`adr-lite.md`](adr-lite.md) - Lightweight ADR for tactical choices with limited scope and clear best practices
 - **Output**: ADR documents with decisions, rationale, and consequences
-- **Location**: `docs/adr/###-<title>.md`
-- **Naming**: `###-<descriptive-title>.md` (e.g., `015-cache-storage-format.md`)
+- **Location**: `docs/adr/ADR-####-<title>.md` (new) or `docs/adr/archive/###-<title>.md` (existing)
+- **Naming**: `ADR-####-<descriptive-title>.md` (e.g., `ADR-0020-cache-storage-format.md`)
 - **Sources**: Triggered by analysis findings or implementation needs
 - **Transition**: ADRs can:
   - Generate new requirements (constraints/standards)
@@ -92,8 +93,8 @@ graph LR
   - Requirements (what needs to be built)
   - ADRs (architectural constraints and decisions)
 - **References**: FR/NFR IDs and relevant ADRs (don't duplicate requirement text)
-- **Location**: `docs/tasks/<task>/design.md` (task-scoped)
-- **Naming**: Task directory + fixed name (e.g., `docs/tasks/cache-refresh/design.md`)
+- **Location**: `docs/tasks/T-####-<task>/design.md` (task-scoped)
+- **Naming**: Task directory + fixed name (e.g., `docs/tasks/T-0001-cache-refresh/design.md`)
 - **Transition**: With design complete, create execution plan
 
 ### Step 5: Plan & Execution (phases/tasks)
@@ -105,8 +106,8 @@ graph LR
 - **Verification**: Use commands from `CLAUDE.md`:
   - `cargo check`, `cargo fmt`, `cargo clippy --all-targets -- -D warnings`
   - `cargo test --lib --quiet`, `cargo it`, `cargo perf`, `cargo bench`
-- **Location**: `docs/tasks/<task>/plan.md` (task-scoped)
-- **Naming**: Task directory + fixed name (e.g., `docs/tasks/cache-refresh/plan.md`)
+- **Location**: `docs/tasks/T-####-<task>/plan.md` (task-scoped)
+- **Naming**: Task directory + fixed name (e.g., `docs/tasks/T-0001-cache-refresh/plan.md`)
 - **Transition**: Execute the plan, updating status and traceability matrix
 - **Phase Independence**: Each phase must be self-contained and executable independently:
   - Context may be reset between phases (`/clear` command)
@@ -155,7 +156,7 @@ These requirements apply to ALL documentation templates (Requirements, Design, P
 - Link relevant artifacts in the PR description:
   - Source analysis documents if applicable
   - `FR-####`/`NFR-####` requirements being addressed
-  - Affected task folder(s) under `docs/tasks/<task>`
+  - Affected task folder(s) under `docs/tasks/T-####-<task>`
   - Related ADRs
   - Updated rows in `docs/traceability.md`
 - Automated Verification Checklist:
@@ -179,16 +180,17 @@ These requirements apply to ALL documentation templates (Requirements, Design, P
   - No architectural impact
   - Single file modification
   - Estimated execution time < 30 minutes
-- Create minimal `docs/tasks/<task>/plan.md` with a short Phase and DoD
+- Create minimal `docs/tasks/T-####-<task>/plan.md` with a short Phase and DoD
 - Ensure all verification commands pass
 - Update `docs/traceability.md` only if requirements ↔ tasks linkage changes
 
 ## Archive Policy
 
 - **Analysis documents**: Move to `docs/analysis/archive/` after requirements are formalized
-- **Completed tasks**: Keep in place for historical reference (plans show "Completed" status)
+- **Completed tasks**: New tasks remain in place; legacy tasks in `docs/tasks/archive/`
 - **Deprecated requirements**: Update status to "Deprecated" but keep in `docs/requirements/`
 - **Superseded ADRs**: Update status and link to superseding ADR
+- **Legacy ADRs**: Pre-2025 ADRs archived in `docs/adr/archive/`
 
 ## Template Usage Instructions
 
@@ -286,7 +288,7 @@ See Step 1 in Development Workflow Steps for approach and principles.
 - Full ADR: [`docs/templates/examples/adr-full-example.md`](examples/adr-full-example.md) - Demonstrates all sections
 - Lite ADR: [`docs/templates/examples/adr-lite-example.md`](examples/adr-lite-example.md) - Lightweight format for simple decisions
 
-### Real Project Examples
-- Error Handling: [`docs/adr/004-error-handling-strategy.md`](../adr/004-error-handling-strategy.md) - Full ADR with multiple options analyzed
-- Logging Strategy: [`docs/adr/009-logging-strategy.md`](../adr/009-logging-strategy.md) - Comprehensive platform considerations
-- Configuration: [`docs/adr/014-configuration-and-version-file-formats.md`](../adr/014-configuration-and-version-file-formats.md) - Focused scope with clear trade-offs
+### Real Project Examples (Archived)
+- Error Handling: [`docs/adr/archive/004-error-handling-strategy.md`](../adr/archive/004-error-handling-strategy.md) - Full ADR with multiple options analyzed
+- Logging Strategy: [`docs/adr/archive/009-logging-strategy.md`](../adr/archive/009-logging-strategy.md) - Comprehensive platform considerations
+- Configuration: [`docs/adr/archive/014-configuration-and-version-file-formats.md`](../adr/archive/014-configuration-and-version-file-formats.md) - Focused scope with clear trade-offs

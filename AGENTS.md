@@ -24,10 +24,12 @@ graph LR
 
 ### Key Locations
 - **Templates**: `docs/templates/` - All document templates
-- **Analysis**: `docs/analysis/<topic>.md` - Problem exploration
+- **Analysis**: `docs/analysis/AN-####-<topic>.md` - Problem exploration
 - **Requirements**: `docs/requirements/FR-####.md` and `NFR-####.md` - Formal requirements
-- **ADRs**: `docs/adr/###-<title>.md` - Architecture decisions  
-- **Tasks**: `docs/tasks/<task>/` - Design and plan documents
+- **ADRs**: `docs/adr/ADR-####-<title>.md` - Architecture decisions (new format)
+- **ADRs (Archive)**: `docs/adr/archive/###-<title>.md` - Historical ADRs (pre-2025)
+- **Tasks**: `docs/tasks/T-####-<task>/` - Design and plan documents (new format)
+- **Tasks (Archive)**: `docs/tasks/archive/<task>/` - Historical tasks (pre-2025)
 - **Traceability**: `docs/traceability.md` - Central mapping matrix
 
 ### Essential Guidelines
