@@ -122,6 +122,7 @@ graph LR
 - **Transition**: Analysis can lead to:
   - Creating formal requirements from discoveries
   - Identifying architectural decisions that need to be made
+- **Traceability Update**: Add new analysis document to `docs/traceability.md` immediately upon creation
 
 ### Step 2: Requirements (what/why) 
 
@@ -135,6 +136,7 @@ graph LR
   - ADR decisions (derived requirements/constraints)
 - **Transition**: Requirements feed into design
 - **Relationships**: One analysis can discover multiple requirements; requirements can span multiple tasks (N:M)
+- **Traceability Update**: Add each new requirement to "Requirements → Tasks → Tests Matrix" with source analysis/ADR
 
 ### Step 3: Architecture Decisions (decisions/trade-offs)
 
@@ -154,6 +156,7 @@ graph LR
 - **Transition**: ADRs can:
   - Generate new requirements (constraints/standards)
   - Feed directly into design for architectural constraints
+- **Traceability Update**: Update ADRs column for affected requirements; add any new derived requirements
 
 ### Step 4: Design (how to implement)
 
@@ -167,6 +170,7 @@ graph LR
 - **Location**: `docs/tasks/T-####-<task>/design.md` (task-scoped)
 - **Naming**: Task directory + fixed name (e.g., `docs/tasks/T-0001-cache-refresh/design.md`)
 - **Transition**: With design complete, create execution plan
+- **Traceability Update**: Add task to "Task Status" table; link task to requirements in matrix
 
 ### Step 5: Plan & Execution (phases/tasks)
 
@@ -184,6 +188,7 @@ graph LR
   - Context may be reset between phases (`/clear` command)
   - Critical information must be documented in phase deliverables
   - Dependencies between phases must be explicitly stated
+- **Traceability Update**: Update requirement status (Proposed → In Progress → Implemented → Verified) as work progresses
 
 ## Cross-Reference Requirements
 
@@ -222,6 +227,35 @@ These requirements apply to ALL documentation templates (Requirements, Design, P
 - **Tests**: Reference `FR-####`/`NFR-####` in test names or comments when feasible
 - **Review Order**: Analysis (exploration) → Requirements (scope) → ADR (decisions) → Design (architecture) → Plan (execution)
 
+### When to Update `docs/traceability.md`
+
+Update the traceability matrix immediately when:
+
+1. **Analysis Phase**
+   - ✅ New analysis document created → Add to "Analysis → Requirements Mapping" table
+   - ✅ Analysis completed and requirements formalized → Update status to "Complete" with date
+
+2. **Requirements Phase**
+   - ✅ New requirements formalized from analysis → Add to "Requirements → Tasks → Tests Matrix"
+   - ✅ Requirements derived from ADRs → Add with ADR as source
+
+3. **Architecture Decision Phase**
+   - ✅ ADR affects existing requirements → Update ADRs column for affected requirements
+   - ✅ ADR creates new requirements → Add new requirements with ADR reference
+
+4. **Task Creation Phase**
+   - ✅ New task created → Add to "Task Status" table
+   - ✅ Task linked to requirements → Update Tasks column in requirements matrix
+
+5. **Implementation Phase**
+   - ✅ Requirement status changes (Proposed → In Progress → Implemented → Verified)
+   - ✅ Tests added for requirements → Update Tests column with test names
+   - ✅ Task completed → Update completion date in Task Status
+
+6. **Archival**
+   - ✅ Analysis document archived → Keep reference but note as archived
+   - ✅ Requirement deprecated → Update status to "Deprecated"
+
 ## Pull Request Checklist
 
 - Link relevant artifacts in the PR description:
@@ -240,7 +274,11 @@ These requirements apply to ALL documentation templates (Requirements, Design, P
   - [ ] Error messages clear and in English (per `CLAUDE.md`)
   - [ ] Documentation updated (`docs/reference.md`, user docs if needed)
   - [ ] Platform behavior validated when relevant
-  - [ ] Traceability matrix updated with new/changed links
+  - [ ] **Traceability matrix (`docs/traceability.md`) updated**:
+    - [ ] New requirements added to matrix
+    - [ ] Task linkages updated
+    - [ ] Status changes reflected
+    - [ ] Test references added
 
 ## Small Changes Variant
 
@@ -253,7 +291,7 @@ These requirements apply to ALL documentation templates (Requirements, Design, P
   - Estimated execution time < 30 minutes
 - Create minimal `docs/tasks/T-####-<task>/plan.md` with a short Phase and DoD
 - Ensure all verification commands pass
-- Update `docs/traceability.md` only if requirements ↔ tasks linkage changes
+- **Traceability**: Update `docs/traceability.md` only if requirements ↔ tasks linkage changes (most trivial fixes won't require updates)
 
 ## Archive Policy
 
