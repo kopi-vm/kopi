@@ -7,18 +7,25 @@
 - Status: Approved
 - Priority: P0
 - Date Created: 2025-09-02
-- Date Modified: 2025-09-02
+- Date Modified: 2025-09-03
 
 ## Links
 - Analysis: [`docs/analysis/AN-0001-concurrent-process-locking.md`](../analysis/AN-0001-concurrent-process-locking.md)
 - Related ADRs: [`ADR-0001-concurrent-process-locking-strategy.md`](../adr/ADR-0001-concurrent-process-locking-strategy.md)
-- Related Requirements: FR-0002 (uninstallation), FR-0003 (cache), FR-0004 (timeout)
+- Related Functional Requirements:
+  - FR-0002 (uninstallation locking)
+  - FR-0003 (cache operation locking)
+  - FR-0004 (lock timeout and recovery)
+  - FR-0005 (user feedback for lock contention)
+- Related Non-Functional Requirements:
+  - NFR-0002 (lock cleanup reliability and permissions)
+  - NFR-0003 (cross-platform lock compatibility)
 - Issue: N/A – No tracking issue created yet
 - Task: N/A – Implementation not started
 
 ## Requirement Statement
 
-The system SHALL provide exclusive process-level locking for JDK installation operations to prevent concurrent installations to the same JDK version.
+The system SHALL provide exclusive process-level locking for JDK installation operations to prevent concurrent installations to the same JDK version. The lock SHALL be acquired using a canonicalized coordinate (vendor-version-os-arch) to ensure that different representations of the same JDK version map to the same lock.
 
 ## Rationale
 
@@ -39,7 +46,8 @@ Without process-level locking, multiple kopi processes attempting to install the
 2. **Lock Granularity**
    - GIVEN a JDK installation request
    - WHEN acquiring locks
-   - THEN the lock SHALL be specific to the exact version (vendor-version-os-arch)
+   - THEN the lock SHALL be specific to the canonicalized version coordinate (vendor-version-os-arch)
+   - AND the coordinate SHALL be normalized after all alias resolution
    - AND installations of different versions SHALL proceed in parallel
 
 3. **Lock Release**
@@ -56,8 +64,13 @@ Without process-level locking, multiple kopi processes attempting to install the
 
 ## Implementation Notes
 
-- Use native `std::fs::File` locking (stable since Rust 1.89.0)
-- Lock file location: `~/.kopi/locks/{vendor}-{version}-{os}-{arch}.lock`
+- Use native `std::fs::File` locking API (stable since Rust 1.89.0):
+  - `File::lock_exclusive()` for blocking lock acquisition
+  - `File::try_lock_exclusive()` for non-blocking lock acquisition
+  - `File::unlock()` for lock release (or automatic on file drop)
+- Lock file location: `$KOPI_HOME/locks/{vendor}-{version}-{os}-{arch}.lock`
+  - Where `$KOPI_HOME` is the resolved Kopi home directory
+  - Lock key components must be canonicalized post-alias resolution
 - Lock type: Exclusive (writer) lock
 - Lock acquisition: Support both blocking and non-blocking modes
 
@@ -78,7 +91,8 @@ Without process-level locking, multiple kopi processes attempting to install the
 ## Dependencies
 
 - Native std::fs::File locking API (Rust 1.89.0+)
-- Filesystem support for advisory locks
+- Filesystem support for advisory locks (see NFR-0002 for fallback behavior on unsupported filesystems)
+- Cross-platform compatibility constraints (see NFR-0003)
 
 ## Out of Scope
 

@@ -13,7 +13,7 @@ Central mapping of the complete development workflow: analysis → requirements 
 
 | Requirement ID | Title | Source Analysis | Status | Tasks | Tests | ADRs | Notes |
 |---------------|-------|-----------------|--------|-------|-------|------|-------|
-| FR-0001 | Process-level locking for installation | AN-0001 | Proposed | - | - | ADR-0001 | P0 priority |
+| FR-0001 | Process-level locking for installation | AN-0001 | Approved | - | - | ADR-0001 | P0 priority |
 | FR-0002 | Process-level locking for uninstallation | AN-0001 | Proposed | - | - | ADR-0001 | P0 priority |
 | FR-0003 | Process-level locking for cache operations | AN-0001 | Proposed | - | - | ADR-0001 | P0 priority |
 | FR-0004 | Lock timeout and recovery mechanism | AN-0001 | Proposed | - | - | ADR-0001 | P0 priority |
