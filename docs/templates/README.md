@@ -45,52 +45,52 @@ graph LR
 <td><strong>Discovery</strong></td>
 <td>Analysis</td>
 <td><code>analysis.md</code></td>
-<td><code>docs/analysis/AN-####-&lt;topic&gt;.md</code></td>
-<td><code>AN-####-&lt;topic&gt;</code> (e.g., <code>AN-0001-cache-optimization.md</code>)</td>
+<td><code>docs/analysis/AN-&lt;id&gt;-&lt;topic&gt;.md</code></td>
+<td><code>AN-&lt;5char-id&gt;-&lt;topic&gt;</code> (e.g., <code>AN-a3bf2-cache-optimization.md</code>)</td>
 <td>Temporary, archived after requirements formalized</td>
 </tr>
 <tr>
 <td rowspan="2"><strong>Requirements</strong></td>
 <td>Functional Req</td>
 <td><code>requirements.md</code></td>
-<td><code>docs/requirements/FR-####-&lt;capability&gt;.md</code></td>
-<td><code>FR-####-&lt;capability&gt;</code> (e.g., <code>FR-0001-user-authentication.md</code>)</td>
+<td><code>docs/requirements/FR-&lt;id&gt;-&lt;capability&gt;.md</code></td>
+<td><code>FR-&lt;5char-id&gt;-&lt;capability&gt;</code> (e.g., <code>FR-b4cd8-user-authentication.md</code>)</td>
 <td>Long-lived, evolve independently</td>
 </tr>
 <tr>
 <td>Non-Functional Req</td>
 <td><code>requirements.md</code></td>
-<td><code>docs/requirements/NFR-####-&lt;quality&gt;.md</code></td>
-<td><code>NFR-####-&lt;quality&gt;</code> (e.g., <code>NFR-0001-performance.md</code>)</td>
+<td><code>docs/requirements/NFR-&lt;id&gt;-&lt;quality&gt;.md</code></td>
+<td><code>NFR-&lt;5char-id&gt;-&lt;quality&gt;</code> (e.g., <code>NFR-c5de9-performance.md</code>)</td>
 <td>Long-lived, evolve independently</td>
 </tr>
 <tr>
 <td><strong>Decisions</strong></td>
 <td>ADRs</td>
 <td><code>adr.md</code><br><code>adr-lite.md</code></td>
-<td><code>docs/adr/ADR-####-&lt;title&gt;.md</code></td>
-<td><code>ADR-####-&lt;title&gt;</code> (e.g., <code>ADR-0020-cache-storage-format.md</code>)</td>
+<td><code>docs/adr/ADR-&lt;id&gt;-&lt;title&gt;.md</code></td>
+<td><code>ADR-&lt;5char-id&gt;-&lt;title&gt;</code> (e.g., <code>ADR-d6ef0-cache-storage-format.md</code>)</td>
 <td>Long-lived, document decisions</td>
 </tr>
 <tr>
 <td rowspan="3"><strong>Tasks</strong></td>
 <td>Task Directory</td>
 <td>N/A</td>
-<td><code>docs/tasks/T-####-&lt;name&gt;/</code></td>
-<td><code>T-####-&lt;name&gt;</code> (e.g., <code>T-0001-cache-refresh/</code>)</td>
+<td><code>docs/tasks/T-&lt;id&gt;-&lt;name&gt;/</code></td>
+<td><code>T-&lt;5char-id&gt;-&lt;name&gt;</code> (e.g., <code>T-e7fa1-cache-refresh/</code>)</td>
 <td>Task-scoped container</td>
 </tr>
 <tr>
 <td>Task Design</td>
 <td><code>design.md</code></td>
-<td><code>docs/tasks/T-####-&lt;name&gt;/design.md</code></td>
+<td><code>docs/tasks/T-&lt;id&gt;-&lt;name&gt;/design.md</code></td>
 <td>Fixed name <code>design.md</code> within task directory</td>
 <td>Task-scoped</td>
 </tr>
 <tr>
 <td>Task Plan</td>
 <td><code>plan.md</code></td>
-<td><code>docs/tasks/T-####-&lt;name&gt;/plan.md</code></td>
+<td><code>docs/tasks/T-&lt;id&gt;-&lt;name&gt;/plan.md</code></td>
 <td>Fixed name <code>plan.md</code> within task directory</td>
 <td>Task-scoped</td>
 </tr>
@@ -105,6 +105,16 @@ graph LR
 </tbody>
 </table>
 
+## Parallel Development Support
+
+This project supports parallel development using git-worktree with unique IDs to prevent conflicts.
+
+**→ See [`parallel-development.md`](parallel-development.md) for details on:**
+- 5-character random ID generation
+- Avoiding merge conflicts
+- On-demand traceability viewing
+- Migration from sequential IDs
+
 ## Development Workflow Steps
 
 ### Step 1: Analysis (exploration/discovery)
@@ -117,8 +127,9 @@ graph LR
   - Transition discovered requirements to formal FR/NFR documents when ready
 - **Template**: [`analysis.md`](analysis.md) - Template for exploratory analysis and problem space investigation. Used to discover requirements through research and stakeholder analysis
 - **Output**: List of discovered requirements (FR-DRAFT, NFR-DRAFT) and architectural concerns
-- **Location**: `docs/analysis/AN-####-<topic>.md` (move to `archive/` when complete)
-- **Naming**: `AN-####-<topic>` format like `AN-0001-cache-optimization.md`, `AN-0002-javafx-support.md`
+- **Location**: `docs/analysis/AN-<id>-<topic>.md` (move to `archive/` when complete)
+- **Naming**: `AN-<id>-<topic>` format (e.g., `AN-a3bf2-cache-optimization.md`)
+- **ID Generation**: Run `./scripts/tdl-new-id.py` (see [`parallel-development.md`](parallel-development.md))
 - **Transition**: Analysis can lead to:
   - Creating formal requirements from discoveries
   - Identifying architectural decisions that need to be made
@@ -127,10 +138,11 @@ graph LR
 ### Step 2: Requirements (what/why) 
 
 - **Purpose**: Formalize individual requirements with clear acceptance criteria
-- **Template**: [`requirements.md`](requirements.md) - Template for individual requirement documents (FR-####-<capability> or NFR-####-<quality>). Each requirement is a standalone, long-lived document
-- **Output**: Formal requirements with IDs (`FR-####-<capability>`, `NFR-####-<quality>`), measurable criteria
-- **Location**: `docs/requirements/FR-####-<capability>.md` and `docs/requirements/NFR-####-<quality>.md`
-- **Naming**: `FR-####-<capability>` (functional capabilities) and `NFR-####-<quality>` (quality attributes), 4-digit IDs
+- **Template**: [`requirements.md`](requirements.md) - Template for individual requirement documents (FR-<id>-<capability> or NFR-<id>-<quality>). Each requirement is a standalone, long-lived document
+- **Output**: Formal requirements with IDs (`FR-<id>-<capability>`, `NFR-<id>-<quality>`), measurable criteria
+- **Location**: `docs/requirements/FR-<id>-<capability>.md` and `docs/requirements/NFR-<id>-<quality>.md`
+- **Naming**: `FR-<id>-<capability>` and `NFR-<id>-<quality>` format
+- **ID Generation**: Run `./scripts/tdl-new-id.py` (see [`parallel-development.md`](parallel-development.md))
 - **Sources**: Can come from:
   - Analysis documents (discovered requirements)
   - ADR decisions (derived requirements/constraints)
@@ -150,8 +162,9 @@ graph LR
   - [`adr.md`](adr.md) - Full ADR template for architecturally significant decisions, broad impact, or important trade-offs
   - [`adr-lite.md`](adr-lite.md) - Lightweight ADR for tactical choices with limited scope and clear best practices
 - **Output**: ADR documents with decisions, rationale, and consequences
-- **Location**: `docs/adr/ADR-####-<title>.md` (new) or `docs/adr/archive/###-<title>.md` (existing)
-- **Naming**: `ADR-####-<descriptive-title>.md` (e.g., `ADR-0020-cache-storage-format.md`)
+- **Location**: `docs/adr/ADR-<id>-<title>.md` (new) or `docs/adr/archive/###-<title>.md` (existing)
+- **Naming**: `ADR-<id>-<descriptive-title>.md` (e.g., `ADR-d6ef0-cache-storage-format.md`)
+- **ID Generation**: Run `./scripts/tdl-new-id.py` (see [`parallel-development.md`](parallel-development.md))
 - **Sources**: Triggered by analysis findings or implementation needs
 - **Transition**: ADRs can:
   - Generate new requirements (constraints/standards)
@@ -167,8 +180,9 @@ graph LR
   - Requirements (what needs to be built)
   - ADRs (architectural constraints and decisions)
 - **References**: FR/NFR IDs and relevant ADRs (don't duplicate requirement text)
-- **Location**: `docs/tasks/T-####-<task>/design.md` (task-scoped)
-- **Naming**: Task directory + fixed name (e.g., `docs/tasks/T-0001-cache-refresh/design.md`)
+- **Location**: `docs/tasks/T-<id>-<task>/design.md` (task-scoped)
+- **Naming**: Task directory + fixed name (e.g., `docs/tasks/T-e7fa1-cache-refresh/design.md`)
+- **ID Generation**: Run `./scripts/tdl-new-id.py` for the task directory (see [`parallel-development.md`](parallel-development.md))
 - **Transition**: With design complete, create execution plan
 - **Traceability Update**: Add task to "Task Status" table; link task to requirements in matrix
 
@@ -181,8 +195,8 @@ graph LR
 - **Verification**: Use commands from `CLAUDE.md`:
   - `cargo check`, `cargo fmt`, `cargo clippy --all-targets -- -D warnings`
   - `cargo test --lib --quiet`, `cargo it`, `cargo perf`, `cargo bench`
-- **Location**: `docs/tasks/T-####-<task>/plan.md` (task-scoped)
-- **Naming**: Task directory + fixed name (e.g., `docs/tasks/T-0001-cache-refresh/plan.md`)
+- **Location**: `docs/tasks/T-<id>-<task>/plan.md` (task-scoped)
+- **Naming**: Task directory + fixed name (e.g., `docs/tasks/T-e7fa1-cache-refresh/plan.md`)
 - **Transition**: Execute the plan, updating status and traceability matrix
 - **Phase Independence**: Each phase must be self-contained and executable independently:
   - Context may be reset between phases (`/clear` command)
@@ -192,7 +206,7 @@ graph LR
 
 ## Cross-Reference Requirements
 
-Requirements documents must declare their `FR-####`/`NFR-####` ID in the header. Task `design.md` and `plan.md` must include a Links/Traceability section that lists related requirement IDs using these exact tokens for reliable cross-referencing.
+Requirements documents must declare their `FR-<id>`/`NFR-<id>` ID in the header. Task `design.md` and `plan.md` must include a Links/Traceability section that lists related requirement IDs using these exact tokens for reliable cross-referencing.
 
 ## Common Documentation Requirements
 
@@ -220,48 +234,61 @@ These requirements apply to ALL documentation templates (Requirements, Design, P
 
 ## Traceability
 
-- **Central Matrix**: Maintain `docs/traceability.md` as the authoritative N:M mapping between requirements and tasks, with pointers to related tests and ADRs
-- **Analysis → Requirements**: Track which analysis led to which formal requirements
-- **Requirements → Tasks**: Map which tasks implement which requirements
+### On-Demand Status Viewing
+
+Traceability is maintained through Links sections in each document and viewed on-demand:
+
+```bash
+python3 scripts/trace-status.py        # Full status
+python3 scripts/trace-status.py --gaps # Only gaps
+python3 scripts/trace-status.py --check # CI mode
+```
+
+**→ See [`parallel-development.md`](parallel-development.md) for implementation details**
+
+### Traceability Principles
+
+- **Source of Truth**: Each document's Links section maintains its relationships
+- **Analysis → Requirements**: Track in analysis document's Links section
+- **Requirements → Tasks**: Track in task document's Links section
 - **In-Doc Links**: All documents must maintain Links sections for traceability
-- **Tests**: Reference `FR-####`/`NFR-####` in test names or comments when feasible
+- **Tests**: Reference `FR-<id>`/`NFR-<id>` in test names or comments when feasible
 - **Review Order**: Analysis (exploration) → Requirements (scope) → ADR (decisions) → Design (architecture) → Plan (execution)
 
-### When to Update `docs/traceability.md`
+### When to Update Links
 
-Update the traceability matrix immediately when:
+Update the Links section in documents when:
 
 1. **Analysis Phase**
-   - ✅ New analysis document created → Add to "Analysis → Requirements Mapping" table
-   - ✅ Analysis completed and requirements formalized → Update status to "Complete" with date
+   - ✅ New analysis document created → Add Links section
+   - ✅ Requirements discovered → List them in "Formal Requirements" subsection
 
 2. **Requirements Phase**
-   - ✅ New requirements formalized from analysis → Add to "Requirements → Tasks → Tests Matrix"
-   - ✅ Requirements derived from ADRs → Add with ADR as source
+   - ✅ New requirement created → Add Links to source analysis/ADR
+   - ✅ Requirement affects ADRs → Update Links section
 
 3. **Architecture Decision Phase**
-   - ✅ ADR affects existing requirements → Update ADRs column for affected requirements
-   - ✅ ADR creates new requirements → Add new requirements with ADR reference
+   - ✅ ADR created → Add Links to related requirements
+   - ✅ ADR supersedes another → Update both ADRs' Links sections
 
 4. **Task Creation Phase**
-   - ✅ New task created → Add to "Task Status" table
-   - ✅ Task linked to requirements → Update Tasks column in requirements matrix
+   - ✅ New task created → Add Links to requirements being implemented
+   - ✅ Task references ADRs → Include in Links section
 
 5. **Implementation Phase**
-   - ✅ Requirement status changes (Proposed → In Progress → Implemented → Verified)
-   - ✅ Tests added for requirements → Update Tests column with test names
-   - ✅ Task completed → Update completion date in Task Status
+   - ✅ Status changes → Update Status field in document metadata
+   - ✅ New relationships discovered → Update Links sections
 
-6. **Archival**
-   - ✅ Analysis document archived → Keep reference but note as archived
-   - ✅ Requirement deprecated → Update status to "Deprecated"
+6. **Verification**
+   - ✅ Run `python3 scripts/trace-status.py` to check for gaps
+   - ✅ Fix any orphan requirements or tasks before PR
 
 ## Pull Request Checklist
 
 - Link relevant artifacts in the PR description:
   - Source analysis documents if applicable
-  - `FR-####`/`NFR-####` requirements being addressed
-  - Affected task folder(s) under `docs/tasks/T-####-<task>`
+  - `FR-<id>`/`NFR-<id>` requirements being addressed
+  - Affected task folder(s) under `docs/tasks/T-<id>-<task>`
   - Related ADRs
   - Updated rows in `docs/traceability.md`
 - Automated Verification Checklist:
@@ -274,11 +301,9 @@ Update the traceability matrix immediately when:
   - [ ] Error messages clear and in English (per `CLAUDE.md`)
   - [ ] Documentation updated (`docs/reference.md`, user docs if needed)
   - [ ] Platform behavior validated when relevant
-  - [ ] **Traceability matrix (`docs/traceability.md`) updated**:
-    - [ ] New requirements added to matrix
-    - [ ] Task linkages updated
-    - [ ] Status changes reflected
-    - [ ] Test references added
+  - [ ] **Traceability verified**: Run `python3 scripts/trace-status.py --check`
+  - [ ] **Links sections updated**: All document relationships current
+  - [ ] **No orphan documents**: All requirements have tasks (or are marked as future work)
 
 ## Small Changes Variant
 
@@ -289,9 +314,9 @@ Update the traceability matrix immediately when:
   - No architectural impact
   - Single file modification
   - Estimated execution time < 30 minutes
-- Create minimal `docs/tasks/T-####-<task>/plan.md` with a short Phase and DoD
+- Create minimal `docs/tasks/T-<id>-<task>/plan.md` with a short Phase and DoD
 - Ensure all verification commands pass
-- **Traceability**: Update `docs/traceability.md` only if requirements ↔ tasks linkage changes (most trivial fixes won't require updates)
+- **Traceability**: Run `python3 scripts/trace-status.py --check` to verify no gaps
 
 ## Archive Policy
 
@@ -360,7 +385,7 @@ See Step 1 in Development Workflow Steps for approach and principles.
   - Straightforward with a clear best practice
 
 ### Design Template (`design.md`)
-1. Reference requirement IDs (FR-####/NFR-####) in the Requirements Summary section
+1. Reference requirement IDs (FR-<id>/NFR-<id>) in the Requirements Summary section
 2. Link to relevant ADRs and create new ones when this design introduces material decisions
 3. Capture concrete acceptance/success metrics to enable verification
 4. Call out platform differences explicitly when touching shell, shims, filesystem, or paths
@@ -368,7 +393,7 @@ See Step 1 in Development Workflow Steps for approach and principles.
 6. Prefer clarity and safety over micro-optimizations; avoid `unsafe`, avoid vague names like "manager"/"util", and prefer functions for stateless behavior
 
 ### Plan Template (`plan.md`)
-1. Reference requirement IDs (FR-####/NFR-####) being implemented
+1. Reference requirement IDs (FR-<id>/NFR-<id>) being implemented
 2. Adjust the number of phases based on complexity
 3. Break down work into specific, testable items
 4. Define verification commands and phase acceptance criteria

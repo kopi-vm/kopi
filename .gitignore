@@ -11,3 +11,6 @@ benchmarks/results/
 *.local.json
 
 .serena/
+
+# TDL generated files (use scripts/trace-status.py for local viewing)
+docs/traceability.md
