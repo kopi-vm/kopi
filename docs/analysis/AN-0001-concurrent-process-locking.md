@@ -302,22 +302,24 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 
 ### Immediate Actions
 1. Adopt fs2 crate for advisory locking (automatic cleanup on crash)
-2. Implement acquisition timeout (30 seconds) to prevent indefinite waiting
-3. Add NFS detection with fallback strategy
+2. Implement acquisition timeout (600 seconds default, configurable) to prevent indefinite waiting
+3. Add NFS detection with skip strategy (atomic operations only)
 
 ### Implementation Strategy
-Based on competitive analysis, recommend hybrid approach:
 
-**Primary: fs2 Advisory Locks (for local filesystems)**
-- Automatic cleanup on process crash (kernel-managed)
-- No stale lock problems
-- Reference counting for nested operations (volta's approach)
-- Clear user messaging during waits (rustup's pattern)
+**Note**: After further analysis and discussion, the ADR-0001 chose a simpler approach than the hybrid strategy initially considered here.
 
-**Fallback: Lock Files with PID (for NFS)**
-- Detect NFS mounts (cargo's approach)
-- Use atomic file creation with PID/timestamp
-- Implement stale lock detection:
+**Chosen Approach (per ADR-0001): fs2 + Skip on NFS**
+- **Local filesystems**: fs2 advisory locks (automatic cleanup on crash)
+- **Network filesystems**: Skip locking, rely on atomic operations
+- **Detection**: Check filesystem type, warn user when on NFS
+- **Rationale**: YAGNI principle, cargo's proven pattern, atomic operations provide sufficient safety
+
+**Alternative Considered: Hybrid fs2 + PID-based fallback**
+- Would provide explicit locking on NFS
+- Adds complexity: stale detection, cleanup logic
+- Can be added later if real users report NFS issues
+- Example PID-based approach (not chosen):
   ```rust
   // Check if lock holder is still alive
   if !is_process_alive(lock_info.pid) {
@@ -325,7 +327,6 @@ Based on competitive analysis, recommend hybrid approach:
       force_acquire_lock();
   }
   ```
-- Maximum age threshold (e.g., 5 minutes for install operations)
 
 ### Next Steps
 1. [x] Create formal requirements: FR-0001 through FR-0005 → Completed in ADR-0001
@@ -356,7 +357,7 @@ N/A - Initial analysis
 - flock(2) man page: https://man7.org/linux/man-pages/man2/flock.2.html
 
 ### Raw Data
-Example lock file structure consideration:
+Example lock file structure (only relevant for PID-based locking approach, not chosen in ADR-0001):
 ```json
 {
   "pid": 12345,
@@ -366,6 +367,8 @@ Example lock file structure consideration:
   "hostname": "dev-machine"
 }
 ```
+
+Note: The chosen fs2 advisory lock approach doesn't require storing any content in lock files.
 
 ---
 

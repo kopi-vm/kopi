@@ -10,7 +10,7 @@
 
 ## Links
 <!-- Internal project artifacts only. The Links section is mandatory for traceability. If a link does not apply, use "N/A – <reason>". -->
-- Requirements: N/A – Requirements not yet formalized (FR-0001 through FR-0005 pending)
+- Requirements: See Analysis document for draft requirements (FR-0001 through FR-0005, NFR-0001 through NFR-0003)
 - Design: N/A – Design phase not started
 - Plan: N/A – Planning phase not started
 - Related ADRs: N/A – First ADR for this feature
@@ -93,7 +93,8 @@ We will implement a **simple fs2-based locking strategy** with atomic filesystem
      - Guards install/uninstall of specific versions
      - Allows parallel installation of different versions
    - **Cache writer lock**: `~/.kopi/locks/cache.lock`
-     - Only for cache updates (readers don't lock)
+     - Exclusive lock for cache updates only
+     - Cache readers do not acquire locks (lock-free reads)
    - **Config updates**: No lock needed - use atomic rename
 
 4. **User experience (Phase 1 - Simple)**:
@@ -264,6 +265,18 @@ The system should treat directory existence as the primary indicator of installa
 
 This approach ensures operations are idempotent and can be safely retried without side effects.
 
+### Reentrancy and Nested Locks
+
+To prevent self-deadlock when code paths may nest lock acquisitions:
+
+- Implement reference counting within the same process (following volta's pattern)
+- First acquisition of a lock increments count to 1 and acquires the fs2 advisory lock
+- Subsequent acquisitions within the same process only increment the count
+- Releases decrement the count, only releasing the fs2 lock when count reaches 0
+- Use RAII pattern to ensure automatic cleanup even on early returns or panics
+
+This allows safe composition of operations that may each require locks without risk of self-deadlock.
+
 ### Metadata Management
 
 The existing metadata management implementation should be utilized:
@@ -295,8 +308,8 @@ For concurrent operations, ensure that:
 - WSL2 behaves like native Linux
 
 ## Security & Privacy (required if applicable)
-- Lock files contain PID and hostname (non-sensitive)
-- No user data or credentials in lock files
+- fs2 advisory locks don't store any data in lock files (kernel-managed)
+- Lock files exist as placeholders only, contain no content
 - Lock files use restrictive permissions (owner-only)
 
 ## Monitoring & Logging (required if applicable)
