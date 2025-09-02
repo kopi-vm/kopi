@@ -7,15 +7,20 @@ Central mapping of the complete development workflow: analysis → requirements 
 
 | Analysis Document | Status | Discovered Requirements | Date Completed |
 |------------------|--------|------------------------|----------------|
-| [cache-optimization.md](../analysis/cache-optimization.md) | Complete | FR-0001, FR-0002, NFR-0001 | YYYY-MM-DD |
-| [javafx-support.md](../analysis/javafx-support.md) | Active | FR-DRAFT-003, NFR-DRAFT-002 | - |
+| [AN-0001-concurrent-process-locking.md](analysis/AN-0001-concurrent-process-locking.md) | Complete | FR-0001, FR-0002, FR-0003, FR-0004, FR-0005, NFR-0001, NFR-0002, NFR-0003 | 2025-09-02 |
 
 ## Requirements → Tasks → Tests Matrix
 
 | Requirement ID | Title | Source Analysis | Status | Tasks | Tests | ADRs | Notes |
 |---------------|-------|-----------------|--------|-------|-------|------|-------|
-| FR-0001 | [Requirement Title] | cache-optimization | Proposed | [task-name] | [test names] | [ADR-###] | [Notes] |
-| NFR-0001 | [Non-functional Requirement] | cache-optimization | Implemented | [task-name] | [test names] | [ADR-###] | [Notes] |
+| FR-0001 | Process-level locking for installation | AN-0001 | Proposed | - | - | ADR-0001 | P0 priority |
+| FR-0002 | Process-level locking for uninstallation | AN-0001 | Proposed | - | - | ADR-0001 | P0 priority |
+| FR-0003 | Process-level locking for cache operations | AN-0001 | Proposed | - | - | ADR-0001 | P0 priority |
+| FR-0004 | Lock timeout and recovery mechanism | AN-0001 | Proposed | - | - | ADR-0001 | P0 priority |
+| FR-0005 | User feedback for lock contention | AN-0001 | Proposed | - | - | ADR-0001 | P1 priority |
+| NFR-0001 | Lock acquisition timeout limit | AN-0001 | Proposed | - | - | ADR-0001 | Performance requirement |
+| NFR-0002 | Lock cleanup reliability | AN-0001 | Proposed | - | - | ADR-0001 | Reliability requirement |
+| NFR-0003 | Cross-platform lock compatibility | AN-0001 | Proposed | - | - | ADR-0001 | Compatibility requirement |
 
 ## Status Legend
 - **Proposed**: Requirement defined but not yet implemented
@@ -28,7 +33,7 @@ Central mapping of the complete development workflow: analysis → requirements 
 
 | Task | Design | Plan | Status | Primary Requirements | Completion Date |
 |------|--------|------|--------|---------------------|-----------------|
-| [task-name] | [✓/✗] | [✓/✗] | [Status] | FR-####, NFR-#### | YYYY-MM-DD |
+| - | - | - | - | - | - |
 
 ## Links
 - Analysis Directory: [`docs/analysis/`](../analysis/)

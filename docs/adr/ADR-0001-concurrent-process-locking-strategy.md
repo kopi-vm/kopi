@@ -12,7 +12,15 @@
 
 ## Links
 <!-- Internal project artifacts only. The Links section is mandatory for traceability. If a link does not apply, use "N/A – <reason>". -->
-- Requirements: See Analysis document for draft requirements (FR-0001 through FR-0005, NFR-0001 through NFR-0003)
+- Requirements: 
+  - [`FR-0001-installation-locking.md`](../requirements/FR-0001-installation-locking.md)
+  - [`FR-0002-uninstallation-locking.md`](../requirements/FR-0002-uninstallation-locking.md)
+  - [`FR-0003-cache-locking.md`](../requirements/FR-0003-cache-locking.md)
+  - [`FR-0004-lock-timeout-recovery.md`](../requirements/FR-0004-lock-timeout-recovery.md)
+  - [`FR-0005-lock-contention-feedback.md`](../requirements/FR-0005-lock-contention-feedback.md)
+  - [`NFR-0001-lock-timeout-performance.md`](../requirements/NFR-0001-lock-timeout-performance.md)
+  - [`NFR-0002-lock-cleanup-reliability.md`](../requirements/NFR-0002-lock-cleanup-reliability.md)
+  - [`NFR-0003-cross-platform-compatibility.md`](../requirements/NFR-0003-cross-platform-compatibility.md)
 - Design: N/A – Design phase not started
 - Plan: N/A – Planning phase not started
 - Related ADRs: N/A – First ADR for this feature

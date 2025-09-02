@@ -10,8 +10,16 @@
 ## Links
 <!-- Internal project artifacts only -->
 - Related Analyses: N/A – Standalone analysis
-- Existing Requirements: N/A – New area
-- Existing ADRs: N/A – No related decisions yet
+- Formal Requirements: 
+  - [`FR-0001-installation-locking.md`](../requirements/FR-0001-installation-locking.md)
+  - [`FR-0002-uninstallation-locking.md`](../requirements/FR-0002-uninstallation-locking.md)
+  - [`FR-0003-cache-locking.md`](../requirements/FR-0003-cache-locking.md)
+  - [`FR-0004-lock-timeout-recovery.md`](../requirements/FR-0004-lock-timeout-recovery.md)
+  - [`FR-0005-lock-contention-feedback.md`](../requirements/FR-0005-lock-contention-feedback.md)
+  - [`NFR-0001-lock-timeout-performance.md`](../requirements/NFR-0001-lock-timeout-performance.md)
+  - [`NFR-0002-lock-cleanup-reliability.md`](../requirements/NFR-0002-lock-cleanup-reliability.md)
+  - [`NFR-0003-cross-platform-compatibility.md`](../requirements/NFR-0003-cross-platform-compatibility.md)
+- Related ADRs: [`ADR-0001-concurrent-process-locking-strategy.md`](../adr/ADR-0001-concurrent-process-locking-strategy.md)
 - Issue/Discussion: N/A – No tracking issue
 
 ## Executive Summary
@@ -201,43 +209,43 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 ## Discovered Requirements
 
 ### Functional Requirements (Potential)
-- [x] **FR-DRAFT-1**: Process-level locking for installation operations → Formalized as FR-0001 in ADR-0001
+- [x] **FR-DRAFT-1**: Process-level locking for installation operations → Formalized as [`FR-0001`](../requirements/FR-0001-installation-locking.md)
   - Rationale: Prevent concurrent installations to same JDK version
   - Priority: P0
   - Acceptance Criteria: Only one process can install a specific JDK version at a time
 
-- [x] **FR-DRAFT-2**: Process-level locking for uninstallation operations → Formalized as FR-0002 in ADR-0001
+- [x] **FR-DRAFT-2**: Process-level locking for uninstallation operations → Formalized as [`FR-0002`](../requirements/FR-0002-uninstallation-locking.md)
   - Rationale: Prevent deletion conflicts and partial removals
   - Priority: P0
   - Acceptance Criteria: Uninstall operations are atomic and exclusive
 
-- [x] **FR-DRAFT-3**: Process-level locking for cache operations → Formalized as FR-0003 in ADR-0001
+- [x] **FR-DRAFT-3**: Process-level locking for cache operations → Formalized as [`FR-0003`](../requirements/FR-0003-cache-locking.md)
   - Rationale: Ensure consistent metadata state
   - Priority: P0
   - Acceptance Criteria: Cache refresh operations complete atomically
 
-- [x] **FR-DRAFT-4**: Lock timeout and recovery mechanism → Formalized as FR-0004 in ADR-0001
+- [x] **FR-DRAFT-4**: Lock timeout and recovery mechanism → Formalized as [`FR-0004`](../requirements/FR-0004-lock-timeout-recovery.md)
   - Rationale: Prevent deadlocks from crashed processes
   - Priority: P0
   - Acceptance Criteria: Stale locks are detected and can be recovered
 
-- [x] **FR-DRAFT-5**: User feedback for lock contention → Formalized as FR-0005 in ADR-0001
+- [x] **FR-DRAFT-5**: User feedback for lock contention → Formalized as [`FR-0005`](../requirements/FR-0005-lock-contention-feedback.md)
   - Rationale: Users need to understand why operations are waiting
   - Priority: P1
   - Acceptance Criteria: Clear messages when waiting for locks
 
 ### Non-Functional Requirements (Potential)
-- [x] **NFR-DRAFT-1**: Lock acquisition timeout limit → Formalized as NFR-0001 in ADR-0001
+- [x] **NFR-DRAFT-1**: Lock acquisition timeout limit → Formalized as [`NFR-0001`](../requirements/NFR-0001-lock-timeout-performance.md)
   - Category: Performance
   - Target: Default 600 seconds (10 minutes) wait time before timeout, configurable
   - Rationale: Based on empirical JDK download measurements; prevents indefinite waiting
 
-- [x] **NFR-DRAFT-2**: Lock cleanup reliability → Formalized as NFR-0002 in ADR-0001
+- [x] **NFR-DRAFT-2**: Lock cleanup reliability → Formalized as [`NFR-0002`](../requirements/NFR-0002-lock-cleanup-reliability.md)
   - Category: Reliability
   - Target: 100% automatic cleanup with std locks (local), no locking on NFS (atomic operations only)
   - Rationale: std::fs::File provides automatic cleanup via kernel; NFS relies on atomic filesystem operations
 
-- [x] **NFR-DRAFT-3**: Cross-platform lock compatibility → Formalized as NFR-0003 in ADR-0001
+- [x] **NFR-DRAFT-3**: Cross-platform lock compatibility → Formalized as [`NFR-0003`](../requirements/NFR-0003-cross-platform-compatibility.md)
   - Category: Reliability
   - Target: Identical behavior on Unix and Windows platforms
   - Rationale: Consistent user experience across platforms
@@ -333,8 +341,8 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
   ```
 
 ### Next Steps
-1. [x] Create formal requirements: FR-0001 through FR-0005 → Completed in ADR-0001
-2. [x] Create formal requirements: NFR-0001 through NFR-0003 → Completed in ADR-0001
+1. [x] Create formal requirements: FR-0001 through FR-0005 → Completed 2025-09-02
+2. [x] Create formal requirements: NFR-0001 through NFR-0003 → Completed 2025-09-02
 3. [x] Draft ADR for: Lock file strategy using native std::fs::File → Completed as ADR-0001
 4. [ ] Create task for: Implementing core locking module with std::fs::File
 5. [ ] Create task for: Migrating existing fs2 usage to std::fs::File
