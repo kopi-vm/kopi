@@ -111,5 +111,5 @@ kopi install corretto@21.0.7 --distribution-version
 
 - [Corretto Version Format Investigation](/docs/reviews/2025-07-11-corretto-version-format.md)
 - [foojay.io API Documentation](https://api.foojay.io/swagger/index.html)
-- [Version Parser Enhancement Plan](/docs/tasks/version/plan.md)
+- [Version Parser Enhancement Plan](/docs/tasks/archive/version/plan.md)
 - [Original Version Parser Implementation](/src/models/version.rs:127)

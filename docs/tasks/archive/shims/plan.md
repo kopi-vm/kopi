@@ -122,7 +122,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
 ### Input Resources
 - Phase 1 & 2 deliverables
 - `/src/main.rs` - Existing CLI structure
-- `/docs/adr/001-kopi-command-structure.md` - Command guidelines
+- `/docs/adr/archive/001-kopi-command-structure.md` - Command guidelines
 
 ### Deliverables
 1. **Setup Command Enhancement** (`/src/commands/setup.rs`)

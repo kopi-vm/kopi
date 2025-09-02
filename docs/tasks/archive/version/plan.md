@@ -21,7 +21,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
 
 #### 1.1 Architecture Decision Record
 - **Task**: Create new ADR for version format changes
-- **File**: `/docs/adr/016-flexible-version-format.md`
+- **File**: `/docs/adr/archive/016-flexible-version-format.md`
 - **Content**: 
   - Document the decision to support N-component versions
   - Explain the new flexible version structure
@@ -35,15 +35,15 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
     - Added "Version Search Behavior" section explaining auto-detection
     - Added "Version Pattern Matching" section for partial matches
     - Updated version specification examples to include 4-6 component formats
-  - `/docs/adr/014-configuration-and-version-file-formats.md`:
+  - `/docs/adr/archive/014-configuration-and-version-file-formats.md`:
     - Added extended format examples in `.kopi-version` section
     - Added migration mapping examples for Corretto and Dragonwell
     - Added note about support for extended version formats
-  - `/docs/tasks/uninstall/design.md`:
+  - `/docs/tasks/archive/uninstall/design.md`:
     - Added "Version Pattern Matching" subsection
     - Included examples for 4-6 component version matching
     - Explained flexible matching for all distribution formats
-  - `/docs/tasks/search/design.md`:
+  - `/docs/tasks/archive/search/design.md`:
     - Added comprehensive "Enhanced Version Search Capabilities" section
     - Documented automatic version type detection rules
     - Added manual override options (--java-version, --distribution-version)

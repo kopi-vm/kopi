@@ -46,8 +46,8 @@ Implement FR-0001: Cache JDK metadata locally with TTL
 ### Inputs
 - Requirements: FR-0001, NFR-0001, NFR-0002
 - Documentation:
-  - `/docs/adr/015-cache-storage-format.md` – SQLite storage decision
-  - `/docs/adr/004-error-handling.md` – Error types to implement
+  - `/docs/adr/archive/015-cache-storage-format.md` – SQLite storage decision
+  - `/docs/adr/archive/004-error-handling.md` – Error types to implement
 - Source Code to Modify:
   - `/src/lib.rs` – Add cache module
   - `/src/error.rs` – Add cache-specific errors

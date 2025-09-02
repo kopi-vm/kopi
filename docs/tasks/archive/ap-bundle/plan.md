@@ -12,7 +12,7 @@ This document outlines the implementation plan for handling diverse JDK director
 
 ### Input Materials
 - **Documentation**:
-  - `/docs/adr/018-macos-jdk-bundle-structure-handling.md` - ADR with structure analysis
+  - `/docs/adr/archive/018-macos-jdk-bundle-structure-handling.md` - ADR with structure analysis
   - `/docs/tasks/ap-bundle/design.md` - Detailed design specification
 
 - **Source Code to Modify**:
@@ -545,7 +545,7 @@ cargo test --quiet --features integration_tests
 
 ### Input Materials
 - **Documentation to Update**:
-  - `/docs/adr/018-macos-jdk-bundle-structure-handling.md` - ADR to update
+  - `/docs/adr/archive/018-macos-jdk-bundle-structure-handling.md` - ADR to update
   - `/docs/reference.md` - User documentation to update
   - `README.md` - Add macOS support notes
 

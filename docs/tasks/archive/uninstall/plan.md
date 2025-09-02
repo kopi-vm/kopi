@@ -23,7 +23,7 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 ## Phase 1: Core Uninstall Logic and Safety Checks ✅ COMPLETED
 
 ### Input Resources
-- `/docs/tasks/uninstall/design.md` - Uninstall command design specification
+- `/docs/tasks/archive/uninstall/design.md` - Uninstall command design specification
 - `/src/models/metadata.rs` - JdkMetadata model
 - `/src/models/distribution.rs` - Distribution enum and parsing
 - `/src/models/version.rs` - Version and VersionRequest types

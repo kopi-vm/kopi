@@ -14,7 +14,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
 ## Phase 1: Core Implementation
 
 ### Input Resources
-- `/docs/tasks/which/design.md` - Complete which command design
+- `/docs/tasks/archive/which/design.md` - Complete which command design
 - `/src/version/resolver.rs` - Existing version resolution logic
 - `/src/storage/jdk_repository.rs` - JDK installation management
 - `/src/error/` - Error types and exit codes

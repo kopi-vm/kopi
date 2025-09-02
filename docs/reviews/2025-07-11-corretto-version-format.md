@@ -92,9 +92,9 @@ Can use alternative numbering: `21.30.19` (their own build system)
 
 Found references to Corretto 4-component versions:
 - `tests/uninstall_integration.rs`: `21.0.5.11.1`
-- `docs/adr/014-configuration-and-version-file-formats.md`: `17.0.5.8.1`
+- `docs/adr/archive/014-configuration-and-version-file-formats.md`: `17.0.5.8.1`
 - `tests/shim_security.rs`: `11.0.21.9.1`
-- `docs/tasks/uninstall/design.md`: Multiple examples
+- `docs/tasks/archive/uninstall/design.md`: Multiple examples
 - `src/cache/mod.rs`: Test with `amazon-corretto-21.0.1.12.1-linux-x86_64.tar.gz`
 
 ## foojay.io API Investigation

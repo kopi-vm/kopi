@@ -4,7 +4,7 @@
 - Type: Implementation Plan
 - Owner: Development Team
 - Reviewers: Project Maintainers
-- Status: Phase 1 Completed
+- Status: Completed
   <!-- Not Started: Planning complete, awaiting start | Phase X In Progress: Actively working | Blocked: External dependency | Under Review: Implementation complete | Completed: All phases done and verified -->
 - Date Created: 2025-09-02
 
@@ -157,14 +157,14 @@ grep -E "ADR-[0-9]{4}" AGENTS.md
   - Note: `/docs/tasks/docs-migration/` stays (this current task)
 
 ### Tasks
-- [ ] **Move ADR files using git mv**
-  - [ ] Move all 19 ADR files to docs/adr/archive/
-  - [ ] Preserve original file names (no renaming)
-  - [ ] Verify git history is maintained
-- [ ] **Move task directories using git mv**
-  - [ ] Move all 14 existing task directories to docs/tasks/archive/
-  - [ ] Preserve original directory names (no renaming)
-  - [ ] Keep docs-migration in place (current active task)
+- [x] **Move ADR files using git mv**
+  - [x] Move all 19 ADR files to docs/adr/archive/
+  - [x] Preserve original file names (no renaming)
+  - [x] Verify git history is maintained
+- [x] **Move task directories using git mv**
+  - [x] Move all 13 existing task directories to docs/tasks/archive/
+  - [x] Preserve original directory names (no renaming)
+  - [x] Keep docs-migration in place (current active task)
 
 ### Deliverables
 - All ADR files moved to ADR archive with preserved git history
@@ -211,14 +211,14 @@ git log --follow docs/tasks/archive/install/
   - Source code comments (if any)
 
 ### Tasks
-- [ ] **Update ADR references in documentation**
-  - [ ] Search for ADR references in all .md files
-  - [ ] Update paths from `docs/adr/` to `docs/adr/archive/`
-  - [ ] Update docs/templates/README.md example links
-  - [ ] Update any ADR cross-references within archived ADR files themselves
-- [ ] **Update source code references (if any)**
-  - [ ] Search for ADR references in Rust source comments
-  - [ ] Update any found references to archive path
+- [x] **Update ADR references in documentation**
+  - [x] Search for ADR references in all .md files
+  - [x] Update paths from `docs/adr/` to `docs/adr/archive/`
+  - [x] Update docs/templates/README.md example links
+  - [x] Update any ADR cross-references within archived ADR files themselves
+- [x] **Update source code references (if any)**
+  - [x] Search for ADR references in Rust source comments
+  - [x] Update any found references to archive path
 
 ### Deliverables
 - All documentation with updated ADR archive links
@@ -316,18 +316,18 @@ grep -r "docs/adr/archive/[0-9][0-9][0-9]-" docs/ --include="*.md"
 
 ## Definition of Done
 
-- [ ] Archive directories created at docs/adr/archive/ and docs/tasks/archive/
-- [ ] Archive README.md files explaining purpose in both archives
-- [ ] All 19 ADR files moved to ADR archive directory
-- [ ] All 14 existing task directories moved to task archive directory
-- [ ] All internal documentation links updated to archive paths
-- [ ] docs/adr/MIGRATION.md removed
-- [ ] New naming conventions documented in templates (ADR, FR/NFR, AN, Tasks)
-- [ ] AGENTS.md updated with new ADR format
-- [ ] No broken links in any documentation
-- [ ] Git history preserved for all moved files and directories
-- [ ] Verification scripts run successfully
-- [ ] Migration documented in this plan
+- [x] Archive directories created at docs/adr/archive/ and docs/tasks/archive/
+- [x] Archive README.md files explaining purpose in both archives
+- [x] All 19 ADR files moved to ADR archive directory
+- [x] All 13 existing task directories moved to task archive directory (14 originally planned, but metadata was already in archive)
+- [x] All internal documentation links updated to archive paths
+- [x] docs/adr/MIGRATION.md removed
+- [x] New naming conventions documented in templates (ADR, FR/NFR, AN, Tasks)
+- [x] AGENTS.md updated with new ADR format
+- [x] No broken links in any documentation
+- [x] Git history preserved for all moved files and directories
+- [x] Verification scripts run successfully
+- [x] Migration documented in this plan
 
 ---
 

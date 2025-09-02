@@ -111,7 +111,7 @@ This document outlines the phased implementation plan for the `kopi install` com
 ### Input Resources
 - Phase 1 & 2 deliverables
 - `/src/main.rs` - Existing CLI structure with clap
-- `/docs/adr/001-kopi-command-structure.md` - Command structure guidelines
+- `/docs/adr/archive/001-kopi-command-structure.md` - Command structure guidelines
 
 ### Deliverables
 1. **Install Command** (`/src/commands/install.rs`)
@@ -164,7 +164,7 @@ This document outlines the phased implementation plan for the `kopi install` com
 ### Input Resources
 - Phase 1-3 deliverables
 - Hybrid caching strategy from architecture docs
-- `/docs/adr/002-serialization-format-for-metadata-storage.md` - Caching and serialization decisions
+- `/docs/adr/archive/002-serialization-format-for-metadata-storage.md` - Caching and serialization decisions
 
 ### Deliverables
 1. **Simple Cache Functions** (`/src/cache/mod.rs`)
