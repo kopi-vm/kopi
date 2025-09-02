@@ -25,7 +25,7 @@ This plan migrates existing ADR files and task directories to archive structures
 - [ ] All 14 existing task directories moved to docs/tasks/archive/
 - [ ] All internal links updated and functional
 - [ ] Git history preserved for all moved files and directories
-- [ ] Documentation templates updated with new naming conventions
+- [ ] Documentation templates updated with new naming conventions (including FR/NFR with descriptive names)
 - [ ] AGENTS.md updated with new ADR format
 - [ ] No broken links in any documentation
 
@@ -36,7 +36,7 @@ This plan migrates existing ADR files and task directories to archive structures
   - Introduce new naming conventions for future documents
 - Non-Goals: 
   - Renaming existing ADR files or task directories (keeping original names)
-  - Changing FR/NFR document types (already compliant)
+  - Renaming existing FR/NFR files (only future files will use new format)
   - Modifying document content
   - Moving docs-migration task (current active task)
 - Assumptions: Git mv will preserve file history
@@ -73,7 +73,7 @@ This plan migrates existing ADR files and task directories to archive structures
     - [x] Add new naming format: ADR-####-<title> for future ADRs
     - [x] Add new naming format: T-####-<name> for task directories
     - [x] Add new naming format: AN-####-<title> for analysis documents
-    - [x] Note that FR/NFR formats remain unchanged (already compliant)
+    - [x] Update FR/NFR formats to include descriptive suffixes (FR-####-<capability>, NFR-####-<quality>)
     - [x] Update ADR location to note both main directory (for new) and archive (for existing)
   - [x] Update AGENTS.md
     - [x] Update ADR reference format from `###-<title>` to `ADR-####-<title>` for future ADRs
@@ -322,7 +322,7 @@ grep -r "docs/adr/archive/[0-9][0-9][0-9]-" docs/ --include="*.md"
 - [ ] All 14 existing task directories moved to task archive directory
 - [ ] All internal documentation links updated to archive paths
 - [ ] docs/adr/MIGRATION.md removed
-- [ ] New naming conventions documented in templates
+- [ ] New naming conventions documented in templates (ADR, FR/NFR, AN, Tasks)
 - [ ] AGENTS.md updated with new ADR format
 - [ ] No broken links in any documentation
 - [ ] Git history preserved for all moved files and directories
@@ -353,7 +353,9 @@ This plan archives existing ADRs and task directories to maintain historical doc
 - Existing ADRs will be in: `docs/adr/archive/`
 - Existing task directories will be in: `docs/tasks/archive/`
 - New ADRs will use: `ADR-####-<title>.md` in the main `docs/adr/` directory
+- New Requirements will use: `FR-####-<capability>.md` and `NFR-####-<quality>.md` formats
 - New tasks will use: `T-####-<name>/` in the main `docs/tasks/` directory with `design.md` and `plan.md` files
+- New analysis docs will use: `AN-####-<topic>.md` format
 - The archives preserve the original names and git history
 - docs-migration task remains in main directory as the current active task
 

@@ -25,7 +25,7 @@ graph LR
 ### Key Locations
 - **Templates**: `docs/templates/` - All document templates
 - **Analysis**: `docs/analysis/AN-####-<topic>.md` - Problem exploration
-- **Requirements**: `docs/requirements/FR-####.md` and `NFR-####.md` - Formal requirements
+- **Requirements**: `docs/requirements/FR-####-<capability>.md` and `NFR-####-<quality>.md` - Formal requirements
 - **ADRs**: `docs/adr/ADR-####-<title>.md` - Architecture decisions (new format)
 - **ADRs (Archive)**: `docs/adr/archive/###-<title>.md` - Historical ADRs (pre-2025)
 - **Tasks**: `docs/tasks/T-####-<task>/` - Design and plan documents (new format)

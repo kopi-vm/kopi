@@ -29,15 +29,81 @@ graph LR
 
 ### Document Organization
 
-| Document Type | Template | Created Files Location | Naming Convention | Lifecycle |
-|--------------|----------|------------------------|-------------------|-----------|
-| Analysis | `analysis.md` | `docs/analysis/AN-####-<topic>.md` | `AN-####-<topic>` (e.g., `AN-0001-cache-optimization.md`) | Temporary, archived after requirements formalized |
-| Requirements | `requirements.md` | `docs/requirements/FR-####.md`<br>`docs/requirements/NFR-####.md` | 4-digit IDs (e.g., `FR-0001.md`) | Long-lived, evolve independently |
-| ADRs | `adr.md`<br>`adr-lite.md` | `docs/adr/ADR-####-<title>.md` | `ADR-####-<title>` (e.g., `ADR-0020-cache-storage-format.md`) | Long-lived, document decisions |
-| Task Directory | N/A | `docs/tasks/T-####-<name>/` | `T-####-<name>` (e.g., `T-0001-cache-refresh/`) | Task-scoped container |
-| Task Design | `design.md` | `docs/tasks/T-####-<name>/design.md` | Fixed name `design.md` within task directory | Task-scoped |
-| Task Plan | `plan.md` | `docs/tasks/T-####-<name>/plan.md` | Fixed name `plan.md` within task directory | Task-scoped |
-| Traceability | N/A (not a template) | `docs/traceability.md` | Single file (project document) | Long-lived, central N:M mapping |
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Document Type</th>
+<th>Template</th>
+<th>Created Files Location</th>
+<th>Naming Convention</th>
+<th>Lifecycle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Discovery</strong></td>
+<td>Analysis</td>
+<td><code>analysis.md</code></td>
+<td><code>docs/analysis/AN-####-&lt;topic&gt;.md</code></td>
+<td><code>AN-####-&lt;topic&gt;</code> (e.g., <code>AN-0001-cache-optimization.md</code>)</td>
+<td>Temporary, archived after requirements formalized</td>
+</tr>
+<tr>
+<td rowspan="2"><strong>Requirements</strong></td>
+<td>Functional Req</td>
+<td><code>requirements.md</code></td>
+<td><code>docs/requirements/FR-####-&lt;capability&gt;.md</code></td>
+<td><code>FR-####-&lt;capability&gt;</code> (e.g., <code>FR-0001-user-authentication.md</code>)</td>
+<td>Long-lived, evolve independently</td>
+</tr>
+<tr>
+<td>Non-Functional Req</td>
+<td><code>requirements.md</code></td>
+<td><code>docs/requirements/NFR-####-&lt;quality&gt;.md</code></td>
+<td><code>NFR-####-&lt;quality&gt;</code> (e.g., <code>NFR-0001-performance.md</code>)</td>
+<td>Long-lived, evolve independently</td>
+</tr>
+<tr>
+<td><strong>Decisions</strong></td>
+<td>ADRs</td>
+<td><code>adr.md</code><br><code>adr-lite.md</code></td>
+<td><code>docs/adr/ADR-####-&lt;title&gt;.md</code></td>
+<td><code>ADR-####-&lt;title&gt;</code> (e.g., <code>ADR-0020-cache-storage-format.md</code>)</td>
+<td>Long-lived, document decisions</td>
+</tr>
+<tr>
+<td rowspan="3"><strong>Tasks</strong></td>
+<td>Task Directory</td>
+<td>N/A</td>
+<td><code>docs/tasks/T-####-&lt;name&gt;/</code></td>
+<td><code>T-####-&lt;name&gt;</code> (e.g., <code>T-0001-cache-refresh/</code>)</td>
+<td>Task-scoped container</td>
+</tr>
+<tr>
+<td>Task Design</td>
+<td><code>design.md</code></td>
+<td><code>docs/tasks/T-####-&lt;name&gt;/design.md</code></td>
+<td>Fixed name <code>design.md</code> within task directory</td>
+<td>Task-scoped</td>
+</tr>
+<tr>
+<td>Task Plan</td>
+<td><code>plan.md</code></td>
+<td><code>docs/tasks/T-####-&lt;name&gt;/plan.md</code></td>
+<td>Fixed name <code>plan.md</code> within task directory</td>
+<td>Task-scoped</td>
+</tr>
+<tr>
+<td><strong>Tracking</strong></td>
+<td>Traceability</td>
+<td>N/A (not a template)</td>
+<td><code>docs/traceability.md</code></td>
+<td>Single file (project document)</td>
+<td>Long-lived, central N:M mapping</td>
+</tr>
+</tbody>
+</table>
 
 ## Development Workflow Steps
 
@@ -60,10 +126,10 @@ graph LR
 ### Step 2: Requirements (what/why) 
 
 - **Purpose**: Formalize individual requirements with clear acceptance criteria
-- **Template**: [`requirements.md`](requirements.md) - Template for individual requirement documents (FR-#### or NFR-####). Each requirement is a standalone, long-lived document
-- **Output**: Formal requirements with IDs (`FR-####`, `NFR-####`), measurable criteria
-- **Location**: `docs/requirements/FR-####.md` and `docs/requirements/NFR-####.md`
-- **Naming**: `FR-####` (functional) and `NFR-####` (non-functional), 4-digit IDs
+- **Template**: [`requirements.md`](requirements.md) - Template for individual requirement documents (FR-####-<capability> or NFR-####-<quality>). Each requirement is a standalone, long-lived document
+- **Output**: Formal requirements with IDs (`FR-####-<capability>`, `NFR-####-<quality>`), measurable criteria
+- **Location**: `docs/requirements/FR-####-<capability>.md` and `docs/requirements/NFR-####-<quality>.md`
+- **Naming**: `FR-####-<capability>` (functional capabilities) and `NFR-####-<quality>` (quality attributes), 4-digit IDs
 - **Sources**: Can come from:
   - Analysis documents (discovered requirements)
   - ADR decisions (derived requirements/constraints)
@@ -280,7 +346,7 @@ See Step 1 in Development Workflow Steps for approach and principles.
 
 #### Core Workflow Templates
 - Analysis: [`docs/templates/examples/analysis-example.md`](examples/analysis-example.md) - Problem exploration and requirement discovery
-- Individual Requirement: [`docs/templates/examples/requirement-example.md`](examples/requirement-example.md) - Single requirement document (FR-0001)
+- Individual Requirement: [`docs/templates/examples/requirement-example.md`](examples/requirement-example.md) - Single requirement document (e.g., FR-0001-user-authentication, NFR-0001-performance)
 - Design: [`docs/templates/examples/design-example.md`](examples/design-example.md) - Task-specific technical design referencing requirement IDs
 - Plan: [`docs/templates/examples/plan-example.md`](examples/plan-example.md) - Task-specific phased implementation with verification steps
 
