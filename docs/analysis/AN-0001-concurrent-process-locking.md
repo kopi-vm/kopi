@@ -16,7 +16,7 @@
 
 ## Executive Summary
 
-This analysis explores the need for a locking mechanism in kopi to handle concurrent process execution safely. Currently, multiple kopi processes can run simultaneously without coordination, potentially causing race conditions during JDK installation, uninstallation, cache operations, and configuration updates. The analysis identifies critical sections requiring synchronization and proposes a file-based locking strategy to ensure data integrity and prevent conflicts.
+This analysis explores the need for a locking mechanism in kopi to handle concurrent process execution safely. Currently, multiple kopi processes can run simultaneously without coordination, potentially causing race conditions during JDK installation, uninstallation, cache operations, and configuration updates. The analysis identifies critical sections requiring synchronization and recommends using Rust's native `std::fs::File` locking API (stable since Rust 1.89.0) to ensure data integrity and prevent conflicts without external dependencies.
 
 ## Problem Space
 
@@ -91,7 +91,8 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 - **Source**: https://github.com/pyenv/pyenv/blob/master/libexec/pyenv-rehash
 
 #### volta (JavaScript Tool Manager - Rust)
-- **Implementation**: `fs2` crate for cross-platform file locking
+- **Implementation**: Originally used `fs2` crate for cross-platform file locking
+- **Historical Note**: fs2 was the standard solution before Rust 1.89.0 added native file locking
 - **Lock File**: `volta.lock` in the Volta directory
 - **Architecture**: RAII pattern with reference counting for nested locks
 - **Lock Strategy**:
@@ -142,18 +143,19 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 - **Reference Counting** (volta): Sophisticated approach for nested operations
 
 #### Lessons for kopi
-1. **Start with fs2**: Proven in volta and cargo, cross-platform support
+1. **Use std::fs::File locks**: Native in Rust 1.89.0+, eliminates all external dependencies
 2. **Implement User Feedback**: Follow rustup's example of clear messaging during lock waits
-3. **Handle NFS Carefully**: Consider cargo's approach of skipping locks on NFS
+3. **Handle NFS Carefully**: Follow cargo's approach of skipping locks on NFS
 4. **Add Timeout Support**: Unlike rustup, implement timeouts to prevent indefinite blocking
 5. **Use RAII Pattern**: Ensure automatic cleanup like volta's implementation
+6. **No External Crates Needed**: Standard library provides complete locking functionality
 
 ### Technical Investigation
 
 #### Advisory Locks vs Lock Files
 **Critical Distinction**: There are two fundamentally different locking approaches:
 
-1. **Advisory Locks (flock/fs2)** - Used by volta and cargo
+1. **Advisory Locks (std::fs::File)** - Native in Rust 1.89.0+, used by modern Rust tools
    - **Automatic cleanup**: OS releases lock when process dies (even on crash)
    - **No stale lock problem**: Kernel manages lock lifecycle
    - **Limitation**: Doesn't work reliably on NFS
@@ -165,14 +167,14 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
    - **Works on NFS**: File creation is atomic
    - **How it works**: Creates file with PID/timestamp info
 
-#### Why fs2 Eliminates Most Stale Lock Issues
+#### Why std::fs::File Locks Eliminate Most Stale Lock Issues
 ```rust
-// With fs2: Lock automatically released on process exit
+// With std::fs::File (Rust 1.89.0+): Lock automatically released on process exit
 let file = File::open("kopi.lock")?;
-file.lock_exclusive()?;  // Held by kernel
+file.lock()?;  // Exclusive lock, held by kernel
 // Process crashes here → Kernel releases lock automatically
 
-// Without fs2: Lock file remains after crash
+// Without advisory locks: Lock file remains after crash
 let lock_data = LockInfo { pid: process::id(), ... };
 fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 // Process crashes here → Lock file remains, needs cleanup logic
@@ -180,7 +182,7 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 
 #### When Timeouts Are Still Needed
 - **Lock acquisition timeout**: Prevent waiting forever for legitimate lock holder
-- **NFS fallback**: When fs2 doesn't work, fallback to lock files needs stale detection
+- **NFS fallback**: When std locks don't work, fallback to lock files needs stale detection
 - **Deadlock prevention**: Nested operations might deadlock without timeout
 
 #### Implementation precedents from competitive analysis:
@@ -232,8 +234,8 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 
 - [x] **NFR-DRAFT-2**: Lock cleanup reliability → Formalized as NFR-0002 in ADR-0001
   - Category: Reliability
-  - Target: 100% automatic cleanup with fs2 (local), no locking on NFS (atomic operations only)
-  - Rationale: fs2 provides automatic cleanup via kernel; NFS relies on atomic filesystem operations
+  - Target: 100% automatic cleanup with std locks (local), no locking on NFS (atomic operations only)
+  - Rationale: std::fs::File provides automatic cleanup via kernel; NFS relies on atomic filesystem operations
 
 - [x] **NFR-DRAFT-3**: Cross-platform lock compatibility → Formalized as NFR-0003 in ADR-0001
   - Category: Reliability
@@ -249,20 +251,17 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 - Must not require elevated permissions
 
 ### Potential Approaches
-1. **Option A**: Pure fs2 advisory locking (Simple but limited)
-   - Pros: Automatic cleanup on crash, no stale locks, proven in volta/cargo
-   - Cons: Doesn't work on NFS, no timeout support
+1. **Option A**: Pure std::fs::File advisory locking (Chosen)
+   - Pros: Native to Rust 1.89.0+, no external dependencies, automatic cleanup on crash, no stale locks
+   - Cons: Doesn't work reliably on NFS
    - Effort: Low
-   - Precedent: volta and cargo (with NFS detection)
+   - Precedent: Modern Rust best practice
 
-2. **Option B**: Hybrid fs2 + PID-based fallback (Recommended)
-   - Pros: Best of both worlds - automatic cleanup locally, NFS support
-   - Cons: More complex implementation
+2. **Option B**: Hybrid std + PID-based fallback (Considered but not chosen)
+   - Pros: Would provide NFS support
+   - Cons: Unnecessary complexity for edge case
    - Effort: Medium
-   - Strategy:
-     - Use fs2 on local filesystems (automatic cleanup)
-     - Fallback to PID-based lock files on NFS (with stale detection)
-     - Acquisition timeout for both mechanisms
+   - Note: Can be added later if NFS users report issues
 
 3. **Option C**: Pure PID-based lock files
    - Pros: Works everywhere including NFS, full control
@@ -288,7 +287,7 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 |------|------------|--------|-------------------|
 | Deadlock from crashed processes | Medium | High | Implement lock timeout and stale lock detection |
 | Performance degradation | Low | Medium | Use fine-grained locks, allow parallel non-conflicting operations |
-| Platform incompatibility | Low | High | Use well-tested cross-platform library (fs2) |
+| Platform incompatibility | Low | High | Use Rust standard library (native since 1.89.0) |
 | Lock file corruption | Low | Medium | Use atomic file operations, implement lock validation |
 
 ## Open Questions
@@ -296,26 +295,31 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 - [ ] Should locks be per-JDK-version or global per-operation-type? → Owner: Architecture Team → Due: 2025-09-05
 - [ ] How to detect NFS reliably across platforms? → Method: Research cargo's implementation
 - [ ] Should we implement lock priority/queuing? → Method: Benchmark typical usage patterns
-- [x] ~~How to handle stale locks?~~ → Resolved: fs2 handles automatically, NFS fallback uses PID checking
+- [x] ~~How to handle stale locks?~~ → Resolved: std locks handle automatically, NFS fallback uses PID checking
 
 ## Recommendations
 
 ### Immediate Actions
-1. Adopt fs2 crate for advisory locking (automatic cleanup on crash)
+1. Use std::fs::File for advisory locking (native in Rust 1.89.0+, automatic cleanup on crash)
 2. Implement acquisition timeout (600 seconds default, configurable) to prevent indefinite waiting
 3. Add NFS detection with skip strategy (atomic operations only)
+4. Remove fs2 dependency from existing code (migrate to std)
 
 ### Implementation Strategy
 
 **Note**: After further analysis and discussion, the ADR-0001 chose a simpler approach than the hybrid strategy initially considered here.
 
-**Chosen Approach (per ADR-0001): fs2 + Skip on NFS**
-- **Local filesystems**: fs2 advisory locks (automatic cleanup on crash)
+**Chosen Approach (per ADR-0001): Native std::fs::File locks + Skip on NFS**
+- **Local filesystems**: std::fs::File advisory locks (native in Rust 1.89.0+)
 - **Network filesystems**: Skip locking, rely on atomic operations
 - **Detection**: Check filesystem type, warn user when on NFS
-- **Rationale**: YAGNI principle, cargo's proven pattern, atomic operations provide sufficient safety
+- **Rationale**: 
+  - No external dependencies needed
+  - YAGNI principle for NFS support
+  - cargo's proven pattern
+  - Atomic operations provide sufficient safety
 
-**Alternative Considered: Hybrid fs2 + PID-based fallback**
+**Alternative Considered: Hybrid std + PID-based fallback**
 - Would provide explicit locking on NFS
 - Adds complexity: stale detection, cleanup logic
 - Can be added later if real users report NFS issues
@@ -331,9 +335,10 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 ### Next Steps
 1. [x] Create formal requirements: FR-0001 through FR-0005 → Completed in ADR-0001
 2. [x] Create formal requirements: NFR-0001 through NFR-0003 → Completed in ADR-0001
-3. [x] Draft ADR for: Lock file strategy using fs2 with timeout wrapper → Completed as ADR-0001
-4. [ ] Create task for: Implementing core locking module with fs2
-5. [ ] Monitor production: Collect NFS usage data to validate YAGNI approach
+3. [x] Draft ADR for: Lock file strategy using native std::fs::File → Completed as ADR-0001
+4. [ ] Create task for: Implementing core locking module with std::fs::File
+5. [ ] Create task for: Migrating existing fs2 usage to std::fs::File
+6. [ ] Monitor production: Collect NFS usage data to validate YAGNI approach
 
 ### Out of Scope
 - Distributed locking across multiple machines
@@ -346,15 +351,15 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 N/A - Initial analysis
 
 ### References
-- fs2 crate documentation: https://docs.rs/fs2
-- nvm source code: https://github.com/nvm-sh/nvm/blob/master/nvm.sh
-- pyenv rehash implementation: https://github.com/pyenv/pyenv/blob/master/libexec/pyenv-rehash
-- volta sync module: https://volta-cli.github.io/volta/main/volta_core/sync/index.html
-- cargo flock implementation: https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs
-- sdkman CLI repository: https://github.com/sdkman/sdkman-cli
-- File locking best practices in Rust
-- POSIX advisory locking specification
+- Rust std::fs::File documentation: https://doc.rust-lang.org/std/fs/struct.File.html (Native locking API, stable since 1.89.0)
+- Rust 1.89.0 Release Notes: File locking stabilization announcement
 - flock(2) man page: https://man7.org/linux/man-pages/man2/flock.2.html
+- cargo flock implementation: https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs
+- volta sync module: https://volta-cli.github.io/volta/main/volta_core/sync/index.html (Historical fs2 usage)
+- pyenv rehash implementation: https://github.com/pyenv/pyenv/blob/master/libexec/pyenv-rehash
+- nvm source code: https://github.com/nvm-sh/nvm/blob/master/nvm.sh
+- sdkman CLI repository: https://github.com/sdkman/sdkman-cli
+- POSIX advisory locking specification
 
 ### Raw Data
 Example lock file structure (only relevant for PID-based locking approach, not chosen in ADR-0001):
@@ -368,7 +373,7 @@ Example lock file structure (only relevant for PID-based locking approach, not c
 }
 ```
 
-Note: The chosen fs2 advisory lock approach doesn't require storing any content in lock files.
+Note: The chosen std::fs::File advisory lock approach doesn't require storing any content in lock files.
 
 ---
 
