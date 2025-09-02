@@ -1,7 +1,7 @@
-# FR-0001: Cache JDK Metadata Locally with TTL
+# FR-twzx0-cache-metadata-ttl: Cache JDK Metadata Locally with TTL
 
 ## Metadata
-- ID: FR-0001
+- ID: FR-twzx0-cache-metadata-ttl
 - Type: Functional Requirement
 - Category: Performance, Caching
 - Priority: P0 (Critical)
@@ -13,10 +13,10 @@
 
 ## Links
 <!-- Internal project artifacts only -->
-- Implemented by Tasks: [`cache-implementation`](../../tasks/cache-implementation/), [`cache-config`](../../tasks/cache-config/)
-- Related Requirements: FR-0002 (Offline Mode), NFR-0001 (Cache Performance)
-- Related ADRs: [ADR-015](../../adr/015-cache-storage-format.md) (SQLite for cache storage)
-- Tests: `test_cache_ttl_expiration`, `test_cache_hit_rate`, `bench_cache_performance`
+- Implemented by Tasks: [`T-df1ny-cache-implementation`](../../tasks/T-df1ny-cache-implementation/), [`T-h5ys6-cache-config`](../../tasks/T-h5ys6-cache-config/)
+- Related Requirements: FR-7y2x8-offline-mode (Offline Mode), NFR-j3cf1-cache-performance (Cache Performance)
+- Related ADRs: [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md) (SQLite for cache storage)
+- Tests: `test_cache_ttl_fr_twzx0`, `test_cache_hit_rate_fr_twzx0`, `bench_cache_performance_nfr_j3cf1`
 - Issue: #234
 - PR: #567
 
@@ -49,7 +49,7 @@ As a Kopi user, I want JDK metadata to be cached locally, so that repeated searc
 
 **Cache Storage:**
 - Location: `~/.kopi/cache/metadata.db`
-- Format: SQLite database (per ADR-015)
+- Format: SQLite database (per ADR-bw6wd-cache-storage-format)
 - Schema includes: metadata content, timestamp, ETag, TTL
 
 **Cache Behavior:**

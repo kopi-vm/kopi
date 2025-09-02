@@ -1,7 +1,7 @@
-# [FR-####/NFR-####]: [Requirement Title]
+# [FR-<id>/NFR-<id>]: [Requirement Title]
 
 ## Metadata
-- ID: [FR-#### or NFR-####]
+- ID: [FR-<id> or NFR-<id>]
 - Type: Functional Requirement | Non-Functional Requirement  
 - Category: [e.g., Performance, Security, Usability, API, CLI, Platform]
 - Priority: P0 (Critical) | P1 (High) | P2 (Medium) | P3 (Low)
@@ -15,9 +15,9 @@
 ## Links
 <!-- Internal project artifacts only. For external resources, see External References section -->
 - Implemented by Tasks: [`task-name-1`](../../tasks/task-name-1/), [`task-name-2`](../../tasks/task-name-2/) | N/A – Not yet implemented
-- Related Requirements: FR-####, NFR-#### | N/A – Standalone requirement
-- Related ADRs: [ADR-###](../../adr/###-title.md) | N/A – No related ADRs
-- Tests: `test_name_fr_####`, `bench_name_nfr_####` | N/A – Not yet tested
+- Related Requirements: FR-<id>, NFR-<id> | N/A – Standalone requirement
+- Related ADRs: [ADR-<id>](../../adr/ADR-<id>-title.md) | N/A – No related ADRs
+- Tests: `test_name_fr_<id>`, `bench_name_nfr_<id>` | N/A – Not yet tested
 - Issue: #XXX | N/A – <reason>
 - PR: #XXX | N/A – <reason>
 
@@ -68,13 +68,13 @@ The system shall [constraint/quality attribute] to ensure [benefit/goal].
 ### Test Strategy
 - Test Type: Unit | Integration | Benchmark | Manual | E2E
 - Test Location: `tests/[file].rs` or `src/[module].rs#[cfg(test)]`
-- Test Names: `test_fr_####_description` or `bench_nfr_####_metric`
+- Test Names: `test_fr_<id>_description` or `bench_nfr_<id>_metric`
 
 ### Verification Commands
 ```bash
 # Specific commands to verify this requirement
-cargo test test_fr_####
-cargo bench bench_nfr_####
+cargo test test_fr_<id>
+cargo bench bench_nfr_<id>
 # Platform-specific verification if needed
 ```
 
@@ -85,8 +85,8 @@ cargo bench bench_nfr_####
 
 ## Dependencies
 
-- Depends on: FR-####, NFR-#### | N/A – No dependencies
-- Blocks: FR-####, NFR-#### | N/A – Blocks nothing
+- Depends on: FR-<id>, NFR-<id> | N/A – No dependencies
+- Blocks: FR-<id>, NFR-<id> | N/A – Blocks nothing
 
 ## Platform Considerations
 

@@ -8,7 +8,7 @@
 
 Kopi is a JDK version management tool written in Rust that integrates with your shell to seamlessly switch between different Java Development Kit versions.
 
-📚 **Full documentation at [https://kopi-vm.github.io/](https://kopi-vm.github.io/)**
+**Full documentation at [https://kopi-vm.github.io/](https://kopi-vm.github.io/)**
 
 ## Installation
 

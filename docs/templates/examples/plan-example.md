@@ -10,15 +10,15 @@
 
 ## Links
 <!-- Internal project artifacts only. For external resources, see External References section -->
-- Requirements: FR-0001, FR-0002, FR-0003, NFR-0001, NFR-0002
-- Design: [`docs/tasks/cache-implementation/design.md`](design.md)
-- Related ADRs: [ADR-015](../../adr/015-cache-storage-format.md), ADR-004, ADR-006
+- Requirements: FR-twzx0-cache-metadata-ttl, FR-7y2x8-offline-mode, FR-0cv9r-cache-management, NFR-j3cf1-cache-performance, NFR-z0jyi-cache-size
+- Design: [`docs/tasks/T-df1ny-cache-implementation/design.md`](design.md)
+- Related ADRs: [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md), ADR-efx08-error-handling, ADR-6vgm3-progress-indicators
 - Issue: #234
 - PR: #256 (Phase 1), #267 (Phase 2 - WIP)
 
 ## Overview
 
-Implementation of requirements FR-0001 (cache with TTL), FR-0002 (offline mode), and FR-0003 (cache management) to improve performance and reduce API calls to foojay.io. This plan breaks down the work into three phases aligned with the requirements.
+Implementation of requirements FR-twzx0-cache-metadata-ttl (cache with TTL), FR-7y2x8-offline-mode (offline mode), and FR-0cv9r-cache-management (cache management) to improve performance and reduce API calls to foojay.io. This plan breaks down the work into three phases aligned with the requirements.
 
 ## Success Metrics
 - [x] Cache operations complete in <100ms
@@ -38,16 +38,16 @@ Implementation of requirements FR-0001 (cache with TTL), FR-0002 (offline mode),
 
 ---
 
-## Phase 1: Core Cache Infrastructure (FR-0001)
+## Phase 1: Core Cache Infrastructure (FR-twzx0-cache-metadata-ttl)
 
 ### Goal
-Implement FR-0001: Cache JDK metadata locally with TTL
+Implement FR-twzx0-cache-metadata-ttl: Cache JDK metadata locally with TTL
 
 ### Inputs
-- Requirements: FR-0001, NFR-0001, NFR-0002
+- Requirements: FR-twzx0-cache-metadata-ttl, NFR-j3cf1-cache-performance, NFR-z0jyi-cache-size
 - Documentation:
-  - `/docs/adr/archive/015-cache-storage-format.md` – SQLite storage decision
-  - `/docs/adr/archive/004-error-handling.md` – Error types to implement
+  - `/docs/adr/ADR-bw6wd-cache-storage-format.md` – SQLite storage decision
+  - `/docs/adr/ADR-efx08-error-handling.md` – Error types to implement
 - Source Code to Modify:
   - `/src/lib.rs` – Add cache module
   - `/src/error.rs` – Add cache-specific errors
@@ -95,26 +95,26 @@ cargo test --lib --quiet cache
 
 ---
 
-## Phase 2: Offline Mode and CLI Integration (FR-0002, FR-0003)
+## Phase 2: Offline Mode and CLI Integration (FR-7y2x8-offline-mode, FR-0cv9r-cache-management)
 
 ### Goal
-Implement FR-0002 (offline mode) and FR-0003 (cache management commands)
+Implement FR-7y2x8-offline-mode (offline mode) and FR-0cv9r-cache-management (cache management commands)
 
 ### Inputs
-- Requirements: FR-0002, FR-0003
+- Requirements: FR-7y2x8-offline-mode, FR-0cv9r-cache-management
 - Dependencies:
-  - Phase 1: Core cache implementation (FR-0001)
+  - Phase 1: Core cache implementation (FR-twzx0-cache-metadata-ttl)
   - `src/commands/` – Existing command structure
 - Source Code to Modify:
   - `/src/commands/cache.rs` – New cache commands
   - `/src/commands/search.rs` – Integrate cache lookups
 
 ### Tasks
-- [x] **Cache Commands (FR-0003)**
+- [x] **Cache Commands (FR-0cv9r-cache-management)**
   - [x] `cache refresh` implementation
   - [x] `cache clear` implementation
   - [ ] `cache info` implementation
-- [ ] **Offline Mode (FR-0002)**
+- [ ] **Offline Mode (FR-7y2x8-offline-mode)**
   - [x] Modify search to use cache
   - [ ] Add `--no-cache` flag support
   - [ ] Add `--offline` flag for forced offline mode
@@ -138,9 +138,9 @@ cargo it cache_commands
 ```
 
 ### Acceptance Criteria (Phase Gate)
-- FR-0002: Offline mode works with cached data
-- FR-0003: All cache management commands functional
-- NFR-0001: Cache operations under 100ms
+- FR-7y2x8-offline-mode: Offline mode works with cached data
+- FR-0cv9r-cache-management: All cache management commands functional
+- NFR-j3cf1-cache-performance: Cache operations under 100ms
 
 ### Rollback/Fallback
 - Existing direct API calls remain as fallback
@@ -148,10 +148,10 @@ cargo it cache_commands
 
 ---
 
-## Phase 3: Performance Optimization (NFR-0001, NFR-0002)
+## Phase 3: Performance Optimization (NFR-j3cf1-cache-performance, NFR-z0jyi-cache-size)
 
 ### Goal
-Optimize for NFR-0001 (<100ms operations) and NFR-0002 (size under 100MB)
+Optimize for NFR-j3cf1-cache-performance (<100ms operations) and NFR-z0jyi-cache-size (size under 100MB)
 
 ### Inputs
 - Dependencies:
@@ -199,15 +199,15 @@ cargo test --features perf-tests
 ## Testing Strategy
 
 ### Unit Tests
-- Test each cache operation in isolation (FR-0001)
+- Test each cache operation in isolation (FR-twzx0-cache-metadata-ttl)
 - Mock SQLite operations for reliability
-- Test TTL expiration logic (FR-0001)
+- Test TTL expiration logic (FR-twzx0-cache-metadata-ttl)
 
 ### Integration Tests
-- End-to-end cache scenarios (FR-0001, FR-0002)
-- Concurrent access patterns (NFR-0003)
-- Offline mode functionality (FR-0002)
-- Cache management commands (FR-0003)
+- End-to-end cache scenarios (FR-twzx0-cache-metadata-ttl, FR-7y2x8-offline-mode)
+- Concurrent access patterns (NFR-07c4m-concurrent-access)
+- Offline mode functionality (FR-7y2x8-offline-mode)
+- Cache management commands (FR-0cv9r-cache-management)
 
 ### External API Parsing
 - Captured foojay.io responses in tests
@@ -296,8 +296,8 @@ cargo test --features perf-tests
 - [x] `cargo clippy --all-targets -- -D warnings`
 - [x] `cargo test --lib --quiet`
 - [ ] Integration/perf/bench: `cargo it`, `cargo perf`, `cargo bench`
-- [ ] Requirements verified: FR-0001, FR-0002, FR-0003 functional
-- [ ] Performance: NFR-0001 (<100ms), NFR-0002 (<100MB) met
+- [ ] Requirements verified: FR-twzx0-cache-metadata-ttl, FR-7y2x8-offline-mode, FR-0cv9r-cache-management functional
+- [ ] Performance: NFR-j3cf1-cache-performance (<100ms), NFR-z0jyi-cache-size (<100MB) met
 - [ ] `docs/reference.md` updated with cache commands
 - [ ] ADRs added for significant decisions
 - [x] Error messages actionable and in English

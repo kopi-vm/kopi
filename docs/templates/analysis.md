@@ -11,8 +11,8 @@
 ## Links
 <!-- Internal project artifacts only -->
 - Related Analyses: [other-analysis.md] | N/A – Standalone analysis
-- Existing Requirements: FR-####, NFR-#### | N/A – New area
-- Existing ADRs: ADR-### | N/A – No related decisions yet
+- Existing Requirements: FR-<id>, NFR-<id> | N/A – New area
+- Existing ADRs: ADR-<id> | N/A – No related decisions yet
 - Issue/Discussion: #XXX | N/A – No tracking issue
 
 ## Executive Summary
@@ -53,18 +53,18 @@
 ## Discovered Requirements
 
 ### Functional Requirements (Potential)
-- [ ] **FR-DRAFT-1**: [Requirement description] → Will become FR-####
+- [ ] **FR-DRAFT-1**: [Requirement description] → Will become FR-<id>
   - Rationale: [Why this is needed]
   - Priority: P0/P1/P2/P3
   - Acceptance Criteria: [Measurable criteria]
 
-- [ ] **FR-DRAFT-2**: [Requirement description] → Will become FR-####
+- [ ] **FR-DRAFT-2**: [Requirement description] → Will become FR-<id>
   - Rationale: [Why this is needed]
   - Priority: P0/P1/P2/P3
   - Acceptance Criteria: [Measurable criteria]
 
 ### Non-Functional Requirements (Potential)
-- [ ] **NFR-DRAFT-1**: [Constraint/quality attribute] → Will become NFR-####
+- [ ] **NFR-DRAFT-1**: [Constraint/quality attribute] → Will become NFR-<id>
   - Category: Performance | Security | Usability | Reliability
   - Target: [Specific measurable target]
   - Rationale: [Why this constraint matters]
@@ -107,7 +107,7 @@
 2. [Quick wins or critical fixes]
 
 ### Next Steps
-1. [ ] Create formal requirements: FR-####, NFR-####
+1. [ ] Create formal requirements: FR-<id>, NFR-<id>
 2. [ ] Draft ADR for: [Architectural decision needed]
 3. [ ] Create task for: [Implementation work]
 4. [ ] Further investigation: [What needs more analysis]

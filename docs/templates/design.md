@@ -10,9 +10,9 @@
 
 ## Links
 <!-- Internal project artifacts only. For external resources, see External References section -->
-- Requirements: [`docs/tasks/<task>/requirements.md`](requirements.md) | N/A – <reason>
-- Plan: [`docs/tasks/<task>/plan.md`](plan.md) | N/A – <reason>
-- Related ADRs: ADR-XXX, ADR-YYY | N/A – No related ADRs
+- Requirements: [`docs/tasks/T-<id>-<task>/requirements.md`](requirements.md) | N/A – <reason>
+- Plan: [`docs/tasks/T-<id>-<task>/plan.md`](plan.md) | N/A – <reason>
+- Related ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
 - Issue: #XXX | N/A – <reason>
 - PR: #XXX | N/A – <reason>
 
@@ -39,10 +39,10 @@
 - List referenced requirement IDs only; avoid duplicating full text.
 
 Referenced Functional Requirements
-- FR-###, FR-###, FR-###
+- FR-<id>, FR-<id>, FR-<id>
 
 Referenced Non-Functional Requirements
-- NFR-### (performance), NFR-### (security), NFR-### (compatibility), etc.
+- NFR-<id> (performance), NFR-<id> (security), NFR-<id> (compatibility), etc.
 
 ## Proposed Design
 
@@ -115,7 +115,7 @@ Implementation Notes
 | Design Decision | ADR | Status |
 |-----------------|-----|--------|
 | [Error handling approach] | ADR-004 | Accepted |
-| [Caching strategy] | ADR-XXX | Proposed |
+| [Caching strategy] | ADR-<id> | Proposed |
 | [New decision needed] | TBD | Draft needed |
 
 ## Alternatives Considered
@@ -154,7 +154,7 @@ Decision Rationale
 
 ## Implementation Plan
 
-- Milestones/Phases: [Link to `docs/templates/plan.md` or task plan]
+- Milestones/Phases: [Link to `docs/tasks/T-<id>-<task>/plan.md` or task plan]
 - Risks & Mitigations: [Top risks with mitigation/validation/fallback]
 
 ## Requirements Mapping

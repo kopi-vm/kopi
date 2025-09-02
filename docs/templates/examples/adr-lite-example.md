@@ -1,4 +1,4 @@
-# ADR-020: Default Log Level Configuration
+# Default Log Level Configuration
 
 ## Metadata
 - Type: ADR (Lite)
@@ -13,7 +13,7 @@
 - Requirements: N/A – Quick fix based on user feedback
 - Design: N/A – Simple configuration change
 - Plan: N/A – Direct implementation
-- Related ADRs: ADR-009 (Logging Strategy)
+- Related ADRs: ADR-8b2pt-logging-strategy
 - Issue: #89
 - PR: #92
 - Supersedes: N/A – First version

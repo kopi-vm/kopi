@@ -1,4 +1,4 @@
-# ADR-019: Centralized Caching Strategy
+# Centralized Caching Strategy
 
 ## Metadata
 - Type: ADR
@@ -10,10 +10,10 @@
 
 ## Links
 <!-- Internal project artifacts only. The Links section is mandatory for traceability. If a link does not apply, use "N/A – <reason>". -->
-- Requirements: [`docs/tasks/caching/requirements.md`](../../tasks/caching/requirements.md)
-- Design: [`docs/tasks/caching/design.md`](../../tasks/caching/design.md)
-- Plan: [`docs/tasks/caching/plan.md`](../../tasks/caching/plan.md)
-- Related ADRs: ADR-002, ADR-006
+- Requirements: [`docs/tasks/T-m20lm-caching/requirements.md`](../../tasks/T-m20lm-caching/requirements.md)
+- Design: [`docs/tasks/T-m20lm-caching/design.md`](../../tasks/T-m20lm-caching/design.md)
+- Plan: [`docs/tasks/T-m20lm-caching/plan.md`](../../tasks/T-m20lm-caching/plan.md)
+- Related ADRs: ADR-ygma7-http-client-selection, ADR-6vgm3-progress-indicators
 - Issue: #123
 - PR: #456
 - Supersedes: N/A – First caching strategy

@@ -11,7 +11,7 @@
 <!-- Internal project artifacts only -->
 - Related Analyses: N/A – Standalone analysis
 - Existing Requirements: N/A – New area
-- Existing ADRs: ADR-002 (HTTP client selection)
+- Existing ADRs: ADR-ygma7-http-client-selection
 - Issue/Discussion: #234
 
 ## Executive Summary
@@ -79,28 +79,28 @@ API call patterns from logs (1000 users, 30 days):
 ## Discovered Requirements
 
 ### Functional Requirements (Potential)
-- [ ] **FR-DRAFT-1**: Cache metadata locally with configurable TTL → Will become FR-0001
+- [ ] **FR-DRAFT-1**: Cache metadata locally with configurable TTL → Will become FR-twzx0-cache-metadata-ttl
   - Rationale: Eliminate redundant API calls
   - Priority: P0
   - Acceptance Criteria: 90% cache hit rate for repeated queries within TTL
 
-- [ ] **FR-DRAFT-2**: Provide offline mode using cached data → Will become FR-0002
+- [ ] **FR-DRAFT-2**: Provide offline mode using cached data → Will become FR-7y2x8-offline-mode
   - Rationale: Support disconnected development environments
   - Priority: P0
   - Acceptance Criteria: All read operations work offline with cached data
 
-- [ ] **FR-DRAFT-3**: Manual cache invalidation command → Will become FR-0003
+- [ ] **FR-DRAFT-3**: Manual cache invalidation command → Will become FR-0cv9r-cache-management
   - Rationale: Allow users to force-refresh when needed
   - Priority: P1
   - Acceptance Criteria: `kopi cache clear` removes all cached data
 
 ### Non-Functional Requirements (Potential)
-- [ ] **NFR-DRAFT-1**: Cache operations complete in <100ms → Will become NFR-0001
+- [ ] **NFR-DRAFT-1**: Cache operations complete in <100ms → Will become NFR-j3cf1-cache-performance
   - Category: Performance
   - Target: 95th percentile under 100ms for cache hits
   - Rationale: 10x improvement over current network calls
 
-- [ ] **NFR-DRAFT-2**: Cache size under 100MB → Will become NFR-0002
+- [ ] **NFR-DRAFT-2**: Cache size under 100MB → Will become NFR-z0jyi-cache-size
   - Category: Resource Usage
   - Target: Total cache size including indexes < 100MB
   - Rationale: Reasonable for developer machines
@@ -156,7 +156,7 @@ API call patterns from logs (1000 users, 30 days):
 3. Default TTL of 3600 seconds (configurable)
 
 ### Next Steps
-1. [x] Create formal requirements: FR-0001, FR-0002, FR-0003, NFR-0001, NFR-0002
+1. [x] Create formal requirements: FR-twzx0-cache-metadata-ttl, FR-7y2x8-offline-mode, FR-0cv9r-cache-management, NFR-j3cf1-cache-performance, NFR-z0jyi-cache-size
 2. [x] Draft ADR for cache storage format (SQLite selected)
 3. [ ] Create task for cache implementation
 4. [ ] Design monitoring for cache hit rates

@@ -10,9 +10,9 @@
 
 ## Links
 <!-- Internal project artifacts only. For external resources, see External References section -->
-- Requirements: FR-0001, FR-0002, FR-0003, NFR-0001, NFR-0002
-- Plan: [`docs/tasks/cache-implementation/plan.md`](plan.md)
-- Related ADRs: [ADR-015](../../adr/015-cache-storage-format.md), ADR-002, ADR-006
+- Requirements: FR-twzx0-cache-metadata-ttl, FR-7y2x8-offline-mode, FR-0cv9r-cache-management, NFR-j3cf1-cache-performance, NFR-z0jyi-cache-size
+- Plan: [`docs/tasks/T-df1ny-cache-implementation/plan.md`](plan.md)
+- Related ADRs: [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md), ADR-ygma7-http-client-selection, ADR-6vgm3-progress-indicators
 - Issue: #234
 - PR: N/A – Not yet implemented
 
@@ -31,19 +31,19 @@ This design implements a local caching layer for JDK metadata to reduce API call
 - Current behavior: Direct API calls with no caching, ~5s latency
 - Pain points: Slow searches, network dependency, API rate limits
 - Constraints: Must maintain backward compatibility
-- Related ADRs: ADR-002 (Serialization Format), ADR-006 (Progress Indicators)
+- Related ADRs: ADR-ygma7-http-client-selection (Serialization Format), ADR-6vgm3-progress-indicators (Progress Indicators)
 
 ## Requirements Summary
 
 Referenced Functional Requirements:
-- **FR-0001**: Cache JDK metadata locally with TTL
-- **FR-0002**: Provide offline mode using cached data
-- **FR-0003**: Manual cache invalidation command
+- **FR-twzx0-cache-metadata-ttl**: Cache JDK metadata locally with TTL
+- **FR-7y2x8-offline-mode**: Provide offline mode using cached data
+- **FR-0cv9r-cache-management**: Manual cache invalidation command
 
 Referenced Non-Functional Requirements:
-- **NFR-0001**: Cache operations complete in <100ms
-- **NFR-0002**: Cache size under 100MB
-- **NFR-0003**: Support concurrent access
+- **NFR-j3cf1-cache-performance**: Cache operations complete in <100ms
+- **NFR-z0jyi-cache-size**: Cache size under 100MB
+- **NFR-07c4m-concurrent-access**: Support concurrent access
 
 ## Proposed Design
 
@@ -62,10 +62,10 @@ Referenced Non-Functional Requirements:
 ```
 
 ### Components
-- `CacheStore`: SQLite-based storage (per ADR-015 and FR-0001)
-- `CacheManager`: TTL management and expiration (FR-0001)
-- `OfflineHandler`: Fallback for network failures (FR-0002)
-- `CacheCommands`: CLI commands for cache control (FR-0003)
+- `CacheStore`: SQLite-based storage (per ADR-bw6wd-cache-storage-format and FR-twzx0-cache-metadata-ttl)
+- `CacheManager`: TTL management and expiration (FR-twzx0-cache-metadata-ttl)
+- `OfflineHandler`: Fallback for network failures (FR-7y2x8-offline-mode)
+- `CacheCommands`: CLI commands for cache control (FR-0cv9r-cache-management)
 
 ### Data Flow
 1. Command requests metadata
@@ -77,9 +77,9 @@ Referenced Non-Functional Requirements:
 
 ### Storage Layout and Paths
 - Cache root: `~/.kopi/cache/` (all platforms)
-- Database: `~/.kopi/cache/metadata.db` (SQLite, per ADR-015)
+- Database: `~/.kopi/cache/metadata.db` (SQLite, per ADR-bw6wd-cache-storage-format)
 - Config: TTL configured in `~/.kopi/config.toml`
-- Size limit: 100MB max (NFR-0002)
+- Size limit: 100MB max (NFR-z0jyi-cache-size)
 
 ### CLI/API Design
 
@@ -145,20 +145,20 @@ pub struct CacheConfig {
 <!-- Map key design decisions to ADRs -->
 | Design Decision | ADR | Status | Requirement |
 |-----------------|-----|--------|-------------|
-| SQLite for cache storage | [ADR-015](../../adr/015-cache-storage-format.md) | Accepted | FR-0001 |
-| TTL-based expiration | ADR-006 | Accepted | FR-0001 |
-| Error handling with fallback | ADR-004 | Accepted | FR-0002 |
+| SQLite for cache storage | [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md) | Accepted | FR-twzx0-cache-metadata-ttl |
+| TTL-based expiration | ADR-6vgm3-progress-indicators | Accepted | FR-twzx0-cache-metadata-ttl |
+| Error handling with fallback | ADR-efx08-error-handling | Accepted | FR-7y2x8-offline-mode |
 
 ## Alternatives Considered
 
 1. JSON File Cache
    - Pros: Human-readable, simple implementation
    - Cons: Poor concurrent access, slow for large datasets
-   - Decision: Rejected due to NFR-0001 performance requirements
+   - Decision: Rejected due to NFR-j3cf1-cache-performance requirements
 
 2. Memory-only Cache
    - Pros: Fastest possible access
-   - Cons: Lost on restart, doesn't support FR-0002 offline mode
+   - Cons: Lost on restart, doesn't support FR-7y2x8-offline-mode
    - Decision: Rejected, doesn't meet requirements
 
 3. Custom Binary Format
@@ -166,10 +166,10 @@ pub struct CacheConfig {
    - Cons: Complex implementation, hard to debug
    - Decision: Rejected, SQLite provides better tradeoffs
 
-Decision Rationale (ADR-015)
-- SQLite selected for ACID compliance and concurrent access (NFR-0003)
+Decision Rationale (ADR-bw6wd-cache-storage-format)
+- SQLite selected for ACID compliance and concurrent access (NFR-07c4m-concurrent-access)
 - Built-in with rusqlite, no external dependencies
-- Meets all performance requirements (NFR-0001)
+- Meets all performance requirements (NFR-j3cf1-cache-performance)
 
 ## Migration and Compatibility
 
@@ -181,9 +181,9 @@ Decision Rationale (ADR-015)
 ## Testing Strategy
 
 ### Unit Tests
-- `src/cache/mod.rs`: TTL calculation (FR-0001), expiration logic
+- `src/cache/mod.rs`: TTL calculation (FR-twzx0-cache-metadata-ttl), expiration logic
 - Mock SQLite operations for reliability
-- Test concurrent access patterns (NFR-0003)
+- Test concurrent access patterns (NFR-07c4m-concurrent-access)
 
 ### Integration Tests
 - `tests/cache_integration.rs`: End-to-end cache scenarios
@@ -192,7 +192,7 @@ Decision Rationale (ADR-015)
 ### External API Parsing
 ```rust
 #[test]
-fn test_foojay_response_parsing() {
+fn test_foojay_response_parsing_fr_twzx0() {
     let json = r#"{"result": [{"id": "abc", "version": "21.0.1"}]}"#;
     let parsed: ApiResponse = serde_json::from_str(json).unwrap();
     assert_eq!(parsed.result[0].version, "21.0.1");
@@ -205,21 +205,21 @@ fn test_foojay_response_parsing() {
 
 ## Implementation Plan
 
-- Phase 1: Core cache infrastructure (FR-0001)
-- Phase 2: Offline mode support (FR-0002)
-- Phase 3: Cache management commands (FR-0003)
-- See [`docs/tasks/cache-implementation/plan.md`](plan.md) for details
+- Phase 1: Core cache infrastructure (FR-twzx0-cache-metadata-ttl)
+- Phase 2: Offline mode support (FR-7y2x8-offline-mode)
+- Phase 3: Cache management commands (FR-0cv9r-cache-management)
+- See [`docs/tasks/T-df1ny-cache-implementation/plan.md`](plan.md) for details
 
 ## Requirements Mapping
 
 | Requirement | Design Section | Test(s) / Benchmark(s) |
 |-------------|----------------|-------------------------|
-| FR-0001 | Storage Layout, Data Flow | tests/cache_ttl.rs |
-| FR-0002 | OfflineHandler component | tests/offline_mode.rs |
-| FR-0003 | CLI/API Design | tests/cache_commands.rs |
-| NFR-0001 | Performance section | benches/cache_bench.rs |
-| NFR-0002 | Storage Layout (100MB limit) | tests/cache_size_limit.rs |
-| NFR-0003 | Concurrent Access | tests/concurrent_cache.rs |
+| FR-twzx0-cache-metadata-ttl | Storage Layout, Data Flow | tests/cache_ttl.rs |
+| FR-7y2x8-offline-mode | OfflineHandler component | tests/offline_mode.rs |
+| FR-0cv9r-cache-management | CLI/API Design | tests/cache_commands.rs |
+| NFR-j3cf1-cache-performance | Performance section | benches/cache_bench.rs |
+| NFR-z0jyi-cache-size | Storage Layout (100MB limit) | tests/cache_size_limit.rs |
+| NFR-07c4m-concurrent-access | Concurrent Access | tests/concurrent_cache.rs |
 
 ## Documentation Impact
 

@@ -6,7 +6,7 @@
 
 This project follows the Traceable Development Lifecycle (TDL), a structured development process with full traceability from requirements to implementation. The complete TDL documentation and supporting templates are maintained in:
 
-📚 **[`docs/templates/README.md`](docs/templates/README.md)** - Full TDL documentation, template descriptions, and usage instructions
+**[`docs/templates/README.md`](docs/templates/README.md)** - Full TDL documentation, template descriptions, and usage instructions
 
 ## Quick Reference
 
@@ -24,11 +24,11 @@ graph LR
 
 ### Key Locations
 - **Templates**: `docs/templates/` - All document templates
-- **Analysis**: `docs/analysis/AN-####-<topic>.md` - Problem exploration
-- **Requirements**: `docs/requirements/FR-####-<capability>.md` and `NFR-####-<quality>.md` - Formal requirements
-- **ADRs**: `docs/adr/ADR-####-<title>.md` - Architecture decisions (new format)
+- **Analysis**: `docs/analysis/AN-<id>-<topic>.md` - Problem exploration
+- **Requirements**: `docs/requirements/FR-<id>-<capability>.md` and `NFR-<id>-<quality>.md` - Formal requirements
+- **ADRs**: `docs/adr/ADR-<id>-<title>.md` - Architecture decisions (new format)
 - **ADRs (Archive)**: `docs/adr/archive/###-<title>.md` - Historical ADRs (pre-2025)
-- **Tasks**: `docs/tasks/T-####-<task>/` - Design and plan documents (new format)
+- **Tasks**: `docs/tasks/T-<id>-<task>/` - Design and plan documents (new format)
 - **Tasks (Archive)**: `docs/tasks/archive/<task>/` - Historical tasks (pre-2025)
 - **Traceability**: `docs/traceability.md` - Central mapping matrix
 
@@ -36,7 +36,8 @@ graph LR
 - All documentation must be in English (per `CLAUDE.md`)
 - For repository conventions (commands, architecture, error handling), see `CLAUDE.md`
 - Follow the Traceable Development Lifecycle (TDL) for all non-trivial changes
-- Maintain traceability through requirement IDs (FR-####/NFR-####) and ADR references
+- Maintain traceability through requirement IDs (FR-<id>/NFR-<id>) and ADR references
 - Small changes can use simplified workflow (see templates README)
 
 For detailed TDL phases, template usage instructions, pull request checklists, and archive policies, refer to the comprehensive documentation in [`docs/templates/README.md`](docs/templates/README.md).
+
