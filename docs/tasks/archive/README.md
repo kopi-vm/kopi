@@ -25,6 +25,7 @@ New tasks should be created in the main `docs/tasks/` directory using the new na
 
 The following tasks have been archived:
 - ap-bundle
+- docs-migration
 - doctor
 - env
 - indicator
