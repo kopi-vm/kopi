@@ -139,6 +139,11 @@ graph LR
 ### Step 3: Architecture Decisions (decisions/trade-offs)
 
 - **Purpose**: Make and document significant architecture/design decisions
+  - Verify against existing implementation before documenting decisions
+  - Check actual code for directory structures, constants, and naming conventions
+  - Don't assume patterns from other tools apply - each project has its own conventions
+  - Reference specific code locations when describing current state
+  - Document both the decision and its rationale with concrete examples
 - **Templates**: 
   - [`adr.md`](adr.md) - Full ADR template for architecturally significant decisions, broad impact, or important trade-offs
   - [`adr-lite.md`](adr-lite.md) - Lightweight ADR for tactical choices with limited scope and clear best practices
