@@ -19,7 +19,7 @@
   - [`NFR-0001-lock-timeout-performance.md`](../requirements/NFR-0001-lock-timeout-performance.md)
   - [`NFR-0002-lock-cleanup-reliability.md`](../requirements/NFR-0002-lock-cleanup-reliability.md)
   - [`NFR-0003-cross-platform-compatibility.md`](../requirements/NFR-0003-cross-platform-compatibility.md)
-- Related ADRs: [`ADR-0001-concurrent-process-locking-strategy.md`](../adr/ADR-0001-concurrent-process-locking-strategy.md)
+- Related ADRs: [`ADR-8mnaz-concurrent-process-locking-strategy.md`](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Issue/Discussion: N/A – No tracking issue
 
 ## Executive Summary
@@ -315,9 +315,9 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 
 ### Implementation Strategy
 
-**Note**: After further analysis and discussion, the ADR-0001 chose a simpler approach than the hybrid strategy initially considered here.
+**Note**: After further analysis and discussion, the ADR-8mnaz chose a simpler approach than the hybrid strategy initially considered here.
 
-**Chosen Approach (per ADR-0001): Native std::fs::File locks + Skip on NFS**
+**Chosen Approach (per ADR-8mnaz): Native std::fs::File locks + Skip on NFS**
 - **Local filesystems**: std::fs::File advisory locks (native in Rust 1.89.0+)
 - **Network filesystems**: Skip locking, rely on atomic operations
 - **Detection**: Check filesystem type, warn user when on NFS
@@ -343,7 +343,7 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 ### Next Steps
 1. [x] Create formal requirements: FR-0001 through FR-0005 → Completed 2025-09-02
 2. [x] Create formal requirements: NFR-0001 through NFR-0003 → Completed 2025-09-02
-3. [x] Draft ADR for: Lock file strategy using native std::fs::File → Completed as ADR-0001
+3. [x] Draft ADR for: Lock file strategy using native std::fs::File → Completed as ADR-8mnaz
 4. [ ] Create task for: Implementing core locking module with std::fs::File
 5. [ ] Create task for: Migrating existing fs2 usage to std::fs::File
 6. [ ] Monitor production: Collect NFS usage data to validate YAGNI approach
@@ -370,7 +370,7 @@ N/A - Initial analysis
 - POSIX advisory locking specification
 
 ### Raw Data
-Example lock file structure (only relevant for PID-based locking approach, not chosen in ADR-0001):
+Example lock file structure (only relevant for PID-based locking approach, not chosen in ADR-8mnaz):
 ```json
 {
   "pid": 12345,

@@ -107,5 +107,5 @@ The 600-second default ensures most users can complete installations while still
 
 ## Related Documentation
 
-- [ADR-0001: Concurrent Process Locking Strategy](../../docs/adr/ADR-0001-concurrent-process-locking-strategy.md)
+- [ADR-8mnaz: Concurrent Process Locking Strategy](../../docs/adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Performance measurements section in the ADR contains the latest analysis

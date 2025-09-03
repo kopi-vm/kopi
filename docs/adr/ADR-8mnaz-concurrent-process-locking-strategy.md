@@ -1,4 +1,4 @@
-# ADR-0001: Concurrent Process Locking Strategy
+# Concurrent Process Locking Strategy
 
 **Summary**: Use Rust's native `std::fs::File` locking API (stable since 1.89.0) for cross-process synchronization, eliminating external dependencies while ensuring safe concurrent operations.
 
@@ -28,7 +28,7 @@
 - PR: N/A – Implementation not started
 - Supersedes: N/A – First version
 - Superseded by: N/A – Current version
-- Analysis: [`docs/analysis/AN-0001-concurrent-process-locking.md`](../analysis/AN-0001-concurrent-process-locking.md)
+- Analysis: [`docs/analysis/AN-m9efc-concurrent-process-locking.md`](../analysis/AN-m9efc-concurrent-process-locking.md)
 
 ## Context
 <!-- What problem or architecturally significant requirement motivates this decision? Include constraints, assumptions, scope boundaries, and prior art. -->
@@ -193,7 +193,7 @@ We will implement a **native Rust standard library locking strategy** using `std
 
 ### Why Not Hybrid Approach? (Divergence from Analysis)
 
-**Note**: The Analysis document (AN-0001) recommended a hybrid approach with PID-based fallback for NFS. After further consideration and discussion, we chose to diverge from this recommendation for the following reasons:
+**Note**: The Analysis document (AN-m9efc) recommended a hybrid approach with PID-based fallback for NFS. After further consideration and discussion, we chose to diverge from this recommendation for the following reasons:
 
 - **YAGNI (You Aren't Gonna Need It)**: No evidence of NFS demand yet
 - **Complexity cost**: PID-based locks need stale detection, cleanup logic  

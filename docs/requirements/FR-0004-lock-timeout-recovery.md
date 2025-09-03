@@ -10,8 +10,8 @@
 - Date Modified: 2025-09-02
 
 ## Links
-- Analysis: [`docs/analysis/AN-0001-concurrent-process-locking.md`](../analysis/AN-0001-concurrent-process-locking.md)
-- Related ADRs: [`ADR-0001-concurrent-process-locking-strategy.md`](../adr/ADR-0001-concurrent-process-locking-strategy.md)
+- Analysis: [`docs/analysis/AN-m9efc-concurrent-process-locking.md`](../analysis/AN-m9efc-concurrent-process-locking.md)
+- Related ADRs: [`ADR-8mnaz-concurrent-process-locking-strategy.md`](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Related Requirements: FR-0001, FR-0002, FR-0003 (all lock operations)
 - Issue: N/A – No tracking issue created yet
 - Task: N/A – Implementation not started
