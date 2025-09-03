@@ -22,6 +22,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     
     steps:
+    - name: Configure Git to use LF on checkout
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
+        git config --global core.safecrlf true
+
     - uses: actions/checkout@v4
 
     - name: Install Bun
@@ -35,7 +41,7 @@ jobs:
     - name: Run Prettier
       run: bun lint:prettier
 
-    - name: Run remark
+    - name: Run Remark
       run: bun lint:md
 
     - name: Install Rust

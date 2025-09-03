@@ -17,7 +17,8 @@
   },
   "prettier": {
     "tabWidth": 2,
-    "printWidth": 120
+    "printWidth": 120,
+    "endOfLine": "lf"
   },
   "remarkConfig": {
     "settings": {
