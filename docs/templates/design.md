@@ -133,8 +133,8 @@ Implementation Notes
 
 <!-- Map key design decisions to ADRs -->
 
-| Design Decision            | ADR      | Status       |
-| -------------------------- | -------- | ------------ |
+| Design Decision             | ADR      | Status       |
+| --------------------------- | -------- | ------------ |
 | `[Error handling approach]` | ADR-004  | Accepted     |
 | `[Caching strategy]`        | ADR-<id> | Proposed     |
 | `[New decision needed]`     | TBD      | Draft needed |
@@ -189,8 +189,8 @@ Decision Rationale
 
 | Requirement | Design Section             | Test(s) / Benchmark(s)      |
 | ----------- | -------------------------- | --------------------------- |
-| FR-001      | `[Section name]`            | `tests/[...], unit #[...]`  |
-| FR-002      | `[Section name]`            | `tests/[...], it #[...]`    |
+| FR-001      | `[Section name]`           | `tests/[...], unit #[...]`  |
+| FR-002      | `[Section name]`           | `tests/[...], it #[...]`    |
 | NFR-010     | Performance Considerations | `bench: [...], perf #[...]` |
 
 ## Documentation Impact

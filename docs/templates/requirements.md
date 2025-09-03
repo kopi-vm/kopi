@@ -113,8 +113,8 @@ cargo bench bench_nfr_<id>
 
 ## Risks & Mitigation
 
-| Risk                | Impact          | Likelihood      | Mitigation             | Validation                  |
-| ------------------- | --------------- | --------------- | ---------------------- | --------------------------- |
+| Risk                 | Impact          | Likelihood      | Mitigation              | Validation                   |
+| -------------------- | --------------- | --------------- | ----------------------- | ---------------------------- |
 | `[Risk description]` | High/Medium/Low | High/Medium/Low | `[Mitigation strategy]` | `[How to verify mitigation]` |
 
 ## Implementation Notes

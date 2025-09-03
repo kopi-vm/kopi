@@ -63,14 +63,14 @@ The system shall work identically across all supported platforms to ensure users
 
 ### Platform Support Matrix
 
-| Platform | Architecture     | Filesystem       | Lock Support |
-| -------- | ---------------- | ---------------- | ------------ |
+| Platform | Architecture        | Filesystem       | Lock Support |
+| -------- | ------------------- | ---------------- | ------------ |
 | Linux    | `x86_64`, `aarch64` | ext4, xfs, btrfs | Full         |
 | macOS    | `x86_64`, `aarch64` | APFS, HFS+       | Full         |
-| Windows  | `x86_64`          | NTFS             | Full         |
+| Windows  | `x86_64`            | NTFS             | Full         |
 | WSL2     | `x86_64`, `aarch64` | ext4             | Full         |
-| All      | All              | FAT32            | Degraded     |
-| All      | All              | Network FS       | Fallback     |
+| All      | All                 | FAT32            | Degraded     |
+| All      | All                 | Network FS       | Fallback     |
 
 ## Verification Method
 

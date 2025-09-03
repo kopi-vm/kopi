@@ -96,7 +96,7 @@ cargo it        # alias: test --quiet --features integration_tests
 
 ---
 
-## Phase 2: [Next Component]
+## Phase 2: `[Next Component]`
 
 ### Goal
 
@@ -105,8 +105,8 @@ cargo it        # alias: test --quiet --features integration_tests
 ### Inputs
 
 - Dependencies:
-  - Phase 1: [Dependency description]
-  - [Other dependencies]
+  - Phase 1: `[Dependency description]`
+  - `[Other dependencies]`
 - Source Code to Modify:
   - `/src/...` – `[Purpose]`
 
@@ -150,8 +150,8 @@ cargo it
 ### Tasks
 
 - [ ] Test utilities
-  - [ ] [Helper functions]
-  - [ ] [Fixtures/mocks as needed]
+  - [ ] `[Helper functions]`
+  - [ ] `[Fixtures/mocks as needed]`
 - [ ] Scenarios
   - [ ] Happy path
   - [ ] Error handling
@@ -179,7 +179,7 @@ cargo test --quiet
 
 ### Acceptance Criteria (Phase Gate)
 
-- [Coverage of critical paths; green on unit + integration runs]
+- `[Coverage of critical paths; green on unit + integration runs]`
 
 ---
 
@@ -209,15 +209,15 @@ cargo test --quiet
 
 ### Unix
 
-- [Paths/permissions/behavior]
+- `[Paths/permissions/behavior]`
 
 ### Windows
 
-- [Registry, junctions/symlinks, path separators]
+- `[Registry, junctions/symlinks, path separators]`
 
 ### Filesystem
 
-- [Case sensitivity, long paths]
+- `[Case sensitivity, long paths]`
 
 ---
 
@@ -225,26 +225,26 @@ cargo test --quiet
 
 ### External Crates
 
-- `[crate_name]` – [Purpose]
-- [Prefer minimal features where possible]
+- `[crate_name]` – `[Purpose]`
+- `[Prefer minimal features where possible]`
 
 ### Internal Modules
 
-- `src/[module]/` – [Description]
+- `src/[module]/` – `[Description]`
 
 ---
 
 ## Risks & Mitigations
 
-1. Risk: [Description]
-   - Mitigation: [Plan]
-   - Validation: [How to prove it works]
-   - Fallback: [Alternative]
+1. Risk: `[Description]`
+   - Mitigation: `[Plan]`
+   - Validation: `[How to prove it works]`
+   - Fallback: `[Alternative]`
 
-2. Risk: [Description]
-   - Mitigation: [Plan]
-   - Validation: [How to prove it works]
-   - Fallback: [Alternative]
+2. Risk: `[Description]`
+   - Mitigation: `[Plan]`
+   - Validation: `[How to prove it works]`
+   - Fallback: `[Alternative]`
 
 ---
 

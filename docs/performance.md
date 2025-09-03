@@ -169,6 +169,7 @@ To add a new benchmark:
 3. Use `black_box` to prevent compiler optimizations
 
 4. If creating a new file, add it to `benches/kopi_bench.rs`:
+
    ```rust
    criterion_group!(
        benches,

@@ -36,8 +36,8 @@
 
 ## Stakeholder Analysis
 
-| Stakeholder   | Interest/Need     | Impact          | Priority |
-| ------------- | ----------------- | --------------- | -------- |
+| Stakeholder    | Interest/Need      | Impact          | Priority |
+| -------------- | ------------------ | --------------- | -------- |
 | `[User group]` | `[What they need]` | High/Medium/Low | P0/P1/P2 |
 
 ## Research & Discovery
@@ -103,9 +103,9 @@
 
 ## Risk Assessment
 
-| Risk                | Probability     | Impact          | Mitigation Strategy |
-| ------------------- | --------------- | --------------- | ------------------- |
-| `[Risk description]` | High/Medium/Low | High/Medium/Low | `[How to address]`   |
+| Risk                 | Probability     | Impact          | Mitigation Strategy |
+| -------------------- | --------------- | --------------- | ------------------- |
+| `[Risk description]` | High/Medium/Low | High/Medium/Low | `[How to address]`  |
 
 ## Open Questions
 
