@@ -1,27 +1,23 @@
 # Process-level locking for installation operations
 
 ## Metadata
+- ID: FR-02uqo
 - Type: Functional Requirement
+- Category: Platform
+- Priority: P0 (Critical)
 - Owner: Development Team
 - Reviewers: Architecture Team
-- Status: Approved
-- Priority: P0
+- Status: Accepted
 - Date Created: 2025-09-02
 - Date Modified: 2025-09-03
 
 ## Links
-- Analysis: [`docs/analysis/AN-m9efc-concurrent-process-locking.md`](../analysis/AN-m9efc-concurrent-process-locking.md)
-- Related ADRs: [`ADR-8mnaz-concurrent-process-locking-strategy.md`](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
-- Related Functional Requirements:
-  - FR-0002 (uninstallation locking)
-  - FR-0003 (cache operation locking)
-  - FR-0004 (lock timeout and recovery)
-  - FR-0005 (user feedback for lock contention)
-- Related Non-Functional Requirements:
-  - NFR-0002 (lock cleanup reliability and permissions)
-  - NFR-0003 (cross-platform lock compatibility)
+- Implemented by Tasks: N/A – Not yet implemented
+- Related Requirements: FR-ui8x2, FR-v7ql4, FR-gbsz6, FR-c04js, NFR-vcxp8, NFR-g12ex
+- Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+- Tests: N/A – Not yet tested
 - Issue: N/A – No tracking issue created yet
-- Task: N/A – Implementation not started
+- PR: N/A – Not yet implemented
 
 ## Requirement Statement
 
@@ -93,6 +89,65 @@ Without process-level locking, multiple kopi processes attempting to install the
 - Native std::fs::File locking API (Rust 1.89.0+)
 - Filesystem support for advisory locks (see NFR-0002 for fallback behavior on unsupported filesystems)
 - Cross-platform compatibility constraints (see NFR-0003)
+
+## User Story (if applicable)
+
+As a kopi user, I want the tool to handle concurrent installation attempts safely, so that my JDK installations don't become corrupted when multiple processes run simultaneously.
+
+## Technical Details (if applicable)
+
+### Functional Requirement Details
+- Lock acquisition must happen before any filesystem modifications
+- Lock key must be canonicalized after all alias resolution
+- Lock must be exclusive (write lock) to prevent any concurrent access
+- Lock release must be automatic on process termination
+
+## Verification Method
+
+### Test Strategy
+- Test Type: Integration
+- Test Location: `tests/locking_tests.rs` (planned)
+- Test Names: `test_fr_02uqo_concurrent_install_lock`, `test_fr_02uqo_parallel_different_versions`
+
+### Verification Commands
+```bash
+# Specific commands to verify this requirement
+cargo test test_fr_02uqo
+```
+
+### Success Metrics
+- Metric 1: Zero corrupted installations during concurrent install attempts
+- Metric 2: Lock acquisition time < 100ms for uncontended locks
+
+## Platform Considerations
+
+### Unix
+- Uses advisory file locks via `flock` system call
+- Lock files stored in `$KOPI_HOME/locks/`
+
+### Windows
+- Uses Windows file locking via `LockFileEx` API
+- Lock files stored in `%KOPI_HOME%\locks\`
+
+### Cross-Platform
+- Lock file naming must be consistent across platforms
+- Path separators handled by std::path abstractions
+
+## Risks & Mitigation
+
+| Risk | Impact | Likelihood | Mitigation | Validation |
+|------|--------|------------|------------|-----------|
+| Filesystem doesn't support locks | High | Low | Fallback to process-local mutex | Test on network filesystems |
+| Lock file permissions incorrect | Medium | Medium | Create with appropriate umask | Verify permissions in tests |
+| Stale lock files accumulate | Low | Medium | Cleanup on startup | Monitor lock directory size |
+
+## External References
+N/A – No external references
+
+## Change History
+
+- 2025-09-02: Initial version
+- 2025-09-03: Updated to use 5-character ID format
 
 ## Out of Scope
 
