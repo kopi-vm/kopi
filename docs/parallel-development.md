@@ -30,7 +30,7 @@ Instead of sequential numbers, use randomly generated 5-character IDs:
 
 ### Document Naming Convention
 
-```
+```text
 AN-a3bf2-concurrent-locking.md     # Analysis
 FR-b4cd8-user-authentication.md    # Functional Requirement
 NFR-c5de9-performance.md            # Non-Functional Requirement
@@ -81,7 +81,7 @@ python3 scripts/trace-status.py --check
 
 ### Example Output
 
-```
+```text
 === Kopi TDL Status ===
 
 Coverage:

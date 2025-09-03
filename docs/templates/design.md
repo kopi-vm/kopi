@@ -53,7 +53,7 @@ Referenced Non-Functional Requirements
 
 ### High-Level Architecture
 
-```
+```text
 [ASCII diagram of components and data flows]
 ```
 
@@ -213,7 +213,7 @@ Decision Rationale
 
 ### Diagrams
 
-```
+```text
 [Additional diagrams]
 ```
 

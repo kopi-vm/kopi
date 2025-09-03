@@ -182,7 +182,7 @@ Use inline code (`` ` ``) for the following cases to ensure proper formatting an
 
 ### Template Examples
 
-#### Core Workflow Templates
+#### Core Workflow Template Examples
 
 - Analysis: [`examples/analysis-example.md`](examples/analysis-example.md) - Problem exploration and requirement discovery
 - Individual Requirement: [`examples/requirement-example.md`](examples/requirement-example.md) - Single requirement document (e.g., FR-0001-user-authentication, NFR-0001-performance)

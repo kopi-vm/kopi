@@ -305,7 +305,7 @@ kopi list                                # List installed JDK versions
 
 **Example output:**
 
-```
+```text
 Installed JDKs:
   ☕ temurin       21.0.5+11        489 MB   ~/.kopi/jdks/temurin-21.0.5+11
   🌳 corretto      17.0.13.11.1     324 MB   ~/.kopi/jdks/corretto-17.0.13.11.1
@@ -782,7 +782,7 @@ additional_distributions = ["company-jdk", "custom-build"]
 min_disk_space_mb = 1024
 ```
 
-#### Custom Distributions
+#### Additional Distributions Configuration
 
 The `additional_distributions` field allows you to use custom or private JDK distributions that are not in Kopi's default list. This is useful for:
 
@@ -808,19 +808,19 @@ Kopi supports two formats for project-specific Java version configuration:
 
 Simple text file containing only a version number for compatibility with existing tools:
 
-```
+```text
 21
 ```
 
 or
 
-```
+```text
 11.0.2
 ```
 
 or
 
-```
+```text
 21-ea
 ```
 
@@ -832,19 +832,19 @@ or
 
 Kopi's native format using `@` separator for distribution and version:
 
-```
+```text
 temurin@21
 ```
 
 or
 
-```
+```text
 corretto@11.0.2+9
 ```
 
 or
 
-```
+```text
 zulu@21-ea+35
 ```
 
@@ -1228,7 +1228,7 @@ kopi list
 cat ~/.kopi/jdks/<distribution>-<version>.meta.json | jq .
 ```
 
-For additional troubleshooting help, see the [Troubleshooting Guide](troubleshooting.md) or report issues at <https://github.com/kopi-vm/kopi/issues>.
+For additional troubleshooting help, report issues at <https://github.com/kopi-vm/kopi/issues>.
 
 ## Developer Documentation
 

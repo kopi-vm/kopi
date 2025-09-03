@@ -85,7 +85,7 @@ python3 -m http.server 8000
 
 Example output:
 
-```
+```text
 version_parsing/simple_version
                         time:   [52.3 ns 52.8 ns 53.4 ns]
                         change: [-2.1% +0.5% +3.2%] (p = 0.71)

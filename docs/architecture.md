@@ -2,7 +2,7 @@
 
 ## Project Structure
 
-```
+```text
 kopi/
 ├── src/
 │   ├── api/             # API integration with foojay.io

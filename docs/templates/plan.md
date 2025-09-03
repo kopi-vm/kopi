@@ -98,11 +98,11 @@ cargo it        # alias: test --quiet --features integration_tests
 
 ## Phase 2: `[Next Component]`
 
-### Goal
+### Phase 2 Goal
 
 - `[What this phase aims to achieve]`
 
-### Inputs
+### Phase 2 Inputs
 
 - Dependencies:
   - Phase 1: `[Dependency description]`
@@ -110,17 +110,17 @@ cargo it        # alias: test --quiet --features integration_tests
 - Source Code to Modify:
   - `/src/...` – `[Purpose]`
 
-### Tasks
+### Phase 2 Tasks
 
 - [ ] **`[Task group]`**
   - [ ] `[Specific subtask]`
   - [ ] `[Specific subtask]`
 
-### Deliverables
+### Phase 2 Deliverables
 
 - `[Artifacts/changes produced]`
 
-### Verification
+### Phase 2 Verification
 
 ```bash
 cargo check
@@ -131,11 +131,11 @@ cargo test --lib --quiet [module_name]
 cargo it
 ```
 
-### Acceptance Criteria (Phase Gate)
+### Phase 2 Acceptance Criteria
 
 - `[Observable, testable criteria required to exit this phase]`
 
-### Rollback/Fallback
+### Phase 2 Rollback/Fallback
 
 - `[How to revert; alternative approach if needed]`
 
@@ -143,11 +143,11 @@ cargo it
 
 ## Phase 3: Testing & Integration
 
-### Goal
+### Phase 3 Goal
 
 - Create comprehensive tests and validate integration boundaries.
 
-### Tasks
+### Phase 3 Tasks
 
 - [ ] Test utilities
   - [ ] `[Helper functions]`
@@ -161,12 +161,12 @@ cargo it
   - [ ] Concurrent operations (honor `RUST_TEST_THREADS=4`)
   - [ ] Resource cleanup
 
-### Deliverables
+### Phase 3 Deliverables
 
 - Comprehensive automated tests for new behavior
 - Documented known limitations and follow-ups (if any)
 
-### Verification
+### Phase 3 Verification
 
 ```bash
 cargo fmt
@@ -177,7 +177,7 @@ cargo it
 cargo test --quiet
 ```
 
-### Acceptance Criteria (Phase Gate)
+### Phase 3 Acceptance Criteria
 
 - `[Coverage of critical paths; green on unit + integration runs]`
 
@@ -319,7 +319,7 @@ cargo test --quiet
 
 ## Visual/UI Reference (optional)
 
-```
+```text
 [ASCII diagram or example output]
 ```
 

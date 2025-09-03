@@ -1,6 +1,6 @@
 # Traceable Development Lifecycle (TDL)
 
-_Structured phases, linked artifacts, verifiable outcomes_
+> Structured phases, linked artifacts, verifiable outcomes
 
 This document describes the Traceable Development Lifecycle (TDL), a template-based development process that ensures full traceability from requirements to implementation.
 

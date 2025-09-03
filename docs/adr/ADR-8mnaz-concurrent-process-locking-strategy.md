@@ -14,7 +14,7 @@
 
 <!-- Internal project artifacts only. The Links section is mandatory for traceability. If a link does not apply, use "N/A – <reason>". -->
 
-- Analysis: [`AN-m9efc-concurrent-process-locking.md`](../analysis/AN-m9efc-concurrent-process-locking.md)
+- Analysis: [`AN-m9efc-concurrent-process-locking.md`](../analysis/archive/AN-m9efc-concurrent-process-locking.md)
 - Requirements:
   - [`FR-02uqo-installation-locking.md`](../requirements/FR-02uqo-installation-locking.md)
   - [`FR-ui8x2-uninstallation-locking.md`](../requirements/FR-ui8x2-uninstallation-locking.md)
@@ -451,7 +451,7 @@ For concurrent operations, ensure that:
 <!-- External standards, specifications, articles, or documentation only -->
 
 - [Rust std::fs::File documentation](https://doc.rust-lang.org/std/fs/struct.File.html) - Native file locking API (stable since 1.89.0)
-- [Rust 1.89.0 Release Notes](https://blog.rust-lang.org/2025/08/04/Rust-1.89.0.html) - File locking stabilization
+- [Rust 1.89.0 Release Notes](https://blog.rust-lang.org/2025/08/07/Rust-1.89.0/index.html) - File locking stabilization
 - [flock(2) man page](https://man7.org/linux/man-pages/man2/flock.2.html) - Unix advisory locking
 - [Volta sync implementation](https://volta-cli.github.io/volta/main/volta_core/sync/index.html) - Reference implementation
 - [Cargo flock.rs](https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs) - NFS handling example
@@ -460,4 +460,4 @@ For concurrent operations, ensure that:
 
 ## Template Usage
 
-For detailed instructions on using this template, see [Template Usage Instructions](README.md#adr-templates-adrmd-and-adr-litemd) in the templates README.
+For detailed instructions on using this template, see [Template Usage Instructions](../templates/README.md#adr-templates-adrmd-and-adr-litemd) in the templates README.
