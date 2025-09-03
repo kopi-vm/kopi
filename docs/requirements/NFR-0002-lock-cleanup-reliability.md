@@ -1,4 +1,4 @@
-# NFR-0002: Lock cleanup reliability
+# Lock cleanup reliability
 
 ## Metadata
 - Type: Non-Functional Requirement

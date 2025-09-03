@@ -1,4 +1,4 @@
-# NFR-0003: Cross-platform lock compatibility
+# Cross-platform lock compatibility
 
 ## Metadata
 - Type: Non-Functional Requirement

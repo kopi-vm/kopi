@@ -1,4 +1,4 @@
-# NFR-0001: Lock acquisition timeout limit
+# Lock acquisition timeout limit
 
 ## Metadata
 - Type: Non-Functional Requirement

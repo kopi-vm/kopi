@@ -1,4 +1,4 @@
-# FR-0005: User feedback for lock contention
+# User feedback for lock contention
 
 ## Metadata
 - Type: Functional Requirement

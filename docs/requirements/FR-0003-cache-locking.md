@@ -1,4 +1,4 @@
-# FR-0003: Process-level locking for cache operations
+# Process-level locking for cache operations
 
 ## Metadata
 - Type: Functional Requirement

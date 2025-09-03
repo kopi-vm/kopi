@@ -6,7 +6,8 @@
 
 This project follows the Traceable Development Lifecycle (TDL), a structured development process with full traceability from requirements to implementation. The complete TDL documentation and supporting templates are maintained in:
 
-**[`docs/templates/README.md`](docs/templates/README.md)** - Full TDL documentation, template descriptions, and usage instructions
+**[`docs/tdl.md`](docs/tdl.md)** - Full TDL documentation and workflow  
+**[`docs/templates/README.md`](docs/templates/README.md)** - Template descriptions and usage instructions
 
 ## Quick Reference
 
@@ -39,5 +40,6 @@ graph LR
 - Maintain traceability through requirement IDs (FR-<id>/NFR-<id>) and ADR references
 - Small changes can use simplified workflow (see templates README)
 
-For detailed TDL phases, template usage instructions, pull request checklists, and archive policies, refer to the comprehensive documentation in [`docs/templates/README.md`](docs/templates/README.md).
+For detailed TDL phases, pull request checklists, and archive policies, refer to [`docs/tdl.md`](docs/tdl.md).  
+For template usage instructions, refer to [`docs/templates/README.md`](docs/templates/README.md).
 

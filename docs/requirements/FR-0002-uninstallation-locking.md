@@ -1,4 +1,4 @@
-# FR-0002: Process-level locking for uninstallation operations
+# Process-level locking for uninstallation operations
 
 ## Metadata
 - Type: Functional Requirement

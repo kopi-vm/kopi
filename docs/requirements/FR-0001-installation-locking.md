@@ -1,4 +1,4 @@
-# FR-0001: Process-level locking for installation operations
+# Process-level locking for installation operations
 
 ## Metadata
 - Type: Functional Requirement

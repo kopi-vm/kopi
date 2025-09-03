@@ -1,4 +1,4 @@
-# FR-0004: Lock timeout and recovery mechanism
+# Lock timeout and recovery mechanism
 
 ## Metadata
 - Type: Functional Requirement

@@ -88,7 +88,8 @@ kopi/
 ### Documentation & Process
 - `CLAUDE.md` - Repository conventions and AI assistant guidance
 - `AGENTS.md` - AI agent workflow instructions
-- `docs/templates/README.md` - Traceable Development Lifecycle (TDL) documentation
+- `docs/tdl.md` - Traceable Development Lifecycle (TDL) documentation
+- `docs/templates/README.md` - TDL template usage instructions
 - `docs/traceability.md` - Requirements-to-implementation mapping
 - `docs/adr/` - Architecture Decision Records directory
 

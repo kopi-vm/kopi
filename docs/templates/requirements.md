@@ -1,4 +1,4 @@
-# [FR-<id>/NFR-<id>]: [Requirement Title]
+# [Requirement Title]
 
 ## Metadata
 - ID: [FR-<id> or NFR-<id>]

@@ -112,7 +112,8 @@ fn test_parse_foojay_api_response() {
 ### Traceable Development Lifecycle (TDL)
 This project follows the Traceable Development Lifecycle (TDL), a template-based development process that ensures full traceability from requirements to implementation. TDL uses structured document templates at each phase to maintain consistency and completeness.
 
-**See [`docs/templates/README.md`](docs/templates/README.md)** for complete TDL documentation, templates, and workflow instructions.
+**See [`docs/tdl.md`](docs/tdl.md)** for complete TDL documentation and workflow instructions.  
+**See [`docs/templates/README.md`](docs/templates/README.md)** for template usage instructions.
 
 ### Completing Work
 When finishing any coding task, always run the following commands in order and fix any issues:
