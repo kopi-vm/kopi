@@ -94,7 +94,7 @@ cargo test test_nfr_z6kan_timeout_accuracy
 
 ### Unix
 
-- Use clock_gettime(CLOCK_MONOTONIC) for timing
+- Use `clock_gettime(CLOCK_MONOTONIC)` for timing
 - Sleep with nanosleep() for precise delays
 
 ### Windows

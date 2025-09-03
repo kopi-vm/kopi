@@ -49,7 +49,7 @@ The benchmark suite measures:
 1. **Version Parsing** (`version_parsing`)
    - Simple versions: "21"
    - Complex versions: "21.0.1+12-LTS"
-   - Distribution parsing: "temurin@21.0.1"
+   - Distribution parsing: `"temurin@21.0.1"`
    - Validation performance
 
 2. **Cache Operations** (`cache_operations`)
@@ -167,6 +167,7 @@ To add a new benchmark:
    ```
 
 3. Use `black_box` to prevent compiler optimizations
+
 4. If creating a new file, add it to `benches/kopi_bench.rs`:
    ```rust
    criterion_group!(
@@ -177,6 +178,7 @@ To add a new benchmark:
        your_new_module::benches  // Add your module here
    );
    ```
+
 5. Run and verify the benchmark works correctly
 
 ## Test Performance

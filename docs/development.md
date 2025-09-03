@@ -75,7 +75,7 @@ Kopi implements several security measures to ensure safe operation:
 
 ### Path Validation
 
-- All file operations are restricted to the KOPI_HOME directory (`~/.kopi` by default)
+- All file operations are restricted to the `KOPI_HOME` directory (`~/.kopi` by default)
 - Path traversal attempts (e.g., `../../../etc/passwd`) are blocked
 - Symlinks are validated to ensure they don't point outside the kopi directory
 

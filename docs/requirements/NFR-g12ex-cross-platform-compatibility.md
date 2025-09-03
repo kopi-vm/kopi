@@ -44,9 +44,9 @@ The system shall work identically across all supported platforms to ensure users
 - [ ] Lock acquisition, holding, and release behave identically
 - [ ] Timeout mechanisms work the same across platforms
 - [ ] Error conditions reported consistently
-- [ ] Linux (x86_64, aarch64) fully supported
-- [ ] macOS (x86_64, aarch64/M1) fully supported
-- [ ] Windows (x86_64) fully supported
+- [ ] Linux (`x86_64`, `aarch64`) fully supported
+- [ ] macOS (`x86_64`, `aarch64`/M1) fully supported
+- [ ] Windows (`x86_64`) fully supported
 - [ ] WSL2 supported as Linux environment
 - [ ] ext4, APFS, NTFS support full locking functionality
 - [ ] FAT32 gracefully degrades if locking unavailable
@@ -63,14 +63,14 @@ The system shall work identically across all supported platforms to ensure users
 
 ### Platform Support Matrix
 
-| Platform | Architecture    | Filesystem       | Lock Support |
-| -------- | --------------- | ---------------- | ------------ |
-| Linux    | x86_64, aarch64 | ext4, xfs, btrfs | Full         |
-| macOS    | x86_64, aarch64 | APFS, HFS+       | Full         |
-| Windows  | x86_64          | NTFS             | Full         |
-| WSL2     | x86_64, aarch64 | ext4             | Full         |
-| All      | All             | FAT32            | Degraded     |
-| All      | All             | Network FS       | Fallback     |
+| Platform | Architecture     | Filesystem       | Lock Support |
+| -------- | ---------------- | ---------------- | ------------ |
+| Linux    | `x86_64`, `aarch64` | ext4, xfs, btrfs | Full         |
+| macOS    | `x86_64`, `aarch64` | APFS, HFS+       | Full         |
+| Windows  | `x86_64`          | NTFS             | Full         |
+| WSL2     | `x86_64`, `aarch64` | ext4             | Full         |
+| All      | All              | FAT32            | Degraded     |
+| All      | All              | Network FS       | Fallback     |
 
 ## Verification Method
 
@@ -119,7 +119,7 @@ cargo test test_nfr_g12ex
 
 - Uses LockFileEx() API
 - Windows-specific error codes mapped to std::io::Error
-- Handle ERROR_LOCK_VIOLATION
+- Handle `ERROR_LOCK_VIOLATION`
 
 ### Cross-Platform
 
@@ -139,7 +139,7 @@ cargo test test_nfr_g12ex
 
 - Rely on Rust standard library for platform abstraction
 - Avoid platform-specific code unless absolutely necessary
-- Use #[cfg(target_os)] only for optimizations, not behavior
+- Use `#[cfg(target_os)]` only for optimizations, not behavior
 - Ensure error messages are platform-agnostic
 - Test with platform-specific CI runners
 

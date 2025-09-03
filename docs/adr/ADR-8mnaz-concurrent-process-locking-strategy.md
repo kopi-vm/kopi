@@ -177,9 +177,9 @@ We will implement a **native Rust standard library locking strategy** using `std
        - `KOPI_LOCKING__MODE=<auto|std|none>`
      - Config file: `[locking]` section with `timeout` and `mode` settings
    - **Clear messaging**:
-     - When waiting: "Another process is installing. Waiting up to 600s (Ctrl-C to cancel, --wait=infinite for unlimited)"
-     - On timeout: "Timed out after 600s. Try --wait=1200 or KOPI_LOCKING\_\_TIMEOUT=infinite"
-     - On NFS detected with auto mode: "Network filesystem detected; using atomic operations only"
+     - When waiting: `Another process is installing. Waiting up to 600s (Ctrl-C to cancel, --wait=infinite for unlimited)`
+     - On timeout: `Timed out after 600s. Try --wait=1200 or KOPI_LOCKING__TIMEOUT=infinite`
+     - On NFS detected with auto mode: `Network filesystem detected; using atomic operations only`
    - **Progress indication**: Simple spinner with elapsed time
 
 ### Decision Drivers
@@ -213,7 +213,7 @@ We will implement a **native Rust standard library locking strategy** using `std
 2. **Simplicity wins**: Avoid premature optimization for edge cases
 3. **Atomic operations are sufficient**: Staging + rename pattern prevents corruption
 4. **cargo validates this approach**: Production-proven strategy
-5. **NFS is rare for dev tools**: Most users have local ~/.kopi
+5. **NFS is rare for dev tools**: Most users have local `~/.kopi`
 6. **Standard library stability**: Long-term API stability guaranteed
 
 ### Why Not Hybrid Approach? (Divergence from Analysis)
@@ -297,8 +297,8 @@ mv "$staging_dir" "~/.kopi/jdks/temurin-21"  # Atomic!
    - `unlock()` remains the same
 
 2. **Disk Space Checking** (requires alternative):
-   - `src/storage/disk_space.rs`: fs2::available_space()
-   - `src/doctor/checks/jdks.rs`: fs2::available_space()
+   - `src/storage/disk_space.rs`: `fs2::available_space()`
+   - `src/doctor/checks/jdks.rs`: `fs2::available_space()`
    - Recommendation: Use `sysinfo` crate for cross-platform disk operations
 
 **Benefits of Migration**:
@@ -395,7 +395,7 @@ This allows safe composition of operations that may each require locks without r
 The existing metadata management implementation should be utilized:
 
 - Metadata files are already stored as `{distribution}-{version}.meta.json` in the JDKs directory
-- The `InstallationMetadata` structure already captures platform-specific information (java_home_suffix, structure_type, platform)
+- The `InstallationMetadata` structure already captures platform-specific information (`java_home_suffix`, `structure_type`, `platform`)
 - Metadata saving already uses atomic write operations through the existing `save_jdk_metadata_with_installation` function
 - The current implementation already keeps vendor JDK distributions unmodified by storing metadata separately
 
@@ -441,10 +441,10 @@ For concurrent operations, ensure that:
 
 - [x] ~~Lock granularity?~~ → Resolved: 2 locks only (per-version + cache writer)
 - [x] ~~Lock timeout strategy?~~ → Resolved: Default 600s, configurable, infinite option
-- [When to add Phase 2 features (heartbeat/lease)?] → [User Feedback] → [After 6 months in production]
-- [When to add NFS support?] → [User Feedback] → [Monitor for 6 months]
-- [x] ~~Config file support for lock mode?~~ → Resolved: Added [locking] section in config.toml
-- [CLI flag naming: --wait vs --lock-timeout?] → [UX Review] → [Before v1.0]
+- \[When to add Phase 2 features (heartbeat/lease)?] → \[User Feedback] → \[After 6 months in production]
+- \[When to add NFS support?] → \[User Feedback] → \[Monitor for 6 months]
+- [x] ~~Config file support for lock mode?~~ → Resolved: Added \[locking] section in config.toml
+- \[CLI flag naming: --wait vs --lock-timeout?] → \[UX Review] → \[Before v1.0]
 
 ## External References
 

@@ -1,10 +1,10 @@
-# <Concise Decision Title>
+# `[Concise Decision Title]`
 
 ## Metadata
 
 - Type: ADR
-- Owner: [Person or role who proposed this]
-- Reviewers: [Names/roles who reviewed]
+- Owner: `[Person or role who proposed this]`
+- Reviewers: `[Names/roles who reviewed]`
 - Status: Proposed / Accepted / Rejected / Deprecated / Superseded by ADR-<id>
   <!-- Proposed: Under discussion | Accepted: Approved and to be implemented | Rejected: Considered but not approved | Deprecated: No longer recommended | Superseded: Replaced by another ADR -->
 
@@ -35,10 +35,10 @@
 
 <!-- Define measurable criteria to evaluate if this decision was successful -->
 
-- Metric 1: <what to measure, e.g., "API response time < 200ms">
-- Metric 2: <target value, e.g., "Error rate < 1%">
-- Metric 3: <qualitative measure, e.g., "Developer feedback positive">
-- Review date: <YYYY-MM-DD when to evaluate>
+- Metric 1: `[what to measure, e.g., "API response time < 200ms"]`
+- Metric 2: `[target value, e.g., "Error rate < 1%"]`
+- Metric 3: `[qualitative measure, e.g., "Developer feedback positive"]`
+- Review date: `[YYYY-MM-DD when to evaluate]`
 
 ## Decision
 
@@ -46,8 +46,8 @@
 
 ### Decision Drivers (optional)
 
-- <criterion 1>
-- <criterion 2>
+- `[criterion 1]`
+- `[criterion 2]`
 
 ### Considered Options (optional)
 
@@ -69,17 +69,17 @@
 
 ### Positive
 
-- <benefit 1>
-- <benefit 2>
+- `[benefit 1]`
+- `[benefit 2]`
 
 ### Negative
 
-- <cost/limitation 1>
-- <cost/limitation 2>
+- `[cost/limitation 1]`
+- `[cost/limitation 2]`
 
 ### Neutral (if useful)
 
-- <neutral effect or caveat>
+- `[neutral effect or caveat]`
 
 ## Implementation Notes (optional)
 
@@ -91,7 +91,7 @@
 
 ```bash
 # Example commands or usage that illustrate the decision
-kopi <command> [args]
+kopi <command> `[args]`
 ```
 
 ```rust
@@ -114,7 +114,7 @@ kopi <command> [args]
 
 <!-- Questions that arose during decision-making but don't block the decision -->
 
-- [Question] → [Owner] → [Due/next step]
+- `[Question]` → `[Owner]` → `[Due/next step]`
 
 ## External References (optional)
 

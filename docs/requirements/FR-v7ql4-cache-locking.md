@@ -89,7 +89,7 @@ cargo test test_fr_v7ql4
 
 ### Windows
 
-- Atomic rename via MoveFileEx with MOVEFILE_REPLACE_EXISTING
+- Atomic rename via MoveFileEx with `MOVEFILE_REPLACE_EXISTING`
 - FlushFileBuffers for durability
 
 ### Cross-Platform

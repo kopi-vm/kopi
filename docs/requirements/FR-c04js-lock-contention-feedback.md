@@ -49,11 +49,11 @@ As a kopi user, I want to understand why operations are waiting and what I can d
 
 ### Functional Requirement Details
 
-- Initial message: "Waiting for lock on {resource}... (timeout: {duration}s)"
-- Progress format: "Waiting... [{elapsed}s / {timeout}s] Press Ctrl-C to cancel"
-- Infinite wait: "Waiting... [{elapsed}s] Press Ctrl-C to cancel"
-- Success message: "Lock acquired, proceeding with {operation}"
-- Failure message: "Could not acquire lock after {timeout}s. Try again with --lock-timeout"
+- Initial message: `Waiting for lock on {resource}... (timeout: {duration}s)`
+- Progress format: `Waiting... [{elapsed}s / {timeout}s] Press Ctrl-C to cancel`
+- Infinite wait: `Waiting... [{elapsed}s] Press Ctrl-C to cancel`
+- Success message: `Lock acquired, proceeding with {operation}`
+- Failure message: `Could not acquire lock after {timeout}s. Try again with --lock-timeout`
 
 ### UI Components
 

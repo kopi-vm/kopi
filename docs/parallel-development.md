@@ -24,8 +24,8 @@ Instead of sequential numbers, use randomly generated 5-character IDs:
 **Characteristics:**
 
 - **Format**: 5 random characters using base36 (0-9, a-z)
-- **Namespace**: ~60 million possible combinations
-- **Collision probability**: ~1% at 1,100 documents
+- **Namespace**: `~60 million` possible combinations
+- **Collision probability**: `~1%` at 1,100 documents
 - **Collision detection**: Script automatically checks for existing IDs
 
 ### Document Naming Convention
@@ -96,9 +96,9 @@ Gaps:
 
 ## Benefits
 
-✅ **No ID collisions** - Random IDs are unique across worktrees  
-✅ **No merge conflicts** - No central file to conflict  
-✅ **Parallel independence** - Each worktree operates independently  
+✅ **No ID collisions** - Random IDs are unique across worktrees\
+✅ **No merge conflicts** - No central file to conflict\
+✅ **Parallel independence** - Each worktree operates independently\
 ✅ **Always current** - Status generated on-demand from source documents
 
 ## Migration from Sequential IDs
@@ -130,14 +130,14 @@ Location: `scripts/trace-status.py`
 
 ## FAQ
 
-**Q: What if an ID collision occurs?**  
+**Q: What if an ID collision occurs?**\
 A: The script automatically detects and regenerates. With 5 characters, collision probability is negligible.
 
-**Q: How do I see the full project status?**  
+**Q: How do I see the full project status?**\
 A: Run `python3 scripts/trace-status.py` anytime for current status.
 
-**Q: What about existing sequential IDs?**  
+**Q: What about existing sequential IDs?**\
 A: They continue to work. The system handles both formats.
 
-**Q: Can I still generate a central traceability.md if needed?**  
+**Q: Can I still generate a central traceability.md if needed?**\
 A: Yes, the script can output to a file, but it should not be committed to avoid conflicts.

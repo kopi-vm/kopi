@@ -167,7 +167,7 @@ kopi shell corretto@21 --shell zsh       # Launch zsh with Corretto 21
 
 ### `kopi env`
 
-Output environment variables for shell evaluation, similar to direnv. This command outputs shell-specific environment setup for JAVA_HOME without modifying PATH.
+Output environment variables for shell evaluation, similar to direnv. This command outputs shell-specific environment setup for `JAVA_HOME` without modifying PATH.
 
 **Usage:**
 
@@ -226,7 +226,7 @@ fi
 - Outputs to stdout for shell evaluation, stderr for messages
 - Properly escapes paths with spaces and special characters
 - Verifies JDK is installed before outputting
-- Unlike `kopi shell`, this only sets JAVA_HOME without PATH modifications
+- Unlike `kopi shell`, this only sets `JAVA_HOME` without PATH modifications
 - Ideal for integration with direnv, shell prompts, or custom scripts
 
 ### `kopi global`
@@ -1046,8 +1046,8 @@ directory = "${KOPI_HOME}/local-metadata"
 
 ### Performance Benefits
 
-- **List operations**: ~100ms (vs 2-3 seconds with API-only)
-- **Search operations**: ~50ms (vs 1-2 seconds with API-only)
+- **List operations**: `~100ms` (vs 2-3 seconds with API-only)
+- **Search operations**: `~50ms` (vs 1-2 seconds with API-only)
 - **Automatic caching**: Reduces repeated network requests
 - **Lazy loading**: Fetches full package details only when needed
 
@@ -1075,11 +1075,11 @@ directory = "${KOPI_HOME}/local-metadata"
    - Check if metadata was created: `ls ~/.kopi/jdks/*.meta.json`
    - If missing, try reinstalling: `kopi uninstall <version> && kopi install <version>`
 
-##### Wrong JAVA_HOME on macOS
+##### Wrong `JAVA_HOME` on macOS
 
-**Symptom**: IDEs or build tools complain about incorrect JAVA_HOME
+**Symptom**: IDEs or build tools complain about incorrect `JAVA_HOME`
 
-**Solution**: Kopi automatically adjusts JAVA_HOME for bundle structures
+**Solution**: Kopi automatically adjusts `JAVA_HOME` for bundle structures
 
 ```bash
 # Check current JAVA_HOME
@@ -1228,7 +1228,7 @@ kopi list
 cat ~/.kopi/jdks/<distribution>-<version>.meta.json | jq .
 ```
 
-For additional troubleshooting help, see the [Troubleshooting Guide](troubleshooting.md) or report issues at https://github.com/kopi-vm/kopi/issues.
+For additional troubleshooting help, see the [Troubleshooting Guide](troubleshooting.md) or report issues at <https://github.com/kopi-vm/kopi/issues>.
 
 ## Developer Documentation
 

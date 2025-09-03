@@ -126,7 +126,7 @@ for i in {1..100}; do cargo test test_nfr_vcxp8_stress; done
 
 ## Implementation Notes
 
-- Use std::fs::File::lock_exclusive() from Rust 1.89.0
+- Use `std::fs::File::lock_exclusive()` from Rust 1.89.0
 - Detect filesystem type at runtime
 - Log filesystem detection results at debug level
 - Consider caching filesystem type detection

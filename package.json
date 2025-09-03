@@ -22,7 +22,8 @@
   "remarkConfig": {
     "settings": {
       "bullet": "-",
-      "emphasis": "_"
+      "emphasis": "_",
+      "rule": "-"
     },
     "plugins": [
       "remark-gfm",

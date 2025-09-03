@@ -138,7 +138,7 @@ kopi/
   1. Environment variable (`KOPI_JAVA_VERSION`)
   2. Local project file (`.kopi-version` or `.java-version`)
   3. Global default version
-- **Version Parser**: Flexible parsing supporting vendor@version format
+- **Version Parser**: Flexible parsing supporting `vendor@version` format
 
 ### Shell Integration
 

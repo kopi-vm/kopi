@@ -1,10 +1,10 @@
-# [Feature/Task Name] Implementation Plan
+# `[Feature/Task Name]` Implementation Plan
 
 ## Metadata
 
 - Type: Implementation Plan
-- Owner: [Person or role]
-- Reviewers: [Names/roles]
+- Owner: `[Person or role]`
+- Reviewers: `[Names/roles]`
 - Status: Not Started / Phase X In Progress / Blocked / Under Review / Completed
   <!-- Not Started: Planning complete, awaiting start | Phase X In Progress: Actively working | Blocked: External dependency | Under Review: Implementation complete | Completed: All phases done and verified -->
 
@@ -20,58 +20,58 @@
 
 ## Overview
 
-[Brief description of the feature/task and its purpose]
+`[Brief description of the feature/task and its purpose]`
 
 ## Success Metrics
 
-- [ ] [Measurable success criterion]
-- [ ] [Performance target if applicable]
-- [ ] [User experience improvement]
-- [ ] All existing tests pass; no regressions in [area]
+- [ ] `[Measurable success criterion]`
+- [ ] `[Performance target if applicable]`
+- [ ] `[User experience improvement]`
+- [ ] All existing tests pass; no regressions in `[area]`
 
 ## Scope
 
-- Goal: [Outcome to achieve]
-- Non-Goals: [Explicitly out of scope]
-- Assumptions: [Operational/technical assumptions]
-- Constraints: [Time/tech/platform/compliance]
+- Goal: `[Outcome to achieve]`
+- Non-Goals: `[Explicitly out of scope]`
+- Assumptions: `[Operational/technical assumptions]`
+- Constraints: `[Time/tech/platform/compliance]`
 
 ## Plan Summary
 
-- Phases: [Short list of phases and intent]
-- Timeline (optional): [Milestones/estimates]
+- Phases: `[Short list of phases and intent]`
+- Timeline (optional): `[Milestones/estimates]`
 
 ---
 
-## Phase 1: [Core Component/Foundation]
+## Phase 1: `[Core Component/Foundation]`
 
 ### Goal
 
-- [What this phase aims to achieve]
+- `[What this phase aims to achieve]`
 
 ### Inputs
 
 - Documentation:
-  - `/docs/...` – [Purpose]
+  - `/docs/...` – `[Purpose]`
 - Source Code to Modify:
-  - `/src/...` – [Purpose]
-  - `/src/...` – [Purpose]
+  - `/src/...` – `[Purpose]`
+  - `/src/...` – `[Purpose]`
 - Dependencies:
-  - Internal: `src/[module]/` – [Description]
-  - External crates: `[crate_name]` – [Purpose]
+  - Internal: `src/[module]/` – `[Description]`
+  - External crates: `[crate_name]` – `[Purpose]`
 
 ### Tasks
 
-- [ ] **[Task group]**
-  - [ ] [Specific subtask]
-  - [ ] [Specific subtask]
-- [ ] **[Task group]**
-  - [ ] [Specific subtask]
-  - [ ] [Specific subtask]
+- [ ] **`[Task group]`**
+  - [ ] `[Specific subtask]`
+  - [ ] `[Specific subtask]`
+- [ ] **`[Task group]`**
+  - [ ] `[Specific subtask]`
+  - [ ] `[Specific subtask]`
 
 ### Deliverables
 
-- [Artifacts/changes produced]
+- `[Artifacts/changes produced]`
 
 ### Verification
 
@@ -88,11 +88,11 @@ cargo it        # alias: test --quiet --features integration_tests
 
 ### Acceptance Criteria (Phase Gate)
 
-- [Observable, testable criteria required to exit this phase]
+- `[Observable, testable criteria required to exit this phase]`
 
 ### Rollback/Fallback
 
-- [How to revert; alternative approach if needed]
+- `[How to revert; alternative approach if needed]`
 
 ---
 
@@ -100,7 +100,7 @@ cargo it        # alias: test --quiet --features integration_tests
 
 ### Goal
 
-- [What this phase aims to achieve]
+- `[What this phase aims to achieve]`
 
 ### Inputs
 
@@ -108,17 +108,17 @@ cargo it        # alias: test --quiet --features integration_tests
   - Phase 1: [Dependency description]
   - [Other dependencies]
 - Source Code to Modify:
-  - `/src/...` – [Purpose]
+  - `/src/...` – `[Purpose]`
 
 ### Tasks
 
-- [ ] **[Task group]**
-  - [ ] [Specific subtask]
-  - [ ] [Specific subtask]
+- [ ] **`[Task group]`**
+  - [ ] `[Specific subtask]`
+  - [ ] `[Specific subtask]`
 
 ### Deliverables
 
-- [Artifacts/changes produced]
+- `[Artifacts/changes produced]`
 
 ### Verification
 
@@ -133,11 +133,11 @@ cargo it
 
 ### Acceptance Criteria (Phase Gate)
 
-- [Observable, testable criteria required to exit this phase]
+- `[Observable, testable criteria required to exit this phase]`
 
 ### Rollback/Fallback
 
-- [How to revert; alternative approach if needed]
+- `[How to revert; alternative approach if needed]`
 
 ---
 
@@ -158,7 +158,7 @@ cargo it
   - [ ] Edge cases
 - [ ] Concurrency & cleanup
   - [ ] Boundary conditions
-  - [ ] Concurrent operations (honor RUST_TEST_THREADS=4)
+  - [ ] Concurrent operations (honor `RUST_TEST_THREADS=4`)
   - [ ] Resource cleanup
 
 ### Deliverables
@@ -313,7 +313,7 @@ cargo test --quiet
 
 ## Open Questions
 
-- [Question] → [Owner] → [Due/next step]
+- `[Question]` → `[Owner]` → `[Due/next step]`
 
 ---
 

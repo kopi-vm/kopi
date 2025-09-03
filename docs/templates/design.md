@@ -1,10 +1,10 @@
-# [Component/Feature] Design
+# `[Component/Feature]` Design
 
 ## Metadata
 
 - Type: Design
-- Owner: [Person or role]
-- Reviewers: [Names/roles]
+- Owner: `[Person or role]`
+- Reviewers: `[Names/roles]`
 - Status: Draft / In Review / Approved
   <!-- Draft: Work in progress | In Review: Awaiting technical review | Approved: Ready for implementation -->
 
@@ -20,21 +20,21 @@
 
 ## Overview
 
-[One-paragraph summary of the problem, motivation, and expected outcome.]
+`[One-paragraph summary of the problem, motivation, and expected outcome.]`
 
 ## Success Metrics
 
-- [ ] [Measurable product/engineering impact]
-- [ ] [Performance target (e.g., <X ms, <Y MB)]
-- [ ] [Reliability target (e.g., zero regressions)]
+- [ ] `[Measurable product/engineering impact]`
+- [ ] `[Performance target (e.g., <X ms, <Y MB)]`
+- [ ] `[Reliability target (e.g., zero regressions)]`
 
 ## Background and Current State
 
-- Context: [Where this fits in Kopi; user workflows it affects]
-- Current behavior: [What exists today; relevant modules/paths]
-- Pain points: [Current issues/limitations]
-- Constraints: [Time/tech/platform/compliance]
-- Related ADRs: [`/docs/adr/0xx-...md`]
+- Context: `[Where this fits in Kopi; user workflows it affects]`
+- Current behavior: `[What exists today; relevant modules/paths]`
+- Pain points: `[Current issues/limitations]`
+- Constraints: `[Time/tech/platform/compliance]`
+- Related ADRs: `[/docs/adr/0xx-...md]`
 
 ## Requirements Summary (from requirements.md)
 
@@ -59,11 +59,11 @@ Referenced Non-Functional Requirements
 
 ### Components
 
-- [Modules/structs/functions and responsibilities]
+- `[Modules/structs/functions and responsibilities]`
 
 ### Data Flow
 
-- [Sequence of operations from input to output]
+- `[Sequence of operations from input to output]`
 
 ### Storage Layout and Paths (if applicable)
 
@@ -77,13 +77,13 @@ Referenced Non-Functional Requirements
 Usage
 
 ```bash
-kopi <command> [options]
+kopi <command> `[options]`
 ```
 
 Options
 
-- `--flag`: [Description]
-- `--option <value>`: [Description]
+- `--flag`: `[Description]`
+- `--option <value>`: `[Description]`
 
 Examples
 
@@ -98,66 +98,66 @@ Implementation Notes
 
 ### Data Models and Types
 
-- [Structs/enums/fields; serialization formats; version formats]
+- `[Structs/enums/fields; serialization formats; version formats]`
 
 ### Error Handling
 
 - Use `KopiError` variants with actionable, English messages.
 - Integrate with `ErrorContext` for enriched output and correct exit codes.
-- Exit codes: [2 invalid input/config, 3 no local version, 4 JDK not installed, 13 permission, 20 network, 28 disk, 127 not found].
+- Exit codes: `[2 invalid input/config, 3 no local version, 4 JDK not installed, 13 permission, 20 network, 28 disk, 127 not found]`.
 
 ### Security Considerations
 
-- [HTTPS verification, checksum validation, unsafe path handling, permission checks]
+- `[HTTPS verification, checksum validation, unsafe path handling, permission checks]`
 
 ### Performance Considerations
 
-- [Hot paths; caching strategy; async/concurrency; I/O; progress indicators]
+- `[Hot paths; caching strategy; async/concurrency; I/O; progress indicators]`
 - Reference perf workflows: `cargo perf`, `cargo bench`.
 
 ### Platform Considerations
 
 #### Unix
 
-- [Paths/permissions/behavior; symlinks]
+- `[Paths/permissions/behavior; symlinks]`
 
 #### Windows
 
-- [Registry/junctions; path separators; ACLs]
+- `[Registry/junctions; path separators; ACLs]`
 
 #### Filesystem
 
-- [Case sensitivity; long paths; temp files]
+- `[Case sensitivity; long paths; temp files]`
 
 ## ADR References
 
 <!-- Map key design decisions to ADRs -->
 
-| Design Decision           | ADR      | Status       |
-| ------------------------- | -------- | ------------ |
-| [Error handling approach] | ADR-004  | Accepted     |
-| [Caching strategy]        | ADR-<id> | Proposed     |
-| [New decision needed]     | TBD      | Draft needed |
+| Design Decision            | ADR      | Status       |
+| -------------------------- | -------- | ------------ |
+| `[Error handling approach]` | ADR-004  | Accepted     |
+| `[Caching strategy]`        | ADR-<id> | Proposed     |
+| `[New decision needed]`     | TBD      | Draft needed |
 
 ## Alternatives Considered
 
 1. Alternative A
-   - Pros: [List]
-   - Cons: [List]
+   - Pros: `[List]`
+   - Cons: `[List]`
 2. Alternative B
-   - Pros: [List]
-   - Cons: [List]
+   - Pros: `[List]`
+   - Cons: `[List]`
 
 Decision Rationale
 
-- [Why chosen approach; trade-offs]. Link/update ADR as needed.
+- `[Why chosen approach; trade-offs]`. Link/update ADR as needed.
 
 ## Migration and Compatibility
 
-- Backward/forward compatibility: [Behavior changes, flags, formats]
-- Rollout plan: [Phased enablement, feature flags]
-- Telemetry/Observability (if any): [What to measure; where logged]
-- Deprecation plan: [Old commands/flags removal timeline]
+- Backward/forward compatibility: `[Behavior changes, flags, formats]`
+- Rollout plan: `[Phased enablement, feature flags]`
+- Telemetry/Observability (if any): `[What to measure; where logged]`
+- Deprecation plan: `[Old commands/flags removal timeline]`
 
 ## Testing Strategy
 
@@ -180,18 +180,18 @@ Decision Rationale
 
 ## Implementation Plan
 
-- Milestones/Phases: [Link to `docs/tasks/T-<id>-<task>/plan.md` or task plan]
-- Risks & Mitigations: [Top risks with mitigation/validation/fallback]
+- Milestones/Phases: `[Link to docs/tasks/T-<id>-<task>/plan.md or task plan]`
+- Risks & Mitigations: `[Top risks with mitigation/validation/fallback]`
 
 ## Requirements Mapping
 
 - Map requirements to design sections and tests for traceability.
 
-| Requirement | Design Section             | Test(s) / Benchmark(s)    |
-| ----------- | -------------------------- | ------------------------- |
-| FR-001      | [Section name]             | tests/[...], unit #[...]  |
-| FR-002      | [Section name]             | tests/[...], it #[...]    |
-| NFR-010     | Performance Considerations | bench: [...], perf #[...] |
+| Requirement | Design Section             | Test(s) / Benchmark(s)      |
+| ----------- | -------------------------- | --------------------------- |
+| FR-001      | `[Section name]`            | `tests/[...], unit #[...]`  |
+| FR-002      | `[Section name]`            | `tests/[...], it #[...]`    |
+| NFR-010     | Performance Considerations | `bench: [...], perf #[...]` |
 
 ## Documentation Impact
 
@@ -207,7 +207,7 @@ Decision Rationale
 
 ## Open Questions
 
-- [Question] → [Owner] → [Due/next step]
+- `[Question]` → `[Owner]` → `[Due/next step]`
 
 ## Appendix
 
@@ -225,7 +225,7 @@ Decision Rationale
 
 ### Glossary
 
-- Term: [Definition]
+- Term: `[Definition]`
 
 ---
 

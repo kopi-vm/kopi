@@ -1,13 +1,13 @@
-# [Requirement Title]
+# `[Requirement Title]`
 
 ## Metadata
 
-- ID: [FR-<id> or NFR-<id>]
+- ID: `[FR-<id> or NFR-<id>]`
 - Type: Functional Requirement | Non-Functional Requirement
-- Category: [e.g., Performance, Security, Usability, API, CLI, Platform]
+- Category: `[e.g., Performance, Security, Usability, API, CLI, Platform]`
 - Priority: P0 (Critical) | P1 (High) | P2 (Medium) | P3 (Low)
-- Owner: [Person or role]
-- Reviewers: [Names/roles]
+- Owner: `[Person or role]`
+- Reviewers: `[Names/roles]`
 - Status: Proposed | Accepted | Implemented | Verified | Deprecated
   <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
 
@@ -24,7 +24,7 @@
 
 ## Requirement Statement
 
-[Clear, concise, unambiguous statement of what is required. One requirement per document. Be specific and measurable.]
+`[Clear, concise, unambiguous statement of what is required. One requirement per document. Be specific and measurable.]`
 
 Examples:
 
@@ -33,40 +33,40 @@ Examples:
 
 ## Rationale
 
-[Why this requirement exists. What problem does it solve? What value does it provide?]
+`[Why this requirement exists. What problem does it solve? What value does it provide?]`
 
 ## User Story (if applicable)
 
-[For functional requirements]
-As a [persona], I want [capability], so that [benefit].
+`[For functional requirements]`
+As a `[persona]`, I want `[capability]`, so that `[benefit]`.
 
-[For non-functional requirements]
-The system shall [constraint/quality attribute] to ensure [benefit/goal].
+`[For non-functional requirements]`
+The system shall `[constraint/quality attribute]` to ensure `[benefit/goal]`.
 
 ## Acceptance Criteria
 
-[Specific, measurable, testable conditions that must be met]
+`[Specific, measurable, testable conditions that must be met]`
 
-- [ ] [Criterion 1 - be specific and testable]
-- [ ] [Criterion 2 - include metrics where applicable]
-- [ ] [Criterion 3 - reference test names when known]
-- [ ] [Criterion 4 - platform-specific behavior if needed]
+- [ ] `[Criterion 1 - be specific and testable]`
+- [ ] `[Criterion 2 - include metrics where applicable]`
+- [ ] `[Criterion 3 - reference test names when known]`
+- [ ] `[Criterion 4 - platform-specific behavior if needed]`
 
 ## Technical Details (if applicable)
 
 ### Functional Requirement Details
 
-[For FRs: Detailed behavior, inputs/outputs, error conditions]
+`[For FRs: Detailed behavior, inputs/outputs, error conditions]`
 
 ### Non-Functional Requirement Details
 
-[For NFRs: Specific constraints, thresholds, standards]
+`[For NFRs: Specific constraints, thresholds, standards]`
 
-- Performance: [Latency/throughput targets]
-- Security: [Security requirements, standards]
-- Reliability: [Availability, retry behavior]
-- Compatibility: [Platform-specific requirements]
-- Usability: [UX requirements, message standards]
+- Performance: `[Latency/throughput targets]`
+- Security: `[Security requirements, standards]`
+- Reliability: `[Availability, retry behavior]`
+- Compatibility: `[Platform-specific requirements]`
+- Usability: `[UX requirements, message standards]`
 
 ## Verification Method
 
@@ -87,10 +87,10 @@ cargo bench bench_nfr_<id>
 
 ### Success Metrics
 
-[How to measure that the requirement is successfully implemented]
+`[How to measure that the requirement is successfully implemented]`
 
-- Metric 1: [Specific measurement and target]
-- Metric 2: [Specific measurement and target]
+- Metric 1: `[Specific measurement and target]`
+- Metric 2: `[Specific measurement and target]`
 
 ## Dependencies
 
@@ -101,25 +101,25 @@ cargo bench bench_nfr_<id>
 
 ### Unix
 
-[Unix-specific behavior or requirements] | N/A – Platform agnostic
+`[Unix-specific behavior or requirements]` | N/A – Platform agnostic
 
 ### Windows
 
-[Windows-specific behavior or requirements] | N/A – Platform agnostic
+`[Windows-specific behavior or requirements]` | N/A – Platform agnostic
 
 ### Cross-Platform
 
-[Behavior that must be consistent across platforms] | N/A – Platform agnostic
+`[Behavior that must be consistent across platforms]` | N/A – Platform agnostic
 
 ## Risks & Mitigation
 
-| Risk               | Impact          | Likelihood      | Mitigation            | Validation                 |
-| ------------------ | --------------- | --------------- | --------------------- | -------------------------- |
-| [Risk description] | High/Medium/Low | High/Medium/Low | [Mitigation strategy] | [How to verify mitigation] |
+| Risk                | Impact          | Likelihood      | Mitigation             | Validation                  |
+| ------------------- | --------------- | --------------- | ---------------------- | --------------------------- |
+| `[Risk description]` | High/Medium/Low | High/Medium/Low | `[Mitigation strategy]` | `[How to verify mitigation]` |
 
 ## Implementation Notes
 
-[Any guidance for implementers. This is NOT a design document but can include:]
+`[Any guidance for implementers. This is NOT a design document but can include:]`
 
 - Preferred approaches or patterns to follow
 - Known pitfalls to avoid
@@ -131,13 +131,6 @@ cargo bench bench_nfr_<id>
 <!-- Only external resources. Internal documents go in Links section -->
 
 - [External specification or standard](https://example.com) - Description | N/A – No external references
-
-## Change History
-
-[Tracked via Git. Major changes can be noted here for convenience]
-
-- YYYY-MM-DD: Initial version
-- YYYY-MM-DD: [Major change description]
 
 ---
 

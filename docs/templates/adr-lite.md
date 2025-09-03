@@ -1,10 +1,10 @@
-# <Short Title>
+# `[Short Title]`
 
 ## Metadata
 
 - Type: ADR (Lite)
-- Owner: [Person or role who proposed this]
-- Reviewers: [Names/roles who reviewed]
+- Owner: `[Person or role who proposed this]`
+- Reviewers: `[Names/roles who reviewed]`
 - Status: Proposed / Accepted / Rejected / Deprecated / Superseded by ADR-<id>
   <!-- Proposed: Under discussion | Accepted: Approved and to be implemented | Rejected: Considered but not approved | Deprecated: No longer recommended | Superseded: Replaced by another ADR -->
 
@@ -26,14 +26,14 @@
 
 <!-- 2–4 bullets describing the problem, constraints, and scope. -->
 
-- <concise point 1>
-- <concise point 2>
+- `[concise point 1]`
+- `[concise point 2]`
 
 ## Success Metrics (optional)
 
 <!-- Simple success criteria if measurable -->
 
-- <metric and target>
+- `[metric and target]`
 - Review date: <YYYY-MM-DD>
 
 ## Decision
@@ -46,13 +46,13 @@
 
 - Positive: <benefit>
 - Positive: <benefit>
-- Negative: <trade-off/limitation>
+- Negative: `[trade-off/limitation]`
 
 ## Open Questions (optional)
 
 <!-- Questions that arose during decision-making -->
 
-- [Question] → [Owner] → [Due/next step]
+- `[Question]` → `[Owner]` → `[Due/next step]`
 
 ## External References (optional)
 
