@@ -10,8 +10,8 @@
 
 ## Links
 <!-- Internal project artifacts only. For external resources, see External References section -->
-- Requirements: [`docs/tasks/T-<id>-<task>/requirements.md`](requirements.md) | N/A – <reason>
-- Design: [`docs/tasks/T-<id>-<task>/design.md`](design.md) | N/A – <reason>
+- Requirements: docs/tasks/T-<id>-<task>/requirements.md | N/A – <reason>
+- Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
 - Related ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
 - Issue: #XXX | N/A – <reason>
 - PR: #XXX | N/A – <reason>

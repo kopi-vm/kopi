@@ -14,9 +14,9 @@
 
 ## Links
 <!-- Internal project artifacts only. For external resources, see External References section -->
-- Implemented by Tasks: [`task-name-1`](../../tasks/task-name-1/), [`task-name-2`](../../tasks/task-name-2/) | N/A – Not yet implemented
+- Implemented by Tasks: task-name-1, task-name-2 | N/A – Not yet implemented
 - Related Requirements: FR-<id>, NFR-<id> | N/A – Standalone requirement
-- Related ADRs: [ADR-<id>](../../adr/ADR-<id>-title.md) | N/A – No related ADRs
+- Related ADRs: ADR-<id> | N/A – No related ADRs
 - Tests: `test_name_fr_<id>`, `bench_name_nfr_<id>` | N/A – Not yet tested
 - Issue: #XXX | N/A – <reason>
 - PR: #XXX | N/A – <reason>

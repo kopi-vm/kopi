@@ -12,8 +12,8 @@
 <!-- Internal project artifacts only. The Links section is mandatory for traceability. If a link does not apply, use "N/A – <reason>". -->
 - Analysis: AN-<id> | N/A – <reason>
 - Requirements: FR-<id>, NFR-<id> | N/A – <reason>
-- Design: [`docs/tasks/T-<id>-<task>/design.md`](../tasks/T-<id>-<task>/design.md) | N/A – <reason>
-- Plan: [`docs/tasks/T-<id>-<task>/plan.md`](../tasks/T-<id>-<task>/plan.md) | N/A – <reason>
+- Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
+- Plan: docs/tasks/T-<id>-<task>/plan.md | N/A – <reason>
 - Related ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
 - Issue: #XXX | N/A – <reason>
 - PR: #XXX | N/A – <reason>
