@@ -20,6 +20,21 @@ For complete TDL documentation and workflow, see [`../tdl.md`](../tdl.md).
 
 ## Template Usage Instructions
 
+### Placeholder Conventions
+
+Templates use the following placeholder conventions:
+
+- **`` `[descriptive text]` ``** - Content placeholders that should be replaced with your actual content. The backticks make these visually distinct in the templates.
+  - Example: `` `[Person or role]` `` → "John Smith" or "Engineering Lead"
+  - Example: `` `[Performance target if applicable]` `` → "Response time < 200ms"
+
+- **`<id>` or `<reason>`** - Short, single-word placeholders for IDs or brief values
+  - Example: `FR-<id>` → `FR-001`
+  - Example: `N/A – <reason>` → `N/A – Not yet implemented`
+
+- **`[Link text]`** in markdown links - Standard markdown link syntax (not a placeholder)
+  - Example: `[External resource title](https://example.com)` → `[AWS S3 Documentation](https://docs.aws.amazon.com/s3/)`
+
 ### Analysis Template (`analysis.md`)
 
 1. Use for exploring problem spaces and discovering requirements
