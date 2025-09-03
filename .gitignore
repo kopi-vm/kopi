@@ -1,8 +1,7 @@
 /target
 /release
 
-# Criterion benchmark temporary files
-/target/criterion/
+node_modules/
 
 # Benchmark results - only track baselines
 benchmarks/results/
