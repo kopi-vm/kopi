@@ -23,7 +23,21 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
+
+    - name: Install Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install Dependencies
+      run: bun install
+
+    - name: Run Prettier
+      run: bun lint:prettier
+
+    - name: Run remark
+      run: bun lint:md
+
     - name: Install Rust
       uses: actions-rust-lang/setup-rust-toolchain@v1
     
