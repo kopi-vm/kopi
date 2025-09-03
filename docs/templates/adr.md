@@ -95,7 +95,7 @@ kopi <command> [args]
 
 ## External References (optional)
 <!-- External standards, specifications, articles, or documentation only -->
-- [External resource title](URL) - Brief description (e.g., [ADR GitHub](https://adr.github.io/) - ADR methodology documentation)
+- [External resource title](https://example.com) - Brief description (e.g., [ADR GitHub](https://adr.github.io/) - ADR methodology documentation)
 
 ---
 

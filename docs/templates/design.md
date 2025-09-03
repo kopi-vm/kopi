@@ -175,7 +175,7 @@ Decision Rationale
 
 ## External References (optional)
 <!-- External standards, specifications, articles, or documentation -->
-- [External resource title](URL) - Brief description
+- [External resource title](https://example.com) - Brief description
 
 ## Open Questions
 

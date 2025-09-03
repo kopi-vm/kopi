@@ -115,7 +115,7 @@ cargo bench bench_nfr_<id>
 
 ## External References
 <!-- Only external resources. Internal documents go in Links section -->
-- [External specification or standard](URL) - Description | N/A – No external references
+- [External specification or standard](https://example.com) - Description | N/A – No external references
 
 ## Change History
 
