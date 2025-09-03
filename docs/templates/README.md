@@ -137,6 +137,31 @@ These requirements apply to ALL documentation templates:
 - **IDs & Naming**: Use explicit, stable IDs/names. Avoid vague terms like "manager" or "util"
 - **Consistency**: Don't duplicate requirements text; Design references requirement IDs; Plan references both
 
+### Markdown Formatting Guidelines
+
+Use inline code (`` ` ``) for the following cases to ensure proper formatting and readability:
+
+- **Environment Variables**: Always use inline code for environment variable names, especially those containing underscores
+  - Example: `RUST_LOG`, `KOPI_HOME`, `RUST_TEST_THREADS`
+
+- **Code Identifiers**: Use inline code for all programming language identifiers
+  - Rust structs, traits, functions: `KopiError`, `ErrorContext`, `find_symbol()`
+  - Command names and flags: `cargo test`, `--verbose`, `-D warnings`
+  - File paths and extensions: `src/main.rs`, `.toml`, `~/.kopi/`
+
+- **Special Characters**: Use inline code when describing text containing special characters
+  - Version strings with special chars: `temurin@21`, `~/.kopi/jdks/`
+  - Comparison operators: `< 200ms`, `> 8 hours`
+  - Shell operators and paths: `&&`, `|`, `./scripts/`
+
+- **Command Output**: Use inline code for inline examples of standard output or error messages
+  - Example: The command returns `0` on success or `exit code 2` for invalid input
+  - For multi-line output, use code blocks instead
+
+- **Technical Terms with Symbols**: Use inline code for technical terms containing symbols
+  - Package versions: `v1.2.3`, `^2.0.0`
+  - Git references: `HEAD`, `main`, `ADR-<id>`
+
 ### Linking & Cross-References
 
 - **Cross-linking**: Use relative links between documents

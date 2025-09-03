@@ -124,6 +124,13 @@ When finishing any coding task, always run the following commands in order and f
 
 Address any errors from each command before proceeding to the next. All must pass successfully before considering the work complete.
 
+When working on Markdown documentation (`.md` files), additionally run:
+
+4. `bun format` - Check markdown formatting and linting
+   - Fix any warnings or errors reported
+   - Common issues: trailing spaces, inconsistent indentation, missing blank lines
+   - Ensures consistent markdown style across all documentation
+
 ## Essential Commands
 
 - **Format**: `cargo fmt` - Format code using rustfmt
