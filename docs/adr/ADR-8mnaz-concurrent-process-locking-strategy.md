@@ -6,21 +6,22 @@
 - Type: ADR
 - Owner: Development Team
 - Reviewers: Architecture Team
-- Status: Proposed
+- Status: Accepted
   <!-- Proposed: Under discussion | Accepted: Approved and to be implemented | Rejected: Considered but not approved | Deprecated: No longer recommended | Superseded: Replaced by another ADR -->
 - Date Created: 2025-09-02
+- Date Modified: 2025-09-03
 
 ## Links
 <!-- Internal project artifacts only. The Links section is mandatory for traceability. If a link does not apply, use "N/A – <reason>". -->
 - Requirements: 
-  - [`FR-0001-installation-locking.md`](../requirements/FR-0001-installation-locking.md)
-  - [`FR-0002-uninstallation-locking.md`](../requirements/FR-0002-uninstallation-locking.md)
-  - [`FR-0003-cache-locking.md`](../requirements/FR-0003-cache-locking.md)
-  - [`FR-0004-lock-timeout-recovery.md`](../requirements/FR-0004-lock-timeout-recovery.md)
-  - [`FR-0005-lock-contention-feedback.md`](../requirements/FR-0005-lock-contention-feedback.md)
-  - [`NFR-0001-lock-timeout-performance.md`](../requirements/NFR-0001-lock-timeout-performance.md)
-  - [`NFR-0002-lock-cleanup-reliability.md`](../requirements/NFR-0002-lock-cleanup-reliability.md)
-  - [`NFR-0003-cross-platform-compatibility.md`](../requirements/NFR-0003-cross-platform-compatibility.md)
+  - [`FR-02uqo-installation-locking.md`](../requirements/FR-02uqo-installation-locking.md)
+  - [`FR-ui8x2-uninstallation-locking.md`](../requirements/FR-ui8x2-uninstallation-locking.md)
+  - [`FR-v7ql4-cache-locking.md`](../requirements/FR-v7ql4-cache-locking.md)
+  - [`FR-gbsz6-lock-timeout-recovery.md`](../requirements/FR-gbsz6-lock-timeout-recovery.md)
+  - [`FR-c04js-lock-contention-feedback.md`](../requirements/FR-c04js-lock-contention-feedback.md)
+  - [`NFR-z6kan-lock-timeout-performance.md`](../requirements/NFR-z6kan-lock-timeout-performance.md)
+  - [`NFR-vcxp8-lock-cleanup-reliability.md`](../requirements/NFR-vcxp8-lock-cleanup-reliability.md)
+  - [`NFR-g12ex-cross-platform-compatibility.md`](../requirements/NFR-g12ex-cross-platform-compatibility.md)
 - Design: N/A – Design phase not started
 - Plan: N/A – Planning phase not started
 - Related ADRs: N/A – First ADR for this feature
