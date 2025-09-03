@@ -21,7 +21,8 @@
   },
   "remarkConfig": {
     "settings": {
-      "bullet": "-"
+      "bullet": "-",
+      "emphasis": "_"
     },
     "plugins": [
       "remark-gfm",
