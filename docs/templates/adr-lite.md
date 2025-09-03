@@ -10,7 +10,8 @@
 
 ## Links
 <!-- Internal project artifacts only. For external resources, see External References section -->
-- Requirements: [`docs/tasks/T-<id>-<task>/requirements.md`](../tasks/T-<id>-<task>/requirements.md) | N/A – <reason>
+- Analysis: AN-<id> | N/A – <reason>
+- Requirements: FR-<id>, NFR-<id> | N/A – <reason>
 - Design: [`docs/tasks/T-<id>-<task>/design.md`](../tasks/T-<id>-<task>/design.md) | N/A – <reason>
 - Plan: [`docs/tasks/T-<id>-<task>/plan.md`](../tasks/T-<id>-<task>/plan.md) | N/A – <reason>
 - Related ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
