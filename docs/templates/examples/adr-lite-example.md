@@ -7,7 +7,6 @@
 - Reviewers: Core Team
 - Status: Accepted
   <!-- Proposed: Under discussion | Accepted: Approved and to be implemented | Rejected: Considered but not approved | Deprecated: No longer recommended | Superseded: Replaced by another ADR -->
-- Date Created: 2024-09-01
 
 ## Links
 

@@ -7,7 +7,6 @@
 - Reviewers: [Names/roles]
 - Status: Draft / In Review / Approved
   <!-- Draft: Work in progress | In Review: Awaiting technical review | Approved: Ready for implementation -->
-- Date Created: YYYY-MM-DD
 
 ## Links
 

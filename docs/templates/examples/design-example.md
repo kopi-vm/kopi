@@ -7,7 +7,6 @@
 - Reviewers: Platform Architect, Senior Engineers
 - Status: Approved
   <!-- Draft: Work in progress | In Review: Awaiting technical review | Approved: Ready for implementation -->
-- Date Created: 2024-01-20
 
 ## Links
 

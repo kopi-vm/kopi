@@ -110,7 +110,7 @@ These requirements apply to ALL documentation templates:
 
 ### Document Structure
 
-- **Metadata**: Include Type/Owner/Reviewers/Status/Date Created consistently at the top
+- **Metadata**: Include Type/Owner/Reviewers/Status consistently at the top
 - **Document IDs**: Must be in the filename and Metadata section (not in document titles)
 - **Links Section**: Mandatory in every template for traceability. If something doesn't apply, write: `N/A – <reason>`
 - **Change History**: Use Git history (`git log --follow <file>`)

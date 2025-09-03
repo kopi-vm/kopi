@@ -9,8 +9,6 @@
 - Reviewers: Architecture Team
 - Status: Accepted
   <!-- Proposed: Under discussion | Accepted: Approved and to be implemented | Rejected: Considered but not approved | Deprecated: No longer recommended | Superseded: Replaced by another ADR -->
-- Date Created: 2025-09-02
-- Date Modified: 2025-09-03
 
 ## Links
 

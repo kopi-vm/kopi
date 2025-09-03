@@ -7,7 +7,6 @@
 - Reviewers: [Names/roles]
 - Status: Not Started / Phase X In Progress / Blocked / Under Review / Completed
   <!-- Not Started: Planning complete, awaiting start | Phase X In Progress: Actively working | Blocked: External dependency | Under Review: Implementation complete | Completed: All phases done and verified -->
-- Date Created: YYYY-MM-DD
 
 ## Links
 

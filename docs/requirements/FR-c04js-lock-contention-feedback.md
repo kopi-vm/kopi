@@ -9,8 +9,6 @@
 - Owner: Development Team
 - Reviewers: Architecture Team, UX Team
 - Status: Accepted
-- Date Created: 2025-09-02
-- Date Modified: 2025-09-03
 
 ## Links
 

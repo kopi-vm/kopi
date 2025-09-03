@@ -10,8 +10,6 @@
 - Reviewers: [Names/roles]
 - Status: Proposed | Accepted | Implemented | Verified | Deprecated
   <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
-- Date Created: YYYY-MM-DD
-- Date Modified: YYYY-MM-DD
 
 ## Links
 

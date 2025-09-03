@@ -6,8 +6,6 @@
 - Owner: [Person or role]
 - Status: Draft | Active | Complete | Archived
   <!-- Draft: Initial exploration | Active: Ongoing analysis | Complete: Ready for requirements | Archived: Analysis concluded -->
-- Date Created: YYYY-MM-DD
-- Date Modified: YYYY-MM-DD
 
 ## Links
 

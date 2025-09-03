@@ -9,8 +9,6 @@
 - Owner: Backend Team Lead
 - Reviewers: Platform Team, SRE Team
 - Status: Implemented
-- Date Created: 2024-01-15
-- Date Modified: 2024-02-10
 
 ## Links
 

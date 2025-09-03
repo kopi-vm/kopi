@@ -7,7 +7,6 @@
 - Reviewers: [Names/roles who reviewed]
 - Status: Proposed / Accepted / Rejected / Deprecated / Superseded by ADR-<id>
   <!-- Proposed: Under discussion | Accepted: Approved and to be implemented | Rejected: Considered but not approved | Deprecated: No longer recommended | Superseded: Replaced by another ADR -->
-- Date Created: <YYYY-MM-DD>
 
 ## Links
 

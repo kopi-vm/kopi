@@ -5,8 +5,6 @@
 - Type: Analysis
 - Owner: Backend Team Lead
 - Status: Complete
-- Date Created: 2024-01-10
-- Date Modified: 2024-01-15
 
 ## Links
 

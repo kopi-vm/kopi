@@ -5,8 +5,6 @@
 - Type: Analysis
 - Owner: Development Team
 - Status: Completed
-- Date Created: 2025-09-02
-- Date Modified: 2025-09-03
 
 ## Links
 
