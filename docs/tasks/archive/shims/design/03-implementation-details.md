@@ -25,7 +25,7 @@ fn main() {
             eprintln!("kopi: failed to determine tool name");
             std::process::exit(1);
         });
-    
+
     // Resolve required version
     let version = match resolve_version(&env::current_dir().unwrap()) {
         Ok(v) => v,
@@ -34,51 +34,51 @@ fn main() {
             std::process::exit(1);
         }
     };
-    
+
     // Check if JDK is installed, install if missing
     let jdk_path = ensure_jdk_installed(&version).unwrap_or_else(|e| {
         eprintln!("kopi: {}", e);
         std::process::exit(1);
     });
-    
+
     // Resolve tool path
     let tool_path = jdk_path.join("bin").join(&tool_name);
-    
+
     #[cfg(windows)]
     let tool_path = tool_path.with_extension("exe");
-    
+
     if !tool_path.exists() {
         eprintln!("kopi: Tool '{}' not found in Java {}", tool_name, version);
         std::process::exit(1);
     }
-    
+
     // Platform-specific execution
     #[cfg(unix)]
     execute_unix(&tool_path);
-    
+
     #[cfg(windows)]
     execute_windows(&tool_path);
 }
 
 fn ensure_jdk_installed(version: &Version) -> Result<PathBuf> {
     let jdk_path = get_jdk_path(version);
-    
+
     if !jdk_path.exists() {
         // Check if auto-install is enabled
         let config = KopiConfig::load()?;
         if !config.shims.auto_install {
             bail!("Java {} is not installed. Run 'kopi install {}'", version, version);
         }
-        
+
         // Check if we should prompt
         if config.shims.auto_install_prompt && !should_install_jdk(version)? {
             bail!("Java {} is not installed. Installation cancelled by user.", version);
         }
-        
+
         // Install JDK
         install_jdk_from_shim(version)?;
     }
-    
+
     Ok(jdk_path)
 }
 ```

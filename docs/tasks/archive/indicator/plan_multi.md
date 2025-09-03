@@ -20,8 +20,9 @@ The following design refinements were successfully implemented:
 4. **Template management**: Templates determined at construction, not runtime ✅
 
 **All Phases Completed**:
+
 - **Phase 1** (trait definition): New methods implemented across all types ✅
-- **Phase 2** (SimpleProgress): ASCII symbols ("[OK]"/"[ERROR]") implemented ✅  
+- **Phase 2** (SimpleProgress): ASCII symbols ("[OK]"/"[ERROR]") implemented ✅
 - **Phase 3** (IndicatifProgress): Structural changes and new method implementations ✅
 - **Phase 4** (Download): Integrated with new API ✅
 - **Phase 5-10**: All phases successfully completed ✅
@@ -29,6 +30,7 @@ The following design refinements were successfully implemented:
 ## Spike Validation Summary
 
 The design has been thoroughly validated through a working spike implementation that demonstrates:
+
 - ✅ **Visual Hierarchy**: Clean parent-child display with `└─` indentation
 - ✅ **Performance**: < 1% CPU overhead confirmed
 - ✅ **Thread Safety**: Concurrent updates work correctly
@@ -42,9 +44,9 @@ The design has been thoroughly validated through a working spike implementation 
 **Goal**: Update the ProgressIndicator trait with new methods and ALL implementations to maintain compilation.
 
 ### Input Materials
+
 - **Documentation**:
   - `/docs/tasks/indicator/design_multi.md` - Updated design specification
-  
 - **Source Code to Modify**:
   - `/src/indicator/mod.rs` - ProgressIndicator trait definition
   - `/src/indicator/silent.rs` - SilentProgress implementation
@@ -53,6 +55,7 @@ The design has been thoroughly validated through a working spike implementation 
   - `/tests/common/progress_capture.rs` - Test helper implementation
 
 ### Tasks
+
 - [x] **Update ProgressIndicator trait**:
   - [x] Add `fn create_child(&mut self) -> Box<dyn ProgressIndicator>` method
   - [x] Add `fn suspend(&self, f: &mut dyn FnMut())` method ✅
@@ -69,17 +72,21 @@ The design has been thoroughly validated through a working spike implementation 
   - [x] All existing tests pass
 
 ### Example Implementation
+
 Each implementation gets a minimal stub that maintains functionality:
+
 - SilentProgress returns another SilentProgress (final implementation)
 - SimpleProgress temporarily returns SilentProgress
 - IndicatifProgress temporarily returns SilentProgress
 
 ### Deliverables
+
 - Updated trait with new method signature
 - All three implementations with minimal `create_child()` method
 - Fully compilable and testable codebase
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -94,6 +101,7 @@ cargo test --lib indicator
 **Goal**: Finalize SimpleProgress with ASCII-only output and new trait methods.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phase 1 (All implementations compilable with new trait methods)
 
@@ -101,6 +109,7 @@ cargo test --lib indicator
   - `/src/indicator/simple.rs` - SimpleProgress implementation
 
 ### Tasks
+
 - [x] **Update SimpleProgress implementation**:
   - [x] Replace Unicode symbols ("✓"/"✗") with ASCII ("[OK]"/"[ERROR]")
   - [x] Keep `create_child()` returning `Box::new(SilentProgress)`
@@ -110,11 +119,13 @@ cargo test --lib indicator
   - [x] Update tests to verify ASCII symbols
 
 ### Deliverables
+
 - SimpleProgress with finalized `create_child()` behavior
 - Documentation explaining the design choice
 - Unit tests verifying silent children
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -128,6 +139,7 @@ cargo test --lib indicator::simple
 **Goal**: Implement full MultiProgress support in IndicatifProgress with refined architecture.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phase 1 (Trait updated with new methods)
   - Phase 2 (SimpleProgress finalized)
@@ -150,6 +162,7 @@ pub struct IndicatifProgress {
 ```
 
 #### Key Implementation Details:
+
 - **Template Pattern**: `{spinner} {prefix} [{bar:30}] {pos}/{len} {msg}`
 - **Child Template**: `"  └─ {spinner} {prefix} [{bar:25}] {pos}/{len} {msg}"`
 - **Progress Chars**: Use simplified `██░` for cleaner display
@@ -158,6 +171,7 @@ pub struct IndicatifProgress {
 - **Steady Tick**: Enable with `Duration::from_millis(80)`
 
 ### Tasks
+
 - [x] **Refactor IndicatifProgress structure**:
   - [x] Change `multi` to `Arc<MultiProgress>` (always initialized, no Option)
   - [x] Rename `progress_bar` to `owned_bar` for clarity
@@ -166,7 +180,7 @@ pub struct IndicatifProgress {
   - [x] Update `new()` to always create MultiProgress
 - [x] **Implement create_child()**:
   - [x] Share parent's `Arc<MultiProgress>` via `Arc::clone()`
-  - [x] Set child template with "  └─ " prefix
+  - [x] Set child template with " └─ " prefix
   - [x] No immediate bar creation (deferred to `start()`)
 - [x] **Update existing methods**:
   - [x] Modify `start()` to:
@@ -176,7 +190,7 @@ pub struct IndicatifProgress {
   - [x] Ensure `complete()` calls appropriate finish method
   - [x] Update `error()` to properly abandon bars
 - [x] **Implement new trait methods**:
-  - [x] `suspend()`: Delegate to `multi.suspend()` 
+  - [x] `suspend()`: Delegate to `multi.suspend()`
   - [x] `println()`: Delegate to `multi.println()`
 - [x] **Apply validated patterns**:
   - [x] Use `██░` progress chars
@@ -192,11 +206,13 @@ pub struct IndicatifProgress {
   - [x] Test concurrent updates (implicitly tested)
 
 ### Deliverables
+
 - IndicatifProgress with full MultiProgress support
 - Proper visual nesting with validated display patterns
 - Comprehensive tests for multi-bar scenarios
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -212,6 +228,7 @@ cargo test --lib indicator::indicatif
 **Goal**: Update download module to support child progress indicators.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phases 1-3 (All ProgressIndicator implementations ready)
 
@@ -220,6 +237,7 @@ cargo test --lib indicator::indicatif
   - `/src/download/progress.rs` - DownloadProgressAdapter
 
 ### Tasks
+
 - [x] **Analyze current download progress**:
   - [x] Identify where progress is created and used (src/download/mod.rs:55-56)
   - [x] Determine Content-Length retrieval points (src/download/progress.rs:50)
@@ -236,11 +254,13 @@ cargo test --lib indicator::indicatif
   - [x] Network errors during download (handled by HttpFileDownloader)
 
 ### Deliverables
+
 - Download module with conditional child progress support
 - 10MB threshold implementation
 - Backward compatible API
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -254,13 +274,14 @@ cargo test --lib download
 **Goal**: Integrate child progress bars for download operations in the install command.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phases 1-4 (Download module ready)
-  
 - **Source Code to Modify**:
   - `/src/commands/install.rs` - Install command implementation
 
 ### Tasks
+
 - [x] **Identify download locations**:
   - [x] Find where `download_jdk()` is called (src/commands/install.rs:326)
   - [x] Locate where `no_progress=true` is forced (not forced, passed as parameter)
@@ -281,11 +302,13 @@ cargo test --lib download
   - [x] Cache refresh during install (tests/multi_progress_install_test.rs:100)
 
 ### Deliverables
+
 - Install command with child progress for large downloads
 - Proper parent message updates for small downloads
 - Cache refresh progress when needed
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -302,6 +325,7 @@ cargo run -- install --no-progress temurin@21 --dry-run
 **Goal**: Update cache module to support child progress for different metadata sources.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phases 1-3 (ProgressIndicator implementations ready)
 
@@ -310,6 +334,7 @@ cargo run -- install --no-progress temurin@21 --dry-run
   - `/src/metadata/provider.rs` - MetadataProvider
 
 ### Tasks
+
 - [x] **Analyze metadata source handling**:
   - [x] Identify source type detection (src/metadata/provider.rs:52-94)
   - [x] Find size estimation for HTTP sources (src/metadata/http.rs:165,244)
@@ -326,11 +351,13 @@ cargo run -- install --no-progress temurin@21 --dry-run
   - [x] Size calculation from index entries (src/metadata/http.rs:165,244)
 
 ### Deliverables
+
 - Cache module with source-aware child progress ✅
 - Size-based threshold for HTTP sources ✅
 - Foojay always showing child progress ✅
 
 ### Verification
+
 ```bash
 cargo fmt ✅
 cargo clippy --all-targets -- -D warnings ✅
@@ -346,6 +373,7 @@ cargo test --test metadata_progress_test ✅ (tests/metadata_progress_test.rs ad
 **Goal**: Update cache refresh command to show child progress for metadata sources.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phase 6 (Cache module ready) ✅
 
@@ -353,6 +381,7 @@ cargo test --test metadata_progress_test ✅ (tests/metadata_progress_test.rs ad
   - `/src/commands/cache.rs` - Cache command
 
 ### Tasks
+
 - [x] **Update refresh_cache function**:
   - [x] Use updated cache module functions (already integrated)
   - [x] Let cache module handle child creation (passes progress to cache module)
@@ -367,11 +396,13 @@ cargo test --test metadata_progress_test ✅ (tests/metadata_progress_test.rs ad
   - [x] Foojay-only configuration (tested via foojay module tests)
 
 ### Deliverables
+
 - Cache command with nested progress display ✅
 - Source-specific child progress bars ✅
 - Clean summary output ✅
 
 ### Verification
+
 ```bash
 cargo fmt ✅
 cargo clippy --all-targets -- -D warnings ✅
@@ -391,6 +422,7 @@ cargo run -- cache refresh --no-progress
 **Goal**: Create comprehensive tests for multi-progress functionality.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phases 1-7 (All implementation complete) ✅
   - **Reference**: Spike test patterns from `multi_progress_spike.rs` ✅
@@ -400,12 +432,14 @@ cargo run -- cache refresh --no-progress
   - `/tests/common/progress_capture.rs` - Test utilities ✅
 
 ### Expected Visual Output (Validated by Spike)
+
 ```
 ⣾ Installing temurin@21 [████████░░░░░░░░░░] 3/8 Downloading
   └─ ⣟ Downloading: 124.5MB / 256.3MB [48%] 2.3MB/s
 ```
 
 ### Tasks
+
 - [x] **Create test utilities**:
   - [x] MultiProgressCapture for nested progress testing
   - [x] Helper to verify parent-child relationships
@@ -430,11 +464,13 @@ cargo run -- cache refresh --no-progress
   - [x] Concurrent updates (thread safety)
 
 ### Deliverables
+
 - Comprehensive integration test suite ✅
 - Test utilities for multi-progress verification ✅
 - Coverage of all multi-progress scenarios ✅
 
 ### Verification
+
 ```bash
 cargo fmt ✅
 cargo clippy --all-targets -- -D warnings ✅
@@ -449,6 +485,7 @@ cargo test # Run all tests ✅ (595 unit tests passing)
 **Goal**: Ensure multi-progress implementation has minimal performance impact.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phases 1-8 (Full implementation) ✅
 
@@ -457,6 +494,7 @@ cargo test # Run all tests ✅ (595 unit tests passing)
   - Download and cache operations ✅
 
 ### Tasks
+
 - [x] **Profile current implementation**:
   - [x] Measure CPU usage during multi-progress
   - [x] Check memory allocation patterns
@@ -475,11 +513,13 @@ cargo test # Run all tests ✅ (595 unit tests passing)
   - [x] Ensure < 1% CPU overhead (achieved via throttling)
 
 ### Deliverables
+
 - Optimized multi-progress implementation ✅
 - Performance benchmarks ✅ (benches/multi_progress_benchmark.rs)
 - Documentation of performance characteristics ✅ (performance_optimization_report.md)
 
 ### Verification
+
 ```bash
 cargo fmt ✅
 cargo clippy --all-targets -- -D warnings ✅
@@ -488,6 +528,7 @@ cargo test --lib indicator ✅ # All tests pass
 ```
 
 ### Implementation Summary
+
 - **Update Throttling**: Parent bars update at 20Hz, children at 10Hz
 - **Tick Rate Optimization**: Parent 80ms, children 120ms (staggered)
 - **Memory Management**: Proper cleanup on completion, state reset on start
@@ -501,11 +542,13 @@ cargo test --lib indicator ✅ # All tests pass
 **Goal**: Update the design document to reflect the completed implementation.
 
 ### Input Materials
+
 - **Documentation to Update**:
   - `/docs/tasks/indicator/design_multi.md` - Design specification (already includes spike validation)
   - `/docs/tasks/indicator/multiprogress_spike_report.md` - Spike findings
 
 ### Tasks
+
 - [x] **Update design document**:
   - [x] Mark implementation status as complete
   - [x] Add implementation notes section with lessons learned
@@ -514,10 +557,12 @@ cargo test --lib indicator ✅ # All tests pass
   - [x] Cross-reference with spike validation results
 
 ### Deliverables
+
 - Updated design document marked as implemented ✅
 - Lessons learned and implementation notes ✅
 
 ### Verification
+
 ```bash
 # Review the updated design document
 cat docs/tasks/indicator/design_multi.md
@@ -530,17 +575,20 @@ cat docs/tasks/indicator/design_multi.md
 ## Implementation Order Summary
 
 ### Core Components (Phases 1-3) - Completed
+
 1. **Phase 1**: ProgressIndicator trait and ALL implementations - add suspend/println methods ✅
 2. **Phase 2**: SimpleProgress - replace Unicode with ASCII symbols ✅
 3. **Phase 3**: IndicatifProgress with refined MultiProgress architecture ✅
 
 ### Integration (Phases 4-7) - Completed
+
 4. **Phase 4**: Download module integration ✅
 5. **Phase 5**: Install command integration ✅
 6. **Phase 6**: Cache module integration ✅
 7. **Phase 7**: Cache command integration ✅
 
 ### Quality Assurance (Phases 8-10) - Completed
+
 8. **Phase 8**: Integration tests ✅
 9. **Phase 9**: Performance optimization ✅
 10. **Phase 10**: Design document update ✅
@@ -549,7 +597,6 @@ cat docs/tasks/indicator/design_multi.md
 
 - External crates:
   - `indicatif` >= 0.17 with MultiProgress support
-  
 - Internal modules:
   - `src/indicator/` - Progress indicator system
   - `src/download/` - Download management
@@ -594,13 +641,16 @@ cat docs/tasks/indicator/design_multi.md
 ## Notes for Implementation
 
 ### Recent Design Refinements
+
 - **suspend()/println() methods**: Essential for safe log output during progress operations
 - **ASCII-only for SimpleProgress**: Ensures compatibility in NO_COLOR/CI environments
 - **No Option wrapper for MultiProgress**: Simplifies code by always initializing
 - **Template as field**: Reduces runtime decisions, cleaner separation of parent/child
 
 ### Spike Validation Results
+
 The design has been validated through a comprehensive spike implementation (`multi_progress_spike.rs`). Key validated patterns:
+
 - **Visual Hierarchy**: `insert_after()` provides correct parent-child positioning
 - **Template Stability**: Dynamic messages at end (`{msg}`) prevent layout disruption
 - **Performance**: No significant overhead with multiple concurrent bars
@@ -608,6 +658,7 @@ The design has been validated through a comprehensive spike implementation (`mul
 - **Clean Removal**: `finish_and_clear()` properly removes bars from display
 
 ### Implementation Guidelines
+
 - **Phase 1 is critical**: Updates trait with new methods and ALL implementations must compile
 - **Phase 2 focus**: Remove Unicode symbols, use ASCII only for CI/NO_COLOR compatibility
 - **Phase 3 architecture**: Always-initialized MultiProgress, template determined at construction
@@ -622,10 +673,12 @@ The design has been validated through a comprehensive spike implementation (`mul
 - Document any deviations from design during implementation
 
 ### Visual Pattern Reference
+
 ```
 ⣾ Parent Task [██████████░░░░░░░░] 2/3 Processing step 2 of 3
   └─ Subtask 2 [███████░░░░] 25/50
 ```
+
 Use this pattern as the reference for all multi-progress implementations
 
 ---
@@ -635,6 +688,7 @@ Use this pattern as the reference for all multi-progress implementations
 **Completion Date**: 2025-08-31
 
 All 10 phases of the multi-progress support implementation have been successfully completed:
+
 - ✅ Core infrastructure with trait extensions
 - ✅ All ProgressIndicator implementations updated
 - ✅ Download and cache module integration

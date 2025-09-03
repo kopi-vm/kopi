@@ -11,26 +11,30 @@ This document describes the design and implementation details of the `kopi insta
 The Foojay API provides a `latest` parameter to control which versions are returned. Through testing and source code analysis, we've identified the following behaviors:
 
 #### `latest=per_version`
+
 - **Purpose**: Returns the latest build for a specific major version
 - **Implementation**: Filters packages using `isLatestBuildAvailable()` flag
 - **Requirements**: `version` parameter is mandatory
 - **Known Issues**: Does not work correctly with version 17
 
 Example results:
+
 ```
 version=17 + latest=per_version → 0 packages ❌
 version=21 + latest=per_version → 21.0.8+9 ✅
 ```
 
 #### `latest=available`
+
 - **Purpose**: Returns the latest available version(s)
 - **Implementation**: Uses version comparison to find the maximum version
 - **Requirements**: `version` parameter is optional
-- **Behavior**: 
+- **Behavior**:
   - Without version: Returns latest version for each major version
   - With version: Returns latest version for specified major version
 
 Example results:
+
 ```
 version=17 + latest=available → 17.0.16+8 ✅
 version=21 + latest=available → 21.0.8+9 ✅
@@ -56,10 +60,10 @@ let mut packages = self.api_client.get_packages(Some(query))?;
 if packages.is_empty() {
     let fallback_query = /* query without latest */;
     packages = self.api_client.get_packages(Some(fallback_query))?;
-    
+
     // Sort packages by version (descending) to get latest first
     packages.sort_by(|a, b| {
-        match (Version::from_str(&a.java_version), 
+        match (Version::from_str(&a.java_version),
                Version::from_str(&b.java_version)) {
             (Ok(v1), Ok(v2)) => v2.cmp(&v1),
             _ => b.java_version.cmp(&a.java_version),
@@ -73,9 +77,11 @@ if packages.is_empty() {
 From the Foojay API source code analysis:
 
 1. **`per_version` filtering**:
+
    ```java
    .filter(pkg -> pkg.isLatestBuildAvailable())
    ```
+
    This relies on a metadata flag that appears to be incorrectly set for version 17 packages.
 
 2. **`available` filtering**:
@@ -83,13 +89,13 @@ From the Foojay API source code analysis:
 
 ### Test Results Summary
 
-| Query | Result |
-|-------|---------|
+| Query                            | Result           |
+| -------------------------------- | ---------------- |
 | `version=17, latest=per_version` | 0 packages (bug) |
-| `version=17, latest=available` | 17.0.16+8 |
-| `version=17, no latest` | 17+35 (oldest) |
-| `version=21, latest=per_version` | 21.0.8+9 |
-| `version=21, latest=available` | 21.0.8+9 |
+| `version=17, latest=available`   | 17.0.16+8        |
+| `version=17, no latest`          | 17+35 (oldest)   |
+| `version=21, latest=per_version` | 21.0.8+9         |
+| `version=21, latest=available`   | 21.0.8+9         |
 
 ### Recommendations
 
@@ -101,6 +107,7 @@ From the Foojay API source code analysis:
 ## Version Selection
 
 When a user specifies a simple major version (e.g., `kopi install 17`), the system should:
+
 1. Query for all available versions of that major version
 2. Select the latest stable release
 3. Avoid selecting outdated versions like `17+35` when newer versions like `17.0.16+8` are available
@@ -114,6 +121,7 @@ This ensures users always get the most up-to-date and secure version of their re
 The current implementation follows a two-path approach:
 
 1. **Cache Path** (if cache exists):
+
    ```rust
    // Check if package exists in cache
    let cache_path = self.config.metadata_cache_path()?;
@@ -172,6 +180,7 @@ impl MetadataCache {
 ### Auto-Refresh Configuration
 
 Add to `config.toml`:
+
 ```toml
 [cache]
 # Maximum age before cache is considered stale
@@ -193,19 +202,19 @@ impl InstallCommand {
     fn find_package(&self, version_spec: &str) -> Result<Package> {
         // Always ensure fresh cache
         let cache = self.ensure_fresh_cache()?;
-        
+
         // Always search through cache
         let searcher = PackageSearcher::new(&cache, self.config);
         let package = searcher.find_package(version_spec)?
             .ok_or_else(|| KopiError::VersionNotAvailable(...))?;
-        
+
         Ok(package)
     }
-    
+
     fn ensure_fresh_cache(&self) -> Result<MetadataCache> {
         let cache_path = self.config.metadata_cache_path()?;
         let max_age = Duration::from_secs(self.config.cache.max_age_hours * 3600);
-        
+
         // Load existing cache if available
         let should_refresh = if cache_path.exists() {
             match cache::load_cache(&cache_path) {
@@ -215,7 +224,7 @@ impl InstallCommand {
         } else {
             true
         };
-        
+
         // Refresh if needed
         if should_refresh && self.config.cache.auto_refresh {
             info!("Refreshing package cache...");

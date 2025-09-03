@@ -11,6 +11,7 @@ Platform-dependent code exists in several modules outside of `src/platform/`. Mo
 ### 1. Cache Module (`src/cache/mod.rs`)
 
 **Windows-specific atomic file rename handling (lines 78-86):**
+
 ```rust
 #[cfg(windows)]
 {
@@ -28,14 +29,17 @@ Platform-dependent code exists in several modules outside of `src/platform/`. Mo
 ### 2. Security Module (`src/security/mod.rs`)
 
 **Unix file permissions checking (lines 90-104):**
+
 - Uses `#[cfg(unix)]` with `std::os::unix::fs::PermissionsExt`
 - Checks file mode against 0o644
 
 **Windows file permissions checking (lines 106-137):**
+
 - Uses `#[cfg(windows)]` with Windows-specific imports
 - Complex ACL-based permission checking
 
 **Secure file permissions setting:**
+
 - Unix (lines 171-177): Sets mode to 0o644
 - Windows (lines 179-183): Sets read-only attribute
 
@@ -44,11 +48,13 @@ Platform-dependent code exists in several modules outside of `src/platform/`. Mo
 ### 3. Install Command (`src/commands/install.rs`)
 
 **Architecture detection (lines 27-58):**
+
 - Multiple `#[cfg(target_arch = ...)]` blocks for:
   - x86_64, x86, aarch64, arm, powerpc64, s390x
 - Each architecture maps to Foojay-specific string
 
 **OS detection (lines 384-395):**
+
 - `#[cfg(target_os = ...)]` for linux, windows, macos
 - Returns platform-specific strings
 
@@ -57,6 +63,7 @@ Platform-dependent code exists in several modules outside of `src/platform/`. Mo
 ### 4. Archive Module (`src/archive/mod.rs`)
 
 **Unix-specific zip extraction permissions (lines 179-185):**
+
 ```rust
 #[cfg(unix)]
 {
@@ -72,11 +79,13 @@ Platform-dependent code exists in several modules outside of `src/platform/`. Mo
 ### 5. Shim Module (`src/shim/mod.rs`, `src/shim/installer.rs`)
 
 **Platform-specific implementations:**
+
 - Unix shim creation/verification methods with `#[cfg(unix)]`
 - Windows shim creation/verification methods with `#[cfg(windows)]`
 - Different executable detection and handling logic
 
 **Already uses platform abstractions for:**
+
 - `platform::executable_extension()`
 - `platform::process::exec_replace()`
 - `platform::symlink` operations
@@ -86,6 +95,7 @@ Platform-dependent code exists in several modules outside of `src/platform/`. Mo
 ### 6. Test Files
 
 Multiple test files contain platform-specific tests:
+
 - `tests/install_scenarios.rs`: Unix-specific symlink tests
 - `tests/shim_integration.rs`: Platform-specific shim behavior tests
 - `tests/install_e2e.rs`: Unix-specific permission tests
@@ -97,12 +107,14 @@ Multiple test files contain platform-specific tests:
 ### Cargo.toml Dependencies
 
 **Unix-specific:**
+
 ```toml
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 ```
 
 **Windows-specific:**
+
 ```toml
 [target.'cfg(windows)'.dependencies]
 winreg = "0.53.0"
@@ -133,6 +145,7 @@ winapi = { version = "0.3", features = ["fileapi"] }
 ## Files Using Platform Module (Good Examples)
 
 These files properly use platform abstractions:
+
 - `src/search/mod.rs`
 - `src/api/client.rs`
 - `src/search/searcher.rs`
@@ -142,6 +155,7 @@ These files properly use platform abstractions:
 ## Conclusion
 
 The codebase shows good platform abstraction overall. The main opportunities for improvement are:
+
 1. Consolidating file operation platform differences (atomic rename, permissions)
 2. Moving architecture/OS detection fully into the platform module
 3. Creating a unified permissions API for security operations

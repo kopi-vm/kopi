@@ -24,9 +24,10 @@ When implemented, this command will support:
 - `--json`: Output in JSON format for scripting
 
 Verbose output will be controlled by the global `-v` flag:
+
 - `kopi current`: Standard output (version and source)
 - `kopi current -v`: Info-level logging
-- `kopi current -vv`: Debug-level logging  
+- `kopi current -vv`: Debug-level logging
 - `kopi current -vvv`: Trace-level logging with full resolution details
 
 ## Behavior
@@ -37,19 +38,20 @@ Displays the active JDK version by following the same resolution logic as the sh
 
 1. Check `KOPI_JAVA_VERSION` environment variable
 2. Check `.kopi-version` file in current/parent directories
-3. Check `.java-version` file in current/parent directories  
+3. Check `.java-version` file in current/parent directories
 4. Check global default from `~/.kopi/version`
 5. Show error if no version is configured
 
 ### Output Format
 
 #### Standard Output
+
 ```
 <version> (set by <source>)
 ```
 
-
 #### JSON Output
+
 ```json
 {
   "version": "17.0.5",
@@ -70,7 +72,7 @@ Displays the active JDK version by following the same resolution logic as the sh
 pub fn execute_current_command(quiet: bool, json: bool) -> Result<()> {
     // 1. Use the same VersionResolver as shims
     let resolver = VersionResolver::new();
-    
+
     // 2. Resolve version with source tracking
     let (version_request, source) = match resolver.resolve_version_with_source() {
         Ok(result) => result,
@@ -82,17 +84,17 @@ pub fn execute_current_command(quiet: bool, json: bool) -> Result<()> {
                 eprintln!("Hint: Use 'kopi local <version>' to set a project version");
                 eprintln!("      or 'kopi global <version>' to set a default");
             }
-            return Err(KopiError::NoLocalVersion { 
-                directory: std::env::current_dir()?.display().to_string() 
+            return Err(KopiError::NoLocalVersion {
+                directory: std::env::current_dir()?.display().to_string()
             });
         }
         Err(e) => return Err(e),
     };
-    
+
     // 3. Check if the version is actually installed
     let repository = JdkRepository::new(&config);
     let is_installed = check_installation(&repository, &version_request)?;
-    
+
     // 4. Format and display output
     if json {
         print_json_output(&version_request, &source, is_installed)?;
@@ -101,7 +103,7 @@ pub fn execute_current_command(quiet: bool, json: bool) -> Result<()> {
     } else {
         print_standard_output(&version_request, &source, is_installed)?;
     }
-    
+
     Ok(())
 }
 ```
@@ -142,7 +144,7 @@ impl VersionResolver {
                 VersionSource::Environment
             ));
         }
-        
+
         // Check local version files
         let current_dir = env::current_dir()?;
         for ancestor in current_dir.ancestors() {
@@ -155,7 +157,7 @@ impl VersionResolver {
                     VersionSource::LocalKopiVersion(kopi_version_path)
                 ));
             }
-            
+
             // Check .java-version
             let java_version_path = ancestor.join(".java-version");
             if java_version_path.exists() {
@@ -166,7 +168,7 @@ impl VersionResolver {
                 ));
             }
         }
-        
+
         // Check global default
         if let Some(version_request) = self.get_global_default()? {
             let path = home_dir()
@@ -175,7 +177,7 @@ impl VersionResolver {
                 .join("version");
             return Ok((version_request, VersionSource::GlobalDefault(path)));
         }
-        
+
         // No version found
         Err(KopiError::NoLocalVersion {
             directory: current_dir.display().to_string(),
@@ -189,6 +191,7 @@ impl VersionResolver {
 ### Success Scenarios
 
 #### With Environment Variable Set
+
 ```bash
 $ export KOPI_JAVA_VERSION=17
 $ kopi current
@@ -200,6 +203,7 @@ $ kopi current -v
 ```
 
 #### With Project Version File
+
 ```bash
 $ cd my-project
 $ kopi current
@@ -210,6 +214,7 @@ $ kopi current -q
 ```
 
 #### With Global Default
+
 ```bash
 $ cd /tmp
 $ kopi current
@@ -219,6 +224,7 @@ $ kopi current
 ### Error Scenarios
 
 #### No Version Configured
+
 ```bash
 $ kopi current
 No JDK version configured
@@ -227,6 +233,7 @@ Hint: Use 'kopi local <version>' to set a project version
 ```
 
 #### Version Not Installed
+
 ```bash
 $ kopi current
 17.0.5 (set by .kopi-version) [NOT INSTALLED]
@@ -235,6 +242,7 @@ Hint: Run 'kopi install 17.0.5' to install this version
 ```
 
 #### JSON Error Output
+
 ```bash
 $ kopi current --json
 {
@@ -303,11 +311,11 @@ impl VersionResolver {
             ));
         }
         log::debug!("KOPI_JAVA_VERSION not set");
-        
+
         // Check local version files
         let current_dir = env::current_dir()?;
         log::debug!("Searching for version files from: {:?}", current_dir);
-        
+
         for ancestor in current_dir.ancestors() {
             // Check .kopi-version
             let kopi_version_path = ancestor.join(".kopi-version");
@@ -323,13 +331,14 @@ impl VersionResolver {
             }
             // Similar for .java-version...
         }
-        
+
         // Rest of implementation...
     }
 }
 ```
 
 Example output:
+
 ```bash
 $ kopi current -vvv
 [TRACE] Checking /home/user/project/.kopi-version
@@ -342,17 +351,20 @@ $ kopi current -vvv
 ## Testing Strategy
 
 ### Unit Tests
+
 - Version resolution with different sources
 - Output formatting (standard, verbose, quiet, JSON)
 - Error handling for missing versions
 
 ### Integration Tests
+
 - End-to-end version resolution
 - Interaction with actual file system
 - Environment variable handling
 - Multiple version file formats
 
 ### Test Scenarios
+
 1. Environment variable takes precedence
 2. Project version overrides global
 3. Parent directory traversal
@@ -370,11 +382,12 @@ $ kopi current -vvv
 ## Platform-Specific Behavior
 
 ### Unix/Linux/macOS
+
 - Standard path resolution
 - Support for symlinks in paths
 
 ### Windows
+
 - Handle both forward and backward slashes
 - Account for drive letters in paths
 - Junction points treated as directories
-

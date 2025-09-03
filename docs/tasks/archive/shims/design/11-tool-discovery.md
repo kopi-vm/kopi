@@ -32,6 +32,7 @@ We perform empirical testing by downloading actual JDK releases and scanning the
 We maintain version-controlled tool lists that incorporate community feedback:
 
 **Standard Tools** (available in all JDK distributions):
+
 - Core development: java, javac, javap, javadoc
 - Packaging and signing: jar, jarsigner
 - Interactive tools: jshell
@@ -42,12 +43,14 @@ We maintain version-controlled tool lists that incorporate community feedback:
 - Other utilities: rmiregistry, serialver
 
 **Vendor-Specific Tools**:
+
 - GraalVM adds: gu (GraalVM Updater), native-image, polyglot, lli, js
   - Note: js tool was removed in GraalVM 23.0.0
 - Corretto 11 includes: jmc (Java Mission Control)
   - Note: jmc was removed in Corretto 17+
 
 Each tool can have metadata including:
+
 - Description of its purpose
 - Whether it's vendor-specific
 - Version constraints (added/removed in specific versions)
@@ -151,6 +154,7 @@ When setting up shims, the system:
 5. Creates shim files for all resulting tools in the shim directory
 
 This flexible approach balances automation with user control, ensuring that:
+
 - Common tools work out of the box
 - Vendor-specific tools are properly supported
 - Users can customize their setup as needed

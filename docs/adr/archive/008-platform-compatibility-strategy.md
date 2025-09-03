@@ -1,9 +1,11 @@
 # ADR-008: Platform Compatibility Strategy
 
 ## Status
+
 Proposed
 
 ## Context
+
 Alpine Linux uses musl libc instead of glibc, creating binary compatibility challenges for JDK distributions. Research of similar tools (SDKMAN, volta, nvm, pyenv) and Gradle's approach reveals that most version managers struggle with Alpine support, often leading to confusing user experiences when incompatible binaries are installed.
 
 The key issue is that Alpine binaries (musl-linked) cannot run on standard Linux systems (glibc-linked) and vice versa without compatibility layers, which introduce performance penalties and potential runtime issues.
@@ -15,9 +17,11 @@ A key insight is that on Linux systems, kopi itself must be linked against eithe
 ## Decision
 
 ### Platform Detection Strategy
+
 Kopi will detect its own libc linkage and ensure downloaded JDKs match the same libc type. This approach guarantees binary compatibility between kopi and the JDKs it manages.
 
 #### Primary Approach: Self-Detection
+
 ```rust
 // Platform-specific libc detection
 #[cfg(all(target_os = "linux", target_env = "musl"))]
@@ -61,6 +65,7 @@ fn matches_foojay_libc_type(foojay_libc: &str) -> bool {
 ```
 
 #### Usage Example
+
 Example of how these functions work together:
 
 ```rust
@@ -95,32 +100,40 @@ fn validate_jdk_metadata(metadata: &JdkMetadata) -> Result<()> {
 ```
 
 ### Architecture Naming Convention
+
 To prevent accidental cross-usage of incompatible binaries:
+
 - Linux Alpine/musl variants: `linux-x64-musl`, `linux-aarch64-musl`
 - Linux standard/glibc variants: `linux-x64`, `linux-aarch64`
 - macOS variants: `macos-x64`, `macos-aarch64`
 - Windows variants: `windows-x64`, `windows-aarch64`
 
 ### JDK Distribution Support
+
 Support JDK distributions that provide platform-specific builds.
 
 #### Foojay API lib_c_type Mapping
+
 The Foojay API returns different `lib_c_type` values based on the platform:
+
 - Linux with glibc: `"glibc"`
 - Linux with musl/Alpine: `"musl"`
 - macOS: `"libc"`
 - Windows: `"c_std_lib"`
 
 #### Supported Distributions with Alpine/musl variants:
+
 - Eclipse Temurin (Alpine builds available)
 - BellSoft Liberica (Alpine variants)
 - Amazon Corretto (musl-compatible builds)
 - Azul Zulu (Alpine support)
 
 ### Platform-Specific Error Handling
+
 Since kopi automatically filters JDKs based on its own libc type, platform compatibility errors are largely prevented. The primary platform-related error scenario is:
 
 **No compatible variant available**:
+
 ```
 Error: No Alpine-compatible (musl) variant found for temurin@11.
 Available distributions with Alpine support: liberica, zulu, corretto
@@ -130,6 +143,7 @@ Try: kopi install liberica@11
 This occurs when a requested JDK distribution doesn't provide a variant matching kopi's platform (e.g., requesting a distribution that only provides glibc builds on an Alpine/musl system).
 
 **Automatic platform detection message**:
+
 ```
 Info: Detected Alpine Linux (musl), automatically selecting Alpine-compatible JDK variants...
 ```
@@ -139,12 +153,14 @@ This informational message ensures transparency about the automatic variant sele
 ### Implementation Phases
 
 **Phase 1**: Self-Detection Implementation (Required for MVP)
+
 - Implement compile-time platform detection using `cfg` attributes
 - Create `PLATFORM_LIBC` constant based on target environment
 - Implement `get_foojay_libc_type()` to map platform to API values
 - Ensure correct mapping: musl→"musl", glibc→"glibc", macOS→"libc", Windows→"c_std_lib"
 
 **Phase 2**: JDK Selection Logic
+
 - Implement `get_foojay_libc_type()` to get API query value for current platform
 - Use this value in Foojay API queries: `?lib_c_type={value}`
 - Implement `matches_foojay_libc_type()` to validate downloaded JDKs
@@ -153,12 +169,14 @@ This informational message ensures transparency about the automatic variant sele
 - Add informational messages about automatic platform matching
 
 **Phase 3**: Error Handling and Validation
+
 - Implement error handling for missing compatible variants
 - Add clear error messages when no matching JDK is available
 - Add `kopi doctor` command to show kopi's libc type and compatible distributions
 - Handle API failures gracefully with retry logic
 
 **Phase 4**: Distribution and Testing
+
 - Set up CI/CD to build both musl and glibc variants of kopi
 - Create release artifacts with clear naming (e.g., `kopi-linux-x64-musl`, `kopi-linux-x64-glibc`)
 - Add integration tests for both libc variants
@@ -167,6 +185,7 @@ This informational message ensures transparency about the automatic variant sele
 ## Consequences
 
 ### Positive
+
 - **Guaranteed compatibility**: JDKs will always match kopi's libc type
 - **Simplified user experience**: No need for users to understand musl vs glibc
 - **Automatic selection**: Kopi can automatically choose the correct variant
@@ -174,16 +193,19 @@ This informational message ensures transparency about the automatic variant sele
 - **Single source of truth**: Kopi's own binary determines the libc requirement
 
 ### Negative
+
 - **Cross-compilation complexity**: Building kopi for different libc targets requires careful setup
 - **Distribution limitations**: Users can't override libc selection if needed
 - **Testing requirements**: Need to test both musl and glibc builds of kopi
 
 ### Neutral
+
 - Requires clear documentation about the self-matching behavior
 - Distribution packages must be careful about which kopi binary they ship
 - May require providing both musl and glibc builds of kopi itself
 
 ## References
+
 - musl libc functional differences: https://wiki.musl-libc.org/functional-differences-from-glibc.html
 - Alpine Linux glibc compatibility: https://wiki.alpinelinux.org/wiki/Running_glibc_programs
 - Gradle Alpine images documentation: https://github.com/docker-library/docs/tree/master/gradle

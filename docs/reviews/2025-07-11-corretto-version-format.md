@@ -9,6 +9,7 @@ Amazon Corretto uses a 4-component version format (e.g., `21.0.5.11.1`) that dif
 ## Discovery Context
 
 The issue was discovered while investigating Windows test failures in `tests/uninstall_integration.rs`:
+
 - Test `test_uninstall_with_version_pattern` was failing
 - The test creates a Corretto JDK with version `21.0.5.11.1`
 - When attempting to uninstall with pattern `21`, the Corretto version was not being matched
@@ -16,6 +17,7 @@ The issue was discovered while investigating Windows test failures in `tests/uni
 ## Version Format Comparison
 
 ### Standard OpenJDK Format
+
 ```
 <major>.<minor>.<patch>+<build>
 Examples:
@@ -25,6 +27,7 @@ Examples:
 ```
 
 ### Amazon Corretto Format
+
 ```
 <major>.<minor>.<patch>.<corretto-specific>
 Examples:
@@ -37,6 +40,7 @@ Examples:
 ### Component Breakdown
 
 For example `21.0.5.11.1`:
+
 1. **Major (21)**: Java major version
 2. **Minor (0)**: Minor version (typically 0)
 3. **Patch (5)**: Security/bug fix patch number
@@ -47,6 +51,7 @@ For example `21.0.5.11.1`:
 ## Current Implementation Limitation
 
 ### Version Parser (`src/models/version.rs:127`)
+
 ```rust
 impl FromStr for Version {
     fn from_str(s: &str) -> Result<Self> {
@@ -65,32 +70,39 @@ The parser explicitly rejects versions with more than 3 components.
 ## Impact on Functionality
 
 ### 1. Version Parsing Failures
+
 - `Version::from_str("21.0.5.11.1")` returns an error
 - Corretto JDKs cannot be properly parsed from directory names
 
 ### 2. Version Matching Issues
+
 - Pattern matching fails because Corretto versions cannot be parsed
 - Commands like `kopi uninstall 21` don't match Corretto installations
 - The `resolve_jdks_by_version` function cannot match Corretto JDKs
 
 ### 3. Test Failures
+
 - `test_uninstall_with_version_pattern` expects an error for multiple matches
 - Instead, it succeeds because Corretto version fails to parse and is excluded
 
 ## Other Distributions with Special Formats
 
 ### IBM Semeru
+
 Sometimes uses 4 components: `21.0.1.0`
 
 ### GraalVM
+
 Uses additional suffix: `21.0.1+12.1`
 
 ### Azul Zulu
+
 Can use alternative numbering: `21.30.19` (their own build system)
 
 ## Corretto Usage in Codebase
 
 Found references to Corretto 4-component versions:
+
 - `tests/uninstall_integration.rs`: `21.0.5.11.1`
 - `docs/adr/archive/014-configuration-and-version-file-formats.md`: `17.0.5.8.1`
 - `tests/shim_security.rs`: `11.0.21.9.1`
@@ -104,34 +116,38 @@ Found references to Corretto 4-component versions:
 Investigation of the foojay.io API revealed more complex version formats than initially documented:
 
 #### Dragonwell (Alibaba)
+
 - Uses **6 components**: `21.0.7.0.7.6`
 - Example filenames:
   - `Alibaba_Dragonwell_Extended_21.0.7.0.7.6_x64_linux.tar.gz`
   - `Alibaba_Dragonwell_Standard_21.0.7.0.7.6_x64_linux.tar.gz`
 
 #### Corretto (Java 8)
+
 - Omits leading zeros: `8.452.9.1` (instead of `8.0.452.9.1`)
 - Example filenames:
   - `amazon-corretto-8.452.09.1-linux-x64.tar.gz`
 
 #### JetBrains Runtime
+
 - Uses extremely large build numbers: `21.0.7+895130`
 - Example filename:
   - `jbrsdk_jcef-21.0.7-linux-x64-b895.130.tar.gz`
 
 #### Semeru (IBM)
+
 - java_version and distribution_version: `21.0.7` (standard format)
 - Note: Filename contains underscore (`21.0.7_6`) but actual version fields do not
 
 ### Version Format Summary from API Data
 
-| Distribution | java_version | distribution_version | Notes |
-|-------------|--------------|---------------------|--------|
-| Corretto | 21.0.7+6 | 21.0.7.6.1 | 5 components |
-| Dragonwell | 21.0.7 | 21.0.7.0.7.6 | 6 components |
-| JetBrains | 21.0.7+895130 | 21.0.7 | Very large build number |
-| Semeru | 21.0.7 | 21.0.7 | Standard format |
-| GraalVM CE | 21.3.3.1 | 21.3.3.1 | 4 components |
+| Distribution | java_version  | distribution_version | Notes                   |
+| ------------ | ------------- | -------------------- | ----------------------- |
+| Corretto     | 21.0.7+6      | 21.0.7.6.1           | 5 components            |
+| Dragonwell   | 21.0.7        | 21.0.7.0.7.6         | 6 components            |
+| JetBrains    | 21.0.7+895130 | 21.0.7               | Very large build number |
+| Semeru       | 21.0.7        | 21.0.7               | Standard format         |
+| GraalVM CE   | 21.3.3.1      | 21.3.3.1             | 4 components            |
 
 ### Implications for Version Parser Design
 
@@ -155,6 +171,7 @@ pub struct Version {
 ```
 
 This requires careful handling of:
+
 - Version comparison logic for varying component counts
 - Normalization of formats (e.g., adding missing zeros)
 - Distribution-specific parsing rules
@@ -172,6 +189,7 @@ version: Version::from_str(&api_package.java_version)
 ```
 
 The `distribution_version` field is stored but **not used for searching**:
+
 - It's saved for display purposes
 - It's used for directory naming (`~/.kopi/jdks/corretto-21.0.7.6.1/`)
 - It cannot be specified by users in search queries
@@ -179,7 +197,8 @@ The `distribution_version` field is stored but **not used for searching**:
 ### Impact on Corretto Users
 
 For Corretto distributions where `java_version` and `distribution_version` differ:
-- **Corretto Java 21**: 
+
+- **Corretto Java 21**:
   - `java_version`: `21.0.7+6` (used for searching)
   - `distribution_version`: `21.0.7.6.1` (not searchable)
 - **Corretto Java 8**:
@@ -188,7 +207,7 @@ For Corretto distributions where `java_version` and `distribution_version` diffe
 
 ### Current Limitations for Users
 
-1. **Cannot specify exact Corretto patch versions**: 
+1. **Cannot specify exact Corretto patch versions**:
    - User cannot request `corretto@21.0.7.6.1` specifically
    - Can only request `corretto@21.0.7` which matches by `java_version`
 
@@ -204,6 +223,7 @@ For Corretto distributions where `java_version` and `distribution_version` diffe
 ### Example User Scenario
 
 A user wanting Corretto `21.0.7.6.1` specifically:
+
 ```bash
 # This doesn't work - cannot specify distribution_version
 kopi install corretto@21.0.7.6.1  # Error: Invalid version format
@@ -249,8 +269,8 @@ impl FromStr for Version {
                 .split('.')
                 .filter_map(|s| s.parse().ok())
                 .collect();
-            
-            (&version_part[..plus_pos], 
+
+            (&version_part[..plus_pos],
              if build_components.is_empty() { None } else { Some(build_components) })
         } else {
             (version_part, None)
@@ -312,11 +332,11 @@ impl Version {
     pub fn major(&self) -> u32 {
         self.components.get(0).copied().unwrap_or(0)
     }
-    
+
     pub fn minor(&self) -> Option<u32> {
         self.components.get(1).copied()
     }
-    
+
     pub fn patch(&self) -> Option<u32> {
         self.components.get(2).copied()
     }
@@ -348,7 +368,7 @@ pub fn search_packages(version: &str, flags: SearchFlags) -> Vec<Package> {
         Some(field) => field,
         None => detect_version_field(version),
     };
-    
+
     match field {
         VersionField::JavaVersion => search_by_java_version(version),
         VersionField::DistributionVersion => search_by_distribution_version(version),
@@ -371,7 +391,7 @@ This design handles all discovered version formats:
 // Corretto 5-component
 "21.0.7.6.1" → components: [21, 0, 7, 6, 1]
 
-// Dragonwell 6-component  
+// Dragonwell 6-component
 "21.0.7.0.7.6" → components: [21, 0, 7, 0, 7, 6]
 
 // Standard with build

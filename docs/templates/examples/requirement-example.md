@@ -1,6 +1,7 @@
 # FR-twzx0-cache-metadata-ttl: Cache JDK Metadata Locally with TTL
 
 ## Metadata
+
 - ID: FR-twzx0-cache-metadata-ttl
 - Type: Functional Requirement
 - Category: Performance, Caching
@@ -12,7 +13,9 @@
 - Date Modified: 2024-02-10
 
 ## Links
+
 <!-- Internal project artifacts only -->
+
 - Implemented by Tasks: [`T-df1ny-cache-implementation`](../../tasks/T-df1ny-cache-implementation/), [`T-h5ys6-cache-config`](../../tasks/T-h5ys6-cache-config/)
 - Related Requirements: FR-7y2x8-offline-mode (Offline Mode), NFR-j3cf1-cache-performance (Cache Performance)
 - Related ADRs: [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md) (SQLite for cache storage)
@@ -48,17 +51,20 @@ As a Kopi user, I want JDK metadata to be cached locally, so that repeated searc
 ### Functional Requirement Details
 
 **Cache Storage:**
+
 - Location: `~/.kopi/cache/metadata.db`
 - Format: SQLite database (per ADR-bw6wd-cache-storage-format)
 - Schema includes: metadata content, timestamp, ETag, TTL
 
 **Cache Behavior:**
+
 - On cache miss: Fetch from API, store with timestamp
 - On cache hit within TTL: Return cached data
 - On cache hit beyond TTL: Fetch fresh data, update cache
 - On API failure with stale cache: Use stale cache with warning
 
 **Configuration:**
+
 ```toml
 [cache]
 enabled = true
@@ -69,11 +75,13 @@ max_size_mb = 100
 ## Verification Method
 
 ### Test Strategy
+
 - Test Type: Unit, Integration, Benchmark
 - Test Location: `tests/cache_tests.rs`, `src/cache/mod.rs#[cfg(test)]`
 - Test Names: `test_cache_ttl_fr_0001`, `bench_cache_hit_rate_fr_0001`
 
 ### Verification Commands
+
 ```bash
 # Unit tests for cache TTL logic
 cargo test test_cache_ttl
@@ -91,6 +99,7 @@ kopi cache refresh  # Should fetch fresh data
 ```
 
 ### Success Metrics
+
 - Cache hit rate > 90% within TTL period
 - Cache miss fetches complete in < 5 seconds
 - Cache hit queries complete in < 100ms
@@ -104,24 +113,27 @@ kopi cache refresh  # Should fetch fresh data
 ## Platform Considerations
 
 ### Unix
+
 - Cache directory: `~/.kopi/cache/`
 - File permissions: 0600 (user read/write only)
 
-### Windows  
+### Windows
+
 - Cache directory: `%USERPROFILE%\.kopi\cache\`
 - Uses Windows file locking for concurrent access
 
 ### Cross-Platform
+
 - SQLite handles platform differences transparently
 - Path separators normalized by Rust's std::path
 
 ## Risks & Mitigation
 
-| Risk | Impact | Likelihood | Mitigation | Validation |
-|------|--------|------------|------------|------------|
-| Cache corruption | High | Low | SQLite ACID properties, checksums | Integrity tests on read |
-| Disk space exhaustion | Medium | Low | 100MB size limit, auto-cleanup | Monitor cache size |
-| Stale data served | Low | Medium | TTL expiration, ETag validation | Timestamp checks |
+| Risk                  | Impact | Likelihood | Mitigation                        | Validation              |
+| --------------------- | ------ | ---------- | --------------------------------- | ----------------------- |
+| Cache corruption      | High   | Low        | SQLite ACID properties, checksums | Integrity tests on read |
+| Disk space exhaustion | Medium | Low        | 100MB size limit, auto-cleanup    | Monitor cache size      |
+| Stale data served     | Low    | Medium     | TTL expiration, ETag validation   | Timestamp checks        |
 
 ## Implementation Notes
 
@@ -132,6 +144,7 @@ kopi cache refresh  # Should fetch fresh data
 - Log cache hits/misses at DEBUG level for monitoring
 
 ## External References
+
 - [SQLite Write-Ahead Logging](https://sqlite.org/wal.html) - For concurrent access
 - [HTTP ETag](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag) - Cache validation
 

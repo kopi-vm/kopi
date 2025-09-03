@@ -1,9 +1,11 @@
 # ADR-014: Configuration and Version File Formats
 
 ## Status
+
 Proposed
 
 ## Context
+
 Kopi needs to support both project-specific and global configuration for Java version management. We must consider:
 
 1. Compatibility with existing tools (jenv, asdf-java, GitHub Actions setup-java)
@@ -15,21 +17,25 @@ Kopi needs to support both project-specific and global configuration for Java ve
 ### Existing Tool Analysis
 
 **jenv** uses `.java-version` files with formats like:
+
 - `11` (major version)
 - `11.0.15` (full version)
 - `openjdk64-11.0.15` (distribution-arch-version with `-` separator)
 
 **asdf-java** uses `.tool-versions` files with formats like:
+
 - `java temurin-21.0.1+12`
 - `java corretto-17.0.5.8.1`
 
 **GitHub Actions setup-java** supports `.java-version` files containing:
+
 - Simple version numbers: `11`, `17`, `21`
 - Full versions: `11.0.15`, `21.0.1`
 
 ### Problems with Existing Formats
 
 Both jenv and asdf use `-` as a separator between distribution and version, which creates ambiguity because Java version strings can contain `-`:
+
 - `21-ea` (early access)
 - `22-ea+27-2262` (early access with build info)
 - `11.0.2+9-LTS` (LTS tag)
@@ -61,6 +67,7 @@ Both jenv and asdf use `-` as a separator between distribution and version, whic
 ### Version Resolution Behavior
 
 When a major version only is specified (e.g., `21`), kopi will:
+
 - Automatically select the latest available minor and patch version
 - For example, `21` might resolve to `21.0.2+13` if that's the latest available
 - This provides convenience while maintaining reproducibility once installed
@@ -69,6 +76,7 @@ When a major version only is specified (e.g., `21`), kopi will:
 ### Configuration Hierarchy
 
 Version resolution order (highest to lowest priority):
+
 1. Environment variable: `KOPI_JAVA_VERSION`
 2. `.kopi-version` file (walk up directory tree)
 3. `.java-version` file (walk up directory tree, compatibility)
@@ -93,6 +101,7 @@ kopi migrate --recursive     # Handle monorepos
 ```
 
 Migration mapping examples:
+
 - `openjdk64-11.0.15` → `temurin@11.0.15`
 - `corretto-17.0.5.8.1` → `corretto@17.0.5.8.1`
 - `corretto-21.0.7.6.1` → `corretto@21.0.7.6.1` (5-component format preserved)
@@ -119,6 +128,7 @@ Migration mapping examples:
 ## Consequences
 
 ### Positive
+
 - Clear, unambiguous version specification format
 - Smooth migration path from existing tools
 - Maintains compatibility where appropriate
@@ -127,11 +137,13 @@ Migration mapping examples:
 - No complex project configuration to manage
 
 ### Negative
+
 - Users must run migration commands to adopt kopi
 - Temporary duplication of version files during migration
 - New format to learn (though more intuitive)
 - No support for advanced version constraints (must use exact versions)
 
 ### Neutral
+
 - Multiple configuration files may exist during transition period
 - Need to maintain migration code for existing formats

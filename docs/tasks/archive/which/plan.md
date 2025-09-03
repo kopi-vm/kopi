@@ -1,9 +1,11 @@
 # Which Command Implementation Plan
 
 ## Overview
+
 This document outlines the implementation plan for the `kopi which` command, which shows the installation path for JDK versions. The command provides a simple way to locate Java executables, other JDK tools, or the JDK home directory, supporting both current and specific JDK version queries with flexible output formats.
 
 ## Command Syntax
+
 - `kopi which [<version>] [options]` - Show path to java executable or JDK home
   - `<version>` - Optional JDK version specification (e.g., `21`, `temurin@21.0.5+11`)
   - `--tool <name>` - Show path for specific JDK tool (default: java)
@@ -14,6 +16,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
 ## Phase 1: Core Implementation
 
 ### Input Resources
+
 - `/docs/tasks/archive/which/design.md` - Complete which command design
 - `/src/version/resolver.rs` - Existing version resolution logic
 - `/src/storage/jdk_repository.rs` - JDK installation management
@@ -21,8 +24,10 @@ This document outlines the implementation plan for the `kopi which` command, whi
 - `/src/commands/mod.rs` - Command structure
 
 ### Deliverables
+
 1. **Which Command Module** (`/src/commands/which.rs`)
    - Command handler implementation with clap derive:
+
      ```rust
      use clap::Args;
      use serde::Serialize;
@@ -62,11 +67,12 @@ This document outlines the implementation plan for the `kopi which` command, whi
      ```
 
    - Version resolution logic:
+
      ```rust
      impl WhichCommand {
          pub fn execute(self) -> KopiResult<()> {
              let repo = JdkRepository::load()?;
-             
+
              // Resolve JDK spec
              let (jdk_spec, source) = if let Some(version) = self.version {
                  // Parse specified version
@@ -110,6 +116,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
      ```
 
    - Tool path resolution:
+
      ```rust
      fn get_tool_path(&self, installation: &JdkInstallation, tool: &str) -> KopiResult<PathBuf> {
          let tool_name = if cfg!(windows) {
@@ -119,7 +126,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
          };
 
          let tool_path = installation.path().join("bin").join(&tool_name);
-         
+
          if !tool_path.exists() {
              return Err(KopiError::ToolNotFound {
                  tool: tool.to_string(),
@@ -135,7 +142,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
      ```rust
      fn find_matching_jdk(&self, repo: &JdkRepository, spec: &JdkSpec) -> KopiResult<JdkInstallation> {
          let matches = repo.find_matching_jdks(spec)?;
-         
+
          match matches.len() {
              0 => Err(KopiError::JdkNotInstalled {
                  jdk_spec: spec.clone(),
@@ -161,6 +168,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
 
 2. **Version Resolution Enhancement** (`/src/version/resolver.rs`)
    - Add `resolve_version_with_source()` if not already present:
+
      ```rust
      pub fn resolve_version_with_source() -> KopiResult<(Option<VersionRequest>, VersionSource)> {
          // Check KOPI_JAVA_VERSION environment variable
@@ -188,7 +196,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
      #[derive(Error, Debug)]
      pub enum KopiError {
          // ... existing variants
-         
+
          #[error("Tool '{tool}' not found in JDK installation at {jdk_path}")]
          ToolNotFound {
              tool: String,
@@ -199,14 +207,15 @@ This document outlines the implementation plan for the `kopi which` command, whi
 
 4. **CLI Integration** (update `/src/main.rs`)
    - Add `Which` command to Commands enum:
+
      ```rust
      #[derive(Subcommand)]
      enum Commands {
          // ... existing commands
-         
+
          /// Show installation path for a JDK version
          Which(which::WhichCommand),
-         
+
          /// Show installation path for a JDK version (alias)
          #[command(visible_alias = "w")]
          W(which::WhichCommand),
@@ -228,6 +237,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
    ```
 
 ### Success Criteria
+
 - Command correctly resolves current JDK when no version specified
 - Specific version lookup works with pattern matching
 - Tool path resolution works for various JDK tools
@@ -239,12 +249,15 @@ This document outlines the implementation plan for the `kopi which` command, whi
 ## Phase 2: Testing and Polish
 
 ### Input Resources
+
 - Phase 1 deliverables
 - `/tests/common/` - Test utilities
 - Existing test patterns from other commands
 
 ### Deliverables
+
 1. **Unit Tests** (`/src/commands/which.rs` test module)
+
    ```rust
    #[cfg(test)]
    mod tests {
@@ -256,17 +269,17 @@ This document outlines the implementation plan for the `kopi which` command, whi
        fn test_which_current_version() {
            let temp_dir = TempDir::new().unwrap();
            let repo = create_test_repository(&temp_dir);
-           
+
            // Set up environment
            std::env::set_var("KOPI_JAVA_VERSION", "temurin@21");
-           
+
            let cmd = WhichCommand {
                version: None,
                tool: "java".to_string(),
                home: false,
                json: false,
            };
-           
+
            // Should find current version
            assert!(cmd.execute().is_ok());
        }
@@ -275,17 +288,17 @@ This document outlines the implementation plan for the `kopi which` command, whi
        fn test_which_specific_version() {
            let temp_dir = TempDir::new().unwrap();
            let repo = create_test_repository(&temp_dir);
-           
+
            // Install test JDK
            create_test_jdk(&repo, "temurin", "21.0.5+11");
-           
+
            let cmd = WhichCommand {
                version: Some("temurin@21".to_string()),
                tool: "java".to_string(),
                home: false,
                json: false,
            };
-           
+
            assert!(cmd.execute().is_ok());
        }
 
@@ -293,16 +306,16 @@ This document outlines the implementation plan for the `kopi which` command, whi
        fn test_which_tool_not_found() {
            let temp_dir = TempDir::new().unwrap();
            let repo = create_test_repository(&temp_dir);
-           
+
            create_test_jdk(&repo, "temurin", "21.0.5+11");
-           
+
            let cmd = WhichCommand {
                version: Some("temurin@21".to_string()),
                tool: "nonexistent-tool".to_string(),
                home: false,
                json: false,
            };
-           
+
            match cmd.execute() {
                Err(KopiError::ToolNotFound { tool, .. }) => {
                    assert_eq!(tool, "nonexistent-tool");
@@ -315,16 +328,16 @@ This document outlines the implementation plan for the `kopi which` command, whi
        fn test_which_home_option() {
            let temp_dir = TempDir::new().unwrap();
            let repo = create_test_repository(&temp_dir);
-           
+
            let jdk = create_test_jdk(&repo, "temurin", "21.0.5+11");
-           
+
            let cmd = WhichCommand {
                version: Some("temurin@21".to_string()),
                tool: "java".to_string(),
                home: true,
                json: false,
            };
-           
+
            // Should return JDK home, not executable path
            let output = capture_stdout(|| cmd.execute());
            assert_eq!(output.trim(), jdk.path().display().to_string());
@@ -334,19 +347,19 @@ This document outlines the implementation plan for the `kopi which` command, whi
        fn test_which_json_output() {
            let temp_dir = TempDir::new().unwrap();
            let repo = create_test_repository(&temp_dir);
-           
+
            create_test_jdk(&repo, "temurin", "21.0.5+11");
-           
+
            let cmd = WhichCommand {
                version: Some("temurin@21".to_string()),
                tool: "javac".to_string(),
                home: false,
                json: true,
            };
-           
+
            let output = capture_stdout(|| cmd.execute());
            let json: serde_json::Value = serde_json::from_str(&output).unwrap();
-           
+
            assert_eq!(json["tool"], "javac");
            assert_eq!(json["distribution"], "temurin");
            assert_eq!(json["version"], "21.0.5+11");
@@ -356,18 +369,18 @@ This document outlines the implementation plan for the `kopi which` command, whi
        fn test_ambiguous_version() {
            let temp_dir = TempDir::new().unwrap();
            let repo = create_test_repository(&temp_dir);
-           
+
            // Install multiple JDKs with same major version
            create_test_jdk(&repo, "temurin", "21.0.5+11");
            create_test_jdk(&repo, "corretto", "21.0.7.6.1");
-           
+
            let cmd = WhichCommand {
                version: Some("21".to_string()),
                tool: "java".to_string(),
                home: false,
                json: false,
            };
-           
+
            match cmd.execute() {
                Err(KopiError::ValidationError(msg)) => {
                    assert!(msg.contains("Multiple JDKs match"));
@@ -381,6 +394,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
    ```
 
 2. **Integration Tests** (`/tests/which.rs`)
+
    ```rust
    #[path = "common/mod.rs"]
    mod common;
@@ -391,12 +405,12 @@ This document outlines the implementation plan for the `kopi which` command, whi
    #[test]
    fn test_which_command_basic() {
        let _guard = TestHomeGuard::new();
-       
+
        // Install a JDK first
        run_kopi_command(&["install", "temurin@21"])
            .assert()
            .success();
-       
+
        // Test basic which
        run_kopi_command(&["which", "temurin@21"])
            .assert()
@@ -407,16 +421,16 @@ This document outlines the implementation plan for the `kopi which` command, whi
    #[test]
    fn test_which_current_project() {
        let _guard = TestHomeGuard::new();
-       
+
        // Install and set local version
        run_kopi_command(&["install", "temurin@17"])
            .assert()
            .success();
-       
+
        run_kopi_command(&["local", "temurin@17"])
            .assert()
            .success();
-       
+
        // Which without version should find project version
        run_kopi_command(&["which"])
            .assert()
@@ -427,11 +441,11 @@ This document outlines the implementation plan for the `kopi which` command, whi
    #[test]
    fn test_which_tools() {
        let _guard = TestHomeGuard::new();
-       
+
        run_kopi_command(&["install", "temurin@21"])
            .assert()
            .success();
-       
+
        // Test various tools
        for tool in &["java", "javac", "jar", "jshell"] {
            run_kopi_command(&["which", "--tool", tool, "temurin@21"])
@@ -444,11 +458,11 @@ This document outlines the implementation plan for the `kopi which` command, whi
    #[test]
    fn test_which_home_option() {
        let _guard = TestHomeGuard::new();
-       
+
        run_kopi_command(&["install", "temurin@21"])
            .assert()
            .success();
-       
+
        // Home option should not include /bin/java
        run_kopi_command(&["which", "--home", "temurin@21"])
            .assert()
@@ -461,18 +475,18 @@ This document outlines the implementation plan for the `kopi which` command, whi
    #[test]
    fn test_which_json_format() {
        let _guard = TestHomeGuard::new();
-       
+
        run_kopi_command(&["install", "temurin@21"])
            .assert()
            .success();
-       
+
        let output = run_kopi_command(&["which", "--json", "temurin@21"])
            .assert()
            .success()
            .get_output()
            .stdout
            .clone();
-       
+
        let json: serde_json::Value = serde_json::from_slice(&output).unwrap();
        assert_eq!(json["distribution"], "temurin");
        assert_eq!(json["tool"], "java");
@@ -482,7 +496,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
    #[test]
    fn test_which_not_installed() {
        let _guard = TestHomeGuard::new();
-       
+
        run_kopi_command(&["which", "temurin@22"])
            .assert()
            .failure()
@@ -493,11 +507,11 @@ This document outlines the implementation plan for the `kopi which` command, whi
    #[test]
    fn test_which_tool_not_found() {
        let _guard = TestHomeGuard::new();
-       
+
        run_kopi_command(&["install", "temurin@21"])
            .assert()
            .success();
-       
+
        run_kopi_command(&["which", "--tool", "nonexistent", "temurin@21"])
            .assert()
            .failure()
@@ -507,16 +521,17 @@ This document outlines the implementation plan for the `kopi which` command, whi
    ```
 
 3. **Platform-Specific Tests** (`/tests/which_platform.rs`)
+
    ```rust
    #[cfg(windows)]
    #[test]
    fn test_which_windows_exe() {
        let _guard = TestHomeGuard::new();
-       
+
        run_kopi_command(&["install", "temurin@21"])
            .assert()
            .success();
-       
+
        // Windows should include .exe
        run_kopi_command(&["which", "temurin@21"])
            .assert()
@@ -528,11 +543,11 @@ This document outlines the implementation plan for the `kopi which` command, whi
    #[test]
    fn test_which_unix_no_exe() {
        let _guard = TestHomeGuard::new();
-       
+
        run_kopi_command(&["install", "temurin@21"])
            .assert()
            .success();
-       
+
        // Unix should not include .exe
        run_kopi_command(&["which", "temurin@21"])
            .assert()
@@ -544,6 +559,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
    ```
 
 4. **Benchmark Tests** (`/benches/which_bench.rs`)
+
    ```rust
    use criterion::{black_box, criterion_group, criterion_main, Criterion};
    use kopi::commands::which::WhichCommand;
@@ -581,6 +597,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
    ```
 
 ### Success Criteria
+
 - All unit tests pass with good coverage
 - Integration tests verify end-to-end functionality
 - Platform-specific behavior tested on Windows and Unix
@@ -591,6 +608,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
 ## Implementation Guidelines
 
 ### Development Process
+
 1. Start with `/clear` command to reset context
 2. Load this plan.md and design.md
 3. Implement core functionality first
@@ -603,6 +621,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
    - `cargo test --test which` (integration tests)
 
 ### Code Quality Standards
+
 - Use existing error types and patterns
 - Follow Rust idioms and project conventions
 - Document public APIs
@@ -610,6 +629,7 @@ This document outlines the implementation plan for the `kopi which` command, whi
 - Minimize allocations in hot paths
 
 ### Testing Strategy
+
 - Unit tests use mocks for JdkRepository
 - Integration tests use real filesystem
 - Test both success and error paths
@@ -619,26 +639,31 @@ This document outlines the implementation plan for the `kopi which` command, whi
 ## Design Principles
 
 ### Simplicity
+
 - Command does one thing well: show paths
 - Minimal output by default (just the path)
 - No additional information unless requested
 
 ### Flexibility
+
 - Support any JDK tool via `--tool`
 - Provide JDK home with `--home`
 - JSON output for scripting
 
 ### Consistency
+
 - Reuse existing version resolution
 - Match error handling patterns
 - Follow project conventions
 
 ### Performance
+
 - Fast execution (< 20ms target)
 - Minimal file I/O
 - Efficient path construction
 
 ## Success Metrics
+
 - Command executes in < 20ms for typical use
 - Exit codes correctly indicate error types
 - Works reliably across platforms
@@ -646,10 +671,13 @@ This document outlines the implementation plan for the `kopi which` command, whi
 - Clear, actionable error messages
 
 ## Dependencies Required
+
 No new dependencies needed. Uses existing:
+
 - **clap**: Command-line parsing
 - **serde/serde_json**: JSON output
 - **Standard library**: Path manipulation
 
 ## Next Steps
+
 Begin with Phase 1, implementing the core WhichCommand module and integrating it with the CLI. Focus on getting basic functionality working before adding all features.

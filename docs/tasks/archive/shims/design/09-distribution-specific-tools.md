@@ -3,6 +3,7 @@
 ## The Challenge
 
 Different JDK distributions include vendor-specific tools:
+
 - **GraalVM**: `native-image`, `gu`, `polyglot`
 - **OpenJ9**: `traceformat`, `jextract`
 - **Corretto**: `jmc` (in some versions)
@@ -66,6 +67,7 @@ kopi: Tool 'some-unknown-tool' is not available in any installed JDK
 The system maintains a registry of tools that are specific to certain JDK distributions:
 
 **GraalVM-specific tools:**
+
 - `gu` - GraalVM Updater for managing GraalVM components
 - `native-image` - Ahead-of-time compilation to native executables
 - `polyglot` - Launcher for polyglot applications
@@ -74,15 +76,18 @@ The system maintains a registry of tools that are specific to certain JDK distri
 - `node` - Node.js runtime (when installed as a GraalVM component)
 
 **OpenJ9-specific tools:**
+
 - `traceformat` - Tool for formatting trace files
 - `jextract` - Dump file extraction utility
 
 **Corretto-specific tools:**
+
 - `jmc` - JDK Mission Control (available in some Corretto versions)
 
 ### Standard JDK Tools
 
 All JDK distributions include the standard tools:
+
 - Core tools: `java`, `javac`, `jar`
 - Documentation tools: `javadoc`, `javap`
 - Debugging tools: `jdb`, `jconsole`

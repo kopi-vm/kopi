@@ -7,6 +7,7 @@ The `--cleanup` option for the `kopi uninstall` command detects and cleans up fa
 ## Command Interface
 
 ### Usage
+
 ```bash
 kopi uninstall --cleanup                 # Clean up failed operations with confirmation
 kopi uninstall --cleanup --force         # Force cleanup without confirmation
@@ -15,6 +16,7 @@ kopi uninstall <version> --cleanup       # Uninstall specified version then perf
 ```
 
 ### Behavior
+
 - When used alone (`kopi uninstall --cleanup`), performs only cleanup operations
 - When used with a version (`kopi uninstall temurin@21 --cleanup`), performs the uninstall first, then cleanup
 - Cleanup runs after the normal uninstall operation completes successfully
@@ -43,21 +45,25 @@ kopi uninstall <version> --cleanup       # Uninstall specified version then perf
 ### Cleanup Actions
 
 #### 1. Cleanup Temp Directories
+
 - **Target**: `.*.removing` directories from failed operations
 - **Action**: Remove these temporary directories completely
 - **Safety**: Verify they are indeed temporary directories before removal
 
 #### 2. Complete Partial Removals
+
 - **Target**: JDKs missing essential files (incomplete uninstall)
 - **Action**: Remove remaining files and directories
 - **Safety**: Confirm with user unless `--force` is specified
 
 #### 3. Orphaned Metadata Cleanup
+
 - **Target**: `.meta.json` files without corresponding JDK directories
 - **Action**: Remove orphaned metadata files
 - **Safety**: Verify the JDK directory truly doesn't exist
 
 #### 4. Symlink Cleanup (Unix only)
+
 - **Target**: Broken symbolic links in kopi directories
 - **Action**: Remove orphaned symlinks
 - **Safety**: Only remove symlinks that point to non-existent targets
@@ -67,6 +73,7 @@ kopi uninstall <version> --cleanup       # Uninstall specified version then perf
 The cleanup functionality is integrated into the uninstall command:
 
 ### Module Organization
+
 ```
 src/commands/uninstall.rs            # Main command implementation with --cleanup handling
 src/uninstall/
@@ -78,6 +85,7 @@ src/uninstall/
 ### Core Components
 
 #### 1. Cleanup Implementation (`src/uninstall/cleanup.rs`)
+
 ```rust
 pub struct UninstallCleanup<'a> {
     repository: &'a JdkRepository<'a>,
@@ -92,6 +100,7 @@ impl<'a> UninstallCleanup<'a> {
 ```
 
 #### 2. Cleanup Action Types
+
 ```rust
 #[derive(Debug)]
 pub enum CleanupAction {
@@ -102,6 +111,7 @@ pub enum CleanupAction {
 ```
 
 #### 3. Cleanup Result
+
 ```rust
 #[derive(Debug, Default)]
 pub struct CleanupResult {
@@ -115,6 +125,7 @@ pub struct CleanupResult {
 ### Output Format
 
 #### Detection Phase
+
 ```
 Scanning for cleanup issues...
 Found 3 issues:
@@ -126,6 +137,7 @@ Total recoverable space: 245 MB
 ```
 
 #### Confirmation (without --force)
+
 ```
 The following cleanup actions will be performed:
   ✓ Remove temporary directory: .temurin-21.0.5+11.removing
@@ -136,6 +148,7 @@ Proceed with cleanup? [y/N]
 ```
 
 #### Cleanup Progress
+
 ```
 Cleaning up...
   ✓ Cleaned temporary directory: .temurin-21.0.5+11.removing
@@ -148,17 +161,20 @@ Cleanup completed successfully. Freed 245 MB of disk space.
 ### Error Handling
 
 #### No Issues Found
+
 ```
 No cleanup issues detected. Your kopi installation is clean.
 ```
 
 #### Permission Errors
+
 ```
 Error: Permission denied cleaning up corretto-17.0.8.8.1
 Suggestion: Run 'kopi uninstall --cleanup --force' as administrator or with sudo
 ```
 
 #### Partial Cleanup
+
 ```
 Warning: Some issues could not be resolved:
   • corretto-17.0.8.8.1: Permission denied
@@ -168,11 +184,13 @@ Warning: Some issues could not be resolved:
 ## Platform-Specific Considerations
 
 ### Windows
+
 - Handle file locking by antivirus software
 - Use Windows-specific file deletion APIs for stubborn files
 - Handle long path names properly
 
 ### Unix/Linux/macOS
+
 - Use symlink-aware file operations
 - Handle permission issues with appropriate error messages
 - Leverage platform-specific file system features
@@ -180,17 +198,20 @@ Warning: Some issues could not be resolved:
 ## Safety Features
 
 ### Pre-cleanup Validation
+
 1. Verify paths are within kopi home directory
 2. Confirm temporary directories match expected patterns
 3. Validate metadata files are actually orphaned
 4. Check symlinks are truly broken
 
 ### Atomic Operations
+
 - Use temporary markers during cleanup
 - Rollback capability for critical failures
 - Comprehensive logging of all actions
 
 ### User Confirmation
+
 - Clear description of what will be removed
 - Disk space that will be freed
 - Option to skip individual items
@@ -199,11 +220,13 @@ Warning: Some issues could not be resolved:
 ## Integration with Normal Uninstall
 
 When used with a version specification:
+
 1. Execute the normal uninstall operation first
 2. If successful, proceed with cleanup operations
 3. Report both uninstall and cleanup results
 
 This allows users to clean up their kopi installation after any uninstall operation:
+
 ```bash
 # Uninstall a specific JDK and clean up any other failed operations
 kopi uninstall temurin@21 --cleanup
@@ -216,17 +239,20 @@ kopi uninstall temurin@21 --cleanup
 ## Testing Strategy
 
 ### Unit Tests
+
 - Test detection logic with mocked file systems
 - Validate cleanup operations in isolated environments
 - Test platform-specific behavior
 
 ### Integration Tests
+
 - Create realistic cleanup scenarios
 - Test with actual partial uninstall states
 - Verify safety mechanisms work correctly
 - Test combined uninstall + cleanup operations
 
 ### Edge Cases
+
 - Empty kopi home directory
 - Corrupted metadata files
 - Permission denied scenarios

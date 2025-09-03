@@ -3,6 +3,7 @@
 **Summary**: Use Rust's native `std::fs::File` locking API (stable since 1.89.0) for cross-process synchronization, eliminating external dependencies while ensuring safe concurrent operations.
 
 ## Metadata
+
 - Type: ADR
 - Owner: Development Team
 - Reviewers: Architecture Team
@@ -12,9 +13,11 @@
 - Date Modified: 2025-09-03
 
 ## Links
+
 <!-- Internal project artifacts only. The Links section is mandatory for traceability. If a link does not apply, use "N/A – <reason>". -->
+
 - Analysis: [`AN-m9efc-concurrent-process-locking.md`](../analysis/AN-m9efc-concurrent-process-locking.md)
-- Requirements: 
+- Requirements:
   - [`FR-02uqo-installation-locking.md`](../requirements/FR-02uqo-installation-locking.md)
   - [`FR-ui8x2-uninstallation-locking.md`](../requirements/FR-ui8x2-uninstallation-locking.md)
   - [`FR-v7ql4-cache-locking.md`](../requirements/FR-v7ql4-cache-locking.md)
@@ -32,6 +35,7 @@
 - Superseded by: N/A – Current version
 
 ## Context
+
 <!-- What problem or architecturally significant requirement motivates this decision? Include constraints, assumptions, scope boundaries, and prior art. -->
 
 ### Lock Implementation: Rust Standard Library
@@ -39,6 +43,7 @@
 **Key Decision**: Use native `std::fs::File` locking methods (stable since Rust 1.89.0)
 
 **Advantages of Standard Library Approach**:
+
 - **Zero external dependencies**: Reduces supply chain risk and maintenance burden
 - **Official stability guarantees**: Part of Rust's stable API commitment
 - **Cross-platform support**: Unified interface over platform-specific implementations
@@ -46,6 +51,7 @@
 - **Complete API**: All necessary locking primitives available
 
 **Historical Context**:
+
 - Before Rust 1.89.0, tools like volta and cargo used the fs2 crate
 - fs2 became unmaintained (last update 2018), fs4 emerged as a fork
 - With native support in std, external crates are now obsolete for our use case
@@ -53,6 +59,7 @@
 ### std::fs::File Locking API Reference
 
 **Available Methods** (stable in Rust 1.89.0+):
+
 - `file.lock()` - Blocking exclusive lock
 - `file.lock_shared()` - Blocking shared lock (multiple readers)
 - `file.try_lock()` - Non-blocking exclusive lock attempt
@@ -60,11 +67,13 @@
 - `file.unlock()` - Explicit release (automatic on drop)
 
 **Platform Implementation**:
+
 - Unix: `flock(2)` system call (advisory locking)
 - Windows: `LockFileEx` API (requires write permissions)
 - Both: Kernel automatically releases locks on process exit
 
 **Usage Pattern**:
+
 ```rust
 use std::fs::File;
 let lock_file = File::create("~/.kopi/locks/cache.lock")?;
@@ -74,30 +83,38 @@ lock_file.unlock()?;  // Explicit release (or automatic on drop)
 ```
 
 ### Problem Statement
+
 Multiple kopi processes can run simultaneously without coordination, potentially causing:
+
 - Race conditions during JDK installation/uninstallation
 - Corrupted JDK directories from concurrent modifications
 - Inconsistent cache state during parallel operations
 - Configuration file conflicts
 
 ### Key Constraints
+
 - Must work on both Unix and Windows platforms
 - Must handle network filesystems (NFS, SMB)
 - Cannot require elevated permissions
 - Should not leave stale locks after process crashes
 
 ### Critical Discovery from Analysis
+
 **Native std::fs::File locks vs Lock files with PID** are fundamentally different:
+
 - **Native advisory locks (std::fs::File)**: Automatically released by kernel on process exit (even crash), no external dependencies
 - **Lock files with PID**: Persist after crash, require stale detection and cleanup logic
 
 ### Forces in Tension
+
 - **Simplicity** vs **Edge case coverage**: Supporting NFS adds significant complexity
 - **Perfect safety** vs **Practical safety**: Atomic operations provide sufficient safety
 - **Current needs** vs **Future possibilities**: Can add NFS support when actually needed
 
 ### Key Insights from Discussion
+
 After consulting with domain experts, we learned:
+
 - NFS usage is minority case for development tools
 - Atomic filesystem operations provide sufficient safety
 - cargo successfully uses this approach in production
@@ -111,7 +128,9 @@ After consulting with domain experts, we learned:
 - **Phased approach**: Start simple (std locks + timeout), add complexity (heartbeat/lease) only if needed
 
 ## Success Metrics (optional)
+
 <!-- Define measurable criteria to evaluate if this decision was successful -->
+
 - Metric 1: Zero reported data corruption issues from concurrent operations (both local and NFS)
 - Metric 2: Lock acquisition wait time < 1s in 95% of cases (local filesystems)
 - Metric 3: 100% automatic cleanup on process crash (local filesystems with std locks)
@@ -121,11 +140,13 @@ After consulting with domain experts, we learned:
 - Review date: 2025-12-01 (after 3 months in production)
 
 ## Decision
+
 <!-- State the decision clearly in active voice. Start with "We will..." or "We have decided to..." and describe the core rules, policies, or structures chosen. Include short examples if clarifying. -->
 
 We will implement a **native Rust standard library locking strategy** using `std::fs::File` methods with atomic filesystem operations for safety, following cargo's approach of skipping locks on network filesystems.
 
 ### Core Approach
+
 1. **Locking strategy**:
    - **Local filesystems**: Native std::fs::File advisory locks (kernel-managed, automatic cleanup)
    - **Network filesystems**: Skip locking, rely on atomic operations
@@ -150,7 +171,7 @@ We will implement a **native Rust standard library locking strategy** using `std
 4. **User experience (Phase 1 - Simple)**:
    - **Default timeout**: 600 seconds (10 minutes) - based on empirical testing (see Performance Measurements)
    - **Configuration** (Priority: CLI > Environment > Config file > Default):
-     - CLI flags: 
+     - CLI flags:
        - `--wait=<seconds|infinite>`, `--no-wait` (same as `--wait=0`)
        - `--lock-mode=<auto|std|none>` for lock mechanism override
      - Environment variables:
@@ -159,32 +180,37 @@ We will implement a **native Rust standard library locking strategy** using `std
      - Config file: `[locking]` section with `timeout` and `mode` settings
    - **Clear messaging**:
      - When waiting: "Another process is installing. Waiting up to 600s (Ctrl-C to cancel, --wait=infinite for unlimited)"
-     - On timeout: "Timed out after 600s. Try --wait=1200 or KOPI_LOCKING__TIMEOUT=infinite"
+     - On timeout: "Timed out after 600s. Try --wait=1200 or KOPI_LOCKING\_\_TIMEOUT=infinite"
      - On NFS detected with auto mode: "Network filesystem detected; using atomic operations only"
    - **Progress indication**: Simple spinner with elapsed time
 
 ### Decision Drivers
+
 - Simplicity over complexity (YAGNI principle)
 - Atomic operations provide safety even without locks
 - NFS is minority use case for development tools
 - Following proven patterns from cargo
 
 ### Considered Options
+
 - **Option A**: Native std::fs::File locks + skip on NFS (Chosen)
 - **Option B**: Hybrid std + PID fallback for NFS (Over-engineering)
 - **Option C**: Pure PID-based lock files (Unnecessary complexity)
 - **Option D**: No locking (Too risky)
 
 ### Option Analysis
+
 - **Option A** — Pros: Simple, proven, safe with atomics | Cons: No locks on NFS
 - **Option B** — Pros: Full NFS support | Cons: Complex, may not be needed
 - **Option C** — Pros: Works everywhere | Cons: Stale lock issues
 - **Option D** — Pros: Simplest | Cons: Race condition risks
 
 ## Rationale
+
 <!-- Explain why this decision was made. Tie back to drivers and context. Be explicit about trade-offs and why alternatives were not chosen. -->
 
 ### Why Native std::fs::File locks + Skip on NFS?
+
 1. **No external dependencies**: Maximizes security and maintainability
 2. **Simplicity wins**: Avoid premature optimization for edge cases
 3. **Atomic operations are sufficient**: Staging + rename pattern prevents corruption
@@ -197,7 +223,7 @@ We will implement a **native Rust standard library locking strategy** using `std
 **Note**: The Analysis document (AN-m9efc) recommended a hybrid approach with PID-based fallback for NFS. After further consideration and discussion, we chose to diverge from this recommendation for the following reasons:
 
 - **YAGNI (You Aren't Gonna Need It)**: No evidence of NFS demand yet
-- **Complexity cost**: PID-based locks need stale detection, cleanup logic  
+- **Complexity cost**: PID-based locks need stale detection, cleanup logic
 - **Maintenance burden**: Two code paths to test and maintain
 - **Can add later**: If real users report NFS issues, we can enhance
 - **cargo's success**: cargo uses the same "skip on NFS" approach successfully in production
@@ -208,14 +234,17 @@ We will implement a **native Rust standard library locking strategy** using `std
   - Clear user communication (warning when NFS detected)
 
 ### Why Not No Locking?
+
 - Concurrent installs could corrupt directories
 - Lost updates in config files
 - Cache refresh race conditions
 
 ### Key Design Principle
+
 **"Make it work, make it right, make it fast"** - We're making it work (native std locks) and right (atomic ops). NFS optimization can come later if needed.
 
 ### Atomic Operations Provide Safety
+
 ```bash
 # Even without locks, this is safe:
 staging_dir="~/.kopi/jdks/.staging/temurin-21-$(uuidgen)"
@@ -227,7 +256,9 @@ mv "$staging_dir" "~/.kopi/jdks/temurin-21"  # Atomic!
 ```
 
 ## Consequences
+
 ### Positive
+
 - **Very simple**: Only 2 lock types (per-version + cache)
 - Config updates lock-free (atomic rename)
 - Parallel installation of different versions supported
@@ -241,11 +272,13 @@ mv "$staging_dir" "~/.kopi/jdks/temurin-21"  # Atomic!
 - **Phased approach**: Can add complexity later if needed
 
 ### Negative
+
 - No explicit locking on NFS (relies on atomics only)
 - Potential for race conditions on NFS (mitigated by atomic ops)
 - Config writes use "last write wins" semantics
 
 ### Neutral
+
 - NFS support can be added later if needed
 - Most operations are safe with atomic patterns alone
 
@@ -254,10 +287,12 @@ mv "$staging_dir" "~/.kopi/jdks/temurin-21"  # Atomic!
 ### Implementation Requirements
 
 **Primary Implementation**:
+
 - Use native `std::fs::File` locking methods for all new lock implementations
 - No external locking crates required
 
 **Migration from Legacy fs2 Usage**:
+
 1. **File Locking** (direct migration to std):
    - `src/platform/file_ops.rs`: Replace `fs2::FileExt` with std methods
    - `try_lock_exclusive()` → `try_lock()`
@@ -269,6 +304,7 @@ mv "$staging_dir" "~/.kopi/jdks/temurin-21"  # Atomic!
    - Recommendation: Use `sysinfo` crate for cross-platform disk operations
 
 **Benefits of Migration**:
+
 - Eliminate unmaintained fs2 dependency
 - Align with Rust ecosystem best practices
 - Reduce security surface area
@@ -280,16 +316,19 @@ The system should detect network filesystems by examining the filesystem type us
 ### Lock Acquisition Strategy
 
 The implementation should support three lock modes:
+
 - **Auto**: Detects filesystem type and chooses the appropriate strategy automatically
 - **Std**: Forces the use of native std::fs::File advisory locks regardless of filesystem type
 - **None**: Disables locking entirely, relying only on atomic operations
 
 Lock wait behavior should support three patterns:
+
 - **No wait**: Fail immediately if lock cannot be acquired (timeout = 0)
 - **Finite wait**: Wait up to a specified number of seconds (default 600)
 - **Infinite wait**: Wait indefinitely until lock is acquired or process is interrupted
 
 Configuration resolution should follow strict priority ordering:
+
 1. Command-line arguments have highest priority
 2. Environment variables override configuration file
 3. Configuration file values override defaults
@@ -298,6 +337,7 @@ Configuration resolution should follow strict priority ordering:
 ### Lock File Organization
 
 Lock files should be organized in a flat structure within `~/.kopi/locks/`:
+
 - Per-version locks: Named as `{vendor}-{version}-{os}-{arch}.lock`
 - Cache writer lock: Named as `cache.lock`
 - All lock files should be created with owner-only permissions for security
@@ -305,6 +345,7 @@ Lock files should be organized in a flat structure within `~/.kopi/locks/`:
 ### Configuration Updates
 
 Configuration file updates do not require locking. Instead, they should use the atomic rename pattern:
+
 1. Write new configuration to a temporary file
 2. Validate the temporary file is complete and correct
 3. Atomically rename the temporary file to replace the actual configuration
@@ -361,6 +402,7 @@ The existing metadata management implementation should be utilized:
 - The current implementation already keeps vendor JDK distributions unmodified by storing metadata separately
 
 For concurrent operations, ensure that:
+
 - Metadata writes use the same atomic rename pattern as other configuration updates
 - Missing metadata files should not prevent JDK usage if the directory exists (already implemented)
 - Metadata updates should be coordinated with the per-version lock to prevent conflicts
@@ -368,31 +410,37 @@ For concurrent operations, ensure that:
 ## Platform Considerations (required if applicable)
 
 ### Unix vs Windows
+
 - **Unix**: Uses flock(2) system call
 - **Windows**: Uses LockFileEx() API
 - **Both**: Rust standard library provides uniform cross-platform interface
 
 ### NFS Detection
+
 - Check mount type via `/proc/mounts` (Linux)
 - Use statfs/statvfs on other Unix systems
 - Windows: Check if path is UNC or mapped network drive
 
 ### WSL Considerations
+
 - WSL1 doesn't support fcntl locks (use flock like cargo)
 - WSL2 behaves like native Linux
 
 ## Security & Privacy (required if applicable)
+
 - Native std::fs::File locks don't store any data in lock files (kernel-managed)
 - Lock files exist as placeholders only, contain no content
 - Lock files use restrictive permissions (owner-only)
 
 ## Monitoring & Logging (required if applicable)
+
 - Log lock acquisition/release at DEBUG level
 - Log lock contentions at INFO level
 - Include wait duration in lock acquisition messages
 - Error messages clearly indicate lock-related failures
 
 ## Open Questions
+
 - [x] ~~Lock granularity?~~ → Resolved: 2 locks only (per-version + cache writer)
 - [x] ~~Lock timeout strategy?~~ → Resolved: Default 600s, configurable, infinite option
 - [When to add Phase 2 features (heartbeat/lease)?] → [User Feedback] → [After 6 months in production]
@@ -401,7 +449,9 @@ For concurrent operations, ensure that:
 - [CLI flag naming: --wait vs --lock-timeout?] → [UX Review] → [Before v1.0]
 
 ## External References
+
 <!-- External standards, specifications, articles, or documentation only -->
+
 - [Rust std::fs::File documentation](https://doc.rust-lang.org/std/fs/struct.File.html) - Native file locking API (stable since 1.89.0)
 - [Rust 1.89.0 Release Notes](https://blog.rust-lang.org/2025/08/04/Rust-1.89.0.html) - File locking stabilization
 - [flock(2) man page](https://man7.org/linux/man-pages/man2/flock.2.html) - Unix advisory locking

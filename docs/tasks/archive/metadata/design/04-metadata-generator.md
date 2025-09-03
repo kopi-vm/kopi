@@ -7,10 +7,12 @@ A CLI tool to generate metadata files from the foojay API for use with LocalDire
 ### Why This Tool Is Needed
 
 The foojay API requires two API calls to get complete JDK metadata:
+
 1. **List packages**: Returns basic metadata but missing `download_url` and `checksum`
 2. **Get package by ID**: Returns complete details including download URL and checksum
 
 This tool handles the complexity of:
+
 - Making multiple API calls per JDK package
 - Managing rate limits and API quotas
 - Organizing metadata into efficient file structures
@@ -86,59 +88,59 @@ enum Commands {
         /// Output directory for metadata files
         #[arg(short, long)]
         output: PathBuf,
-        
+
         /// Specific distributions to include (comma-separated)
         #[arg(long)]
         distributions: Option<String>,
-        
+
         /// Specific platforms to include (format: os-arch-libc)
         #[arg(long)]
         platforms: Option<String>,
-        
+
         /// Include JavaFX bundled versions
         #[arg(long)]
         javafx: bool,
-        
+
         /// Number of parallel API requests
         #[arg(long, default_value = "4")]
         parallel: usize,
-        
+
         /// Dry run - show what would be generated without actually writing files
         #[arg(long)]
         dry_run: bool,
-        
+
         /// Don't minify JSON output (default is to minify)
         #[arg(long = "no-minify")]
         no_minify: bool,
-        
+
         /// Force fresh generation, ignoring any existing state files
         #[arg(long)]
         force: bool,
     },
-    
+
     /// Update existing metadata
     Update {
         /// Input directory with existing metadata
         #[arg(short, long)]
         input: PathBuf,
-        
+
         /// Output directory for updated metadata
         #[arg(short, long)]
         output: PathBuf,
-        
+
         /// Dry run - show what would be updated without actually writing files
         #[arg(long)]
         dry_run: bool,
-        
+
         /// Force fresh generation, ignoring any existing state files
         #[arg(long)]
         force: bool,
-        
+
         /// Override parallel requests setting
         #[arg(long)]
         parallel: Option<usize>,
     },
-    
+
     /// Validate metadata structure
     Validate {
         /// Directory to validate
@@ -161,7 +163,7 @@ pub struct Platform {
 
 impl FromStr for Platform {
     type Err = KopiError;
-    
+
     fn from_str(s: &str) -> Result<Self> {
         let parts: Vec<&str> = s.split('-').collect();
         if parts.len() < 2 {
@@ -169,7 +171,7 @@ impl FromStr for Platform {
                 "Invalid platform format: {s}. Expected: os-arch[-libc]"
             )));
         }
-        
+
         let os = OperatingSystem::from_str(parts[0])?;
         let arch = Architecture::from_str(parts[1])?;
         let libc = if parts.len() > 2 {
@@ -177,7 +179,7 @@ impl FromStr for Platform {
         } else {
             None
         };
-        
+
         Ok(Platform { os, arch, libc })
     }
 }
@@ -205,52 +207,52 @@ impl MetadataGenerator {
     pub fn new(config: GeneratorConfig) -> Self {
         Self { config }
     }
-    
+
     /// Generate metadata files
     pub fn generate(&self, output_dir: &Path) -> Result<()> {
         println!("🚀 Starting metadata generation...");
-        
+
         // Step 1: Fetch all metadata from foojay
         self.report_progress("Fetching metadata from foojay API...");
         let source = FoojayMetadataSource::new();
         let all_metadata = source.fetch_all()?;
         println!("  Found {} JDK packages", all_metadata.len());
-        
+
         // Step 2: Filter by distribution if specified
         let filtered_by_dist = self.filter_by_distribution(all_metadata);
         println!(
             "  After distribution filter: {} packages",
             filtered_by_dist.len()
         );
-        
+
         // Step 3: Filter by platform if specified
         let filtered_by_platform = self.filter_by_platform(filtered_by_dist);
         println!(
             "  After platform filter: {} packages",
             filtered_by_platform.len()
         );
-        
+
         // Step 4: Filter by JavaFX if specified
         let filtered_final = self.filter_by_javafx(filtered_by_platform);
         println!("  After JavaFX filter: {} packages", filtered_final.len());
-        
+
         if filtered_final.is_empty() {
             return Err(KopiError::NotFound(
                 "No packages match the specified filters".to_string(),
             ));
         }
-        
+
         // Step 5: Fetch complete details for each package
         self.report_progress("Fetching package details...");
         let complete_metadata = self.fetch_complete_metadata(filtered_final)?;
-        
+
         // Step 6: Organize metadata by distribution and platform
         let organized_files = self.organize_metadata(complete_metadata)?;
         println!("  Organized into {} files", organized_files.len());
-        
+
         // Step 7: Create index.json
         let index = self.create_index(&organized_files)?;
-        
+
         // Step 8: Write files (or show dry run output)
         if self.config.dry_run {
             self.show_dry_run_output(&index, &organized_files);
@@ -261,14 +263,14 @@ impl MetadataGenerator {
                 output_dir.display()
             );
         }
-        
+
         Ok(())
     }
-    
+
     /// Fetch metadata with lazy loading handling
     fn fetch_metadata_for_platform(&self, platform: &Platform) -> Result<Vec<JdkMetadata>> {
         let mut metadata = Vec::new();
-        
+
         // Fetch basic metadata
         let packages = self.api_client.get_packages(Some(PackageQuery {
             architecture: Some(platform.arch.clone()),
@@ -277,11 +279,11 @@ impl MetadataGenerator {
             javafx_bundled: Some(self.config.javafx_bundled),
             ..Default::default()
         }))?;
-        
+
         // Convert and fetch missing fields
         for package in packages {
             let mut jdk_metadata = convert_package_to_jdk_metadata(package)?;
-            
+
             // Fetch missing fields (download_url, checksum)
             if jdk_metadata.download_url.is_none() {
                 let details = self.api_client.get_package_by_id(&jdk_metadata.id)?;
@@ -289,29 +291,29 @@ impl MetadataGenerator {
                 jdk_metadata.checksum = Some(details.checksum);
                 jdk_metadata.checksum_type = Some(parse_checksum_type(&details.checksum_type));
             }
-            
+
             jdk_metadata.is_complete = true;
             metadata.push(jdk_metadata);
         }
-        
+
         Ok(metadata)
     }
-    
+
     /// Batch fetch with rate limit handling
     fn fetch_metadata_parallel(&self, platforms: &[Platform]) -> Result<HashMap<Platform, Vec<JdkMetadata>>> {
         use std::sync::{Arc, Mutex};
         use std::thread;
-        
+
         let results = Arc::new(Mutex::new(HashMap::new()));
         let semaphore = Arc::new(Semaphore::new(self.config.parallel_requests));
-        
+
         let handles: Vec<_> = platforms.iter()
             .map(|platform| {
                 let platform = platform.clone();
                 let results = Arc::clone(&results);
                 let semaphore = Arc::clone(&semaphore);
                 let generator = self.clone();
-                
+
                 thread::spawn(move || {
                     let _permit = semaphore.acquire();
                     match generator.fetch_metadata_for_platform(&platform) {
@@ -325,21 +327,21 @@ impl MetadataGenerator {
                 })
             })
             .collect();
-        
+
         for handle in handles {
             handle.join().expect("Thread panicked");
         }
-        
+
         Arc::try_unwrap(results)
             .unwrap()
             .into_inner()
             .unwrap()
     }
-    
+
     /// Create index.json with platform filtering metadata
     fn create_index(&self, files: &HashMap<String, FileMetadata>) -> Result<IndexFile> {
         let mut entries = Vec::new();
-        
+
         for (path, metadata) in files {
             entries.push(IndexFileEntry {
                 path: path.clone(),
@@ -352,24 +354,24 @@ impl MetadataGenerator {
                 last_modified: Some(Utc::now().to_rfc3339()),
             });
         }
-        
+
         Ok(IndexFile {
             version: 2,
             updated: Utc::now().to_rfc3339(),
             files: entries,
         })
     }
-    
+
     /// Write output files
     fn write_output(&self, output_dir: &Path, index: &IndexFile, files: &HashMap<String, FileMetadata>) -> Result<()> {
         // Create output directory
         fs::create_dir_all(output_dir)?;
-        
+
         // Write index.json
         let index_path = output_dir.join("index.json");
         let index_json = serde_json::to_string_pretty(index)?;
         fs::write(&index_path, &index_json)?;
-        
+
         // Write metadata files
         for (path, metadata) in files {
             let file_path = output_dir.join(path);
@@ -378,7 +380,7 @@ impl MetadataGenerator {
             }
             fs::write(&file_path, &metadata.content)?;
         }
-        
+
         Ok(())
     }
 }
@@ -388,7 +390,7 @@ impl MetadataGenerator {
     fn report_progress(&self, message: &str) {
         println!("📦 {}", message);
     }
-    
+
     fn create_progress_bar(&self, total: u64) -> ProgressBar {
         let pb = ProgressBar::new(total);
         pb.set_style(
@@ -405,6 +407,7 @@ impl MetadataGenerator {
 ## Implementation Status
 
 ### Currently Implemented Features
+
 - ✅ Basic metadata generation from foojay API
 - ✅ Distribution filtering (`--distributions`)
 - ✅ Platform filtering (`--platforms`)
@@ -422,6 +425,7 @@ impl MetadataGenerator {
 - ✅ **Automatic state cleanup** on successful completion
 
 ### Not Yet Implemented
+
 - ❌ Configuration file support (toml)
 - ❌ Diff reporting for updates
 - ❌ Automated retry logic for failed requests
@@ -476,10 +480,12 @@ The `update` command provides incremental updates to existing metadata, optimizi
 ### How It Works
 
 The Foojay API requires two types of API calls:
+
 1. **List API** (`/packages`): Returns basic metadata (without `download_url` and `checksum`)
 2. **Detail API** (`/packages/{id}`): Returns complete package information
 
 The update process:
+
 ```rust
 // 1. Load existing metadata from input directory
 let existing_metadata = load_existing_metadata(input_dir)?;
@@ -499,16 +505,17 @@ for jdk in updates_needed {  // e.g., only 10 JDKs
 
 ### API Call Optimization
 
-| Command | List API Calls | Detail API Calls | Total |
-|---------|----------------|------------------|-------|
-| Generate | 1 | All JDKs (e.g., 1000) | 1001 |
-| Update | 1 | Only changed (e.g., 10) | 11 |
+| Command  | List API Calls | Detail API Calls        | Total |
+| -------- | -------------- | ----------------------- | ----- |
+| Generate | 1              | All JDKs (e.g., 1000)   | 1001  |
+| Update   | 1              | Only changed (e.g., 10) | 11    |
 
 **Note**: The list API call cannot be avoided as we need to check all available JDKs for changes.
 
 ### Change Detection Criteria
 
 Changes are detected using fields available in the list API response:
+
 - **New JDK**: ID not present in existing metadata
 - **Updated JDK**: Changes in:
   - `distribution_version` (patch releases)
@@ -518,13 +525,13 @@ Changes are detected using fields available in the list API response:
 
 ### Generate vs Update
 
-| Aspect | Generate | Update |
-|--------|----------|---------|
-| Purpose | Full metadata creation | Incremental synchronization |
-| Existing data | Not required | Required |
-| API efficiency | Fetches all details | Fetches only changes |
-| Use case | Initial setup, full refresh | Periodic updates, CI/CD |
-| Output | Complete metadata set | Updated metadata set |
+| Aspect         | Generate                    | Update                      |
+| -------------- | --------------------------- | --------------------------- |
+| Purpose        | Full metadata creation      | Incremental synchronization |
+| Existing data  | Not required                | Required                    |
+| API efficiency | Fetches all details         | Fetches only changes        |
+| Use case       | Initial setup, full refresh | Periodic updates, CI/CD     |
+| Output         | Complete metadata set       | Updated metadata set        |
 
 ### Benefits
 
@@ -562,6 +569,7 @@ metadata/
 ## Metadata Grouping Strategy
 
 The generator organizes metadata files to optimize for:
+
 1. **Platform-specific directories**: Each platform has its own directory
 2. **Distribution files**: Each distribution gets a separate JSON file within the platform directory
 3. **Efficient loading**: Applications can load only the distributions they need for a specific platform
@@ -569,7 +577,7 @@ The generator organizes metadata files to optimize for:
 ```rust
 fn organize_metadata(&self, metadata: Vec<JdkMetadata>) -> HashMap<String, Vec<JdkMetadata>> {
     let mut grouped = HashMap::new();
-    
+
     for jdk in metadata {
         // Create platform directory name
         let platform_dir = if let Some(libc) = &jdk.lib_c_type {
@@ -577,13 +585,13 @@ fn organize_metadata(&self, metadata: Vec<JdkMetadata>) -> HashMap<String, Vec<J
         } else {
             format!("{}-{}", jdk.operating_system, jdk.architecture)
         };
-        
+
         // Group by platform/distribution
         let key = format!("{}/{}.json", platform_dir, jdk.distribution);
-        
+
         grouped.entry(key).or_insert_with(Vec::new).push(jdk);
     }
-    
+
     grouped
 }
 ```
@@ -595,6 +603,7 @@ fn organize_metadata(&self, metadata: Vec<JdkMetadata>) -> HashMap<String, Vec<J
 The Resume Support feature allows the generator to continue from interruptions without re-fetching already completed metadata. This is crucial for handling network failures, API rate limits, or manual interruptions.
 
 ### Key Features:
+
 - **Automatic detection**: No `--resume` flag needed - automatically detects `.state` files
 - **Per-file tracking**: Each JSON file has its own `.state` file for fine-grained recovery
 - **Force flag**: Use `--force` to ignore existing state and start fresh
@@ -605,6 +614,7 @@ The Resume Support feature allows the generator to continue from interruptions w
 Instead of a single global state file, the system creates individual `.state` files for each JSON file being generated. This design avoids lock contention in multi-threaded execution.
 
 **State File Locations:**
+
 - `metadata/index.json.state` - Tracks index.json generation
 - `metadata/linux-x64-glibc/temurin.json.state` - Tracks individual metadata file generation
 - Each JSON file has a corresponding `.state` file in the same directory
@@ -636,7 +646,7 @@ enum FileStatus {
 impl MetadataGenerator {
     fn process_metadata_file(&self, path: &Path, metadata: &[JdkMetadata]) -> Result<()> {
         let state_path = PathBuf::from(format!("{}.state", path.display()));
-        
+
         // 1. Create .state file at work start
         let state = FileState {
             status: FileStatus::InProgress,
@@ -647,7 +657,7 @@ impl MetadataGenerator {
             checksum: None,
         };
         fs::write(&state_path, serde_json::to_string(&state)?)?;
-        
+
         // 2. Perform actual processing
         match self.write_metadata_json(path, metadata) {
             Ok(_) => {
@@ -681,7 +691,7 @@ Resume is **automatically enabled** - no flag is needed. The system detects exis
 /// Check if a file should be skipped based on its state file
 fn should_skip_file(&self, json_path: &Path) -> bool {
     let state_path = PathBuf::from(format!("{}.state", json_path.display()));
-    
+
     if let Ok(content) = fs::read_to_string(&state_path) {
         if let Ok(state) = serde_json::from_str::<FileState>(&content) {
             match state.status {
@@ -735,20 +745,20 @@ fn cleanup_state_files(&self, output_dir: &Path) -> Result<()> {
     for entry in walkdir::WalkDir::new(output_dir) {
         let entry = entry?;
         let path = entry.path();
-        
+
         // Skip index.json.state for now
-        if path.extension() == Some(OsStr::new("state")) 
+        if path.extension() == Some(OsStr::new("state"))
             && path != output_dir.join("index.json.state") {
             fs::remove_file(path)?;
         }
     }
-    
+
     // 2. Finally remove index.json.state
     let index_state = output_dir.join("index.json.state");
     if index_state.exists() {
         fs::remove_file(index_state)?;
     }
-    
+
     Ok(())
 }
 ```
@@ -802,16 +812,16 @@ The state file design enables safe parallel execution with independent state tra
 pub enum MetadataGenError {
     #[error("API error: {0}")]
     ApiError(String),
-    
+
     #[error("Invalid platform specification: {0}")]
     InvalidPlatform(String),
-    
+
     #[error("Rate limit exceeded, retry after {0} seconds")]
     RateLimitExceeded(u64),
-    
+
     #[error("Validation failed: {0}")]
     ValidationError(String),
-    
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 }
@@ -871,7 +881,7 @@ kopi-metadata-gen generate --output ./metadata --force
 name: Update Metadata
 on:
   schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday
+    - cron: "0 0 * * 0" # Weekly on Sunday
   workflow_dispatch:
 
 jobs:

@@ -1,6 +1,7 @@
 # ADR-016: Flexible Version Format Support
 
 ## Status
+
 Proposed
 
 ## Context
@@ -76,7 +77,7 @@ The new parser will handle all these formats:
 
 ```
 "21.0.7.6.1"     → components: [21, 0, 7, 6, 1]
-"21.0.7.0.7.6"   → components: [21, 0, 7, 0, 7, 6]  
+"21.0.7.0.7.6"   → components: [21, 0, 7, 0, 7, 6]
 "21.0.7+6"       → components: [21, 0, 7], build: Some([6])
 "21.0.1+12.1"    → components: [21, 0, 1], build: Some([12, 1])
 "8.452.9.1"      → components: [8, 452, 9, 1]

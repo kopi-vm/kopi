@@ -1,6 +1,7 @@
 # Process Lock Requirements
 
 ## Metadata
+
 - Owner: Development Team
 - Reviewers: [TBD]
 - Status: Draft
@@ -29,6 +30,7 @@ This impacts all kopi users who run multiple instances, particularly in automate
 ## Scope
 
 ### Goals
+
 - Implement a single global filesystem-based process lock per KOPI_HOME for write operations
 - Lock required for: install, uninstall, cache refresh, cache update, use, local, global, pin, shim management
 - Lock not required for: list, current, search, cache list-distributions, cache search, env, version, help
@@ -38,18 +40,21 @@ This impacts all kopi users who run multiple instances, particularly in automate
 - Allow read-only operations to proceed without locking
 
 ### Non-Goals
+
 - Distributed locking across network filesystems
 - Fine-grained locking per JDK version or operation type
 - Lock priority or queueing mechanisms
 - Support for cluster/multi-machine coordination
 
 ### Assumptions
+
 - Users have write access to the kopi home directory
 - Filesystem supports atomic file operations
 - Process crashes are rare but must be handled
 - Most operations complete within seconds to minutes
 
 ### Constraints
+
 - Must work on all supported platforms (Unix/Windows)
 - Cannot use external dependencies for IPC
 - Must be resilient to process crashes and abnormal termination
@@ -93,16 +98,19 @@ This impacts all kopi users who run multiple instances, particularly in automate
 ## CLI/UX Requirements
 
 ### Command Behavior
+
 - Write operations automatically acquire lock before proceeding
 - Default: wait indefinitely with spinner if lock is held
 - Read operations proceed without locking
 - Handle Ctrl+C gracefully to release lock
 
 ### Options
+
 - `--no-wait`: Fail immediately if lock is held (exit code 75)
 - `--quiet`: Suppress spinner and reduce output noise (useful for CI/automation)
 
 ### Examples
+
 ```bash
 # Normal operation - waits if another process holds lock
 kopi install temurin@21
@@ -116,6 +124,7 @@ kopi current
 ```
 
 ### Help & Messages
+
 - Waiting: "Waiting for lock held by PID 12345 (install) since 10:00:00..."
 - No-wait failure: "Lock is held by PID 12345 (install) since 10:00:00. Use default behavior to wait."
 - Exit code 75: Temporary failure (lock busy with --no-wait)
@@ -123,18 +132,21 @@ kopi current
 ## Platform Matrix
 
 ### Unix
+
 - Lock mechanism: `flock()` or `fcntl()` via fs2 crate
 - Lock file: `~/.kopi/.lock` with permissions 0600
 - Signal handling: SIGTERM/SIGINT handlers for graceful cleanup
 - Parent directory: `~/.kopi/` with permissions 0700
 
 ### Windows
+
 - Lock mechanism: `LockFileEx()` via fs2 crate
 - Lock file: `%USERPROFILE%\.kopi\.lock`
 - Rely on filesystem ACLs for security
 - OS automatically releases lock on process termination
 
 ### Lock File Format
+
 - Persistent file (never deleted, only truncated)
 - Minimal JSON metadata: `{"pid": 12345, "started_at": "2025-08-31T10:00:00Z", "command": "install", "hostname": "my-host"}`
 - Write metadata after acquiring OS lock
@@ -143,7 +155,7 @@ kopi current
 
 ## Dependencies
 
-- Internal modules: 
+- Internal modules:
   - `src/config/` – Access kopi home directory path
   - `src/error/` – Error handling and user feedback
   - `src/commands/` – Integration with all write commands
@@ -239,25 +251,25 @@ kopi current
 
 ## Traceability
 
-| Requirement | Design Section | Test(s) / Benchmarks | Status |
-|-------------|----------------|----------------------|--------|
-| FR-001 | Lock Acquisition | tests/lock_integration::test_exclusive_write | Pending |
-| FR-002 | Wait Behavior | tests/lock_integration::test_wait_indefinitely | Pending |
-| FR-003 | User Feedback | tests/lock_integration::test_wait_message_details | Pending |
-| FR-004 | OS Cleanup | tests/lock_integration::test_os_cleanup_on_crash | Pending |
-| FR-005 | Read Operations | tests/lock_integration::test_concurrent_reads | Pending |
-| FR-006 | No-Wait Flag | tests/lock_integration::test_no_wait_exit_75 | Pending |
-| FR-007 | Metadata | tests/lock_integration::test_lock_metadata | Pending |
-| FR-010 | Global Lock | tests/lock_integration::test_global_lock_per_home | Pending |
-| FR-011 | Reentrant Lock | tests/lock_integration::test_reentrant_locking | Pending |
-| FR-012 | Non-TTY | tests/lock_integration::test_non_tty_output | Pending |
-| FR-013 | Atomic Writes | tests/lock_integration::test_atomic_writes | Pending |
-| NFR-001 | Performance | benches/lock_bench::bench_acquisition_p95 | Pending |
-| NFR-003 | OS Lock Release | tests/lock_integration::test_kill_cleanup | Pending |
-| NFR-004 | Signal Handling | tests/lock_integration::test_signal_handlers | Pending |
-| NFR-005 | Platform Support | tests/lock_integration::test_platform_lock | Pending |
-| NFR-007 | Permissions | tests/lock_integration::test_unix_permissions | Pending |
-| NFR-009 | Non-TTY UX | tests/lock_integration::test_non_tty_ux | Pending |
+| Requirement | Design Section   | Test(s) / Benchmarks                              | Status  |
+| ----------- | ---------------- | ------------------------------------------------- | ------- |
+| FR-001      | Lock Acquisition | tests/lock_integration::test_exclusive_write      | Pending |
+| FR-002      | Wait Behavior    | tests/lock_integration::test_wait_indefinitely    | Pending |
+| FR-003      | User Feedback    | tests/lock_integration::test_wait_message_details | Pending |
+| FR-004      | OS Cleanup       | tests/lock_integration::test_os_cleanup_on_crash  | Pending |
+| FR-005      | Read Operations  | tests/lock_integration::test_concurrent_reads     | Pending |
+| FR-006      | No-Wait Flag     | tests/lock_integration::test_no_wait_exit_75      | Pending |
+| FR-007      | Metadata         | tests/lock_integration::test_lock_metadata        | Pending |
+| FR-010      | Global Lock      | tests/lock_integration::test_global_lock_per_home | Pending |
+| FR-011      | Reentrant Lock   | tests/lock_integration::test_reentrant_locking    | Pending |
+| FR-012      | Non-TTY          | tests/lock_integration::test_non_tty_output       | Pending |
+| FR-013      | Atomic Writes    | tests/lock_integration::test_atomic_writes        | Pending |
+| NFR-001     | Performance      | benches/lock_bench::bench_acquisition_p95         | Pending |
+| NFR-003     | OS Lock Release  | tests/lock_integration::test_kill_cleanup         | Pending |
+| NFR-004     | Signal Handling  | tests/lock_integration::test_signal_handlers      | Pending |
+| NFR-005     | Platform Support | tests/lock_integration::test_platform_lock        | Pending |
+| NFR-007     | Permissions      | tests/lock_integration::test_unix_permissions     | Pending |
+| NFR-009     | Non-TTY UX       | tests/lock_integration::test_non_tty_ux           | Pending |
 
 ## Open Questions
 
@@ -272,6 +284,7 @@ kopi current
 Investigation of similar tools reveals different approaches to process locking:
 
 **Volta:**
+
 - Uses file lock on `volta.lock` file with reference counting
 - Implements RAII pattern with automatic cleanup
 - Shows spinner when lock is contended
@@ -279,12 +292,14 @@ Investigation of similar tools reveals different approaches to process locking:
 - No timeout mechanism - relies on process cleanup
 
 **mise:**
+
 - Focuses on `mise.lock` for version pinning (like package-lock.json)
 - Basic mutex for thread safety within process
 - No explicit inter-process locking found in public implementation
 - Has experienced concurrent installation issues similar to rustup
 
 **Key Insights:**
+
 - Neither tool implements lock timeouts
 - Both rely on OS-level file locking mechanisms
 - Automatic cleanup on process termination is standard
@@ -293,6 +308,7 @@ Investigation of similar tools reveals different approaches to process locking:
 ### Codex Architecture Review
 
 After discussing with Codex AI, the following design decisions were validated:
+
 - **No timeout mechanism**: Rely on user Ctrl+C for interruption
 - **Minimal metadata**: Just pid, command, started_at (and optionally hostname)
 - **Single global lock**: Simpler than per-operation locks, avoids deadlocks

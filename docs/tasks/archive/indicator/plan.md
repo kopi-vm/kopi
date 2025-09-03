@@ -11,6 +11,7 @@ This document outlines the implementation plan for creating a unified progress i
 **Goal**: Define the core trait and data structures for the progress indicator system.
 
 ### Input Materials
+
 - **Documentation**:
   - `/docs/tasks/indicator/design.md` - Design specification
   - `/docs/reviews/2025-08-24-progress-indicator-locations.md` - Current implementation analysis
@@ -20,6 +21,7 @@ This document outlines the implementation plan for creating a unified progress i
   - `/src/indicator/types.rs` - Type definitions
 
 ### Tasks
+
 - [x] Create `src/indicator/` directory structure
 - [x] Define `ProgressIndicator` trait with required methods
 - [x] Define `ProgressConfig` struct with fields:
@@ -35,12 +37,14 @@ This document outlines the implementation plan for creating a unified progress i
   - [x] Test Display implementations
 
 ### Deliverables
+
 - `src/indicator/mod.rs` - Core module file with trait definition
 - `src/indicator/types.rs` - Type definitions (ProgressConfig, ProgressStyle)
 - Unit tests for type construction and validation
 - API documentation for all public types
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -55,6 +59,7 @@ cargo doc --no-deps --open
 **Goal**: Implement the silent progress indicator using the Null Object pattern.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phase 1 (Core Trait and Structures)
 
@@ -62,6 +67,7 @@ cargo doc --no-deps --open
   - `/src/indicator/silent.rs` - Silent implementation
 
 ### Tasks
+
 - [x] Create `SilentProgress` struct
 - [x] Implement `ProgressIndicator` trait for `SilentProgress`
 - [x] Ensure all methods are no-ops (no output)
@@ -71,11 +77,13 @@ cargo doc --no-deps --open
   - [x] Test memory usage (should be minimal)
 
 ### Deliverables
+
 - `src/indicator/silent.rs` - Complete silent implementation
 - Unit tests verifying no-op behavior
 - Documentation explaining when this implementation is used
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -89,6 +97,7 @@ cargo test --lib indicator::silent::tests
 **Goal**: Implement the simple text progress indicator for non-terminal environments.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phase 1 (Core Trait and Structures)
 
@@ -96,6 +105,7 @@ cargo test --lib indicator::silent::tests
   - `/src/indicator/simple.rs` - Simple text implementation
 
 ### Tasks
+
 - [x] Create `SimpleProgress` struct with state fields
 - [x] Implement `ProgressIndicator` trait for `SimpleProgress`
 - [x] Add start/complete message output with println!
@@ -107,11 +117,13 @@ cargo test --lib indicator::silent::tests
   - [x] Mock stdout/stderr for testing
 
 ### Deliverables
+
 - `src/indicator/simple.rs` - Complete simple implementation
 - Unit tests with output verification
 - Documentation for CI/CD usage
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -127,6 +139,7 @@ TERM=dumb cargo run -- cache refresh
 **Goal**: Implement the full-featured progress indicator using the indicatif library.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phase 1 (Core Trait and Structures)
   - External crate: `indicatif = "0.17"`
@@ -135,6 +148,7 @@ TERM=dumb cargo run -- cache refresh
   - `/src/indicator/indicatif.rs` - Indicatif implementation
 
 ### Tasks
+
 - [x] Create `IndicatifProgress` struct
 - [x] Implement `ProgressIndicator` trait for `IndicatifProgress`
 - [x] Create template selection based on ProgressStyle and total
@@ -150,11 +164,13 @@ TERM=dumb cargo run -- cache refresh
   - [x] Test update behavior
 
 ### Deliverables
+
 - `src/indicator/indicatif.rs` - Complete indicatif implementation
 - Unit tests for all progress types
 - Visual consistency with existing progress bars
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -170,6 +186,7 @@ cargo run -- install temurin@21
 **Goal**: Implement the factory pattern for creating appropriate progress indicators.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phases 1-4 (All implementations)
 
@@ -177,6 +194,7 @@ cargo run -- install temurin@21
   - `/src/indicator/factory.rs` - Factory implementation
 
 ### Tasks
+
 - [x] Create `ProgressFactory` struct
 - [x] Implement `create(no_progress: bool)` method
 - [x] Add terminal detection logic using `std::io::stderr().is_terminal()`
@@ -188,11 +206,13 @@ cargo run -- install temurin@21
   - [x] Mock terminal detection for testing
 
 ### Deliverables
+
 - `src/indicator/factory.rs` - Complete factory implementation
 - Unit tests with mocked environment conditions
 - Integration point for the rest of the application
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -206,6 +226,7 @@ cargo test --lib indicator::factory::tests
 **Goal**: Implement the status reporter for consistent simple messages.
 
 ### Input Materials
+
 - **Documentation**:
   - `/docs/tasks/indicator/design.md` - Status reporter design
 
@@ -213,6 +234,7 @@ cargo test --lib indicator::factory::tests
   - `/src/indicator/status.rs` - Status reporter implementation
 
 ### Tasks
+
 - [x] Create `StatusReporter` struct
 - [x] Implement methods:
   - [x] `operation()` - Major operation messages
@@ -226,11 +248,13 @@ cargo test --lib indicator::factory::tests
   - [x] Test error messages always shown
 
 ### Deliverables
+
 - `src/indicator/status.rs` - Complete status reporter
 - Unit tests for all message types
 - Consistent message formatting across the application
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -244,6 +268,7 @@ cargo test --lib indicator::status::tests
 **Goal**: Migrate the download module to use the new progress indicator system.
 
 ### Input Materials
+
 - **Source Code to Modify**:
   - `/src/download/progress.rs` - Current implementation
   - `/src/download/mod.rs` - Integration points
@@ -252,6 +277,7 @@ cargo test --lib indicator::status::tests
   - Phases 1-6 (Complete indicator system)
 
 ### Tasks
+
 - [x] Replace `IndicatifProgressReporter` with new `ProgressIndicator`
 - [x] Update `HttpFileDownloader` to use `ProgressFactory`
 - [x] Remove old progress implementation
@@ -263,12 +289,14 @@ cargo test --lib indicator::status::tests
   - [x] Test byte formatting
 
 ### Deliverables
+
 - Updated `src/download/progress.rs` using new system
 - Removed legacy progress code
 - Integration tests for download scenarios
 - Consistent progress display for downloads
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -285,6 +313,7 @@ kopi install --no-progress liberica@21
 **Goal**: Migrate the cache module to use the new progress indicator system.
 
 ### Input Materials
+
 - **Source Code to Modify**:
   - `/src/commands/cache.rs` - Cache command implementation
 
@@ -292,6 +321,7 @@ kopi install --no-progress liberica@21
   - Phases 1-6 (Complete indicator system)
 
 ### Tasks
+
 - [x] Replace direct `ProgressBar` usage with `ProgressIndicator`
 - [x] Use factory for spinner creation
 - [x] Update cache refresh progress
@@ -301,11 +331,13 @@ kopi install --no-progress liberica@21
   - [x] Test --no-progress flag
 
 ### Deliverables
+
 - Updated `src/commands/cache.rs` using new system
 - Consistent spinner behavior
 - Integration tests for cache operations
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -322,6 +354,7 @@ kopi cache refresh --no-progress
 **Goal**: Migrate the uninstall module to use the new progress indicator system.
 
 ### Input Materials
+
 - **Source Code to Modify**:
   - `/src/uninstall/progress.rs` - Current implementation
   - `/src/uninstall/batch.rs` - Batch operations
@@ -330,6 +363,7 @@ kopi cache refresh --no-progress
   - Phases 1-6 (Complete indicator system)
 
 ### Tasks
+
 - [x] Replace custom `ProgressReporter` with new system
 - [x] Update batch uninstall progress
 - [x] Use Count style for batch operations
@@ -343,6 +377,7 @@ kopi cache refresh --no-progress
   - [x] Test JavaFX uninstall
 
 ### Deliverables
+
 - Updated `src/uninstall/progress.rs` using new system
 - Consistent progress for batch operations
 - Integration tests for uninstall scenarios
@@ -350,6 +385,7 @@ kopi cache refresh --no-progress
 - Cleaned up error suggestions
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -366,6 +402,7 @@ kopi uninstall --all
 **Goal**: Migrate simple status messages to use StatusReporter.
 
 ### Input Materials
+
 - **Source Code to Modify**:
   - `/src/commands/install.rs` - Installation messages
   - `/src/commands/setup.rs` - Setup messages
@@ -376,6 +413,7 @@ kopi uninstall --all
   - Phase 6 (Status Reporter)
 
 ### Tasks
+
 - [x] Replace println! statements with StatusReporter
 - [x] Standardize message formatting
 - [x] **Write integration tests**:
@@ -383,10 +421,12 @@ kopi uninstall --all
   - [x] Test message consistency
 
 ### Deliverables
+
 - Updated command modules using StatusReporter
 - Consistent message formatting across all commands
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -403,10 +443,11 @@ kopi install temurin@21 --dry-run
 **Goal**: Add --no-progress as a global command-line flag that suppresses all progress indicators.
 
 ### Input Materials
+
 - **Source Code to Modify**:
   - `/src/main.rs` - Add global CLI flag
   - `/src/commands/install.rs` - Add no_progress parameter
-  - `/src/commands/uninstall.rs` - Add no_progress parameter  
+  - `/src/commands/uninstall.rs` - Add no_progress parameter
   - `/src/uninstall/mod.rs` - Update UninstallHandler
   - `/src/uninstall/batch.rs` - Update BatchUninstaller
   - `/src/uninstall/progress.rs` - Update ProgressReporter
@@ -417,6 +458,7 @@ kopi install temurin@21 --dry-run
   - Phases 1-10 (All migrations complete)
 
 ### Tasks
+
 - [x] Add `--no-progress` as global flag in clap Parser
 - [x] Add no_progress parameter to all command execute methods
 - [x] Update ProgressReporter constructors to accept no_progress
@@ -430,11 +472,13 @@ kopi install temurin@21 --dry-run
   - [x] Test help text includes global flag
 
 ### Deliverables
+
 - Global --no-progress flag available on all commands
 - Updated command handlers accepting the flag
 - Help text documentation for the flag
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -452,9 +496,11 @@ kopi cache refresh --no-progress
 **Goal**: Comprehensive integration testing of the progress indicator system.
 
 ### Dependencies
+
 - Phases 1-11 complete
 
 ### Tasks
+
 - [x] **Integration tests** for core workflows:
   - [x] Test install with different progress styles
   - [x] Test cache operations with progress
@@ -470,12 +516,14 @@ kopi cache refresh --no-progress
   - [x] Test with large operations
 
 ### Deliverables
+
 - ✅ Comprehensive integration test suite in `tests/progress_indicator_integration.rs`
 - ✅ Performance benchmarks in `benches/progress_indicator_bench.rs`
 - ✅ Environment-specific test scenarios with `#[serial]` attribute for thread safety
 - ✅ All tests passing with environment variable handling
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -493,12 +541,14 @@ CI=true cargo test --test progress_indicator_integration test_progress_in_ci_env
 **Goal**: Update all documentation to reflect the new progress indicator system.
 
 ### Input Materials
+
 - **Documentation to Update**:
   - `/docs/reference.md` - User documentation
   - `README.md` - Add --no-progress flag documentation
   - `/docs/tasks/indicator/design.md` - Mark as implemented
 
 ### Tasks
+
 - [x] Update user documentation:
   - [x] Document --no-progress flag
   - [x] Add troubleshooting for progress issues
@@ -510,6 +560,7 @@ CI=true cargo test --test progress_indicator_integration test_progress_in_ci_env
 - [x] Create examples for common use cases
 
 ### Deliverables
+
 - ✅ Updated user documentation with --no-progress flag in `/docs/reference.md`
 - ✅ Developer guide for using progress indicators in `/docs/developer/progress-indicators.md`
 - ✅ Migration guide from old to new system in `/docs/developer/progress-migration-guide.md`
@@ -517,6 +568,7 @@ CI=true cargo test --test progress_indicator_integration test_progress_in_ci_env
 - ✅ Design document marked as implemented
 
 ### Verification
+
 ```bash
 # Review documentation
 cat README.md | grep -i progress
@@ -530,6 +582,7 @@ cargo doc --no-deps --open
 ## Implementation Order
 
 ### Core Infrastructure (Phases 1-6)
+
 1. **Phase 1**: Core Trait and Structures
 2. **Phase 2**: Silent Implementation
 3. **Phase 3**: Simple Text Implementation
@@ -538,12 +591,14 @@ cargo doc --no-deps --open
 6. **Phase 6**: Status Reporter Implementation
 
 ### Module Migration (Phases 7-10)
+
 7. **Phase 7**: Download Module Migration
 8. **Phase 8**: Cache Module Migration
 9. **Phase 9**: Uninstall Module Migration
 10. **Phase 10**: Status Message Migration
 
 ### Integration and Documentation (Phases 11-13)
+
 11. **Phase 11**: Global Flag Integration
 12. **Phase 12**: Integration Testing
 13. **Phase 13**: Documentation Updates

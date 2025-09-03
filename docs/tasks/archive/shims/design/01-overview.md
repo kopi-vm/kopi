@@ -32,6 +32,7 @@ We follow these principles for shim creation and management:
 ### 1. Explicit Over Implicit
 
 Shims are created only through explicit user actions:
+
 - During initial `kopi setup`
 - Via `kopi shim add <tool>` command
 - Through configuration files
@@ -41,6 +42,7 @@ Shims are created only through explicit user actions:
 ### 2. Predictable Behavior
 
 Users should always know which shims exist:
+
 - No surprise shim creation
 - No dynamic shim generation during tool execution
 - Clear commands to manage shims
@@ -48,18 +50,21 @@ Users should always know which shims exist:
 ### 3. Security
 
 Only expose known, user-facing tools:
+
 - Curated lists prevent exposure of internal JDK executables
 - Reduces attack surface by limiting accessible tools
 
 ### 4. Consistency
 
 Same shims work across all JDK versions:
+
 - Standard tools are present in all JDK distributions
 - Distribution-specific tools are explicitly documented
 
 ### 5. Graceful Degradation
 
 When tools are unavailable:
+
 - Clear error messages explain why a tool cannot be found
 - Suggest alternatives (switch JDK, use different project)
 - Never silently fail or use wrong version
@@ -71,6 +76,7 @@ The `kopi shim list --available` command allows users to discover what tools are
 This command would scan all installed JDKs, checking their bin directories for available executable tools. For each JDK, it would list all available tools and indicate whether a shim already exists for that tool. This gives users full visibility into what tools they could potentially create shims for, without automatically creating any shims.
 
 The command output would show:
+
 - The JDK distribution and version
 - All executable tools found in that JDK's bin directory
 - Whether a shim already exists for each tool
@@ -81,30 +87,37 @@ This approach maintains user control while providing helpful discovery capabilit
 ## Implications of These Principles
 
 ### Tool Availability
+
 - A shim existing doesn't guarantee the tool is available in the current JDK
 - Error messages must be helpful when tools are missing
 
 ### User Education
+
 - Clear documentation about which tools belong to which distributions
 - Command help text explains the shim system
 
 ### Project Portability
+
 - Projects using distribution-specific tools may not be portable
 - Warn users when they're using non-standard tools
 
 ### Performance
+
 - Explicit shim creation means no dynamic overhead
 - Predictable performance characteristics
 
 ## Anti-Patterns to Avoid
 
 ### 1. Automatic Shim Creation
+
 Creating shims on-the-fly when a tool is first accessed would violate the principle of explicit control. Users should always consciously decide which tools to expose through shims.
 
 ### 2. Silent Fallbacks
+
 When a tool isn't available in the current JDK, the system should never silently switch to a different JDK version or use an alternative tool. This would create unpredictable behavior and could lead to subtle bugs.
 
 ### 3. Overly Permissive Tool Lists
+
 Exposing all executables found in a JDK's bin directory would create security risks and clutter. Many JDK executables are internal tools not meant for direct user access.
 
 ## Benefits of These Principles

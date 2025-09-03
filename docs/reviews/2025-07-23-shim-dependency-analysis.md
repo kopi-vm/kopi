@@ -9,12 +9,14 @@ The kopi-shim binary size has been significantly reduced from 6.1MB to 1.6MB thr
 ## Current State
 
 ### Binary Size Measurement
+
 ```bash
 $ cargo build --profile release-shim --bin kopi-shim && ls -lh target/release-shim/kopi-shim
 -rwxr-xr-x 2 vscode vscode 1.6M Jul 23 22:36 target/release-shim/kopi-shim
 ```
 
 ### Implemented Optimizations
+
 - AutoInstaller now delegates to main kopi binary via subprocess (removed HTTP/archive dependencies)
 - release-shim profile with aggressive size optimizations:
   - `lto = "fat"`
@@ -47,6 +49,7 @@ $ cargo build --profile release-shim --bin kopi-shim && ls -lh target/release-sh
 ### Internal Module Dependencies
 
 The shim requires these core kopi modules:
+
 - `shim/` - Main runtime logic with security, tools, discovery submodules
 - `config/` - Configuration management
 - `error/` - Error types and formatting
@@ -106,16 +109,19 @@ Estimated reduction: ~150KB
 ### 2. Replace Heavy Dependencies
 
 **config → Custom TOML Parser**
+
 - Implement minimal TOML parsing for just the needed configuration
 - Or use environment variables for shim configuration
 - Estimated reduction: ~400KB
 
 **sysinfo → Direct Shell Detection**
+
 - Implement platform-specific shell detection without full sysinfo
 - Use environment variables and process inspection
 - Estimated reduction: ~200KB
 
 **colored → Plain Text Errors**
+
 - Remove color formatting for error messages
 - Use simple string formatting
 - Estimated reduction: ~50KB
@@ -123,6 +129,7 @@ Estimated reduction: ~150KB
 ### 3. Optimize Serialization
 
 **Minimize serde features**
+
 - Use only derive feature for serde
 - Consider manual JSON parsing for simple metadata
 - Estimated reduction: ~50KB
@@ -130,6 +137,7 @@ Estimated reduction: ~150KB
 ### 4. Build Configuration
 
 **Additional optimization flags**
+
 ```toml
 [profile.release-shim]
 # ... existing settings ...

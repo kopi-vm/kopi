@@ -1,12 +1,15 @@
 # ADR-019: Version Switching Command Design
 
 ## Status
+
 Proposed
 
 ## Context
+
 Kopi needs to provide commands for switching between JDK versions at different scopes. Based on comprehensive research of existing version management tools (nvm, pyenv, rbenv, rvm, sdkman), we need to design a consistent and predictable command structure that aligns with developer expectations while providing clear scope hierarchy.
 
 The research identified three primary scopes for version activation:
+
 - **Shell-specific (temporary)**: Active only in the current terminal session
 - **Project-specific (local)**: Automatically activated based on project configuration files
 - **User-specific (global/default)**: System-wide default for all sessions
@@ -37,6 +40,7 @@ Kopi will adopt the pyenv/rbenv model with clear scope precedence:
 ### Version Resolution Order
 
 When executing a Java command through shims, Kopi will check in this order:
+
 1. `KOPI_JAVA_VERSION` environment variable (set by `kopi shell/use`)
 2. `.kopi-version` file in current directory or parent directories
 3. `.java-version` file in current directory or parent directories
@@ -47,6 +51,7 @@ If no version is found through any of these methods, the shim will error and sug
 ### Command Aliases
 
 To accommodate users from different ecosystems:
+
 - `kopi use` → alias for `kopi shell` (familiar to nvm users)
 - `kopi pin` → alias for `kopi local` (descriptive alternative)
 - `kopi default` → alias for `kopi global` (familiar to sdkman users)
@@ -54,6 +59,7 @@ To accommodate users from different ecosystems:
 ### Implementation with Shims
 
 As decided in ADR-013, Kopi uses a shim-based approach. The version switching commands work by:
+
 - **shell/use**: Setting environment variable that shims read
 - **local/pin**: Creating version files that shims detect
 - **global/default**: Writing to global configuration that shims fall back to
@@ -69,6 +75,7 @@ As decided in ADR-013, Kopi uses a shim-based approach. The version switching co
 ## Consequences
 
 ### Positive
+
 - Clear mental model for users about scope and precedence
 - Compatible with existing project configurations
 - Predictable behavior across platforms
@@ -76,6 +83,7 @@ As decided in ADR-013, Kopi uses a shim-based approach. The version switching co
 - Familiar commands for users of other version managers
 
 ### Negative
+
 - Multiple aliases might cause initial confusion
 - Need to maintain compatibility with both `.kopi-version` and `.java-version`
 - Shell command requires setting environment variables (platform-specific handling)
@@ -83,13 +91,14 @@ As decided in ADR-013, Kopi uses a shim-based approach. The version switching co
 ## Implementation Notes
 
 1. **Environment Variable Handling**:
+
    ```bash
    # Unix shells
    export KOPI_JAVA_VERSION=17
-   
+
    # Windows Command Prompt
    set KOPI_JAVA_VERSION=17
-   
+
    # Windows PowerShell
    $env:KOPI_JAVA_VERSION="17"
    ```
@@ -100,15 +109,16 @@ As decided in ADR-013, Kopi uses a shim-based approach. The version switching co
    - Supports distribution@version format: `temurin@17.0.5`
 
 3. **Command Examples**:
+
    ```bash
    # Temporary switch for current shell
    kopi use 17
    kopi shell temurin@17.0.5
-   
+
    # Set project version
    kopi local 17
    kopi pin openjdk@11.0.2
-   
+
    # Set global default
    kopi global 17
    kopi default corretto@17
@@ -119,6 +129,7 @@ As decided in ADR-013, Kopi uses a shim-based approach. The version switching co
    - `KOPI_DEBUG=1` environment variable for detailed resolution logging
 
 ## References
+
 - Comprehensive analysis of version switching in nvm, pyenv, rbenv, rvm, and sdkman
 - ADR-013: Binary Switching Approaches (shim implementation)
 - pyenv documentation on version selection: https://github.com/pyenv/pyenv#choosing-the-python-version

@@ -1,6 +1,7 @@
 # User feedback for lock contention
 
 ## Metadata
+
 - ID: FR-c04js
 - Type: Functional Requirement
 - Category: Usability
@@ -12,6 +13,7 @@
 - Date Modified: 2025-09-03
 
 ## Links
+
 - Implemented by Tasks: N/A – Not yet implemented
 - Related Requirements: FR-gbsz6
 - Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
@@ -26,6 +28,7 @@ The system SHALL provide clear, actionable feedback to users when operations are
 ## Rationale
 
 Without clear feedback:
+
 - Users may think the application has frozen
 - Users won't understand why operations are delayed
 - Users can't make informed decisions about waiting or canceling
@@ -47,6 +50,7 @@ As a kopi user, I want to understand why operations are waiting and what I can d
 ## Technical Details (if applicable)
 
 ### Functional Requirement Details
+
 - Initial message: "Waiting for lock on {resource}... (timeout: {duration}s)"
 - Progress format: "Waiting... [{elapsed}s / {timeout}s] Press Ctrl-C to cancel"
 - Infinite wait: "Waiting... [{elapsed}s] Press Ctrl-C to cancel"
@@ -54,6 +58,7 @@ As a kopi user, I want to understand why operations are waiting and what I can d
 - Failure message: "Could not acquire lock after {timeout}s. Try again with --lock-timeout"
 
 ### UI Components
+
 - Use stderr for all lock-related messages
 - Support both TTY and non-TTY environments
 - In TTY: Use carriage return for updating progress
@@ -62,11 +67,13 @@ As a kopi user, I want to understand why operations are waiting and what I can d
 ## Verification Method
 
 ### Test Strategy
+
 - Test Type: Integration
 - Test Location: `tests/ui_feedback_tests.rs` (planned)
 - Test Names: `test_fr_c04js_wait_message`, `test_fr_c04js_progress_display`
 
 ### Verification Commands
+
 ```bash
 # Specific commands to verify this requirement
 cargo test test_fr_c04js
@@ -75,6 +82,7 @@ cargo run -- install temurin@21 & cargo run -- install temurin@21
 ```
 
 ### Success Metrics
+
 - Metric 1: User message appears within 100ms of lock wait beginning
 - Metric 2: Progress updates at least once per second during wait
 
@@ -86,24 +94,27 @@ cargo run -- install temurin@21 & cargo run -- install temurin@21
 ## Platform Considerations
 
 ### Unix
+
 - Terminal detection via isatty()
 - ANSI escape codes for progress updates
 
 ### Windows
+
 - Console API for terminal detection
 - Windows console codes for progress updates
 
 ### Cross-Platform
+
 - Consistent message format across platforms
 - Graceful degradation in non-TTY environments
 
 ## Risks & Mitigation
 
-| Risk | Impact | Likelihood | Mitigation | Validation |
-|------|--------|------------|------------|------------|
-| Progress updates cause flicker | Low | Medium | Buffer updates, minimize redraws | Visual testing |
-| Messages lost in CI/CD logs | Medium | High | Detect CI environment, adjust output | Test in CI |
-| Terminal width too narrow | Low | Low | Truncate messages appropriately | Test with narrow terminals |
+| Risk                           | Impact | Likelihood | Mitigation                           | Validation                 |
+| ------------------------------ | ------ | ---------- | ------------------------------------ | -------------------------- |
+| Progress updates cause flicker | Low    | Medium     | Buffer updates, minimize redraws     | Visual testing             |
+| Messages lost in CI/CD logs    | Medium | High       | Detect CI environment, adjust output | Test in CI                 |
+| Terminal width too narrow      | Low    | Low        | Truncate messages appropriately      | Test with narrow terminals |
 
 ## Implementation Notes
 
@@ -113,6 +124,7 @@ cargo run -- install temurin@21 & cargo run -- install temurin@21
 - Log all lock events to debug log regardless of UI display
 
 ## External References
+
 N/A – No external references
 
 ## Change History

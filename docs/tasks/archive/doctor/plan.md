@@ -1,9 +1,11 @@
 # Doctor Command Implementation Plan
 
 ## Overview
+
 This document outlines the phased implementation plan for the Kopi doctor command, which provides comprehensive diagnostics for kopi installations. The command performs health checks across multiple categories and provides actionable solutions for detected issues.
 
 ## Command Syntax
+
 - `kopi doctor` - Run all diagnostic checks and display results
 - `kopi doctor --json` - Output results in JSON format
 - `kopi doctor --verbose` - Show detailed diagnostic information
@@ -13,11 +15,13 @@ This document outlines the phased implementation plan for the Kopi doctor comman
 ## Phase 1: Core Diagnostic Framework
 
 ### Input Resources
+
 - `/docs/tasks/doctor/design.md` - Complete doctor command design
 - `/src/error/exit_codes.rs` - Existing error codes and handling
 - `/src/config.rs` - Configuration management
 
 ### Deliverables
+
 1. **Diagnostic Engine Module** (`/src/doctor/mod.rs`)
    - Core diagnostic framework
    - Check result types and enums:
@@ -58,6 +62,7 @@ This document outlines the phased implementation plan for the Kopi doctor comman
    - Exit code testing
 
 ### Success Criteria
+
 - Diagnostic framework can run checks and aggregate results
 - Command parses options correctly
 - Both output formats work as specified
@@ -66,11 +71,13 @@ This document outlines the phased implementation plan for the Kopi doctor comman
 ## Phase 2: Installation and Configuration Checks
 
 ### Input Resources
+
 - Phase 1 deliverables
 - `/src/installation/` - Installation management code
 - `/src/config.rs` - Configuration structures
 
 ### Deliverables
+
 1. **Installation Checker Module** (`/src/doctor/checks/installation.rs`)
    - Kopi binary detection:
      - Find kopi executable in PATH
@@ -110,6 +117,7 @@ This document outlines the phased implementation plan for the Kopi doctor comman
    - Permission verification on different platforms
 
 ### Success Criteria
+
 - All installation components detected correctly
 - Permission issues identified accurately
 - Config validation catches common errors
@@ -118,11 +126,13 @@ This document outlines the phased implementation plan for the Kopi doctor comman
 ## Phase 3: Shell Integration and PATH Checks
 
 ### Input Resources
+
 - Phase 1 & 2 deliverables
 - `/src/shell/` - Shell detection and configuration
 - `/src/shim/` - Shim management (if implemented)
 
 ### Deliverables
+
 1. **Shell Checker Module** (`/src/doctor/checks/shell.rs`)
    - PATH verification:
      - Check if `~/.kopi/shims` is in PATH
@@ -158,6 +168,7 @@ This document outlines the phased implementation plan for the Kopi doctor comman
    - Configuration file discovery
 
 ### Success Criteria
+
 - Correctly identifies shell type
 - Detects PATH configuration issues
 - Provides shell-specific fix instructions
@@ -166,11 +177,13 @@ This document outlines the phased implementation plan for the Kopi doctor comman
 ## Phase 4: JDK Installation Health Checks
 
 ### Input Resources
+
 - Phase 1-3 deliverables
 - `/src/storage/` - JDK repository and storage
 - `/src/models/jdk.rs` - JDK data structures
 
 ### Deliverables
+
 1. **JDK Checker Module** (`/src/doctor/checks/jdks.rs`)
    - Installation enumeration:
      - List all JDKs in `~/.kopi/jdks/`
@@ -202,6 +215,7 @@ This document outlines the phased implementation plan for the Kopi doctor comman
    - Multiple JDK scenarios
 
 ### Success Criteria
+
 - Detects all installed JDKs
 - Identifies corrupted installations
 - Provides specific remediation steps
@@ -210,11 +224,13 @@ This document outlines the phased implementation plan for the Kopi doctor comman
 ## Phase 5: Network and Cache Validation
 
 ### Input Resources
+
 - Phase 1-4 deliverables
 - `/src/api/` - API client implementation
 - `/src/cache/` - Cache management
 
 ### Deliverables
+
 1. **Network Checker Module** (`/src/doctor/checks/network.rs`)
    - API connectivity:
      - Test HTTPS connection to api.foojay.io
@@ -259,6 +275,7 @@ This document outlines the phased implementation plan for the Kopi doctor comman
    - Proxy scenario testing
 
 ### Success Criteria
+
 - Network issues detected accurately
 - Cache problems identified clearly
 - Timeout handling prevents hanging
@@ -267,10 +284,12 @@ This document outlines the phased implementation plan for the Kopi doctor comman
 ## Phase 6: Integration and Polish
 
 ### Input Resources
+
 - All previous phase deliverables
 - User feedback and testing results
 
 ### Deliverables
+
 1. **Check Orchestration** (`/src/doctor/orchestrator.rs`)
    - Parallel check execution (where safe)
    - Progress indication for slow checks
@@ -302,6 +321,7 @@ This document outlines the phased implementation plan for the Kopi doctor comman
    - Multi-platform testing
 
 ### Success Criteria
+
 - All checks complete within 5 seconds
 - Clear, actionable output for all scenarios
 - Robust error handling
@@ -310,6 +330,7 @@ This document outlines the phased implementation plan for the Kopi doctor comman
 ## Implementation Guidelines
 
 ### For Each Phase:
+
 1. Start with `/clear` command to reset context
 2. Load this plan.md and relevant phase resources
 3. Create necessary test directories (e.g., `/tests/doctor/` for integration tests)
@@ -325,6 +346,7 @@ This document outlines the phased implementation plan for the Kopi doctor comman
 ### Testing Strategy
 
 Test files are organized following the kopi project structure:
+
 - Command tests: `/tests/commands/doctor.rs` - Main command execution tests
 - Feature integration tests: `/tests/doctor/` subdirectory
   - `installation_checks.rs` - Installation and permission checks
@@ -334,6 +356,7 @@ Test files are organized following the kopi project structure:
   - `full_suite.rs` - Comprehensive test suite
 
 #### Unit Tests (use mocks extensively)
+
 - Test individual checks in isolation
 - Mock filesystem, network, and OS operations
 - Focus on logic correctness
@@ -344,7 +367,7 @@ Test files are organized following the kopi project structure:
   mod tests {
       use super::*;
       use mockall::*;
-      
+
       #[test]
       fn test_path_check_with_mock_env() {
           let mut mock_env = MockEnvironment::new();
@@ -357,6 +380,7 @@ Test files are organized following the kopi project structure:
   ```
 
 #### Integration Tests (no mocks)
+
 - Test complete diagnostic workflows
 - Verify real system interactions
 - Measure actual performance
@@ -367,13 +391,14 @@ Test files are organized following the kopi project structure:
   fn test_full_diagnostic_suite() {
       let doctor = DoctorCommand::new();
       let results = doctor.run_all_checks().unwrap();
-      
+
       assert!(results.total_time < Duration::from_secs(5));
       assert!(results.categories.len() == 6);
   }
   ```
 
 ### Performance Goals
+
 1. Individual checks: < 100ms each
 2. Network checks: < 5s with timeout
 3. Total execution: < 5s for all checks
@@ -381,6 +406,7 @@ Test files are organized following the kopi project structure:
 5. Human formatting: < 20ms
 
 ### Error Handling Principles
+
 1. Never panic - handle all errors gracefully
 2. Provide context for every error
 3. Suggest specific fixes
@@ -388,6 +414,7 @@ Test files are organized following the kopi project structure:
 5. Log verbose details only with --verbose
 
 ### Output Quality Standards
+
 1. **Clarity**: Users understand the issue immediately
 2. **Actionability**: Every problem has a suggested fix
 3. **Brevity**: Concise messages, details with --verbose
@@ -396,17 +423,20 @@ Test files are organized following the kopi project structure:
 ### Platform-Specific Considerations
 
 #### Unix (Linux/macOS)
+
 - Use standard permission checks (stat)
 - Handle different shell configurations
 - Consider snap/flatpak installations
 
 #### Windows
+
 - Handle Windows ACLs properly
 - Check both PowerShell and CMD
 - Consider antivirus interference
 - Handle WSL environments
 
 #### macOS
+
 - Check for Gatekeeper issues
 - Handle Homebrew interactions
 - Consider system integrity protection
@@ -414,6 +444,7 @@ Test files are organized following the kopi project structure:
 ## Design Principles
 
 ### Key Requirements
+
 1. **Non-invasive**: Read-only checks, no modifications
 2. **Fast**: Complete quickly to encourage regular use
 3. **Helpful**: Every issue has a clear solution
@@ -421,7 +452,8 @@ Test files are organized following the kopi project structure:
 5. **Comprehensive**: Cover all common issues
 
 ### Architecture Principles
-1. **Separation of Concerns**: 
+
+1. **Separation of Concerns**:
    - Check logic resides in `src/doctor/checks/`
    - Platform-specific implementations in `src/platform/`
    - Checks call into platform modules for OS-specific operations
@@ -429,23 +461,25 @@ Test files are organized following the kopi project structure:
 3. **Testability**: Mock platform operations in unit tests, use real operations in integration tests
 
 ### Error Message Guidelines
+
 - **Problem**: What is wrong
 - **Impact**: Why it matters
 - **Solution**: How to fix it
 - **Example format**:
   ```
   ✗ ~/.kopi/shims not found in PATH
-    
+
     Impact: Java commands won't automatically use kopi-managed versions
-    
+
     To fix: Add this line to ~/.zshrc:
       export PATH="$HOME/.kopi/shims:$PATH"
-    
+
     Then reload your shell:
       source ~/.zshrc
   ```
 
 ## Future Enhancements (Post-MVP)
+
 1. **Fix suggestions as scripts**: Generate fix scripts users can review and run
 2. **Historical tracking**: Compare diagnostics over time
 3. **Plugin system**: Allow custom health checks
@@ -453,4 +487,5 @@ Test files are organized following the kopi project structure:
 5. **Performance profiling**: Identify slow kopi operations
 
 ## Next Steps
+
 Begin with Phase 1, implementing the core diagnostic framework with proper result types, command structure, and output formatting. This foundation will support all subsequent check implementations.

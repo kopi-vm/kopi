@@ -1,6 +1,7 @@
 # Cross-platform lock compatibility
 
 ## Metadata
+
 - ID: NFR-g12ex
 - Type: Non-Functional Requirement
 - Category: Compatibility
@@ -12,6 +13,7 @@
 - Date Modified: 2025-09-03
 
 ## Links
+
 - Implemented by Tasks: N/A – Not yet implemented
 - Related Requirements: FR-02uqo, FR-ui8x2, FR-v7ql4
 - Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
@@ -26,6 +28,7 @@ The system SHALL provide identical locking behavior and semantics across Unix (L
 ## Rationale
 
 Cross-platform compatibility ensures:
+
 - Consistent user experience regardless of operating system
 - Single codebase without platform-specific branches
 - Predictable behavior in mixed-OS environments
@@ -54,29 +57,33 @@ The system shall work identically across all supported platforms to ensure users
 ## Technical Details (if applicable)
 
 ### Non-Functional Requirement Details
+
 - Compatibility: 100% API compatibility across platforms
 - Performance: Platform-specific optimizations allowed if behavior unchanged
 - Reliability: Same error recovery on all platforms
 - Security: Consistent permission model where applicable
 
 ### Platform Support Matrix
-| Platform | Architecture | Filesystem | Lock Support |
-|----------|-------------|------------|--------------|
-| Linux | x86_64, aarch64 | ext4, xfs, btrfs | Full |
-| macOS | x86_64, aarch64 | APFS, HFS+ | Full |
-| Windows | x86_64 | NTFS | Full |
-| WSL2 | x86_64, aarch64 | ext4 | Full |
-| All | All | FAT32 | Degraded |
-| All | All | Network FS | Fallback |
+
+| Platform | Architecture    | Filesystem       | Lock Support |
+| -------- | --------------- | ---------------- | ------------ |
+| Linux    | x86_64, aarch64 | ext4, xfs, btrfs | Full         |
+| macOS    | x86_64, aarch64 | APFS, HFS+       | Full         |
+| Windows  | x86_64          | NTFS             | Full         |
+| WSL2     | x86_64, aarch64 | ext4             | Full         |
+| All      | All             | FAT32            | Degraded     |
+| All      | All             | Network FS       | Fallback     |
 
 ## Verification Method
 
 ### Test Strategy
+
 - Test Type: Integration
 - Test Location: `tests/cross_platform_tests.rs` (planned)
 - Test Names: `test_nfr_g12ex_platform_behavior`, `test_nfr_g12ex_filesystem_support`
 
 ### Verification Commands
+
 ```bash
 # Linux testing
 cargo test test_nfr_g12ex
@@ -92,6 +99,7 @@ cargo test test_nfr_g12ex
 ```
 
 ### Success Metrics
+
 - Metric 1: 100% test pass rate on all supported platforms
 - Metric 2: Identical behavior logs across platforms for same operations
 - Metric 3: No platform-specific bug reports
@@ -104,27 +112,30 @@ cargo test test_nfr_g12ex
 ## Platform Considerations
 
 ### Unix
+
 - Uses flock() system call
 - POSIX-compliant behavior
 - Handle EINTR appropriately
 
 ### Windows
+
 - Uses LockFileEx() API
 - Windows-specific error codes mapped to std::io::Error
 - Handle ERROR_LOCK_VIOLATION
 
 ### Cross-Platform
+
 - Rust standard library abstracts platform differences
 - Use cfg attributes only for platform-specific optimizations
 - Ensure consistent error messages
 
 ## Risks & Mitigation
 
-| Risk | Impact | Likelihood | Mitigation | Validation |
-|------|--------|------------|------------|------------|
-| Platform API differences | High | Low | Use std library abstractions | CI testing on all platforms |
-| Filesystem quirks | Medium | Medium | Test on various filesystems | Filesystem test matrix |
-| WSL compatibility issues | Low | Medium | Test in WSL environments | Include WSL in CI |
+| Risk                     | Impact | Likelihood | Mitigation                   | Validation                  |
+| ------------------------ | ------ | ---------- | ---------------------------- | --------------------------- |
+| Platform API differences | High   | Low        | Use std library abstractions | CI testing on all platforms |
+| Filesystem quirks        | Medium | Medium     | Test on various filesystems  | Filesystem test matrix      |
+| WSL compatibility issues | Low    | Medium     | Test in WSL environments     | Include WSL in CI           |
 
 ## Implementation Notes
 
@@ -135,6 +146,7 @@ cargo test test_nfr_g12ex
 - Test with platform-specific CI runners
 
 ## External References
+
 N/A – No external references
 
 ## Change History

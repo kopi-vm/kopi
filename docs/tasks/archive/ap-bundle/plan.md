@@ -11,6 +11,7 @@ This document outlines the implementation plan for handling diverse JDK director
 **Goal**: Create the core structure detection functionality for identifying JDK directory layouts.
 
 ### Input Materials
+
 - **Documentation**:
   - `/docs/adr/archive/018-macos-jdk-bundle-structure-handling.md` - ADR with structure analysis
   - `/docs/tasks/ap-bundle/design.md` - Detailed design specification
@@ -23,6 +24,7 @@ This document outlines the implementation plan for handling diverse JDK director
   - `/src/error/mod.rs` - Error types and handling
 
 ### Tasks
+
 - [x] Create `detect_jdk_root()` function in `src/archive/mod.rs`
 - [x] Implement detection algorithm:
   - [x] Check for `bin/` at root (direct structure)
@@ -39,6 +41,7 @@ This document outlines the implementation plan for handling diverse JDK director
   - [x] Test platform-specific behavior
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -52,6 +55,7 @@ cargo test --lib archive::tests
 **Goal**: Implement path resolution methods for JDK installations.
 
 ### Input Materials
+
 - **Source Code to Modify**:
   - `/src/storage/listing.rs` - Add path resolution to InstalledJdk
 
@@ -60,6 +64,7 @@ cargo test --lib archive::tests
   - Phase 1 deliverables
 
 ### Tasks
+
 - [x] Add `resolve_java_home()` method to `InstalledJdk` in `src/storage/listing.rs`
   - [x] Implement runtime detection for macOS
   - [x] Return path directly for other platforms
@@ -76,6 +81,7 @@ cargo test --lib archive::tests
   - [x] Create mock directory structures for testing
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -89,6 +95,7 @@ cargo test --lib storage::listing::tests
 **Goal**: Update the installation process to handle different JDK structures.
 
 ### Input Materials
+
 - **Source Code to Modify**:
   - `/src/commands/install.rs` - Update installation process
 
@@ -97,6 +104,7 @@ cargo test --lib storage::listing::tests
   - Phase 2 (Common Path Resolution)
 
 ### Tasks
+
 - [x] Update `extract_and_install()` in `src/commands/install.rs`
   - [x] Call `detect_jdk_root()` after extraction
   - [x] Move correct directory to final location
@@ -113,6 +121,7 @@ cargo test --lib storage::listing::tests
   - [x] Azul Zulu (hybrid structure) - Verify saved with java_home_suffix: "Contents/Home"
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -130,6 +139,7 @@ kopi install zulu@21
 **Goal**: Update the shim to use the new path resolution methods.
 
 ### Input Materials
+
 - **Source Code to Modify**:
   - `/src/shim/mod.rs` - Update shim to use InstalledJdk methods
 
@@ -137,6 +147,7 @@ kopi install zulu@21
   - Phase 2 (Common Path Resolution)
 
 ### Tasks
+
 - [x] Modify `find_jdk_installation()` in `src/shim/mod.rs`
   - [x] Return `InstalledJdk` instance instead of just path
   - [x] Update error types to match
@@ -151,6 +162,7 @@ kopi install zulu@21
   - [x] Performance test: ensure < 50ms execution
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -168,6 +180,7 @@ time ~/.kopi/shims/java --version  # Should be < 50ms
 **Goal**: Update the env command to use proper path resolution.
 
 ### Input Materials
+
 - **Source Code to Modify**:
   - `/src/commands/env.rs` - Update env command
 
@@ -175,6 +188,7 @@ time ~/.kopi/shims/java --version  # Should be < 50ms
   - Phase 2 (Common Path Resolution)
 
 ### Tasks
+
 - [x] Update `env` command in `src/commands/env.rs`
   - [x] Use `InstalledJdk::resolve_java_home()` for JAVA_HOME
   - [x] Remove any hardcoded path assumptions
@@ -186,6 +200,7 @@ time ~/.kopi/shims/java --version  # Should be < 50ms
   - [x] Test error handling when no JDK selected
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -203,9 +218,11 @@ echo $JAVA_HOME
 **Goal**: Verify all core components work together correctly.
 
 ### Dependencies
+
 - Phases 1-5 complete with their unit tests
 
 ### Tasks
+
 - [ ] **Integration tests** for core workflow:
   - [ ] Test full installation flow with structure detection
   - [ ] Test shim execution with resolved paths
@@ -221,6 +238,7 @@ echo $JAVA_HOME
 - [ ] Fix any integration issues discovered
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -239,6 +257,7 @@ kopi install temurin@21 && kopi use temurin@21 && java --version
 **Goal**: Design and implement the metadata structure for caching JDK information.
 
 ### Input Materials
+
 - **Documentation**:
   - `/docs/tasks/ap-bundle/design.md` - Metadata Extension specification (Component #2)
 
@@ -249,6 +268,7 @@ kopi install temurin@21 && kopi use temurin@21 && java --version
   - `/src/models/metadata.rs` - Existing metadata structures
 
 ### Tasks
+
 - [x] Define `InstallationMetadata` struct in `src/storage/mod.rs`
   - [x] Add `java_home_suffix` field (e.g., "Contents/Home")
   - [x] Add `structure_type` field (bundle/direct/hybrid)
@@ -263,6 +283,7 @@ kopi install temurin@21 && kopi use temurin@21 && java --version
   - [x] Test invalid JSON handling
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -276,6 +297,7 @@ cargo test --lib storage::metadata::tests
 **Goal**: Implement saving metadata during JDK installation.
 
 ### Input Materials
+
 - **Source Code to Modify**:
   - `/src/storage/mod.rs` - Extend save_jdk_metadata function
   - `/src/commands/install.rs` - Save metadata during installation
@@ -284,6 +306,7 @@ cargo test --lib storage::metadata::tests
   - Phase 7 (Metadata Structure Design)
 
 ### Tasks
+
 - [x] Extend `save_jdk_metadata()` in `src/storage/mod.rs`
   - [x] Accept installation metadata parameter
   - [x] Include in saved JSON structure
@@ -304,6 +327,7 @@ cargo test --lib storage::metadata::tests
   - [x] Azul Zulu 21 (hybrid) - installation_metadata.structure_type: "hybrid"
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -322,6 +346,7 @@ cat ~/.kopi/jdks/temurin-24*.meta.json | jq .installation_metadata
 **Goal**: Implement lazy loading and caching of metadata.
 
 ### Input Materials
+
 - **Source Code to Modify**:
   - `/src/storage/listing.rs` - Add metadata caching to InstalledJdk
 
@@ -330,6 +355,7 @@ cat ~/.kopi/jdks/temurin-24*.meta.json | jq .installation_metadata
   - Phase 2 (Common Path Resolution)
 
 ### Tasks
+
 - [x] Add metadata caching to `InstalledJdk`
   - [x] Add optional metadata field to struct
   - [x] Implement lazy loading on first access
@@ -347,6 +373,7 @@ cat ~/.kopi/jdks/temurin-24*.meta.json | jq .installation_metadata
   - [x] Test memory usage with multiple JDKs
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -363,9 +390,11 @@ RUST_LOG=debug kopi use temurin@24
 **Goal**: Implement graceful fallback when metadata is missing or corrupted.
 
 ### Dependencies
+
 - Phase 9 (Metadata Loading)
 
 ### Tasks
+
 - [x] Implement graceful fallback when metadata missing
   - [x] Log warning about missing metadata
   - [x] Perform runtime detection
@@ -382,6 +411,7 @@ RUST_LOG=debug kopi use temurin@24
   - [x] Test no user-visible errors on fallback
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -399,9 +429,11 @@ java --version
 **Goal**: Benchmark and verify performance improvements.
 
 ### Dependencies
+
 - Phases 7-10 complete
 
 ### Tasks
+
 - [x] Create benchmark suite for path resolution
   - [x] Measure with metadata (cache hit)
   - [x] Measure without metadata (fallback)
@@ -416,6 +448,7 @@ java --version
   - [x] Create performance regression tests
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -432,9 +465,11 @@ time ~/.kopi/shims/java --version  # Should be < 10ms with metadata
 **Goal**: Ensure backward compatibility with existing installations.
 
 ### Dependencies
+
 - Phases 7-11 complete
 
 ### Tasks
+
 - [x] Ensure existing installations work without metadata
 - [x] Document that metadata is created for new installations only
 - [x] Test upgrade scenarios
@@ -447,6 +482,7 @@ time ~/.kopi/shims/java --version  # Should be < 10ms with metadata
   - [x] Integration test with real user scenarios
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -463,9 +499,11 @@ java --version
 **Goal**: Verify comprehensive test coverage and add any missing tests.
 
 ### Dependencies
+
 - Phases 1-12 complete with their unit tests
 
 ### Tasks
+
 - [x] Run coverage analysis with `cargo llvm-cov` (switched from tarpaulin due to environment variable issues)
 - [x] Identify untested code paths
 - [x] Add tests for any uncovered edge cases:
@@ -477,6 +515,7 @@ java --version
 - [x] Create test documentation
 
 ### Results
+
 - **Overall Project Coverage**: 69.73% line coverage
 - **New Functionality Coverage** (all exceeded 90% target):
   - `error/tests.rs`: 99.70%
@@ -486,6 +525,7 @@ java --version
 - **Documentation**: Created at `/docs/tasks/ap-bundle/phase-13-test-documentation.md`
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -503,9 +543,11 @@ cargo llvm-cov --lib --summary-only
 **Goal**: Test real JDK distributions end-to-end.
 
 ### Dependencies
+
 - Phases 1-12 complete
 
 ### Tasks
+
 - [x] Download and test real JDK distributions:
   - [x] Temurin 11, 17, 21, 24
   - [x] Liberica 8, 17, 21
@@ -517,6 +559,7 @@ cargo llvm-cov --lib --summary-only
 - [x] Performance testing (shim execution < 50ms)
 
 ### Implementation Details
+
 - Created comprehensive integration test suite in `/tests/jdk_distributions_integration.rs`
 - Tests cover all major JDK distributions with multiple versions
 - Includes tests for:
@@ -530,6 +573,7 @@ cargo llvm-cov --lib --summary-only
 - Tests are marked with `#[cfg_attr(not(feature = "integration_tests"), ignore)]` to run only when explicitly requested
 
 ### Verification
+
 ```bash
 cargo fmt
 cargo clippy --all-targets -- -D warnings
@@ -544,12 +588,14 @@ cargo test --quiet --features integration_tests
 **Goal**: Update all documentation to reflect the new functionality.
 
 ### Input Materials
+
 - **Documentation to Update**:
   - `/docs/adr/archive/018-macos-jdk-bundle-structure-handling.md` - ADR to update
   - `/docs/reference.md` - User documentation to update
   - `README.md` - Add macOS support notes
 
 ### Tasks
+
 - [x] Update user documentation:
   - [x] Add macOS-specific notes to README
   - [x] Document supported JDK distributions
@@ -561,6 +607,7 @@ cargo test --quiet --features integration_tests
 - [x] Update ADR-018 with implementation results
 
 ### Verification
+
 ```bash
 # Review documentation files manually
 ls -la docs/
@@ -573,14 +620,16 @@ cat docs/reference.md | head -20
 ## Implementation Order
 
 ### Core Structure Support (Phases 1-6)
+
 1. **Phase 1**: Structure Detection Module
-2. **Phase 2**: Common Path Resolution  
+2. **Phase 2**: Common Path Resolution
 3. **Phase 3**: Installation Integration
 4. **Phase 4**: Shim Enhancement
 5. **Phase 5**: Env Command Integration
 6. **Phase 6**: Core Integration Testing
 
 ### Metadata Optimization (Phases 7-12)
+
 7. **Phase 7**: Metadata Structure Design
 8. **Phase 8**: Metadata Persistence
 9. **Phase 9**: Metadata Loading
@@ -589,6 +638,7 @@ cat docs/reference.md | head -20
 12. **Phase 12**: Migration Support
 
 ### Testing and Documentation (Phases 13-15)
+
 13. **Phase 13**: Test Coverage Analysis ✅
 14. **Phase 14**: Integration Test Suite ✅
 15. **Phase 15**: Documentation Updates

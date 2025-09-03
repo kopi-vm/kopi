@@ -3,20 +3,26 @@
 ## Error Types
 
 ### 1. User Errors
+
 Invalid input, missing arguments, or incorrect usage
+
 - Return clear, actionable error messages
 - Include examples of correct usage
 - Exit codes: 2 (invalid format/config), 3 (no local version), 4 (JDK not installed)
 
 ### 2. Network Errors
+
 Failed API calls or downloads
+
 - Implement retry logic with exponential backoff
 - Provide offline fallback when possible (cached metadata)
 - Show progress indicators for long operations
 - Exit code: 20
 
 ### 3. System Errors
+
 Permission issues, disk space, missing dependencies
+
 - Check permissions before operations
 - Validate available disk space before downloads
 - Provide platform-specific guidance
@@ -33,13 +39,13 @@ use thiserror::Error;
 pub enum KopiError {
     #[error("Failed to download JDK: {0}")]
     Download(String),
-    
+
     #[error("JDK version '{0}' is not available")]
     VersionNotAvailable(String),
-    
+
     #[error("Network error: {0}")]
     NetworkError(String),
-    
+
     #[error(transparent)]
     Http(#[from] attohttpc::Error),
 }
@@ -68,8 +74,9 @@ match result {
 ```
 
 The `ErrorContext` system automatically provides:
+
 - User-friendly suggestions for common errors (e.g., "Run 'kopi cache search' to see available versions")
-- Platform-specific guidance (e.g., different commands for Windows vs Unix)  
+- Platform-specific guidance (e.g., different commands for Windows vs Unix)
 - Detailed error information when available
 - Proper exit codes based on error type (see `get_exit_code`)
 
@@ -77,20 +84,20 @@ The `ErrorContext` system automatically provides:
 
 ## Exit Codes Summary
 
-| Code | Meaning | Context |
-|------|---------|---------|
-| 1 | General error | Default exit code for unspecified errors |
-| 2 | Invalid format/config | User error - malformed input, configuration, or validation error |
-| 3 | No local version | No `.kopi-version` or `.java-version` file found |
-| 4 | JDK not installed | Requested JDK version is not installed |
-| 5 | Tool not found | Required tool (e.g., java, javac) not found in JDK |
-| 6 | Shell detection error | Failed to detect the current shell |
-| 7 | Unsupported shell | Shell is not supported by Kopi |
-| 13 | Permission denied | System error - insufficient permissions |
-| 17 | Already exists | Resource already exists (e.g., JDK already installed) |
-| 20 | Network error | Failed API calls, downloads, or metadata fetching |
-| 28 | Disk space | Insufficient disk space for operation |
-| 127 | Command not found | Kopi command not found or shell not found |
+| Code | Meaning               | Context                                                          |
+| ---- | --------------------- | ---------------------------------------------------------------- |
+| 1    | General error         | Default exit code for unspecified errors                         |
+| 2    | Invalid format/config | User error - malformed input, configuration, or validation error |
+| 3    | No local version      | No `.kopi-version` or `.java-version` file found                 |
+| 4    | JDK not installed     | Requested JDK version is not installed                           |
+| 5    | Tool not found        | Required tool (e.g., java, javac) not found in JDK               |
+| 6    | Shell detection error | Failed to detect the current shell                               |
+| 7    | Unsupported shell     | Shell is not supported by Kopi                                   |
+| 13   | Permission denied     | System error - insufficient permissions                          |
+| 17   | Already exists        | Resource already exists (e.g., JDK already installed)            |
+| 20   | Network error         | Failed API calls, downloads, or metadata fetching                |
+| 28   | Disk space            | Insufficient disk space for operation                            |
+| 127  | Command not found     | Kopi command not found or shell not found                        |
 
 ## Best Practices
 

@@ -1,9 +1,11 @@
 # Install Command Implementation Plan
 
 ## Overview
+
 This document outlines the phased implementation plan for the `kopi install` command, which is responsible for downloading and installing JDK distributions from foojay.io.
 
 ## Command Syntax
+
 - `kopi install <version>` - Install latest JDK with specified version (defaults to Eclipse Temurin)
 - `kopi install <distribution>@<version>` - Install specific distribution and version
 
@@ -12,11 +14,13 @@ This document outlines the phased implementation plan for the `kopi install` com
 ## Phase 1: API Integration and Metadata Handling
 
 ### Input Resources
+
 - foojay.io API documentation
 - `/docs/adr/` - Architecture Decision Records
 - `/src/main.rs` - Existing CLI structure
 
 ### Deliverables
+
 1. **API Client Module** (`/src/api/mod.rs`)
    - HTTP client configuration using `attohttpc`
    - API endpoint definitions with versioning support
@@ -42,6 +46,7 @@ This document outlines the phased implementation plan for the `kopi install` com
    - Network timeout handling
 
 ### Success Criteria
+
 - Successfully fetch JDK metadata from foojay.io
 - Parse and validate JSON responses
 - Handle network errors gracefully
@@ -51,11 +56,13 @@ This document outlines the phased implementation plan for the `kopi install` com
 ## Phase 2: Download and Archive Extraction
 
 ### Input Resources
+
 - Phase 1 deliverables (API client and models)
 - Platform-specific archive formats documentation
 - `/docs/reference.md` - Storage location specifications
 
 ### Deliverables
+
 1. **Download Module** (`/src/download/mod.rs`)
    - Progress reporting during download
    - SHA256 checksum verification
@@ -99,6 +106,7 @@ This document outlines the phased implementation plan for the `kopi install` com
    - Failure recovery scenarios (simulate real network/disk errors)
 
 ### Success Criteria
+
 - Download JDK archives with progress indication
 - Successfully resume interrupted downloads
 - Verify checksums and signatures
@@ -109,11 +117,13 @@ This document outlines the phased implementation plan for the `kopi install` com
 ## Phase 3: Command Implementation and CLI Integration
 
 ### Input Resources
+
 - Phase 1 & 2 deliverables
 - `/src/main.rs` - Existing CLI structure with clap
 - `/docs/adr/archive/001-kopi-command-structure.md` - Command structure guidelines
 
 ### Deliverables
+
 1. **Install Command** (`/src/commands/install.rs`)
    - Command argument parsing
    - Version resolution logic
@@ -152,6 +162,7 @@ This document outlines the phased implementation plan for the `kopi install` com
    - Error message validation (validate with real error conditions)
 
 ### Success Criteria
+
 - `kopi install 21` downloads and installs latest Eclipse Temurin 21.x.x
 - `kopi install corretto@17` installs specific distribution (Corretto 17)
 - `kopi install 21 --force` overwrites existing JDK 21 installation
@@ -162,19 +173,22 @@ This document outlines the phased implementation plan for the `kopi install` com
 ## Phase 4: Metadata Caching and Optimization
 
 ### Input Resources
+
 - Phase 1-3 deliverables
 - Hybrid caching strategy from architecture docs
 - `/docs/adr/archive/002-serialization-format-for-metadata-storage.md` - Caching and serialization decisions
 
 ### Deliverables
+
 1. **Simple Cache Functions** (`/src/cache/mod.rs`)
    - Synchronous file-based caching in `~/.kopi/cache/metadata.json`
    - Basic load/save operations using standard file I/O
    - No automatic expiration - cache persists until explicitly refreshed
    - Offline mode support (use cache when network unavailable)
    - Simple JSON serialization with serde_json
-   
+
    Example implementation approach:
+
    ```rust
    pub fn load_cache(path: &Path) -> Result<MetadataCache> {
        if !path.exists() {
@@ -183,31 +197,31 @@ This document outlines the phased implementation plan for the `kopi install` com
        let contents = fs::read_to_string(path)?;
        Ok(serde_json::from_str(&contents)?)
    }
-   
+
    pub fn save_cache(path: &Path, cache: &MetadataCache) -> Result<()> {
        fs::create_dir_all(path.parent().unwrap())?;
        let json = serde_json::to_string_pretty(cache)?;
        fs::write(path, json)?;
        Ok(())
    }
-   
+
    pub fn get_metadata(requested_version: Option<&str>) -> Result<MetadataCache> {
        let cache_path = get_cache_path();
-       
+
        // Use cache if it exists
        if cache_path.exists() {
            let cache = load_cache(&cache_path)?;
-           
+
            // If specific version requested and not in cache, try API
            if let Some(version) = requested_version {
                if !cache.has_version(version) {
                    return fetch_and_cache_metadata();
                }
            }
-           
+
            return Ok(cache);
        }
-       
+
        // No cache, fetch from API
        fetch_and_cache_metadata()
    }
@@ -237,6 +251,7 @@ This document outlines the phased implementation plan for the `kopi install` com
    - Cache file corruption recovery
 
 ### Success Criteria
+
 - Second install attempt uses cached metadata (no network calls)
 - Works offline with cached data indefinitely
 - User controls when to refresh cache via explicit command
@@ -247,11 +262,13 @@ This document outlines the phased implementation plan for the `kopi install` com
 ## Phase 5: Integration Testing and Error Handling
 
 ### Input Resources
+
 - All previous phase deliverables
 - Error scenarios documentation
 - Platform-specific considerations
 
 ### Deliverables
+
 1. **Error Handler Enhancement** (`/src/error/mod.rs`)
    - Comprehensive error types
    - User-friendly error messages
@@ -281,6 +298,7 @@ This document outlines the phased implementation plan for the `kopi install` com
    - Platform-specific notes
 
 ### Success Criteria
+
 - All edge cases handled gracefully
 - Clear error messages guide users
 - Documentation complete and accurate
@@ -288,6 +306,7 @@ This document outlines the phased implementation plan for the `kopi install` com
 ## Implementation Guidelines
 
 ### For Each Phase:
+
 1. Start with `/clear` command to reset context
 2. Load this plan.md and relevant phase resources
 3. Implement deliverables incrementally
@@ -301,6 +320,7 @@ This document outlines the phased implementation plan for the `kopi install` com
 ### Testing Strategy
 
 #### Unit Tests (use mocks extensively)
+
 - Test individual module functionality in isolation
 - Fully mock external dependencies (HTTP, file system, processes, etc.)
 - Focus on fast execution and deterministic results
@@ -311,7 +331,7 @@ This document outlines the phased implementation plan for the `kopi install` com
   mod tests {
       use super::*;
       use mockall::*;
-      
+
       #[test]
       fn test_download_with_mock_http_client() {
           let mut mock_client = MockHttpClient::new();
@@ -323,6 +343,7 @@ This document outlines the phased implementation plan for the `kopi install` com
   ```
 
 #### Integration Tests (no mocks)
+
 - Test complete command workflows end-to-end
 - Verify integration with actual external services (foojay.io API)
 - Confirm real file system operations
@@ -342,11 +363,13 @@ This document outlines the phased implementation plan for the `kopi install` com
   ```
 
 #### Other Testing
+
 - Manual testing on Linux, macOS, and Windows
 - Performance benchmarks for large downloads
 - Security testing for certificate validation
 
 ### Error Handling Priorities
+
 1. Network failures - retry with exponential backoff
 2. Rate limiting - respect 429 responses, wait and retry
 3. Disk space - check before download
@@ -356,6 +379,7 @@ This document outlines the phased implementation plan for the `kopi install` com
 7. Certificate errors - fail securely, provide override option
 
 ### Security Considerations
+
 1. Always validate HTTPS certificates
 2. Verify file checksums from official sources
 3. Use secure temporary directories
@@ -363,4 +387,5 @@ This document outlines the phased implementation plan for the `kopi install` com
 5. Log security events for audit trail
 
 ## Next Steps
+
 Begin with Phase 1, focusing on establishing reliable API communication with foojay.io and creating robust data models for JDK metadata.

@@ -7,6 +7,7 @@ This design document details the implementation strategy for handling diverse JD
 ## Purpose
 
 The primary purpose of this implementation is to:
+
 - Automatically detect and handle different JDK directory structures on macOS
 - Provide transparent JAVA_HOME resolution regardless of packaging format
 - Maintain performance by leveraging metadata caching
@@ -52,6 +53,7 @@ Implement a multi-phase detection algorithm that checks for different structure 
 - Hybrid structures preserve symlinks
 
 This approach:
+
 - Maintains code signing and notarization
 - Preserves vendor intentions
 - Simplifies implementation
@@ -68,12 +70,14 @@ This approach:
 The primary detection function takes the extracted directory path and distribution name as inputs, returning the resolved JDK root directory path or an error if no valid structure is found.
 
 **Important Distinction**:
+
 - This module is used ONLY during installation (before `InstalledJdk` exists)
 - It detects structure from a temporary extraction directory
 - Results are saved as metadata for later use by `InstalledJdk`
 - Cannot use `InstalledJdk` methods because the JDK isn't installed yet
 
 **Responsibilities**:
+
 - Detect JDK structure type after extraction
 - Validate presence of essential components (`bin/java`)
 - Determine `java_home_suffix` value (e.g., "Contents/Home" or "")
@@ -84,12 +88,13 @@ The primary detection function takes the extracted directory path and distributi
 **Location**: `src/storage/mod.rs`
 
 **Enhanced Metadata Structure**:
+
 ```json
 {
   // Existing API fields
   "distribution": "temurin",
   "java_version": "21.0.2",
-  
+
   // New installation metadata
   "installation_metadata": {
     "java_home_suffix": "Contents/Home",
@@ -100,12 +105,14 @@ The primary detection function takes the extracted directory path and distributi
 ```
 
 **Metadata Creation Flow**:
+
 1. During installation, `detect_jdk_root()` returns structure information
 2. Installation process creates `installation_metadata` object
 3. Existing `save_jdk_metadata()` is extended to include this object
 4. Metadata file is written to disk alongside the installed JDK
 
 **Metadata Usage Flow**:
+
 1. `InstalledJdk` is created from directory name (doesn't read metadata yet)
 2. When `resolve_java_home()` or `resolve_bin_path()` is called:
    - First attempt to load and cache metadata
@@ -117,6 +124,7 @@ The primary detection function takes the extracted directory path and distributi
 **Location**: `src/commands/install.rs`
 
 **Process Flow**:
+
 1. Extract archive to temporary location
 2. Detect JDK structure using detection module
 3. Log detected structure type at INFO level with format:
@@ -149,18 +157,21 @@ Add two methods to the `InstalledJdk` struct:
    - Used by shim to find executables
 
 **Metadata Loading**:
+
 - Lazy-loads metadata from `.meta.json` file in JDK directory
 - Caches result in struct field for subsequent calls
 - Falls back to runtime detection if metadata missing or invalid
 
 **Fallback Detection**:
 When metadata is missing or corrupted:
+
 1. Check if `self.path.join("bin").exists()` (direct structure)
 2. Check if `self.path.join("Contents/Home/bin").exists()` (bundle structure)
 3. Log warning about missing metadata
 4. Return detected path
 
 **Platform Abstraction**:
+
 - Uses `#[cfg(target_os = "macos")]` for macOS-specific logic
 - Other platforms always use direct structure (no special handling)
 
@@ -173,6 +184,7 @@ When metadata is missing or corrupted:
 The shim will leverage the `InstalledJdk` methods for path resolution:
 
 **Updated Process Flow**:
+
 1. `find_jdk_installation` returns an `InstalledJdk` instance (not just a path)
 2. `build_tool_path` uses the `InstalledJdk` instance:
    - Calls `jdk.resolve_bin_path()` to get the correct bin directory
@@ -181,18 +193,21 @@ The shim will leverage the `InstalledJdk` methods for path resolution:
 3. Execute tool binary directly (without setting JAVA_HOME)
 
 **Benefits of This Approach**:
+
 - Shim doesn't duplicate path resolution logic
 - Consistent behavior with env command
 - Easier to maintain and test
 - Performance remains optimal (metadata cached within InstalledJdk)
 
-**Important Note**: 
+**Important Note**:
 The current shim implementation does NOT set JAVA_HOME environment variable. It directly executes the Java binary using the resolved path. This is sufficient for most use cases since:
+
 - The Java process itself doesn't require JAVA_HOME to be set
 - Tools that need JAVA_HOME should use `kopi env` instead
 - This approach avoids potential conflicts with existing JAVA_HOME settings
 
 **Performance Considerations**:
+
 - Metadata read: ~1ms (single file read)
 - Fallback directory check: ~5ms (single stat call)
 - Total overhead remains under 10ms even in worst case
@@ -209,6 +224,7 @@ Since shim processes are short-lived, no in-memory caching is implemented. The m
 The env command will use the same `InstalledJdk` methods as the shim:
 
 **Process Flow**:
+
 1. Resolve version and find matching `InstalledJdk` instance
 2. Call `jdk.resolve_java_home()` to get the correct JAVA_HOME path
    - This method handles all platform-specific logic internally
@@ -217,12 +233,14 @@ The env command will use the same `InstalledJdk` methods as the shim:
 4. Output shell-appropriate syntax
 
 **Benefits of Shared Implementation**:
+
 - No duplication of path resolution logic
 - Guaranteed consistency between shim and env command
 - Single source of truth for JDK structure handling
 - Simplified testing and maintenance
 
 **Shell Output Examples**:
+
 - Bash/Zsh: `export JAVA_HOME="/Users/user/.kopi/jdks/temurin-21.0.2-aarch64/Contents/Home"`
 - Fish: `set -gx JAVA_HOME "/Users/user/.kopi/jdks/temurin-21.0.2-aarch64/Contents/Home"`
 - PowerShell: `$env:JAVA_HOME = "C:\Users\user\.kopi\jdks\temurin-21.0.2-x64"`
@@ -234,10 +252,12 @@ The path resolution complexity is entirely hidden within the `InstalledJdk` impl
 ### Installation Time (Before InstalledJdk Exists)
 
 **Components Used**:
+
 - `detect_jdk_root()` in `src/archive/mod.rs`
 - Cannot use `InstalledJdk` methods (JDK not installed yet)
 
 **Process**:
+
 1. Extract archive to temporary directory
 2. Call `detect_jdk_root()` to analyze structure
 3. Determine `java_home_suffix` ("Contents/Home", "", etc.)
@@ -248,11 +268,13 @@ The path resolution complexity is entirely hidden within the `InstalledJdk` impl
 ### Runtime (After Installation)
 
 **Components Used**:
-- `InstalledJdk::resolve_java_home()` 
+
+- `InstalledJdk::resolve_java_home()`
 - `InstalledJdk::resolve_bin_path()`
 
 **Process**:
-1. Load `InstalledJdk` instance from installed JDK  
+
+1. Load `InstalledJdk` instance from installed JDK
 2. Call appropriate resolve method:
    - Shim: Uses `resolve_bin_path()`
    - Env: Uses `resolve_java_home()`
@@ -289,11 +311,13 @@ The path resolution complexity is entirely hidden within the `InstalledJdk` impl
 ## Platform-Specific Behavior
 
 ### macOS
+
 - Perform full structure detection
 - Apply `Contents/Home` suffix when present
 - Preserve bundle attributes and symlinks
 
 ### Linux/Windows
+
 - Skip structure detection (always direct)
 - Use installation path as JAVA_HOME directly
 - No special handling required
@@ -315,11 +339,13 @@ The path resolution complexity is entirely hidden within the `InstalledJdk` impl
 ### Fallback Performance Impact
 
 **When Fallback Occurs**:
+
 - First call to `resolve_java_home()`: ~5ms (directory existence check)
 - Subsequent calls in same process: ~0ms (cached in memory)
 - Different process: ~5ms again (no cross-process cache)
 
 **Optimization Strategy**:
+
 - Cache detection result in `InstalledJdk` struct during process lifetime
 - Consider updating metadata file after successful fallback detection (Phase 2)
 - For shim (short-lived process), 5ms overhead is acceptable
@@ -330,6 +356,7 @@ The path resolution complexity is entirely hidden within the `InstalledJdk` impl
 ### Unit Tests
 
 **Structure Detection**:
+
 - Test bundle structure detection
 - Test direct structure detection
 - Test hybrid structure with symlinks
@@ -337,6 +364,7 @@ The path resolution complexity is entirely hidden within the `InstalledJdk` impl
 - Test invalid structures
 
 **Metadata Handling**:
+
 - Test metadata creation with structure info
 - Test metadata reading and parsing
 - Test fallback when metadata missing
@@ -344,12 +372,14 @@ The path resolution complexity is entirely hidden within the `InstalledJdk` impl
 ### Integration Tests
 
 **Installation Tests**:
+
 - Install Temurin (bundle structure)
 - Install Liberica (direct structure)
 - Install Azul Zulu (hybrid structure)
 - Verify correct JAVA_HOME for each
 
 **Shim Tests**:
+
 - Execute Java with different structures
 - Verify environment variables
 - Test version switching between structures
@@ -357,6 +387,7 @@ The path resolution complexity is entirely hidden within the `InstalledJdk` impl
 ### Platform Tests
 
 **macOS Specific**:
+
 - Test on Intel (x86_64)
 - Test on Apple Silicon (aarch64)
 - Verify code signing preservation
@@ -369,17 +400,19 @@ The path resolution complexity is entirely hidden within the `InstalledJdk` impl
 Uses existing Kopi error types from `src/error/mod.rs` and exit codes from `src/error/exit_codes.rs`:
 
 1. **Invalid JDK Structure** (`ValidationError`, Exit code: 2)
+
    ```
    Error: Validation error: Invalid JDK structure - unable to locate bin/java
-   
+
    The extracted archive does not appear to be a valid JDK.
    Please verify the download source and try again.
    ```
 
 2. **Extraction Failure** (`Extract`, Exit code: 1)
+
    ```
    Error: Failed to extract archive: Unable to determine JDK root directory
-   
+
    The archive structure is not recognized. This may indicate a corrupted
    or unsupported JDK distribution.
    ```
@@ -390,16 +423,18 @@ Uses existing Kopi error types from `src/error/mod.rs` and exit codes from `src/
    - If regeneration fails, continue without metadata caching
 
 4. **Permission Issues** (`PermissionDenied`, Exit code: 13)
+
    ```
    Error: Permission denied: Cannot access JDK directory at /path/to/jdk
-   
+
    Check file permissions and ensure Kopi has read access to the JDK installation.
    ```
 
 5. **Invalid Metadata Format** (`InvalidMetadata`, Exit code: 1)
+
    ```
    Error: Invalid metadata format
-   
+
    The JDK metadata file is corrupted or incompatible. Kopi will attempt
    to regenerate it on the next operation.
    ```
@@ -415,17 +450,20 @@ Uses existing Kopi error types from `src/error/mod.rs` and exit codes from `src/
 **Verification Strategy**: Kopi will NOT verify code signatures or notarization during installation.
 
 **Rationale**:
+
 - macOS Gatekeeper automatically verifies signatures at runtime
 - Verification during extraction would be redundant and complex
 - Industry standard practice is to preserve, not verify, signatures
 
 **Preservation Strategy**:
+
 - Maintain original directory structure (Contents/Home)
 - Preserve Extended Attributes (xattr) during extraction
 - Retain all symbolic links and bundle components
-- Keep Info.plist and _CodeSignature directories intact
+- Keep Info.plist and \_CodeSignature directories intact
 
 This approach ensures:
+
 - Gatekeeper can verify signatures when Java is executed
 - No false positives from premature verification
 - Simplified implementation with fewer failure points
@@ -435,7 +473,7 @@ This approach ensures:
 
 ### Existing Installations
 
-1. **Graceful Upgrade**: 
+1. **Graceful Upgrade**:
    - Existing JDKs without metadata continue to work
    - Structure detection happens at runtime when metadata is missing
    - No action required from users
@@ -456,7 +494,6 @@ This approach ensures:
 - New versions handle both old and new installation formats
 - Metadata format includes version field for future changes
 
-
 ## Success Criteria
 
 1. **Functionality**: All major macOS JDK distributions install and run correctly
@@ -469,22 +506,28 @@ This approach ensures:
 ## Alternative Approaches Considered
 
 ### 1. Normalize All Structures
+
 **Approach**: Convert all JDKs to direct structure
-**Rejected Because**: 
+**Rejected Because**:
+
 - Breaks code signing
 - Complex transformation logic
 - Loses vendor-specific optimizations
 
 ### 2. Vendor-Specific Handlers
+
 **Approach**: Custom code for each distribution
 **Rejected Because**:
+
 - High maintenance burden
 - Fragile to distribution changes
 - Doesn't handle custom builds
 
 ### 3. User Configuration
+
 **Approach**: Require users to specify structure type
 **Rejected Because**:
+
 - Poor user experience
 - Error prone
 - Against Kopi's philosophy of transparency
@@ -492,6 +535,7 @@ This approach ensures:
 ## Monitoring and Metrics
 
 Post-deployment monitoring:
+
 1. Track structure detection success rate
 2. Measure performance impact on shim execution
 3. Monitor error rates by distribution
@@ -500,6 +544,7 @@ Post-deployment monitoring:
 ## Documentation Updates
 
 Required documentation changes:
+
 1. Update installation guide with macOS notes
 2. Add troubleshooting section for structure issues
 3. Document metadata file format
@@ -521,7 +566,7 @@ Based on project requirements, the following decisions have been made:
 
 2. **Corrupted Structures**: Bundle structures that don't match expected patterns will be treated as errors (`ValidationError` with exit code 2). No attempt will be made to repair or work around corrupted extractions.
 
-3. **User Interface**: 
+3. **User Interface**:
    - Structure type will NOT be displayed in `kopi list` output to maintain interface simplicity
    - Structure type WILL be logged at INFO level during installation for debugging purposes:
      ```

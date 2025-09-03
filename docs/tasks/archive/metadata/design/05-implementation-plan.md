@@ -17,13 +17,15 @@ The metadata abstraction has been partially implemented:
 ## Current Status
 
 ### ✅ Phase 1: Foojay Source Implementation (COMPLETED)
+
 1. ✅ Define `MetadataSource` trait and core abstractions
 2. ✅ Refactor `ApiClient` into `FoojayMetadataSource` implementing the trait
 3. ✅ Create `MetadataProvider` struct with single source support
-4. ⚠️  Update existing code to use `MetadataProvider` instead of direct `ApiClient` (Partially done - provider exists but not integrated with cache)
+4. ⚠️ Update existing code to use `MetadataProvider` instead of direct `ApiClient` (Partially done - provider exists but not integrated with cache)
 5. ✅ Verify all existing functionality works correctly
 
 ### ✅ Phase 2: Metadata Generator Tool (COMPLETED)
+
 1. ✅ Create `kopi-metadata-gen` as a separate binary
 2. ✅ Use FoojayMetadataSource to fetch complete metadata
 3. ✅ Add platform filtering and organization logic
@@ -31,6 +33,7 @@ The metadata abstraction has been partially implemented:
 5. ✅ Create standard directory structure for easy archiving
 
 ### Phase 3: HTTP/Web Source (Default Primary Source)
+
 1. Implement `HttpMetadataSource`
 2. Fetch index.json and metadata files via HTTP
 3. Parse JSON metadata files
@@ -39,6 +42,7 @@ The metadata abstraction has been partially implemented:
 6. Set as default primary source with https://kopi-vm.github.io/metadata
 
 ### Phase 4: Local Directory Source (Bundled Fallback)
+
 1. Implement `LocalDirectorySource`
 2. Extract index.json from tar.gz archives
 3. Apply platform filtering (same as HTTP source)
@@ -46,6 +50,7 @@ The metadata abstraction has been partially implemented:
 5. Configure as automatic fallback when HTTP source fails
 
 ### Phase 5: Full Integration
+
 1. Implement fallback logic in MetadataProvider
 2. Add configuration for source priority
 3. Update installer to bundle metadata archives
@@ -53,6 +58,7 @@ The metadata abstraction has been partially implemented:
 5. Comprehensive testing of fallback scenarios
 
 ### Phase 6: Integration
+
 1. Update cache module to use `MetadataProvider`
 2. Modify commands to work with the abstraction
 3. Add source management commands
@@ -61,6 +67,7 @@ The metadata abstraction has been partially implemented:
 ## Expected Code Changes
 
 ### Current Code
+
 ```rust
 // In cache/mod.rs
 let api_client = ApiClient::new();
@@ -68,6 +75,7 @@ let metadata = api_client.fetch_all_metadata_with_options(javafx_bundled)?;
 ```
 
 ### After Refactoring
+
 ```rust
 // In cache/mod.rs
 let provider = MetadataProvider::from_config(config)?;
@@ -75,6 +83,7 @@ let metadata = provider.get_metadata()?;
 ```
 
 ### Affected Components
+
 1. **cache/mod.rs**: `fetch_and_cache_metadata()` and `fetch_and_cache_distribution()`
 2. **commands/install.rs**: Direct API calls for package info
 3. **commands/cache.rs**: Cache refresh functionality
@@ -118,6 +127,7 @@ From ADR-001, implement features in this order:
 ## Command Structure
 
 Primary commands to implement:
+
 - `kopi install <version>` or `kopi install <distribution>@<version>`
 - `kopi use <version>` - Temporary version switching
 - `kopi global <version>` - Set global default

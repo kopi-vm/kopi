@@ -30,6 +30,7 @@ kopi default <version>     # Alias
 Updates the global version configuration file at `~/.kopi/version`. This file is read by shims as the fallback when no other version is specified.
 
 Unlike `local` command, `global` command requires the version to be installed before setting it as the default:
+
 - **Auto-install enabled**: Prompts the user to install the JDK if not present
 - **Auto-install disabled**: Returns an error if the version is not installed
 - **User declines**: Returns an error without changing the global version
@@ -41,11 +42,13 @@ This ensures the global default is always a working JDK installation.
 Global version file: `~/.kopi/version`
 
 Content format:
+
 ```
 17.0.5
 ```
 
 Or with distribution:
+
 ```
 temurin@17.0.5
 ```
@@ -53,6 +56,7 @@ temurin@17.0.5
 ### System Integration
 
 The global version serves as the default for:
+
 - New shell sessions without KOPI_JAVA_VERSION
 - Directories without .kopi-version or .java-version
 - System services and cron jobs
@@ -73,13 +77,13 @@ pub fn execute_global_command(version: &str) -> Result<()> {
     // 1. Parse and validate version
     let version_request = VersionRequest::from_str(version)?;
     let resolved_version = resolve_version(&version_request)?;
-    
+
     // 2. Check if version is installed
     let repository = JdkRepository::new(&config);
     if !repository.is_installed(&resolved_version)? {
         // Use AutoInstaller for handling missing versions
         let auto_installer = AutoInstaller::new(&config);
-        
+
         if auto_installer.should_auto_install() {
             // Prompt user if configured
             let version_spec = if let Some(dist) = &version_request.distribution {
@@ -87,7 +91,7 @@ pub fn execute_global_command(version: &str) -> Result<()> {
             } else {
                 version_request.version_pattern.clone()
             };
-            
+
             if auto_installer.prompt_user(&version_spec)? {
                 // Install the JDK
                 auto_installer.install_jdk(&version_request)?;
@@ -101,31 +105,30 @@ pub fn execute_global_command(version: &str) -> Result<()> {
             return Err(KopiError::VersionNotInstalled(version.to_string()));
         }
     }
-    
+
     // 3. Get Kopi home directory
     let kopi_home = get_kopi_home()?;
     let version_file = kopi_home.join("version");
-    
+
     // 4. Check existing global version
     if version_file.exists() {
         let existing = fs::read_to_string(&version_file)?;
         eprintln!("Updating global JDK from {} to {}", existing.trim(), resolved_version);
     }
-    
+
     // 5. Ensure directory exists
     fs::create_dir_all(&kopi_home)?;
-    
+
     // 6. Write version file
     fs::write(&version_file, format!("{}\n", resolved_version))?;
-    
+
     // 7. Provide feedback
     println!("Set global JDK version to {}", resolved_version);
     println!("This will be the default for new shells and projects without local versions");
-    
+
     Ok(())
 }
 ```
-
 
 ### Global Version Resolution
 
@@ -135,7 +138,7 @@ Used by shims as fallback:
 pub fn get_global_version() -> Option<String> {
     let kopi_home = get_kopi_home().ok()?;
     let version_file = kopi_home.join("version");
-    
+
     if version_file.exists() {
         fs::read_to_string(&version_file)
             .ok()
@@ -151,6 +154,7 @@ pub fn get_global_version() -> Option<String> {
 ### Success Scenarios
 
 #### Setting Initial Global Version
+
 ```bash
 $ kopi global 17
 Set global JDK version to 17.0.5
@@ -161,6 +165,7 @@ $ kopi current
 ```
 
 #### Updating Global Version
+
 ```bash
 $ kopi global 21
 Updating global JDK from 17.0.5 to 21.0.1
@@ -171,6 +176,7 @@ This will be the default for new shells and projects without local versions
 ### Error Scenarios
 
 #### Version Not Installed (Auto-Install Enabled)
+
 ```bash
 $ kopi global 19
 JDK 19 is not installed. Would you like to install it now? [Y/n] y
@@ -182,6 +188,7 @@ This will be the default for new shells and projects without local versions
 ```
 
 #### Version Not Installed (User Declines)
+
 ```bash
 $ kopi global 19
 JDK 19 is not installed. Would you like to install it now? [Y/n] n
@@ -190,6 +197,7 @@ Hint: Run 'kopi install 19' to install this version
 ```
 
 #### Version Not Installed (Auto-Install Disabled)
+
 ```bash
 $ kopi global 19
 Error: JDK version '19' is not installed
@@ -201,6 +209,7 @@ Available installed versions:
 ```
 
 #### Permission Issues
+
 ```bash
 $ kopi global 17
 Error: Permission denied: cannot write to ~/.kopi/version
@@ -232,6 +241,7 @@ ExecStart=/usr/bin/java -jar myapp.jar
 ### IDE Configuration
 
 IDEs can detect the global Kopi version:
+
 - Read from ~/.kopi/version
 - Fallback for projects without local version
 
@@ -245,19 +255,19 @@ fn validate_global_version(version: &str) -> Result<()> {
     if !is_version_installed(version)? {
         // List available versions
         let installed = list_installed_versions()?;
-        
+
         if installed.is_empty() {
             return Err(KopiError::NoVersionsInstalled);
         }
-        
+
         eprintln!("Available versions:");
         for v in installed {
             eprintln!("  - {}", v);
         }
-        
+
         return Err(KopiError::VersionNotInstalled(version.to_string()));
     }
-    
+
     Ok(())
 }
 ```
@@ -277,7 +287,7 @@ pub fn migrate_from_system() -> Result<()> {
             eprintln!("Run 'kopi global {}' to use Kopi-managed version", version);
         }
     }
-    
+
     Ok(())
 }
 ```
@@ -285,16 +295,19 @@ pub fn migrate_from_system() -> Result<()> {
 ## Testing Strategy
 
 ### Unit Tests
+
 - Version file creation and updates
 - Directory permission handling
 - Version validation logic
 
 ### Integration Tests
+
 - Shim fallback to global version
 - System service integration
 - Concurrent access to version file
 
 ### Test Scenarios
+
 1. Set global version for first time
 2. Update existing global version
 3. Handle missing ~/.kopi directory
@@ -310,10 +323,12 @@ pub fn migrate_from_system() -> Result<()> {
 ## Platform-Specific Behavior
 
 ### Unix/Linux/macOS
+
 - Version file with 0644 permissions
 - Directory with 0755 permissions
 
 ### Windows
+
 - Version file with appropriate permissions
 - Same file format as Unix systems
 

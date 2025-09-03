@@ -17,7 +17,8 @@ kopi use <version> [options]     # Alias
 
 **⚠️ The `kopi shell` command is not yet implemented**. The current CLI in `main.rs` has a `use` command but it shows a placeholder message: "Switching to JDK {version} (not yet implemented)".
 
-**Available Infrastructure**: 
+**Available Infrastructure**:
+
 - Platform-specific shell detection in `src/platform/shell.rs` (though unreliable on Windows as noted)
 - Process execution via `src/platform/process.rs::exec_replace()`
 - Auto-installation system in shim infrastructure
@@ -45,7 +46,8 @@ Launches a new shell subprocess with the `KOPI_JAVA_VERSION` environment variabl
 ### Supported Shell Types
 
 The command supports the following shell types (defined in `platform/shell.rs`):
-- `Bash`: Bourne Again Shell  
+
+- `Bash`: Bourne Again Shell
 - `Zsh`: Z Shell
 - `Fish`: Friendly Interactive Shell
 - `PowerShell`: Windows PowerShell or PowerShell Core
@@ -54,12 +56,14 @@ The command supports the following shell types (defined in `platform/shell.rs`):
 ### Shell Detection
 
 The command detects the parent shell by:
+
 1. Getting the parent process ID
 2. Reading the parent process information
 3. Determining the shell type from the executable path (not process name)
 4. Falling back to SHELL environment variable if detection fails (Unix only)
 
-**Note**: 
+**Note**:
+
 - Process names can be arbitrarily changed, so executable paths are more reliable
 - The detected executable path is used directly to launch the new shell, ensuring the same shell binary is used
 - This avoids PATH resolution issues where a different shell binary might be found
@@ -70,6 +74,7 @@ The command detects the parent shell by:
 ### Auto-Installation
 
 If the requested version is not installed:
+
 1. Check if auto-installation is enabled in config
 2. Prompt user for confirmation (if configured)
 3. Trigger installation via `AutoInstaller`
@@ -78,6 +83,7 @@ If the requested version is not installed:
 ### Version Validation
 
 Before launching the shell:
+
 1. Check if the requested version is installed
 2. If not installed, trigger auto-installation process
 3. Resolve version aliases (e.g., `17` → `17.0.5`)
@@ -113,13 +119,13 @@ pub fn execute_shell_command(version: &str, shell_override: Option<&str>) -> Res
     // 1. Parse and validate version
     let version_request = parse_version_request(version)?;
     let resolved_version = resolve_version(&version_request)?;
-    
+
     // 2. Check if version is installed
     if !is_version_installed(&resolved_version)? {
         // 3. Trigger auto-installation if enabled
         let config = KopiConfig::load()?;
         let auto_installer = AutoInstaller::new(&config);
-        
+
         if auto_installer.should_auto_install() {
             if auto_installer.prompt_user(version)? {
                 auto_installer.install_jdk(&version_request)?;
@@ -130,7 +136,7 @@ pub fn execute_shell_command(version: &str, shell_override: Option<&str>) -> Res
             return Err(KopiError::VersionNotInstalled(version.to_string()));
         }
     }
-    
+
     // 4. Detect or use specified shell
     let (shell_type, shell_path) = if let Some(shell_name) = shell_override {
         // When explicitly specified, find the shell in PATH
@@ -143,7 +149,7 @@ pub fn execute_shell_command(version: &str, shell_override: Option<&str>) -> Res
         // This ensures we launch the same shell binary that launched kopi
         detect_parent_shell_with_path()?
     };
-    
+
     // 5. Launch shell subprocess with environment
     launch_shell_with_version(shell_type, shell_path, &resolved_version)
 }
@@ -154,6 +160,7 @@ pub fn execute_shell_command(version: &str, shell_override: Option<&str>) -> Res
 **Note**: This function needs to be implemented as an enhancement to the existing `platform/shell.rs` module. The current `detect_shell()` function relies on environment variables, which are unreliable on Windows.
 
 **Windows Error Handling**: On Windows, if parent process detection fails at any stage, the function immediately returns an error requiring the user to specify `--shell` explicitly. Failure cases include:
+
 - Current process not found in process list
 - Parent process ID not available
 - Parent process not found
@@ -166,14 +173,14 @@ This prevents incorrect shell detection and ensures the right shell syntax is us
 // This would be added to platform/shell.rs or a new module
 fn detect_parent_shell_with_path() -> Result<(Shell, PathBuf)> {
     use sysinfo::{System, SystemExt, ProcessExt, PidExt};
-    
+
     // Get current process ID
     let current_pid = std::process::id();
-    
+
     // Get system information
     let mut system = System::new();
     system.refresh_processes();
-    
+
     // Find parent process
     if let Some(current_process) = system.process(PidExt::from_u32(current_pid)) {
         if let Some(parent_pid) = current_process.parent() {
@@ -181,12 +188,12 @@ fn detect_parent_shell_with_path() -> Result<(Shell, PathBuf)> {
                 // Get the executable path
                 if let Some(exe_path) = parent_process.exe() {
                     log::debug!("Parent process executable: {:?}", exe_path);
-                    
+
                     // Get just the file name from the path
                     if let Some(file_name) = exe_path.file_name() {
                         let file_str = file_name.to_string_lossy();
                         log::debug!("Parent process file name: {}", file_str);
-                        
+
                         // Check executable file name and return both type and path
                         match file_str.as_ref() {
                             "bash" | "bash.exe" => return Ok((Shell::Bash, exe_path.to_path_buf())),
@@ -209,7 +216,7 @@ fn detect_parent_shell_with_path() -> Result<(Shell, PathBuf)> {
                         }
                     }
                 }
-                
+
                 // If we can't get the executable path on Windows, fail immediately
                 #[cfg(windows)]
                 {
@@ -221,7 +228,7 @@ fn detect_parent_shell_with_path() -> Result<(Shell, PathBuf)> {
             }
         }
     }
-    
+
     // On Windows, we cannot proceed without parent process detection
     #[cfg(windows)]
     {
@@ -229,7 +236,7 @@ fn detect_parent_shell_with_path() -> Result<(Shell, PathBuf)> {
             "Cannot detect parent shell on Windows. Please specify shell type with --shell option".to_string()
         ));
     }
-    
+
     // Unix: Fallback to environment detection
     #[cfg(not(windows))]
     {
@@ -247,7 +254,7 @@ fn find_shell_in_path(shell: &Shell) -> Result<PathBuf> {
         Shell::PowerShell => if cfg!(windows) { "powershell" } else { "pwsh" },
         Shell::Cmd => "cmd",
     };
-    
+
     which::which(shell_name)
         .map_err(|_| KopiError::ShellNotFound(shell_name.to_string()))
 }
@@ -274,7 +281,7 @@ fn detect_shell_from_env() -> Result<Shell> {
             return Ok(Shell::Fish);
         }
     }
-    
+
     // Windows-specific detection
     #[cfg(windows)]
     {
@@ -285,7 +292,7 @@ fn detect_shell_from_env() -> Result<Shell> {
             "Cannot detect shell on Windows. Please specify shell type with --shell option".to_string()
         ));
     }
-    
+
     // Default fallback
     Ok(Shell::Bash)
 }
@@ -296,12 +303,12 @@ fn detect_shell_from_env() -> Result<Shell> {
 ```rust
 fn launch_shell_with_version(shell_type: Shell, shell_path: PathBuf, version: &str) -> Result<()> {
     use crate::platform::process::exec_replace;
-    
+
     log::debug!("Launching shell: {:?} at {:?}", shell_type, shell_path);
-    
+
     // Build arguments for the shell
     let mut args = Vec::new();
-    
+
     // Add shell-specific initialization flags
     match shell_type {
         Shell::Bash | Shell::Zsh => {
@@ -318,15 +325,15 @@ fn launch_shell_with_version(shell_type: Shell, shell_path: PathBuf, version: &s
             args.push(OsString::from("/K")); // Keep window open
         }
     }
-    
+
     // Set KOPI_JAVA_VERSION environment variable
     env::set_var("KOPI_JAVA_VERSION", version);
-    
+
     // Use platform-specific process execution
     // On Unix: exec() replaces the current process
     // On Windows: spawns subprocess and exits with its status code
     let err = exec_replace(&shell_path, args);
-    
+
     // exec_replace only returns on error
     Err(KopiError::SystemError(format!(
         "Failed to execute shell: {}",
@@ -340,6 +347,7 @@ fn launch_shell_with_version(shell_type: Shell, shell_path: PathBuf, version: &s
 ### Success Scenarios
 
 #### Launching Shell with Installed Version
+
 ```bash
 $ kopi shell 17
 [kopi] Activating JDK 17.0.5 in new bash shell...
@@ -351,6 +359,7 @@ bash-5.1$ echo $KOPI_JAVA_VERSION
 ```
 
 #### Specifying Shell Type
+
 ```bash
 $ kopi shell 17 --shell zsh
 [kopi] Activating JDK 17.0.5 in new zsh shell...
@@ -359,6 +368,7 @@ openjdk version "17.0.5" 2022-10-18
 ```
 
 #### Windows Shell Usage
+
 ```bash
 # From cmd.exe
 C:\> kopi shell 17 --shell cmd
@@ -374,19 +384,21 @@ openjdk version "17.0.5" 2022-10-18
 ```
 
 #### Auto-Installation Flow
+
 ```bash
 $ kopi shell 21
 JDK 21 is not installed. Would you like to install it now? [Y/n] y
 [kopi] Installing JDK 21...
-[=====================================>] 100% 
+[=====================================>] 100%
 [kopi] Successfully installed temurin@21.0.1
 [kopi] Activating JDK 21.0.1 in new bash shell...
-bash-5.1$ 
+bash-5.1$
 ```
 
 ### Error Scenarios
 
 #### Shell Detection Failed (Windows)
+
 ```bash
 $ kopi shell 17
 Error: Cannot detect shell on Windows. Please specify shell type with --shell option
@@ -396,6 +408,7 @@ Hint: Use one of the following:
 ```
 
 #### Parent Process Detection Failed (Windows)
+
 ```bash
 $ kopi shell 17
 Error: Cannot determine parent shell executable path. Please specify shell type with --shell option
@@ -405,6 +418,7 @@ Hint: Use one of the following:
 ```
 
 #### Executed from Non-Shell Process (Windows)
+
 ```bash
 # From VSCode integrated terminal or other IDE
 $ kopi shell 17
@@ -412,7 +426,7 @@ Error: Parent process 'Code.exe' is not a recognized shell. Please specify shell
 Hint: Use one of the following:
   kopi shell 17 --shell powershell
   kopi shell 17 --shell cmd
-  
+
 # From Windows Terminal
 $ kopi shell 17
 Error: Parent process 'WindowsTerminal.exe' is not a recognized shell. Please specify shell type with --shell option
@@ -422,6 +436,7 @@ Hint: Use one of the following:
 ```
 
 #### Version Not Installed (Auto-Install Disabled)
+
 ```bash
 $ kopi shell 19
 Error: JDK version '19' is not installed
@@ -430,6 +445,7 @@ Hint: Run 'kopi install 19' to install this version
 ```
 
 #### Invalid Version Format
+
 ```bash
 $ kopi shell invalid@version
 Error: Invalid version format 'invalid@version'
@@ -437,6 +453,7 @@ Hint: Use format like '17', '17.0.5', or 'temurin@17'
 ```
 
 #### Unknown Shell Type
+
 ```bash
 $ kopi shell 17 --shell tcsh
 Error: Unsupported shell type 'tcsh'
@@ -444,6 +461,7 @@ Supported shells: bash, zsh, fish, powershell, cmd
 ```
 
 #### Shell Not Found
+
 ```bash
 $ kopi shell 17 --shell zsh
 Error: Shell 'zsh' not found in PATH
@@ -486,12 +504,14 @@ fi
 ## Testing Strategy
 
 ### Unit Tests
+
 - Version parsing and validation
 - Parent process detection logic
 - Shell type parsing from command line
 - Auto-installation decision logic
 
 ### Integration Tests
+
 - Launching shells with correct environment
 - Parent shell detection across platforms
 - Auto-installation workflow
@@ -499,6 +519,7 @@ fi
 - Error handling for missing shells
 
 ### Manual Testing
+
 - Test on each supported shell type
 - Verify parent process detection accuracy
 - Test auto-installation prompts and flow
@@ -538,7 +559,7 @@ pub fn detect_shell() -> Result<(Shell, PathBuf), ShellDetectionError> {
     if let Ok((shell, path)) = detect_from_parent_process() {
         return Ok((shell, path));
     }
-    
+
     // Unix: Fall back to SHELL environment variable
     #[cfg(unix)]
     if let Ok(shell_path) = env::var("SHELL") {
@@ -549,7 +570,7 @@ pub fn detect_shell() -> Result<(Shell, PathBuf), ShellDetectionError> {
             }
         }
     }
-    
+
     // Windows: No reliable fallback, return error
     #[cfg(windows)]
     {
@@ -557,7 +578,7 @@ pub fn detect_shell() -> Result<(Shell, PathBuf), ShellDetectionError> {
             "Cannot detect shell on Windows. Parent process detection failed.".into()
         ));
     }
-    
+
     // Unix: Final fallback
     #[cfg(unix)]
     {
@@ -566,7 +587,7 @@ pub fn detect_shell() -> Result<(Shell, PathBuf), ShellDetectionError> {
             return Ok((Shell::Bash, bash_path));
         }
     }
-    
+
     Err(ShellDetectionError::NoShellDetected(
         "No shell could be detected".into()
     ))
@@ -600,16 +621,16 @@ fn identify_shell_from_path(path: &Path) -> Option<Shell> {
 ```rust
 fn handle_missing_version(version_request: &VersionRequest, config: &KopiConfig) -> Result<()> {
     let auto_installer = AutoInstaller::new(config);
-    
+
     if !auto_installer.should_auto_install() {
         return Err(KopiError::VersionNotInstalled(
             version_request.to_string()
         ));
     }
-    
+
     // Show what will be installed
     eprintln!("JDK {} is not installed.", version_request);
-    
+
     if auto_installer.prompt_user(&version_request.to_string())? {
         // Show progress during installation
         eprintln!("[kopi] Installing JDK {}...", version_request);
@@ -663,16 +684,19 @@ fn handle_missing_version(version_request: &VersionRequest, config: &KopiConfig)
 ## Platform-Specific Behavior
 
 ### Unix/Linux/macOS
+
 - Uses `exec()` to replace current process with shell
 - Parent process detection via `/proc` or system APIs
 - Login shells load user configuration files
 
 ### Windows
+
 - Launches shell as subprocess (no exec equivalent)
 - Parent process detection via Windows API
 - PowerShell and CMD have different initialization flags
 
 **Important Note on Windows Shell Detection**:
+
 - `PSModulePath` environment variable exists system-wide when PowerShell is installed
 - It is present even when running from cmd.exe, so it cannot be used to detect the current shell
 - Parent process detection is the only reliable method on Windows
@@ -681,12 +705,14 @@ fn handle_missing_version(version_request: &VersionRequest, config: &KopiConfig)
 
 **Why Use Detected Path Directly**:
 Example scenario:
+
 - User has `/opt/homebrew/bin/bash` (Homebrew bash) as their current shell
 - System also has `/usr/bin/bash` (macOS system bash)
 - If we just run `bash`, PATH resolution might pick `/usr/bin/bash`
 - By using the detected path, we ensure the same shell binary is used
 
 This is particularly important when:
+
 - Multiple versions of the same shell are installed
 - Custom shells are used from non-standard locations
 - Shell behavior differs between versions

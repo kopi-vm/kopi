@@ -2,7 +2,8 @@
 
 **Date**: 2025-07-15  
 **Review Subject**: Uninstall Module Code Duplication and Abstraction Analysis  
-**Files Reviewed**: 
+**Files Reviewed**:
+
 - `src/uninstall/mod.rs`
 - `src/uninstall/batch.rs`
 - `src/uninstall/feedback.rs`
@@ -18,11 +19,11 @@ This review examines the uninstall module implementation for code duplication an
 ### Code Duplication Issues
 
 1. **`format_size` Function Duplication**
-   
+
    The exact same size formatting function appears in two locations:
    - `mod.rs:224-239`
    - `batch.rs:228-243`
-   
+
    ```rust
    fn format_size(bytes: u64) -> String {
        const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
@@ -31,32 +32,33 @@ This review examines the uninstall module implementation for code duplication an
        // ... identical implementation
    }
    ```
-   
+
    **Impact**: Any bug fixes or improvements must be applied in multiple places.
 
 2. **Test Helper Duplication**
-   
+
    The `create_test_jdk` helper function is duplicated across:
    - `batch.rs:264`
    - `feedback.rs:106`
    - `selection.rs:46`
-   
+
    **Impact**: Test maintenance burden and potential inconsistencies in test data creation.
 
 3. **Progress Bar Configuration**
-   
+
    Similar progress bar setup code appears in multiple locations with minor variations:
    - `mod.rs:152-165` (spinner style)
    - `batch.rs:139-144` (bar style)
    - `batch.rs:155-163` (spinner style)
-   
+
    **Impact**: Inconsistent user experience and harder to maintain visual consistency.
 
 ### Insufficient Abstraction
 
 1. **Multiple JDK Match Error Handling**
-   
+
    The error display logic in `mod.rs:43-67` for handling multiple matching JDKs is inline and could be extracted:
+
    ```rust
    eprintln!("Error: Multiple JDKs match the pattern '{version_spec}'");
    eprintln!("\nFound the following JDKs:");
@@ -64,22 +66,23 @@ This review examines the uninstall module implementation for code duplication an
    ```
 
 2. **Atomic Removal Pattern**
-   
+
    The atomic removal operations (`prepare_atomic_removal`, `finalize_removal`, `rollback_removal`) in `mod.rs:193-221` represent a reusable pattern that could benefit other parts of the codebase.
 
 3. **Batch Size Calculations**
-   
+
    Both modules repeatedly call `repository.get_jdk_size()` in loops:
+
    ```rust
    for jdk in jdks {
        total += self.repository.get_jdk_size(&jdk.path)?;
    }
    ```
-   
+
    A batch operation would be more efficient and cleaner.
 
 4. **Version Specification Parsing**
-   
+
    The version parsing logic in `mod.rs:108-116` follows a common pattern that appears elsewhere in the codebase.
 
 ### Strengths
@@ -119,6 +122,7 @@ This review examines the uninstall module implementation for code duplication an
    - Create `tests/common/fixtures.rs` for shared test helpers
 
 2. **Create Progress Reporter Abstraction**
+
    ```rust
    trait ProgressReporter {
        fn create_spinner(&self, message: &str) -> ProgressBar;

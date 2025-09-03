@@ -1,6 +1,7 @@
 # Lock acquisition timeout limit
 
 ## Metadata
+
 - ID: NFR-z6kan
 - Type: Non-Functional Requirement
 - Category: Performance
@@ -12,6 +13,7 @@
 - Date Modified: 2025-09-03
 
 ## Links
+
 - Implemented by Tasks: N/A – Not yet implemented
 - Related Requirements: FR-gbsz6
 - Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
@@ -26,6 +28,7 @@ The system SHALL have a default lock acquisition timeout of 600 seconds (10 minu
 ## Rationale
 
 The timeout duration is based on empirical measurements:
+
 - JDK downloads can take 30-60 seconds on slow connections
 - Extraction and verification add 10-30 seconds
 - Network interruptions may cause retries
@@ -50,12 +53,14 @@ The system shall provide reasonable default timeouts to ensure operations comple
 ## Technical Details (if applicable)
 
 ### Non-Functional Requirement Details
+
 - Performance: Lock check interval max 100ms, CPU overhead < 0.1%
 - Reliability: Timeout accuracy ±1 second
 - Usability: Progress updates every second minimum
 - Compatibility: Consistent behavior across all platforms
 
 ### Implementation Constraints
+
 - Use monotonic clock for timeout measurement
 - Exponential backoff for lock checks: 10ms → 20ms → 40ms → ... → 100ms (max)
 - Separate timeouts for different operation types if needed
@@ -63,11 +68,13 @@ The system shall provide reasonable default timeouts to ensure operations comple
 ## Verification Method
 
 ### Test Strategy
+
 - Test Type: Benchmark
 - Test Location: `benches/lock_performance.rs` (planned)
 - Test Names: `bench_nfr_z6kan_lock_overhead`, `bench_nfr_z6kan_timeout_accuracy`
 
 ### Verification Commands
+
 ```bash
 # Specific commands to verify this requirement
 cargo bench bench_nfr_z6kan
@@ -75,6 +82,7 @@ cargo test test_nfr_z6kan_timeout_accuracy
 ```
 
 ### Success Metrics
+
 - Metric 1: CPU usage during lock wait < 0.1% of single core
 - Metric 2: Timeout triggers within target time ±1 second in 99% of cases
 - Metric 3: Lock acquisition overhead < 1ms for uncontended locks
@@ -87,24 +95,27 @@ cargo test test_nfr_z6kan_timeout_accuracy
 ## Platform Considerations
 
 ### Unix
+
 - Use clock_gettime(CLOCK_MONOTONIC) for timing
 - Sleep with nanosleep() for precise delays
 
 ### Windows
+
 - Use QueryPerformanceCounter for high-resolution timing
 - Sleep with Sleep() or WaitForSingleObject
 
 ### Cross-Platform
+
 - Consistent timeout behavior regardless of system clock changes
 - Account for timer resolution differences
 
 ## Risks & Mitigation
 
-| Risk | Impact | Likelihood | Mitigation | Validation |
-|------|--------|------------|------------|------------|
-| Default timeout too long for CI/CD | Medium | Medium | Detect CI environment, use shorter default | Test in CI pipelines |
-| Timer resolution affects accuracy | Low | Medium | Use high-resolution timers | Test on various hardware |
-| CPU overhead from polling | Medium | Low | Exponential backoff | Benchmark CPU usage |
+| Risk                               | Impact | Likelihood | Mitigation                                 | Validation               |
+| ---------------------------------- | ------ | ---------- | ------------------------------------------ | ------------------------ |
+| Default timeout too long for CI/CD | Medium | Medium     | Detect CI environment, use shorter default | Test in CI pipelines     |
+| Timer resolution affects accuracy  | Low    | Medium     | Use high-resolution timers                 | Test on various hardware |
+| CPU overhead from polling          | Medium | Low        | Exponential backoff                        | Benchmark CPU usage      |
 
 ## Implementation Notes
 
@@ -114,6 +125,7 @@ cargo test test_nfr_z6kan_timeout_accuracy
 - Consider making timeout adaptive based on operation progress
 
 ## External References
+
 N/A – No external references
 
 ## Change History

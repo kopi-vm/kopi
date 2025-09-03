@@ -73,7 +73,7 @@ $env:Path = "$env:USERPROFILE\.kopi\shims;$env:Path"
 
 # Permanent PATH update (requires admin)
 [Environment]::SetEnvironmentVariable(
-    "Path", 
+    "Path",
     "$env:USERPROFILE\.kopi\shims;$([Environment]::GetEnvironmentVariable('Path', 'User'))",
     "User"
 )
@@ -105,6 +105,7 @@ The system updates the following files based on the detected shell:
 #### 1. JDK Installation (`kopi install`)
 
 After successfully installing a JDK, Kopi should:
+
 - Verify existing shims
 - Create missing shims based on:
   - Standard tool list
@@ -113,6 +114,7 @@ After successfully installing a JDK, Kopi should:
 - Report any new shims created
 
 **User Experience Example**:
+
 ```bash
 $ kopi install graalvm@21
 Downloading GraalVM 21.0.2...
@@ -180,6 +182,7 @@ The `kopi shim list --available` command should show tools available in installe
    - Help users understand what tools they could add shims for
 
 Example output:
+
 ```
 Available tools in installed JDKs:
 
@@ -243,6 +246,7 @@ This approach keeps the shim binary small (< 1MB) while delegating complex insta
 - It allows the shim to remain lightweight for the common case (JDK already installed)
 
 Example subprocess invocation:
+
 ```rust
 // When auto-installation is needed
 Command::new("kopi")
@@ -254,13 +258,13 @@ Command::new("kopi")
 
 ## Shim Management Commands
 
-| Command | Description |
-|---------|-------------|
-| `kopi shim verify` | Check and repair shim installation |
-| `kopi shim add <tool>` | Create shim for specific tool |
-| `kopi shim remove <tool>` | Remove shim for specific tool |
-| `kopi shim list` | List all installed shims |
-| `kopi shim list --available` | Show tools available in JDKs |
+| Command                      | Description                        |
+| ---------------------------- | ---------------------------------- |
+| `kopi shim verify`           | Check and repair shim installation |
+| `kopi shim add <tool>`       | Create shim for specific tool      |
+| `kopi shim remove <tool>`    | Remove shim for specific tool      |
+| `kopi shim list`             | List all installed shims           |
+| `kopi shim list --available` | Show tools available in JDKs       |
 
 ## Implementation Considerations
 

@@ -11,6 +11,7 @@ The env command must execute in under 100ms for typical use cases to avoid notic
 ## Performance Benchmarks
 
 Run benchmarks with:
+
 ```bash
 cargo bench --bench env_command
 ```
@@ -44,21 +45,25 @@ cargo bench --bench env_command
 ## Performance Optimizations
 
 ### 1. Minimal Dependencies
+
 - No network operations
 - No heavy computation
 - Lightweight JSON parsing only for metadata
 
 ### 2. Efficient File System Operations
+
 - Stop searching at first `.kopi-version` or `.java-version` found
 - Avoid unnecessary stat calls
 - Use platform-specific optimizations
 
 ### 3. Shell Detection Caching
+
 - Shell detection can be expensive on some systems
 - Users can bypass with `--shell` flag
 - Consider environment variable for shell hint
 
 ### 4. Lazy Loading
+
 - Only load JDK metadata when needed
 - Skip validation for `--quiet` mode where possible
 - Minimal memory allocations
@@ -68,11 +73,13 @@ cargo bench --bench env_command
 ### For Users
 
 1. **Use `--shell` flag** to skip shell detection:
+
    ```bash
    eval "$(kopi env --shell bash)"
    ```
 
 2. **Use `--quiet` flag** to suppress stderr output:
+
    ```bash
    eval "$(kopi env --quiet)"
    ```
@@ -91,6 +98,7 @@ cargo bench --bench env_command
 ### For Developers
 
 1. **Profile regularly**:
+
    ```bash
    # Use cargo flamegraph
    cargo flamegraph --bench env_command
@@ -100,6 +108,7 @@ cargo bench --bench env_command
    ```
 
 2. **Monitor binary size**:
+
    ```bash
    # Check release binary size
    cargo build --release
@@ -114,6 +123,7 @@ cargo bench --bench env_command
 ## Measurement Tools
 
 ### Hyperfine (Real-world performance)
+
 ```bash
 # Install hyperfine
 cargo install hyperfine
@@ -127,6 +137,7 @@ hyperfine --warmup 3 \
 ```
 
 ### Cargo Bench (Microbenchmarks)
+
 ```bash
 # Run all benchmarks
 cargo bench --bench env_command
@@ -142,6 +153,7 @@ cargo bench --bench env_command -- --baseline main
 ```
 
 ### Flamegraph (Profiling)
+
 ```bash
 # Install flamegraph
 cargo install flamegraph
@@ -152,14 +164,14 @@ sudo cargo flamegraph --bench env_command
 
 ## Performance Targets
 
-| Scenario | Target | Acceptable | Notes |
-|----------|--------|------------|-------|
-| Simple lookup (global) | < 10ms | < 20ms | Most common case |
-| Project file (same dir) | < 15ms | < 30ms | Second most common |
-| Project file (5 levels) | < 25ms | < 50ms | Reasonable depth |
-| Deep hierarchy (10+) | < 50ms | < 100ms | Edge case |
-| Cold start | < 50ms | < 100ms | First run |
-| Error cases | < 5ms | < 10ms | Fast fail |
+| Scenario                | Target | Acceptable | Notes              |
+| ----------------------- | ------ | ---------- | ------------------ |
+| Simple lookup (global)  | < 10ms | < 20ms     | Most common case   |
+| Project file (same dir) | < 15ms | < 30ms     | Second most common |
+| Project file (5 levels) | < 25ms | < 50ms     | Reasonable depth   |
+| Deep hierarchy (10+)    | < 50ms | < 100ms    | Edge case          |
+| Cold start              | < 50ms | < 100ms    | First run          |
+| Error cases             | < 5ms  | < 10ms     | Fast fail          |
 
 ## Monitoring Performance
 
@@ -198,6 +210,7 @@ sudo cargo flamegraph --bench env_command
 ## Troubleshooting Performance
 
 ### Slow Shell Prompt
+
 ```bash
 # Check timing
 time kopi env --quiet
@@ -210,6 +223,7 @@ RUST_LOG=debug kopi env 2>&1 | grep "Version resolved"
 ```
 
 ### High CPU Usage
+
 ```bash
 # Profile the command
 sudo perf record -g kopi env
@@ -220,6 +234,7 @@ strace -c kopi env
 ```
 
 ### Memory Usage
+
 ```bash
 # Check memory allocation
 valgrind --tool=massif kopi env

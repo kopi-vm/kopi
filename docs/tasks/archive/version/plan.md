@@ -7,6 +7,7 @@ This plan outlines the work required to enhance Kopi's version parser to support
 ## Background
 
 Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.md`:
+
 - Current parser only supports up to 3 components
 - Amazon Corretto uses 4-5 components (e.g., `21.0.7.6.1`)
 - Alibaba Dragonwell uses 6 components (e.g., `21.0.7.0.7.6`)
@@ -20,15 +21,17 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
 ### Phase 1: Documentation Updates (Completed)
 
 #### 1.1 Architecture Decision Record
+
 - **Task**: Create new ADR for version format changes
 - **File**: `/docs/adr/archive/016-flexible-version-format.md`
-- **Content**: 
+- **Content**:
   - Document the decision to support N-component versions
   - Explain the new flexible version structure
   - Detail positive/negative consequences
   - Include implementation examples for all distribution formats
 
 #### 1.2 Update Existing Documentation
+
 - **Files updated**:
   - `/docs/reference.md`:
     - Added "Extended Version Formats" section with distribution examples
@@ -50,6 +53,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
     - Included distribution-specific version format examples
 
 #### 1.3 User Documentation
+
 - **Task**: Document new version search capabilities
 - **Content documented**:
   - **Automatic Version Detection**:
@@ -67,12 +71,14 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
     - Installing exact distribution versions
 
 #### 1.4 Documentation Gaps Identified
+
 - **Not Required**: `/README.md` doesn't exist at the project root
 - **Future Work**: Migration guide for existing users (depends on implementation)
 
 ### Phase 2: Refactoring and Structure Changes
 
 #### 2.1 Module Reorganization
+
 - **Task**: Move `src/models/version.rs` to `src/version/mod.rs`
 - **Rationale**: Better organization for version-related functionality
 - **Actions**:
@@ -82,6 +88,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
   - Update `src/models/mod.rs` to remove version module
 
 #### 2.2 Version Structure Redesign
+
 - **Task**: Replace fixed 3-component structure with flexible N-component design
 - **New Structure**:
   ```rust
@@ -95,6 +102,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
 ### Phase 3: Parser Implementation
 
 #### 3.1 Enhanced Version Parser
+
 - **Task**: Implement new `FromStr` trait for flexible version parsing
 - **Features**:
   - Support unlimited numeric components separated by `.`
@@ -103,6 +111,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
   - Handle edge cases like Corretto Java 8 (`8.452.9.1` without leading zero)
 
 #### 3.2 Backward Compatibility
+
 - **Task**: Maintain compatibility with existing code
 - **Actions**:
   - Keep helper methods: `major()`, `minor()`, `patch()`
@@ -112,6 +121,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
 ### Phase 4: Version Matching Enhancement
 
 #### 4.1 Pattern Matching Logic
+
 - **Task**: Update `matches_pattern()` for flexible components
 - **Logic**:
   - Compare components up to the length specified in pattern
@@ -119,6 +129,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
   - Handle build number matching if specified
 
 #### 4.2 Search Enhancement
+
 - **Task**: Support searching by distribution_version
 - **Features**:
   - Auto-detect version type based on format
@@ -129,6 +140,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
 ### Phase 5: Code Updates
 
 #### 5.1 Update Version Usage
+
 - **Files to update**:
   - `src/cache/mod.rs` - Update Package struct to store distribution_version as Version instead of String; parse both java_version and distribution_version
   - `src/commands/install.rs` - Version validation
@@ -137,6 +149,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
   - `src/search/searcher.rs` - Version filtering (update to parse distribution_version)
 
 #### 5.2 Update Tests
+
 - **Test files to update**:
   - `src/version/mod.rs` - Unit tests for new parser
   - `tests/uninstall_integration.rs` - Fix Corretto test expectations
@@ -146,6 +159,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
 ### Phase 6: Testing and Validation
 
 #### 6.1 Unit Tests
+
 - **Test cases**:
   - Corretto 4-5 component versions
   - Dragonwell 6 component versions
@@ -154,6 +168,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
   - Edge cases (empty components, invalid formats)
 
 #### 6.2 Integration Tests
+
 - **Scenarios**:
   - Install Corretto with full version
   - Uninstall with partial version patterns
@@ -161,6 +176,7 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
   - Search by distribution_version
 
 #### 6.3 Manual Testing
+
 - **Distributions to test**:
   - Amazon Corretto (all Java versions)
   - Alibaba Dragonwell
@@ -181,16 +197,19 @@ Based on the investigation in `/docs/reviews/2025-07-11-corretto-version-format.
 ## Risk Mitigation
 
 ### Backward Compatibility
+
 - All existing version strings must continue to work
 - Existing API must remain stable
 - Configuration files must remain compatible
 
 ### Performance Considerations
+
 - Version comparison may be slower with dynamic components
 - Consider caching parsed versions in hot paths
 - Profile before and after changes
 
 ### Error Handling
+
 - Clear error messages for invalid formats
 - Graceful fallback for unexpected formats
 - Detailed logging for debugging

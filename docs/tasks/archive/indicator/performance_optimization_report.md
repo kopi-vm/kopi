@@ -14,11 +14,13 @@ This document summarizes the performance optimizations implemented for the multi
 **Problem**: High-frequency progress updates (e.g., during downloads) can cause excessive CPU usage due to terminal redraws.
 
 **Solution**: Implemented time-based throttling for child progress bars:
+
 - Parent bars: Update at most 20 times per second (50ms threshold)
 - Child bars: Update at most 10 times per second (100ms threshold)
 - Message throttling: Apply same throttling rules to message updates
 
 **Implementation Details**:
+
 ```rust
 pub struct IndicatifProgress {
     last_update: Option<Instant>,   // Track last update time
@@ -31,6 +33,7 @@ pub struct IndicatifProgress {
 **Problem**: Multiple progress bars with the same tick rate can cause synchronized updates, creating CPU spikes.
 
 **Solution**: Use different tick rates for parent and child bars:
+
 - Parent bars: 80ms tick rate (12.5 Hz)
 - Child bars: 120ms tick rate (8.3 Hz)
 
@@ -41,6 +44,7 @@ This staggers the updates and reduces overall CPU usage.
 **Problem**: Progress bar state accumulates over time, especially with multiple operations.
 
 **Solution**: Implemented proper cleanup and state management:
+
 - Reset tracking state when starting new operations
 - Clear tracking state on completion/error
 - Force final updates to ensure completion state is displayed
@@ -50,7 +54,8 @@ This staggers the updates and reduces overall CPU usage.
 
 **Problem**: Unnecessary Arc allocations and reference counting overhead.
 
-**Solution**: 
+**Solution**:
+
 - Share parent's `Arc<MultiProgress>` with children via `Arc::clone()`
 - Single MultiProgress instance per hierarchy
 - No additional Arc allocations for child progress bars
@@ -58,16 +63,19 @@ This staggers the updates and reduces overall CPU usage.
 ## Performance Characteristics
 
 ### CPU Overhead
+
 - **Target**: < 1% CPU overhead
 - **Achieved**: Throttling reduces update frequency by ~80% for high-frequency operations
 - **Measurement**: Benchmarks show minimal overhead difference between single and multi-progress
 
 ### Memory Usage
+
 - **Base overhead**: ~1KB per progress bar instance
 - **Shared MultiProgress**: Single instance shared across parent and children
 - **Cleanup**: Proper state cleanup prevents memory leaks
 
 ### Update Frequency
+
 - **Downloads**: Maximum 10 updates/second for child bars
 - **Parent updates**: Maximum 20 updates/second
 - **Effective reduction**: 80-90% fewer terminal redraws for typical download scenarios
@@ -75,6 +83,7 @@ This staggers the updates and reduces overall CPU usage.
 ## Benchmark Results
 
 Created comprehensive benchmarks in `benches/multi_progress_benchmark.rs` covering:
+
 - Single vs multi-progress comparison
 - Sequential vs concurrent children
 - High-frequency update scenarios
@@ -82,6 +91,7 @@ Created comprehensive benchmarks in `benches/multi_progress_benchmark.rs` coveri
 - Real-world download simulations
 
 ### Key Metrics:
+
 1. **Single Progress Bar**: Baseline performance
 2. **Parent with Child**: < 5% overhead compared to single bar
 3. **Three Children Sequential**: Linear scaling with child count
@@ -91,12 +101,15 @@ Created comprehensive benchmarks in `benches/multi_progress_benchmark.rs` coveri
 ## Validation
 
 ### Test Coverage
+
 - All existing tests pass with optimizations
 - No regressions in functionality
 - Visual output remains smooth and responsive
 
 ### Real-World Testing
+
 Optimizations tested with:
+
 - Large JDK downloads (195MB files)
 - Cache refresh operations with multiple sources
 - Concurrent downloads
@@ -105,7 +118,9 @@ Optimizations tested with:
 ## Implementation Notes
 
 ### Throttling Strategy
+
 The throttling implementation uses a simple time-based approach:
+
 1. Check if enough time has passed since last update
 2. Skip update if within threshold
 3. Force updates for critical events (completion/error)
@@ -113,6 +128,7 @@ The throttling implementation uses a simple time-based approach:
 The implementation focuses purely on time-based throttling without position tracking, keeping the code simple and effective.
 
 ### Trade-offs
+
 - **Visual smoothness vs CPU usage**: Chose conservative update rates that maintain smooth animation while reducing CPU
 - **Memory vs complexity**: Accepted small memory overhead for tracking state to achieve significant CPU reduction
 - **Child vs parent rates**: Different rates prevent synchronized updates while maintaining visual hierarchy
@@ -120,12 +136,14 @@ The implementation focuses purely on time-based throttling without position trac
 ## Recommendations
 
 ### Future Improvements
+
 1. **Adaptive throttling**: Adjust update rate based on terminal capabilities
 2. **Batch updates**: Combine multiple updates within a time window
 3. **Terminal detection**: Disable animations in non-interactive terminals
 4. **Profile-based optimization**: Different settings for CI vs interactive use
 
 ### Usage Guidelines
+
 - Use child progress only for operations >= 10MB or > 5 seconds
 - Limit to single level of nesting (no grandchildren)
 - Prefer message updates over creating new bars for short operations

@@ -3,18 +3,22 @@
 ## Current Status (Updated)
 
 ### ✅ Completed Phases
+
 - **Phase 1**: Core Uninstall Logic and Safety Checks - COMPLETE
 - **Phase 2**: Exact Specification Enforcement and Batch Operations - COMPLETE
 
 ### 🚧 In Progress
+
 - **Phase 3**: Command Implementation and CLI Integration - NOT STARTED
 - **Phase 4**: Metadata Updates and Integration - PARTIALLY COMPLETE (metadata handled by JdkRepository)
 - **Phase 5**: Platform-Specific Handling and Error Recovery - PARTIALLY COMPLETE (atomic operations implemented)
 
 ## Overview
+
 This document outlines the phased implementation plan for the `kopi uninstall` command, which is responsible for removing installed JDK distributions from the local system and managing disk space efficiently.
 
 ## Command Syntax
+
 - `kopi uninstall <version>` - Uninstall JDK with specified version
 - `kopi uninstall <distribution>@<version>` - Uninstall specific distribution and version
 - `kopi uninstall <distribution> --all` - Uninstall all versions of a distribution
@@ -23,6 +27,7 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 ## Phase 1: Core Uninstall Logic and Safety Checks ✅ COMPLETED
 
 ### Input Resources
+
 - `/docs/tasks/archive/uninstall/design.md` - Uninstall command design specification
 - `/src/models/metadata.rs` - JdkMetadata model
 - `/src/models/distribution.rs` - Distribution enum and parsing
@@ -32,6 +37,7 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 - `/src/commands/` - Existing command structure
 
 ### Deliverables ✅ COMPLETED
+
 1. **Uninstall Module** (`/src/uninstall/mod.rs`) ✅
    - JDK resolution using pattern matching ✅
    - Integration with JdkRepository for removal ✅
@@ -57,6 +63,7 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
    - Permission error handling ✅
 
 ### Success Criteria
+
 - Correctly identify JDKs to uninstall based on version specification
 - Stub functions for active JDK detection ready for future implementation
 - Safely remove JDK directories with rollback on failure
@@ -65,11 +72,13 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 ## Phase 2: Exact Specification Enforcement and Batch Operations ✅ COMPLETED
 
 ### Input Resources
+
 - Phase 1 deliverables
 - `/src/storage/listing.rs` - InstalledJdk model for display
 - Error message patterns for clarity
 
 ### Deliverables ✅ COMPLETED
+
 1. **Selection Module** (`/src/uninstall/selection.rs`) ✅
    - Error reporting when multiple JDKs match a pattern ✅
    - Clear instructions for exact specification ✅
@@ -94,6 +103,7 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
    - Partial failure recovery testing ✅
 
 ### Success Criteria
+
 - Display clear error message when multiple JDKs match with exact specification instructions
 - Provide helpful examples showing how to specify JDKs exactly
 - Successfully remove all versions with --all flag
@@ -103,11 +113,13 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 ## Phase 3: Command Implementation and CLI Integration ❌ NOT STARTED
 
 ### Input Resources
+
 - Phase 1 & 2 deliverables ✅ AVAILABLE
 - `/src/main.rs` - Existing CLI structure with clap
 - `/src/commands/` - Command pattern implementation
 
 ### Deliverables ❌ PENDING
+
 1. **Uninstall Command** (`/src/commands/uninstall.rs`)
    - Command argument parsing
    - Integration with uninstall modules
@@ -140,6 +152,7 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
    - Exit code verification
 
 ### Success Criteria
+
 - `kopi uninstall 21` prompts for confirmation and removes JDK
 - `kopi uninstall corretto@21 --force` removes without confirmation
 - `kopi uninstall corretto --all` removes all Corretto versions
@@ -149,12 +162,14 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 ## Phase 4: Metadata Updates and Integration 🟡 PARTIALLY COMPLETE
 
 ### Input Resources
+
 - Phase 1-3 deliverables
 - `/src/cache/mod.rs` - Cache management functions
 - `/src/models/metadata.rs` - JdkMetadata model
 - `/src/storage/repository.rs` - Metadata persistence via JdkRepository
 
 ### Deliverables
+
 1. **Metadata Update Module** 🟡 HANDLED BY JdkRepository
    - JDK metadata removal is handled by `JdkRepository::remove_jdk()`
    - No separate metadata module needed
@@ -181,6 +196,7 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
    - Multi-command workflow testing
 
 ### Success Criteria
+
 - Metadata files are cleaned up after JDK removal
 - Other commands handle missing JDKs gracefully
 - Post-uninstall state is validated
@@ -189,11 +205,13 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 ## Phase 5: Platform-Specific Handling and Error Recovery 🟡 PARTIALLY COMPLETE
 
 ### Input Resources
+
 - All previous phase deliverables
 - Platform-specific documentation
 - Error scenarios from testing
 
 ### Deliverables
+
 1. **Platform Handler** ❌ NOT IMPLEMENTED
    - Windows-specific handling needed:
      - Files in use detection
@@ -222,6 +240,7 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
    - Common error solutions
 
 ### Success Criteria
+
 - Handles platform-specific edge cases
 - Recovers from partial failures
 - Provides clear error resolution steps
@@ -230,6 +249,7 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 ## Implementation Guidelines
 
 ### For Each Phase:
+
 1. Start with `/clear` command to reset context
 2. Load this plan.md and relevant phase resources
 3. Implement deliverables incrementally
@@ -243,6 +263,7 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 ### Testing Strategy
 
 #### Unit Tests (use mocks extensively)
+
 - Test individual module functionality in isolation
 - Mock JdkRepository and file system operations
 - Mock user interactions and prompts
@@ -253,19 +274,20 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
   mod tests {
       use super::*;
       use mockall::*;
-      
+
       #[test]
       fn test_safety_check_stub() {
           // Test stub functions always return false for now
           assert_eq!(is_active_global_jdk("temurin", "21.0.5+11").unwrap(), false);
           assert_eq!(is_active_local_jdk("temurin", "21.0.5+11").unwrap(), false);
-          
+
           // Future: will test actual active JDK detection when implemented
       }
   }
   ```
 
 #### Integration Tests (no mocks)
+
 - Test complete uninstall workflows
 - Use temporary directories with real JdkRepository
 - Verify actual file system state changes
@@ -277,24 +299,25 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
       let temp_dir = tempfile::tempdir().unwrap();
       let config = KopiConfig::test_config(temp_dir.path());
       let repo = JdkRepository::new(&config);
-      
+
       // Create mock JDK structure
       let jdk_path = temp_dir.path().join("jdks").join("temurin-21.0.5+11");
       fs::create_dir_all(&jdk_path).unwrap();
-      
+
       // Execute actual uninstall using repository
       let result = repo.remove_jdk(
-          &Distribution::Temurin, 
+          &Distribution::Temurin,
           &Version::new(21, 0, 5, Some("11".to_string()))
       );
       assert!(result.is_ok());
-      
+
       // Verify removal
       assert!(!jdk_path.exists());
   }
   ```
 
 ### Error Handling Priorities
+
 1. Ambiguous version specification - require exact JDK specification with helpful examples
 2. Active JDK protection - stub implementation (always allows removal for now)
 3. Permission errors - suggest appropriate solutions
@@ -303,6 +326,7 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 6. Missing JDKs - clear error with available options
 
 ### Safety Considerations
+
 1. Always validate removal paths are within kopi directory
 2. Implement atomic operations with rollback capability
 3. Preserve user data and configurations
@@ -311,13 +335,16 @@ This document outlines the phased implementation plan for the `kopi uninstall` c
 6. Active JDK protection deferred to future implementation (stub returns false)
 
 ### Implementation Note: Exact Specification Requirement
+
 Instead of interactive selection when multiple JDKs match, the uninstall command returns an error with clear instructions. This design choice:
+
 - Prevents accidental removal of wrong JDK versions
 - Ensures users are explicit about which JDK to remove
 - Avoids complexity of interactive prompts in automated environments
 - Provides clear, actionable error messages with examples
 
 ### Exit Codes
+
 - 0: Success
 - 2: Invalid arguments or configuration
 - 4: JDK not found
@@ -328,7 +355,9 @@ Instead of interactive selection when multiple JDKs match, the uninstall command
 ## Next Steps
 
 ### Immediate Priority: Phase 3 - CLI Integration
+
 1. Create `/src/commands/uninstall.rs`:
+
    ```rust
    pub struct UninstallCommand {
        config: KopiConfig,
@@ -344,6 +373,7 @@ Instead of interactive selection when multiple JDKs match, the uninstall command
    - Add `pub mod uninstall;`
 
 ### Secondary Tasks
+
 1. **Force Flag Implementation**:
    - Currently safety checks always pass (stubs return false)
    - Need to implement force flag to bypass future safety checks
@@ -359,6 +389,7 @@ Instead of interactive selection when multiple JDKs match, the uninstall command
 ## Implementation Summary
 
 ### What's Working
+
 - ✅ Core uninstall logic with atomic operations
 - ✅ Version pattern matching for all distribution formats
 - ✅ Batch uninstall capability
@@ -367,6 +398,7 @@ Instead of interactive selection when multiple JDKs match, the uninstall command
 - ✅ Comprehensive test coverage
 
 ### What's Missing
+
 - ❌ CLI command integration
 - ❌ Force flag to bypass safety checks
 - ❌ Active JDK detection (awaiting global/local commands)

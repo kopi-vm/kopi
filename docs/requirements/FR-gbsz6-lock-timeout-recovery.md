@@ -1,6 +1,7 @@
 # Lock timeout and recovery mechanism
 
 ## Metadata
+
 - ID: FR-gbsz6
 - Type: Functional Requirement
 - Category: Platform
@@ -12,6 +13,7 @@
 - Date Modified: 2025-09-03
 
 ## Links
+
 - Implemented by Tasks: N/A – Not yet implemented
 - Related Requirements: FR-02uqo, FR-ui8x2, FR-v7ql4
 - Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
@@ -26,6 +28,7 @@ The system SHALL provide configurable timeout mechanisms for lock acquisition to
 ## Rationale
 
 Without timeout mechanisms:
+
 - Processes could wait indefinitely for locks that may never be released
 - Users would have no recourse when operations hang
 - System resources could be tied up indefinitely
@@ -47,6 +50,7 @@ As a kopi user, I want operations to fail gracefully with clear messages when th
 ## Technical Details (if applicable)
 
 ### Functional Requirement Details
+
 - Default timeout: 30 seconds for installations, 10 seconds for cache operations
 - Environment variable: `KOPI_LOCK_TIMEOUT` (seconds)
 - CLI flag: `--lock-timeout <seconds>` or `--lock-timeout infinite`
@@ -54,6 +58,7 @@ As a kopi user, I want operations to fail gracefully with clear messages when th
 - Special value "infinite" or "0" means wait indefinitely
 
 ### Configuration Priority
+
 1. CLI arguments (highest priority)
 2. Environment variables
 3. Configuration file
@@ -62,11 +67,13 @@ As a kopi user, I want operations to fail gracefully with clear messages when th
 ## Verification Method
 
 ### Test Strategy
+
 - Test Type: Integration
 - Test Location: `tests/timeout_tests.rs` (planned)
 - Test Names: `test_fr_gbsz6_timeout_exceeded`, `test_fr_gbsz6_timeout_priority`
 
 ### Verification Commands
+
 ```bash
 # Specific commands to verify this requirement
 cargo test test_fr_gbsz6
@@ -74,6 +81,7 @@ KOPI_LOCK_TIMEOUT=1 cargo test test_fr_gbsz6_env
 ```
 
 ### Success Metrics
+
 - Metric 1: Lock acquisition fails within timeout + 100ms tolerance
 - Metric 2: Configuration priority correctly applied in 100% of cases
 
@@ -85,24 +93,27 @@ KOPI_LOCK_TIMEOUT=1 cargo test test_fr_gbsz6_env
 ## Platform Considerations
 
 ### Unix
+
 - Uses `try_lock_exclusive()` with polling and sleep
 - Signal handling for Ctrl-C interruption
 
 ### Windows
+
 - Uses Windows lock API with timeout support
 - Console control handler for Ctrl-C
 
 ### Cross-Platform
+
 - Consistent timeout behavior across platforms
 - Uniform error messages
 
 ## Risks & Mitigation
 
-| Risk | Impact | Likelihood | Mitigation | Validation |
-|------|--------|------------|------------|------------|
-| Timeout too short for slow systems | Medium | Medium | Conservative defaults, user configurable | Test on slow hardware |
-| Polling overhead | Low | Medium | Exponential backoff in retry loop | Measure CPU usage |
-| Clock skew affects timeout | Low | Low | Use monotonic clock | Test with clock changes |
+| Risk                               | Impact | Likelihood | Mitigation                               | Validation              |
+| ---------------------------------- | ------ | ---------- | ---------------------------------------- | ----------------------- |
+| Timeout too short for slow systems | Medium | Medium     | Conservative defaults, user configurable | Test on slow hardware   |
+| Polling overhead                   | Low    | Medium     | Exponential backoff in retry loop        | Measure CPU usage       |
+| Clock skew affects timeout         | Low    | Low        | Use monotonic clock                      | Test with clock changes |
 
 ## Implementation Notes
 
@@ -113,6 +124,7 @@ KOPI_LOCK_TIMEOUT=1 cargo test test_fr_gbsz6_env
 - Handle EINTR on Unix systems
 
 ## External References
+
 N/A – No external references
 
 ## Change History

@@ -1,6 +1,7 @@
 # ADR-018: macOS JDK Bundle Structure Handling
 
 ## Status
+
 Accepted
 
 ## Context
@@ -12,12 +13,14 @@ When extracting JDK archives on macOS, different distributions use different dir
 After analyzing multiple JDK distributions for macOS (aarch64), three distinct patterns were identified:
 
 #### Pattern 1: macOS Bundle Structure (.app format)
+
 JDK files are placed within a `Contents/Home/` directory structure, following the macOS application bundle convention:
 
 - **Temurin**: `jdk-24.0.2+12/Contents/Home/`
 - **TencentKona**: `jdk-21.0.8.jdk/Contents/Home/`
 
 Example structure:
+
 ```
 jdk-24.0.2+12/
 └── Contents/
@@ -36,11 +39,13 @@ jdk-24.0.2+12/
 ```
 
 #### Pattern 2: Hybrid Structure (Bundle with Root Symlinks)
+
 A special case where the JDK uses bundle structure internally but provides convenience symlinks at the root level:
 
 - **Azul Zulu**: Root symlinks pointing to `zulu-24.jdk/Contents/Home/`
 
 Example structure:
+
 ```
 zulu24.32.13-ca-jdk24.0.2-macosx_aarch64/
 ├── bin -> zulu-24.jdk/Contents/Home/bin
@@ -64,11 +69,13 @@ zulu24.32.13-ca-jdk24.0.2-macosx_aarch64/
 This hybrid approach allows the JDK to work both as a macOS bundle and with tools expecting direct structure.
 
 #### Pattern 3: Direct Structure
+
 JDK files (bin, conf, lib, etc.) are placed directly in the root directory:
 
 - **Liberica**: `jdk-24.0.2-full.jdk/`
 
 Example structure:
+
 ```
 jdk-24.0.2-full.jdk/
 ├── bin/
@@ -92,12 +99,14 @@ This issue is specific to macOS and does not affect Windows or Linux distributio
 After analyzing implementations from popular JDK management tools, different approaches were identified:
 
 #### asdf-java
+
 - Uses a vendor-specific approach on macOS
 - For Zulu and Liberica: moves all contents as-is (respecting root symlinks)
 - For all other distributions: explicitly moves `Contents/Home/*` to the install path
 - Source: lines 190-217 in `bin/functions`
 
 #### jabba
+
 - Searches for `bin/java` anywhere in the extracted structure
 - Normalizes all macOS JDKs to have `Contents/Home` structure
 - If structure is already `Contents/Home`, preserves it
@@ -105,12 +114,14 @@ After analyzing implementations from popular JDK management tools, different app
 - Source: `normalizePathToBinJava` function in `install.go`
 
 #### GitHub Actions setup-java
+
 - Simple post-installation check approach
 - After installation, checks if `Contents/Home` exists on macOS
 - If it exists, appends it to the Java path
 - Source: lines 87-94 in `base-installer.ts`
 
 #### SDKMAN
+
 - No explicit handling in the main install script
 - Relies on post-installation hooks downloaded per distribution/version
 - Delegates structure handling to distribution-specific scripts
@@ -151,11 +162,13 @@ After extracting a JDK archive on macOS, check the directory structure in the fo
 **Important Decision**: Kopi will **preserve the original directory structure** rather than normalizing or flattening it.
 
 For macOS installations:
+
 - Bundle structure (`Contents/Home`) will be maintained as-is
 - Direct structure will be kept as-is
 - Hybrid structure (Zulu) will be preserved with symlinks
 
 Example final installation paths:
+
 ```
 # macOS with bundle structure (Temurin)
 ~/.kopi/jdks/temurin-24.0.2-aarch64/
@@ -181,6 +194,7 @@ Example final installation paths:
 ```
 
 This approach:
+
 - Preserves code signing and notarization
 - Maintains compatibility with `/usr/libexec/java_home` (future feature)
 - Respects the distribution vendor's intended structure
@@ -189,6 +203,7 @@ This approach:
 ### Code Location
 
 The implementation will primarily affect:
+
 - `src/archive/mod.rs` - Archive extraction logic
 - `src/commands/install.rs` - Installation process
 - `src/platform/file_ops.rs` - Platform-specific file operations
@@ -196,17 +211,20 @@ The implementation will primarily affect:
 ## Consequences
 
 ### Positive
+
 - **Compatibility**: Supports all major JDK distributions on macOS
 - **Transparency**: Users don't need to know about underlying structure differences
 - **Reliability**: Prevents installation failures for bundle-structured JDKs
 - **Future-proof**: Can easily extend to handle other structure variations
 
 ### Negative
+
 - **Complexity**: Adds platform-specific logic to extraction process
 - **Maintenance**: Must track changes in distribution packaging formats
 - **Testing**: Requires testing with multiple JDK distributions on macOS
 
 ### Neutral
+
 - **Performance**: Minimal impact - only adds one directory check
 - **Other platforms**: No change to Windows/Linux behavior
 - **Backward compatibility**: Existing installations remain unaffected
@@ -261,16 +279,19 @@ The **`kopi env`** command outputs shell-appropriate environment variables:
 ### Practical Examples
 
 **macOS + Temurin (Bundle Structure):**
+
 - Installation: `~/.kopi/jdks/temurin-21.0.2-aarch64/Contents/Home/bin/java`
 - JAVA_HOME set by shim: `~/.kopi/jdks/temurin-21.0.2-aarch64/Contents/Home`
 - Executed binary: `~/.kopi/jdks/temurin-21.0.2-aarch64/Contents/Home/bin/java`
 
 **macOS + Liberica (Direct Structure):**
+
 - Installation: `~/.kopi/jdks/liberica-21.0.2-aarch64/bin/java`
 - JAVA_HOME set by shim: `~/.kopi/jdks/liberica-21.0.2-aarch64`
 - Executed binary: `~/.kopi/jdks/liberica-21.0.2-aarch64/bin/java`
 
 **Linux + Any Distribution (Always Direct):**
+
 - Installation: `~/.kopi/jdks/temurin-21.0.2-x64/bin/java`
 - JAVA_HOME set by shim: `~/.kopi/jdks/temurin-21.0.2-x64`
 - Executed binary: `~/.kopi/jdks/temurin-21.0.2-x64/bin/java`
@@ -292,6 +313,7 @@ To avoid repeated filesystem checks for directory structure, Kopi leverages its 
 The metadata is stored as JSON files alongside JDK installations with the naming pattern: `~/.kopi/jdks/<distribution>-<version>.meta.json`
 
 **Actual Implemented Format:**
+
 ```json
 {
   // API Package fields (from Foojay)
@@ -324,13 +346,13 @@ The metadata is stored as JSON files alongside JDK installations with the naming
   "aqavit_cert_uri": "https://adoptium.net/temurin/aqavit",
   "download_count": 0,
   "download_size": 189554073,
-  
+
   // Installation-specific metadata (new)
   "installation_metadata": {
-    "structure_type": "bundle",              // "direct", "bundle", or "hybrid"
-    "java_home_suffix": "Contents/Home",     // Path suffix for JAVA_HOME
-    "platform": "macos-aarch64",             // Platform identifier
-    "metadata_version": 1                    // For future compatibility
+    "structure_type": "bundle", // "direct", "bundle", or "hybrid"
+    "java_home_suffix": "Contents/Home", // Path suffix for JAVA_HOME
+    "platform": "macos-aarch64", // Platform identifier
+    "metadata_version": 1 // For future compatibility
   }
 }
 ```
@@ -344,16 +366,16 @@ Defined in `src/storage/mod.rs`:
 pub struct InstallationMetadata {
     /// The detected structure type
     pub structure_type: JdkStructureType,
-    
+
     /// Path suffix to append for JAVA_HOME
     /// - Empty string for direct structure
     /// - "Contents/Home" for bundle structure
     /// - "zulu-21.jdk/Contents/Home" for hybrid structure
     pub java_home_suffix: String,
-    
+
     /// Platform where this was installed
     pub platform: String,
-    
+
     /// Metadata format version for future compatibility
     pub metadata_version: u32,
 }
@@ -375,7 +397,7 @@ impl InstalledJdk {
                 }
             }
         }
-        
+
         // Fallback to runtime detection if no metadata
         self.detect_java_home_at_runtime()
     }
@@ -397,6 +419,7 @@ impl InstalledJdk {
 - **No User Action Required**: Metadata is created automatically for new installations
 
 This approach:
+
 - Reuses existing metadata infrastructure from Foojay API integration
 - Maintains compatibility with API data structure
 - Provides 10-50x faster runtime resolution
@@ -409,6 +432,7 @@ This approach:
 The structure detection algorithm was implemented in `src/archive/mod.rs` with the following key components:
 
 1. **Main Detection Function** (`detect_jdk_root`):
+
 ```rust
 /// Detects the root directory of a JDK installation after extraction
 pub fn detect_jdk_root(extracted_dir: &Path) -> Result<(PathBuf, JdkStructureType)> {
@@ -446,14 +470,14 @@ pub fn detect_jdk_root(extracted_dir: &Path) -> Result<(PathBuf, JdkStructureTyp
     for entry in fs::read_dir(extracted_dir)? {
         let entry = entry?;
         let path = entry.path();
-        
+
         if path.is_dir() {
             // Try direct structure in subdirectory
             if is_valid_jdk_root(&path) {
                 debug!("Detected nested direct structure at {:?}", path);
                 return Ok((path, JdkStructureType::Direct));
             }
-            
+
             // Try bundle structure in subdirectory
             let nested_bundle = path.join("Contents").join("Home");
             if nested_bundle.exists() && is_valid_jdk_root(&nested_bundle) {
@@ -468,6 +492,7 @@ pub fn detect_jdk_root(extracted_dir: &Path) -> Result<(PathBuf, JdkStructureTyp
 ```
 
 2. **Structure Type Enum**:
+
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum JdkStructureType {
@@ -481,6 +506,7 @@ pub enum JdkStructureType {
 ```
 
 3. **Validation Functions**:
+
 ```rust
 /// Checks if a directory is a valid JDK root by verifying bin/java exists
 fn is_valid_jdk_root(path: &Path) -> bool {
@@ -489,7 +515,7 @@ fn is_valid_jdk_root(path: &Path) -> bool {
     } else {
         "java"
     };
-    
+
     path.join("bin").join(java_binary).exists()
 }
 
@@ -507,12 +533,12 @@ fn find_jdk_subdirectory(path: &Path) -> Result<Option<PathBuf>> {
     for entry in fs::read_dir(path)? {
         let entry = entry?;
         let entry_path = entry.path();
-        
+
         if entry_path.is_dir() {
             let name = entry_path.file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("");
-                
+
             if name.ends_with(".jdk") || name.contains("jdk") {
                 return Ok(Some(entry_path));
             }
@@ -763,18 +789,21 @@ Performance Improvement: ~18x faster
 ## Implementation Phases
 
 ### Phase 1: Basic Structure Detection (MVP)
+
 1. Implement `detect_jdk_root` function for macOS
 2. Update installation process to handle different structures
 3. Modify shim to check for `Contents/Home` at runtime
 4. Basic testing with major distributions
 
 ### Phase 2: Metadata Integration
+
 1. Extend `save_jdk_metadata` to include `installation_metadata`
 2. Update `InstalledJdk` to read metadata files
 3. Implement metadata caching in shim
 4. Migration path for existing installations
 
 ### Phase 3: Advanced Features (Future)
+
 1. `/usr/libexec/java_home` integration (separate ADR)
 
 ## Implementation Results
@@ -814,13 +843,13 @@ The macOS JDK bundle structure handling was successfully implemented across phas
 
 The implementation was validated with the following distributions on macOS:
 
-| Distribution | Version Tested | Structure Type | Result |
-|-------------|----------------|----------------|---------|
-| Temurin | 11, 17, 21, 24 | Bundle | ✅ Working |
-| Liberica | 8, 17, 21 | Direct | ✅ Working |
-| Azul Zulu | 8, 17, 21 | Hybrid | ✅ Working |
-| GraalVM | 17, 21 | Bundle | ✅ Working |
-| Corretto | 21 | Direct | ✅ Working |
+| Distribution | Version Tested | Structure Type | Result     |
+| ------------ | -------------- | -------------- | ---------- |
+| Temurin      | 11, 17, 21, 24 | Bundle         | ✅ Working |
+| Liberica     | 8, 17, 21      | Direct         | ✅ Working |
+| Azul Zulu    | 8, 17, 21      | Hybrid         | ✅ Working |
+| GraalVM      | 17, 21         | Bundle         | ✅ Working |
+| Corretto     | 21             | Direct         | ✅ Working |
 
 ### Performance Metrics Achieved
 
@@ -870,6 +899,7 @@ The implementation was validated with the following distributions on macOS:
 ### Conclusion
 
 The implementation successfully achieves all primary goals:
+
 - ✅ Supports all major JDK distributions on macOS
 - ✅ Transparent operation (users unaware of underlying complexity)
 - ✅ Performance targets exceeded (< 10ms vs < 50ms target)

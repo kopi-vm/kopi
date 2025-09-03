@@ -1,9 +1,11 @@
 # Version Switching Commands Implementation Plan
 
 ## Overview
+
 This document outlines the phased implementation plan for the Kopi version switching commands, which provide flexible JDK version management across three scopes: shell (temporary), project (local), and global (system-wide). These commands enable developers to seamlessly switch between different JDK versions based on their current context and needs.
 
 ## Command Syntax
+
 - `kopi current [options]` - Show the currently active JDK version and its source
   - `-q, --quiet` - Show only version number
   - `--json` - Output in JSON format
@@ -14,12 +16,14 @@ This document outlines the phased implementation plan for the Kopi version switc
 ## Phase 1: Core Infrastructure Enhancements
 
 ### Input Resources
+
 - `/docs/tasks/switch/design/` - Complete switching system design
 - `/src/version/resolver.rs` - Existing version resolution logic
 - `/src/platform/shell.rs` - Current shell detection implementation
 - `/docs/adr/` - Architecture Decision Records
 
 ### Deliverables
+
 1. **Enhanced Version Resolver** (`/src/version/resolver.rs`)
    - Add `VersionSource` enum:
      ```rust
@@ -61,6 +65,7 @@ This document outlines the phased implementation plan for the Kopi version switc
    - Mock filesystem for unit tests
 
 ### Success Criteria
+
 - Version resolver accurately tracks resolution source
 - Shell detection reliably identifies parent shell and path
 - All existing version resolution functionality remains intact
@@ -70,12 +75,14 @@ This document outlines the phased implementation plan for the Kopi version switc
 ## Phase 2: Current Command Implementation
 
 ### Input Resources
+
 - Phase 1 deliverables
 - `/docs/tasks/switch/design/current-command.md`
 - `/src/commands/mod.rs` - Command structure
 - `/src/main.rs` - CLI definition
 
 ### Deliverables
+
 1. **Current Command Module** (`/src/commands/current.rs`)
    - Command handler implementation
    - Output formatting logic:
@@ -83,7 +90,7 @@ This document outlines the phased implementation plan for the Kopi version switc
      - Quiet format: version only
      - JSON format: structured output
    - Version source display:
-     - "Environment (KOPI_JAVA_VERSION)" 
+     - "Environment (KOPI_JAVA_VERSION)"
      - "Project file (.kopi-version)" with relative path
      - "Global default (~/.kopi/version)"
      - "Not configured"
@@ -136,6 +143,7 @@ This document outlines the phased implementation plan for the Kopi version switc
    - Test JSON parsing
 
 ### Success Criteria
+
 - Command shows correct version and source
 - All output formats work correctly
 - Installation status accurately reported
@@ -145,12 +153,14 @@ This document outlines the phased implementation plan for the Kopi version switc
 ## Phase 3: Global Command Implementation
 
 ### Input Resources
+
 - Phase 1 & 2 deliverables
 - `/docs/tasks/switch/design/global-command.md`
 - `/src/commands/install.rs` - Reference for auto-installation
 - Platform symlink utilities
 
 ### Deliverables
+
 1. **Global Command Module** (`/src/commands/global.rs`)
    - Version parsing and validation
    - Installation verification (mandatory)
@@ -207,6 +217,7 @@ This document outlines the phased implementation plan for the Kopi version switc
    - Test with uninstalled versions
 
 ### Success Criteria
+
 - Global version file created at `~/.kopi/version`
 - Installation verification prevents setting uninstalled versions
 - Symlinks created correctly on all platforms
@@ -216,11 +227,13 @@ This document outlines the phased implementation plan for the Kopi version switc
 ## Phase 4: Local Command Implementation
 
 ### Input Resources
+
 - Phase 1-3 deliverables
 - `/docs/tasks/switch/design/local-command.md`
 - Version file format specifications
 
 ### Deliverables
+
 1. **Local Command Module** (`/src/commands/local.rs`)
    - Version parsing and validation
    - File creation logic:
@@ -277,6 +290,7 @@ This document outlines the phased implementation plan for the Kopi version switc
    - Test with declined installation
 
 ### Success Criteria
+
 - `.kopi-version` file created in current directory
 - File created even when JDK not installed
 - Optional auto-installation works correctly
@@ -286,12 +300,14 @@ This document outlines the phased implementation plan for the Kopi version switc
 ## Phase 5: Shell Command Implementation
 
 ### Input Resources
+
 - All previous phase deliverables
 - `/docs/tasks/switch/design/shell-command.md`
 - Enhanced shell detection from Phase 1
 - Platform process utilities
 
 ### Deliverables
+
 1. **Shell Command Module** (`/src/commands/shell.rs`)
    - Version parsing and validation
    - Shell detection using enhanced `detect_parent_shell_with_path()`
@@ -367,6 +383,7 @@ This document outlines the phased implementation plan for the Kopi version switc
    - Test detection failures
 
 ### Success Criteria
+
 - Shell detection works reliably on all platforms
 - New shell launched with correct environment
 - Version switching works in spawned shell
@@ -376,6 +393,7 @@ This document outlines the phased implementation plan for the Kopi version switc
 ## Implementation Guidelines
 
 ### For Each Phase:
+
 1. Start with `/clear` command to reset context
 2. Load this plan.md and relevant phase resources
 3. Implement deliverables incrementally
@@ -389,6 +407,7 @@ This document outlines the phased implementation plan for the Kopi version switc
 ### Testing Strategy
 
 #### Unit Tests (use mocks extensively)
+
 - Test command logic in isolation
 - Mock JdkRepository, AutoInstaller, filesystem
 - Focus on command behavior and error handling
@@ -399,7 +418,7 @@ This document outlines the phased implementation plan for the Kopi version switc
   mod tests {
       use super::*;
       use mockall::*;
-      
+
       #[test]
       fn test_global_requires_installation() {
           let mut mock_repo = MockJdkRepository::new();
@@ -411,6 +430,7 @@ This document outlines the phased implementation plan for the Kopi version switc
   ```
 
 #### Integration Tests (no mocks)
+
 - Test complete command workflows
 - Use real filesystem and version files
 - Verify actual behavior end-to-end
@@ -421,10 +441,10 @@ This document outlines the phased implementation plan for the Kopi version switc
   fn test_version_switching_workflow() {
       // Set global version
       run_kopi(&["global", "17"]);
-      
+
       // Create local version
       run_kopi(&["local", "21"]);
-      
+
       // Verify current shows local
       let output = run_kopi(&["current"]);
       assert!(output.contains("21"));
@@ -433,13 +453,17 @@ This document outlines the phased implementation plan for the Kopi version switc
   ```
 
 ### Version Resolution Priority
+
 Always maintain the three-tier priority system:
+
 1. **Shell scope** (highest): `KOPI_JAVA_VERSION` environment variable
 2. **Project scope** (medium): `.kopi-version` or `.java-version` files
 3. **Global scope** (lowest): `~/.kopi/version` file
 
 ### Error Message Guidelines
+
 All commands should provide clear, actionable error messages:
+
 ```
 Error: JDK version 'temurin@21' is not installed
 
@@ -453,11 +477,13 @@ Or to see available versions:
 ### Platform Considerations
 
 #### Unix (Linux/macOS)
+
 - Use exec() for shell command (zero overhead)
 - Symlinks for global default
 - Shell detection via parent process or SHELL variable
 
 #### Windows
+
 - Spawn new process for shell command
 - Junction points or copying for defaults
 - Strict shell detection (no fallback)
@@ -466,6 +492,7 @@ Or to see available versions:
 ## Dependency Management
 
 ### New Dependencies Required
+
 - **sysinfo** crate (^0.31): For parent process detection in shell command
   ```toml
   [dependencies]
@@ -473,6 +500,7 @@ Or to see available versions:
   ```
 
 ### Existing Dependencies Used
+
 - **clap**: Command-line parsing with derive
 - **serde/serde_json**: JSON output formatting
 - **dirs**: User directory paths
@@ -481,6 +509,7 @@ Or to see available versions:
 ## Design Principles
 
 ### Command Behavior Consistency
+
 1. **Installation Requirements**:
    - `current`: No installation required (read-only)
    - `global` and `shell`: Installation mandatory
@@ -497,12 +526,14 @@ Or to see available versions:
    - Show installation commands when JDK missing
 
 ### User Experience Goals
+
 1. **Intuitive Commands**: Aliases match other version managers (use, pin, default)
 2. **Clear Feedback**: Always show what changed and where
 3. **Team Friendly**: Local command creates file even without installation
 4. **Fast Operation**: Minimal overhead for all commands
 
 ## Success Metrics
+
 - All commands complete in < 100ms (excluding installation)
 - Version resolution follows documented priority
 - Error messages guide users to solutions
@@ -510,4 +541,5 @@ Or to see available versions:
 - Integration with existing Kopi features seamless
 
 ## Next Steps
+
 Begin with Phase 1, focusing on the core infrastructure enhancements needed by all commands. The enhanced version resolver and shell detection are foundational components that subsequent phases will build upon.

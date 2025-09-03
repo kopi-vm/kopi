@@ -7,15 +7,17 @@ This document outlines the implementation plan for the `kopi env` command, which
 ## Phase 1: Core Functionality
 
 ### 1.1 Command Infrastructure
+
 - [ ] Add `EnvCommand` struct in `src/commands/env.rs`
 - [ ] Define command arguments using clap derive API:
   - Optional `<version>` argument
   - `--shell` option
-  - `--export` option  
+  - `--export` option
   - `--quiet` option
 - [ ] Register command in `src/commands/mod.rs` and main CLI
 
 ### 1.2 Version Resolution
+
 - [ ] Integrate with existing `resolve_version` functionality
 - [ ] Handle version resolution hierarchy:
   1. Command line argument
@@ -26,11 +28,13 @@ This document outlines the implementation plan for the `kopi env` command, which
 - [ ] Return `NoLocalVersion` error when no version found
 
 ### 1.3 JDK Validation
+
 - [ ] Use `JdkInstallation::find` to verify JDK exists
 - [ ] Return `JdkNotInstalled` error if missing
 - [ ] Extract JDK home directory path
 
 ### 1.4 Basic Shell Formatting
+
 - [ ] Create `EnvFormatter` trait with `format_env` method
 - [ ] Implement for Bash/Zsh (same format):
   ```bash
@@ -39,6 +43,7 @@ This document outlines the implementation plan for the `kopi env` command, which
 - [ ] Handle platform-specific path separators
 
 ### 1.5 Error Handling
+
 - [ ] Use existing `KopiError` types
 - [ ] Integrate with `ErrorContext` for helpful messages
 - [ ] Implement `--quiet` flag to suppress stderr output
@@ -46,11 +51,13 @@ This document outlines the implementation plan for the `kopi env` command, which
 ## Phase 2: Multi-Shell Support ✅
 
 ### 2.1 Shell Detection Integration
+
 - [x] Use existing `platform::shell::detect_shell()` function
 - [x] Handle `--shell` option with `parse_shell_name()`
 - [x] Pass detected/specified shell to formatter
 
 ### 2.2 Fish Shell Support
+
 - [x] Implement Fish formatter:
   ```fish
   set -gx JAVA_HOME "/path/to/jdk"
@@ -58,6 +65,7 @@ This document outlines the implementation plan for the `kopi env` command, which
 - [x] Add Fish-specific tests
 
 ### 2.3 PowerShell Support
+
 - [x] Implement PowerShell formatter:
   ```powershell
   $env:JAVA_HOME = "C:\path\to\jdk"
@@ -66,6 +74,7 @@ This document outlines the implementation plan for the `kopi env` command, which
 - [x] Add PowerShell-specific tests
 
 ### 2.4 Windows CMD Support
+
 - [x] Implement CMD formatter:
   ```cmd
   set JAVA_HOME=C:\path\to\jdk
@@ -74,6 +83,7 @@ This document outlines the implementation plan for the `kopi env` command, which
 - [x] Add CMD-specific tests
 
 ### Additional Improvements Completed
+
 - [x] Enhanced path escaping for special characters in all shells
 - [x] Added comprehensive integration tests in `tests/commands/env_command.rs`
 - [x] Added error handling tests for edge cases
@@ -81,6 +91,7 @@ This document outlines the implementation plan for the `kopi env` command, which
 ## Phase 3: Performance Optimization
 
 ### 3.1 Initial Benchmarking
+
 - [ ] Create benchmark suite in `benches/env_command.rs`
 - [ ] Measure scenarios:
   - Cold start with global config
@@ -90,6 +101,7 @@ This document outlines the implementation plan for the `kopi env` command, which
 - [ ] Use `hyperfine` for real-world timing
 
 ### 3.2 Performance Analysis
+
 - [ ] Profile with `cargo flamegraph`
 - [ ] Identify bottlenecks:
   - Binary startup time
@@ -98,6 +110,7 @@ This document outlines the implementation plan for the `kopi env` command, which
   - Version resolution logic
 
 ### 3.3 Optimization Implementation
+
 - [ ] If performance < 100ms target:
   - Lazy loading of unused modules
   - Optimize config parsing
@@ -105,6 +118,7 @@ This document outlines the implementation plan for the `kopi env` command, which
   - Consider mmap for config files
 
 ### 3.4 Alternative Binary Decision
+
 - [ ] If optimizations insufficient:
   - Design `kopi-env` minimal binary
   - Remove network dependencies
@@ -114,6 +128,7 @@ This document outlines the implementation plan for the `kopi env` command, which
 ## Phase 4: Testing & Integration
 
 ### 4.1 Unit Tests
+
 - [ ] Version resolution edge cases
 - [ ] Shell detection accuracy
 - [ ] Formatter output correctness
@@ -121,15 +136,17 @@ This document outlines the implementation plan for the `kopi env` command, which
 - [ ] Path escaping/quoting
 
 ### 4.2 Integration Tests
+
 - [ ] Test with real shells:
   - Bash eval execution
-  - Zsh eval execution  
+  - Zsh eval execution
   - Fish source execution
   - PowerShell invocation
 - [ ] Verify environment variable setting
 - [ ] Test with various JDK installations
 
 ### 4.3 Documentation
+
 - [ ] Update reference.md with actual implementation
 - [ ] Add examples to CLI help text
 - [ ] Create shell integration guide

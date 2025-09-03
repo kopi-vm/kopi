@@ -9,12 +9,14 @@ Kopi is a JDK version management tool that integrates with your shell to seamles
 ### `--no-progress`
 
 Suppresses all progress indicators including progress bars, spinners, and status messages. This flag is useful for:
+
 - CI/CD environments where progress indicators can clutter logs
 - Non-interactive scripts and automation
 - Situations where terminal output needs to be minimal
 - Piping output to other commands
 
 **Usage:**
+
 ```bash
 kopi --no-progress install 21            # Install without progress bar
 kopi --no-progress cache refresh         # Refresh cache silently
@@ -22,6 +24,7 @@ kopi --no-progress uninstall --all       # Batch uninstall without progress
 ```
 
 **Notes:**
+
 - This is a global flag that must come before the subcommand
 - Error messages are still displayed even with this flag
 - Combines well with other output control flags like `--quiet` or `--json`
@@ -31,6 +34,7 @@ kopi --no-progress uninstall --all       # Batch uninstall without progress
 Enables verbose output for debugging and detailed information.
 
 **Usage:**
+
 ```bash
 kopi -v install 21                       # Show detailed installation steps
 kopi -v doctor                           # Detailed diagnostic information
@@ -43,12 +47,14 @@ kopi -v doctor                           # Detailed diagnostic information
 Install a specific JDK version.
 
 **Usage:**
+
 ```bash
 kopi install <version>                    # Install a specific JDK version
 kopi install <distribution>@<version>     # Install specific distribution
 ```
 
 **Examples:**
+
 ```bash
 kopi install 21                          # Latest Java 21 (Eclipse Temurin by default)
 kopi install 21.0.1                      # Specific version (Eclipse Temurin by default)
@@ -58,6 +64,7 @@ kopi install zulu@11.0.15                # Zulu JDK version 11.0.15
 ```
 
 **Options:**
+
 - `--force`: Reinstall even if already installed
 - `--dry-run`: Show what would be installed without actually installing
 - `--no-progress`: Disable progress indicators
@@ -66,6 +73,7 @@ kopi install zulu@11.0.15                # Zulu JDK version 11.0.15
 
 **Metadata and Performance:**
 Starting from version 0.8, kopi creates metadata files for newly installed JDKs that contain information about their directory structure. This metadata significantly improves performance when switching between JDK versions, particularly on macOS where different JDK distributions may use different directory layouts:
+
 - **New installations**: Automatically create metadata files (`.meta.json`) for optimal performance
 - **Existing installations**: Continue to work without metadata using runtime detection
 - **Backward compatibility**: All previously installed JDKs remain fully functional
@@ -78,6 +86,7 @@ The metadata system is completely transparent to users - no action is required t
 Remove an installed JDK version and free up disk space.
 
 **Usage:**
+
 ```bash
 kopi uninstall <version>                 # Remove an installed JDK version
 kopi uninstall <distribution>@<version>  # Remove specific distribution
@@ -85,6 +94,7 @@ kopi uninstall <distribution> --all      # Remove all versions of a distribution
 ```
 
 **Options:**
+
 - `--force`: Skip confirmation prompts and safety checks
 - `--dry-run`: Show what would be removed without actually removing
 - `--all`: Remove all versions of a distribution (requires distribution name)
@@ -92,6 +102,7 @@ kopi uninstall <distribution> --all      # Remove all versions of a distribution
 - `--no-progress`: Disable progress indicators for batch operations
 
 **Examples:**
+
 ```bash
 kopi uninstall 21                        # Remove Java 21 (must be only one installed)
 kopi uninstall temurin@21.0.5+11         # Remove specific version
@@ -105,6 +116,7 @@ kopi uninstall temurin@21 --cleanup      # Uninstall temurin@21 then perform cle
 ```
 
 **Safety Features:**
+
 - Requires exact specification when multiple JDKs match
 - Shows disk space that will be freed
 - Confirms removal before proceeding (unless `--force` is used)
@@ -113,6 +125,7 @@ kopi uninstall temurin@21 --cleanup      # Uninstall temurin@21 then perform cle
 
 **Error Cleanup:**
 If an uninstall fails, kopi provides cleanup functionality:
+
 - Use `kopi uninstall --cleanup` to clean up failed operations
 - Detects temporary removal directories (`.*.removing`)
 - Finds partially removed JDKs (missing essential files)
@@ -126,15 +139,18 @@ If an uninstall fails, kopi provides cleanup functionality:
 Launch a new shell with the specified JDK version active. This command launches a subshell with `KOPI_JAVA_VERSION` environment variable set, which automatically activates the specified JDK version through shims.
 
 **Usage:**
+
 ```bash
 kopi shell <version>                     # Launch new shell with specified JDK
 kopi use <version>                       # Alias for 'kopi shell'
 ```
 
 **Options:**
+
 - `--shell <shell>`: Override shell detection (bash, zsh, fish, powershell, cmd)
 
 **Examples:**
+
 ```bash
 kopi shell 21                            # Launch shell with Java 21 active
 kopi use temurin@17                      # Launch shell with Temurin 17 (using alias)
@@ -142,6 +158,7 @@ kopi shell corretto@21 --shell zsh       # Launch zsh with Corretto 21
 ```
 
 **Notes:**
+
 - Automatically installs the JDK if not already installed
 - Launches a new interactive shell session
 - The JDK version remains active until you exit the shell
@@ -153,17 +170,20 @@ kopi shell corretto@21 --shell zsh       # Launch zsh with Corretto 21
 Output environment variables for shell evaluation, similar to direnv. This command outputs shell-specific environment setup for JAVA_HOME without modifying PATH.
 
 **Usage:**
+
 ```bash
 kopi env                                 # Output environment variables for current JDK
 kopi env <version>                       # Output environment variables for specific JDK
 ```
 
 **Options:**
+
 - `--shell <shell>`: Override shell detection (bash, zsh, fish, powershell, cmd)
 - `--export`: Include export statement (default: true)
 
 **Version Resolution:**
 The command resolves the JDK version in the following order:
+
 1. Explicit version parameter (if provided)
 2. `KOPI_JAVA_VERSION` environment variable
 3. `.kopi-version` file in current or parent directories
@@ -171,6 +191,7 @@ The command resolves the JDK version in the following order:
 5. Global default version
 
 **Examples:**
+
 ```bash
 # Bash/Zsh - Auto-detect version and shell
 eval "$(kopi env)"
@@ -194,12 +215,14 @@ fi
 ```
 
 **Shell-Specific Output Formats:**
+
 - **Bash/Zsh**: `export JAVA_HOME="/path/to/jdk"`
 - **Fish**: `set -gx JAVA_HOME "/path/to/jdk"`
 - **PowerShell**: `$env:JAVA_HOME = "/path/to/jdk"`
 - **CMD**: `set JAVA_HOME=/path/to/jdk`
 
 **Notes:**
+
 - Outputs to stdout for shell evaluation, stderr for messages
 - Properly escapes paths with spaces and special characters
 - Verifies JDK is installed before outputting
@@ -211,6 +234,7 @@ fi
 Set the global default JDK version. This becomes the default for all new shell sessions.
 
 **Usage:**
+
 ```bash
 kopi global <version>                    # Set default JDK version globally
 ```
@@ -218,6 +242,7 @@ kopi global <version>                    # Set default JDK version globally
 **Aliases:** `g`, `default`
 
 **Examples:**
+
 ```bash
 kopi global 21                           # Set Java 21 as global default
 kopi global temurin@17.0.2               # Set specific distribution/version as default
@@ -225,6 +250,7 @@ kopi default corretto@21                 # Using 'default' alias
 ```
 
 **Notes:**
+
 - Automatically installs the JDK if not already installed
 - Updates the global configuration in `~/.kopi/config.toml`
 - Takes effect in new shell sessions
@@ -234,6 +260,7 @@ kopi default corretto@21                 # Using 'default' alias
 Set JDK version for the current project. Creates a `.kopi-version` file in the current directory.
 
 **Usage:**
+
 ```bash
 kopi local <version>                     # Set JDK version for current project
 ```
@@ -241,6 +268,7 @@ kopi local <version>                     # Set JDK version for current project
 **Aliases:** `l`, `pin`
 
 **Examples:**
+
 ```bash
 kopi local 21                            # Use Java 21 for this project
 kopi local corretto@17                   # Use Amazon Corretto 17
@@ -248,6 +276,7 @@ kopi pin temurin@21.0.1                  # Using 'pin' alias
 ```
 
 **Notes:**
+
 - Automatically installs the JDK if not already installed
 - Creates `.kopi-version` file in the current directory
 - Takes precedence over global settings
@@ -260,6 +289,7 @@ kopi pin temurin@21.0.1                  # Using 'pin' alias
 List all installed JDK versions with their distribution, version, and disk usage.
 
 **Usage:**
+
 ```bash
 kopi list                                # List installed JDK versions
 ```
@@ -267,12 +297,14 @@ kopi list                                # List installed JDK versions
 **Alias:** `ls`
 
 **Output includes:**
+
 - Distribution name and icon
 - Full version number
 - Disk space usage
 - Installation path
 
 **Example output:**
+
 ```
 Installed JDKs:
   ☕ temurin       21.0.5+11        489 MB   ~/.kopi/jdks/temurin-21.0.5+11
@@ -285,6 +317,7 @@ Installed JDKs:
 Show the currently active JDK version and details.
 
 **Usage:**
+
 ```bash
 kopi current                             # Show current JDK version and details
 kopi current -q                          # Show only version number
@@ -292,10 +325,12 @@ kopi current --json                      # Output in JSON format
 ```
 
 **Options:**
+
 - `-q, --quiet`: Show only the version number without additional information
 - `--json`: Output in JSON format for scripting
 
 **Examples:**
+
 ```bash
 kopi current
 # Output: ☕ temurin 21.0.5+11 (current: shell)
@@ -312,6 +347,7 @@ kopi current --json
 Show installation path for a JDK version or specific JDK tool.
 
 **Usage:**
+
 ```bash
 kopi which                               # Show path to current java executable
 kopi which <version>                     # Show path for specific JDK version
@@ -322,11 +358,13 @@ kopi which --home                        # Show JDK home directory instead of ex
 **Alias:** `w`
 
 **Options:**
+
 - `--tool <tool>`: Show path for specific JDK tool (default: java)
 - `--home`: Show JDK home directory instead of executable path
 - `--json`: Output in JSON format for scripting
 
 **Examples:**
+
 ```bash
 kopi which                               # /home/user/.kopi/jdks/temurin-21.0.5+11/bin/java
 kopi which 17                            # /home/user/.kopi/jdks/temurin-17.0.13+11/bin/java
@@ -342,6 +380,7 @@ kopi which corretto@21 --json           # {"path":"/home/user/.kopi/jdks/corrett
 Initial setup and configuration for kopi. Creates necessary directories and installs shims.
 
 **Usage:**
+
 ```bash
 kopi setup                               # Initial setup and configuration
 kopi setup --force                       # Force recreation of shims even if they exist
@@ -358,6 +397,7 @@ Manage tool shims for JDK executables. Shims are lightweight proxy executables t
 Create shims for specific JDK tools.
 
 **Usage:**
+
 ```bash
 kopi shim add <tool>                     # Create shim for a specific tool
 kopi shim add <tool1> <tool2> ...        # Create shims for multiple tools
@@ -366,6 +406,7 @@ kopi shim add --force <tool>             # Force recreate existing shim
 ```
 
 **Examples:**
+
 ```bash
 kopi shim add java javac                 # Create shims for java and javac
 kopi shim add native-image gu            # Create GraalVM-specific shims
@@ -377,6 +418,7 @@ kopi shim add --all                      # Create all standard JDK tool shims
 Remove installed shims.
 
 **Usage:**
+
 ```bash
 kopi shim remove <tool>                  # Remove shim for a specific tool
 kopi shim remove <tool1> <tool2> ...     # Remove shims for multiple tools
@@ -384,6 +426,7 @@ kopi shim remove --all                   # Remove all shims
 ```
 
 **Examples:**
+
 ```bash
 kopi shim remove jshell                  # Remove jshell shim
 kopi shim remove --all                   # Clean up all shims
@@ -394,12 +437,14 @@ kopi shim remove --all                   # Clean up all shims
 List all installed shims and their status.
 
 **Usage:**
+
 ```bash
 kopi shim list                           # List all installed shims
 kopi shim list --format <format>         # Specify output format (table/plain/json)
 ```
 
 **Examples:**
+
 ```bash
 kopi shim list                           # Show shims in table format
 kopi shim list --format json             # Output as JSON for scripting
@@ -410,6 +455,7 @@ kopi shim list --format json             # Output as JSON for scripting
 Verify the integrity of installed shims.
 
 **Usage:**
+
 ```bash
 kopi shim verify                         # Verify all shims
 kopi shim verify <tool>                  # Verify specific shim
@@ -417,12 +463,14 @@ kopi shim verify --fix                   # Fix any issues found
 ```
 
 **Examples:**
+
 ```bash
 kopi shim verify                         # Check all shims for issues
 kopi shim verify java --fix              # Verify and fix java shim if needed
 ```
 
 **Notes:**
+
 - Shims are created in `~/.kopi/shims/` directory
 - The shims directory should be added to your PATH
 - Shims automatically detect the required JDK version from `.kopi-version` or `.java-version` files
@@ -439,12 +487,14 @@ default_distribution = "temurin"
 ```
 
 This setting determines which distribution is used when you install a JDK without specifying a distribution:
+
 ```bash
 kopi install 21                          # Uses default distribution (temurin)
 kopi install corretto@21                 # Explicitly uses corretto
 ```
 
 To change the default distribution, edit the configuration file directly or use:
+
 ```bash
 # Set a new global default JDK (also updates default distribution)
 kopi global corretto@21
@@ -455,6 +505,7 @@ kopi global corretto@21
 Update metadata cache from configured sources. This is an alias for `kopi cache refresh`.
 
 **Usage:**
+
 ```bash
 kopi refresh                             # Update metadata cache from configured sources
 kopi refresh --javafx-bundled            # Include JavaFX bundled packages
@@ -465,6 +516,7 @@ kopi refresh --javafx-bundled            # Include JavaFX bundled packages
 Search for available JDK versions. This is an alias for `kopi cache search`.
 
 **Usage:**
+
 ```bash
 kopi search <query>                      # Search for JDK versions
 kopi search <query> --compact            # Minimal display (default)
@@ -474,6 +526,7 @@ kopi search <query> --lts-only           # Filter to show only LTS versions
 ```
 
 **Examples:**
+
 ```bash
 kopi search 21                           # Find all Java 21 versions
 kopi search corretto                     # List all Corretto versions
@@ -487,6 +540,7 @@ kopi search 21 --lts-only                # Only show LTS versions
 Run comprehensive diagnostics on your kopi installation to identify and fix common issues.
 
 **Usage:**
+
 ```bash
 kopi doctor                              # Run all diagnostic checks
 kopi doctor --json                       # Output results in JSON format
@@ -497,6 +551,7 @@ kopi -v doctor                           # Show detailed diagnostic information
 ```
 
 **Categories:**
+
 - `installation`: Check kopi binary, version, directories, and configuration
 - `shell`: Verify shell integration and PATH configuration
 - `jdks`: Validate installed JDK integrity and disk usage
@@ -505,6 +560,7 @@ kopi -v doctor                           # Show detailed diagnostic information
 - `cache`: Validate cache files and check for staleness
 
 **Examples:**
+
 ```bash
 kopi doctor                              # Run all checks with colored output
 kopi doctor --check network              # Check only network connectivity
@@ -513,12 +569,14 @@ kopi -v doctor                           # See detailed check information
 ```
 
 **Exit Codes:**
+
 - `0`: All checks passed
 - `1`: One or more checks failed
 - `2`: Warnings detected (no failures)
 - `20`: Network error or timeout
 
 **Features:**
+
 - Parallel execution of independent checks for fast results
 - Progress indicator for long-running checks
 - Actionable suggestions for fixing detected issues
@@ -531,6 +589,7 @@ kopi -v doctor                           # See detailed check information
 ### `kopi cache`
 
 Manage the JDK metadata cache used for searching and installing JDK versions. Kopi uses a multi-source metadata system that provides:
+
 - Fast access through pre-generated metadata files hosted at kopi-vm.github.io
 - Real-time data from the Foojay API for the latest JDK releases
 - Local caching for improved performance and offline capability
@@ -541,6 +600,7 @@ Manage the JDK metadata cache used for searching and installing JDK versions. Ko
 Update the metadata cache from configured sources.
 
 **Usage:**
+
 ```bash
 kopi cache refresh                       # Refresh metadata for all distributions
 kopi cache refresh --javafx-bundled      # Include JavaFX bundled packages
@@ -548,6 +608,7 @@ kopi --no-progress cache refresh         # Refresh without progress indicator
 ```
 
 **Notes:**
+
 - Shows a progress spinner by default during metadata fetch
 - Use the global `--no-progress` flag to suppress the spinner
 
@@ -556,6 +617,7 @@ kopi --no-progress cache refresh         # Refresh without progress indicator
 Search for available JDK versions in the cache with enhanced display options.
 
 **Usage:**
+
 ```bash
 kopi cache search <query>                # Search for JDK versions
 kopi cache search <query> --compact      # Minimal display (default)
@@ -566,6 +628,7 @@ kopi --no-progress cache search <query>  # Search without progress indicators
 ```
 
 **Examples:**
+
 ```bash
 # Search by version
 kopi cache search 21                     # Find all Java 21 versions
@@ -586,11 +649,13 @@ kopi cache search 21 --lts-only          # Only show LTS versions
 ```
 
 **Display Modes:**
+
 - **Compact (default)**: Shows Distribution, Version, and LTS status
 - **Detailed**: Includes Status (GA/EA), Type (JDK/JRE), OS/Arch, LibC, Size, and JavaFX
 - **JSON**: Machine-readable format with all available fields
 
 **Color Coding:**
+
 - LTS versions are highlighted in green
 - STS versions are shown in yellow
 - GA releases are marked in green
@@ -601,11 +666,13 @@ kopi cache search 21 --lts-only          # Only show LTS versions
 List all available distributions in the cache.
 
 **Usage:**
+
 ```bash
 kopi cache list-distributions            # Show all cached distributions
 ```
 
 **Output includes:**
+
 - Distribution ID (e.g., "temurin", "corretto")
 - Display name (e.g., "Eclipse Temurin", "Amazon Corretto")
 - Number of versions available for current platform
@@ -615,11 +682,13 @@ kopi cache list-distributions            # Show all cached distributions
 Show information about the cache.
 
 **Usage:**
+
 ```bash
 kopi cache info                          # Display cache details
 ```
 
 **Shows:**
+
 - Cache file location
 - File size
 - Last update time
@@ -631,11 +700,13 @@ kopi cache info                          # Display cache details
 Remove all cached metadata.
 
 **Usage:**
+
 ```bash
 kopi cache clear                         # Delete the cache file
 ```
 
 **Notes:**
+
 - The cache is automatically updated when needed during install operations
 - Use `kopi refresh` as a shortcut for `kopi cache refresh`
 - The `kopi cache update` command has been replaced with `kopi cache refresh`
@@ -663,22 +734,23 @@ kopi cache clear                         # Delete the cache file
 
 On macOS, different JDK distributions use different directory layouts. Kopi automatically detects and handles these structures:
 
-| Distribution | Structure Type | Directory Layout | Notes |
-|-------------|---------------|------------------|-------|
-| **Temurin** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
-| **Corretto** | Direct | `bin/java` | Simple directory structure |
-| **Zulu** | Hybrid | Symlinks → `zulu-*.jdk/Contents/Home/` | Root symlinks for compatibility |
-| **OpenJDK** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
-| **GraalVM** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
-| **Dragonwell** | Direct | `bin/java` | Simple directory structure |
-| **SAP Machine** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
-| **Liberica** | Direct | `bin/java` | Simple directory structure |
-| **Mandrel** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
-| **Kona** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
-| **Semeru** | Bundle | `Contents/Home/bin/java` | Standard macOS app bundle |
-| **Trava** | Direct | `bin/java` | Simple directory structure |
+| Distribution    | Structure Type | Directory Layout                       | Notes                           |
+| --------------- | -------------- | -------------------------------------- | ------------------------------- |
+| **Temurin**     | Bundle         | `Contents/Home/bin/java`               | Standard macOS app bundle       |
+| **Corretto**    | Direct         | `bin/java`                             | Simple directory structure      |
+| **Zulu**        | Hybrid         | Symlinks → `zulu-*.jdk/Contents/Home/` | Root symlinks for compatibility |
+| **OpenJDK**     | Bundle         | `Contents/Home/bin/java`               | Standard macOS app bundle       |
+| **GraalVM**     | Bundle         | `Contents/Home/bin/java`               | Standard macOS app bundle       |
+| **Dragonwell**  | Direct         | `bin/java`                             | Simple directory structure      |
+| **SAP Machine** | Bundle         | `Contents/Home/bin/java`               | Standard macOS app bundle       |
+| **Liberica**    | Direct         | `bin/java`                             | Simple directory structure      |
+| **Mandrel**     | Bundle         | `Contents/Home/bin/java`               | Standard macOS app bundle       |
+| **Kona**        | Bundle         | `Contents/Home/bin/java`               | Standard macOS app bundle       |
+| **Semeru**      | Bundle         | `Contents/Home/bin/java`               | Standard macOS app bundle       |
+| **Trava**       | Direct         | `bin/java`                             | Simple directory structure      |
 
 **Structure Types Explained:**
+
 - **Bundle**: JDK files are inside `Contents/Home/` following macOS application bundle conventions
 - **Direct**: JDK files (`bin/`, `lib/`, etc.) are directly at the root of the installation
 - **Hybrid**: Combination of bundle structure with convenience symlinks at the root (Zulu only)
@@ -713,11 +785,13 @@ min_disk_space_mb = 1024
 #### Custom Distributions
 
 The `additional_distributions` field allows you to use custom or private JDK distributions that are not in Kopi's default list. This is useful for:
+
 - Corporate internal JDK builds
 - Private distributions
 - Experimental or custom builds
 
 When configured, these distributions can be used with all Kopi commands:
+
 ```bash
 kopi install company-jdk@21
 kopi install CUSTOM-BUILD@17  # Case-insensitive
@@ -733,14 +807,19 @@ Kopi supports two formats for project-specific Java version configuration:
 #### `.java-version` (Compatibility Mode)
 
 Simple text file containing only a version number for compatibility with existing tools:
+
 ```
 21
 ```
+
 or
+
 ```
 11.0.2
 ```
+
 or
+
 ```
 21-ea
 ```
@@ -752,14 +831,19 @@ or
 #### `.kopi-version` (Native Format)
 
 Kopi's native format using `@` separator for distribution and version:
+
 ```
 temurin@21
 ```
+
 or
+
 ```
 corretto@11.0.2+9
 ```
+
 or
+
 ```
 zulu@21-ea+35
 ```
@@ -772,6 +856,7 @@ zulu@21-ea+35
 ### Version Resolution
 
 When a major version only is specified (e.g., `21`), kopi will:
+
 - Automatically select the latest available minor and patch version
 - For example, `21` might resolve to `21.0.2+13` if that's the latest available
 - This provides convenience while maintaining reproducibility once installed
@@ -779,6 +864,7 @@ When a major version only is specified (e.g., `21`), kopi will:
 ### Configuration Hierarchy
 
 Version resolution order (highest to lowest priority):
+
 1. Environment variable: `KOPI_JAVA_VERSION`
 2. `.kopi-version` file (walks up directory tree)
 3. `.java-version` file (walks up directory tree, for compatibility)
@@ -787,11 +873,13 @@ Version resolution order (highest to lowest priority):
 ## Shell Integration
 
 Kopi uses shims for transparent version management:
+
 - Add `~/.kopi/shims` to PATH
 - Creates shims for `java`, `javac`, `jar`, etc.
 - Automatic version switching based on project configuration
 
 The `kopi shell` command provides an alternative to shims:
+
 - Outputs shell-specific commands to set JDK environment variables
 - Sets `JAVA_HOME` and updates `PATH` to include JDK bin directory
 - Must be evaluated by your shell (e.g., `eval "$(kopi shell 21)"`)
@@ -846,23 +934,25 @@ When using commands like `uninstall` or `use`, partial version patterns match in
 - Pattern `21.0.7.6` matches any version starting with `21.0.7.6`
 
 **Note**: Kopi does not support version ranges or wildcards:
+
 - No Maven-style ranges: `[1.7,1.8)`, `(,1.8]`, `[1.5,)`
 - No npm-style ranges: `^1.2.3`, `~1.2.3`, `>=1.2.3 <2.0.0`
 - No wildcards: `21.*`, `11.0.*`
 
 This design keeps version management simple and reproducible.
 
-
 ## Environment Variables
 
 Kopi respects the following environment variables:
 
 ### Kopi-specific Variables
+
 - `KOPI_HOME` - Override default kopi home directory (default: `~/.kopi`)
 - `JAVA_HOME` - Set by kopi when switching JDK versions
 - `PATH` - Modified by kopi to include JDK bin directory
 
 ### HTTP Proxy Configuration
+
 Kopi supports standard HTTP proxy environment variables for downloading JDKs and fetching metadata:
 
 - `HTTP_PROXY` or `http_proxy` - Proxy server for HTTP requests
@@ -870,6 +960,7 @@ Kopi supports standard HTTP proxy environment variables for downloading JDKs and
 - `NO_PROXY` or `no_proxy` - Comma-separated list of hosts to bypass proxy
 
 **Examples:**
+
 ```bash
 # Set proxy for all requests
 export HTTP_PROXY=http://proxy.company.com:8080
@@ -887,6 +978,7 @@ HTTPS_PROXY=http://proxy:8080 kopi install 21
 ```
 
 **Notes:**
+
 - Proxy settings are automatically detected from environment variables
 - Both uppercase and lowercase variable names are supported
 - Authentication credentials can be included in the proxy URL
@@ -966,10 +1058,13 @@ directory = "${KOPI_HOME}/local-metadata"
 #### macOS-Specific Issues
 
 ##### JDK Not Found After Installation
+
 **Symptom**: After installing a JDK on macOS, commands like `java --version` fail with "command not found"
 
 **Causes and Solutions**:
+
 1. **Shims not in PATH**: Ensure `~/.kopi/shims` is in your PATH
+
    ```bash
    echo $PATH | grep -q "$HOME/.kopi/shims" || echo 'export PATH="$HOME/.kopi/shims:$PATH"' >> ~/.zshrc
    source ~/.zshrc
@@ -981,9 +1076,11 @@ directory = "${KOPI_HOME}/local-metadata"
    - If missing, try reinstalling: `kopi uninstall <version> && kopi install <version>`
 
 ##### Wrong JAVA_HOME on macOS
+
 **Symptom**: IDEs or build tools complain about incorrect JAVA_HOME
 
 **Solution**: Kopi automatically adjusts JAVA_HOME for bundle structures
+
 ```bash
 # Check current JAVA_HOME
 kopi env | grep JAVA_HOME
@@ -993,9 +1090,11 @@ kopi env | grep JAVA_HOME
 ```
 
 ##### Slow JDK Switching on macOS
+
 **Symptom**: Switching between JDKs takes longer than expected
 
 **Solutions**:
+
 1. **Metadata missing for old installations**: New installations create metadata for fast switching
    - Performance improves automatically for new installations
    - Existing JDKs continue to work but use runtime detection
@@ -1008,15 +1107,19 @@ kopi env | grep JAVA_HOME
 #### General Issues
 
 ##### Installation Fails with "No packages found"
+
 **Symptom**: `kopi install` reports no packages found for the requested version
 
 **Solutions**:
+
 1. **Refresh metadata cache**:
+
    ```bash
    kopi cache refresh
    ```
 
 2. **Check available versions**:
+
    ```bash
    kopi search <version>
    ```
@@ -1027,9 +1130,11 @@ kopi env | grep JAVA_HOME
    ```
 
 ##### Disk Space Issues
+
 **Symptom**: Installation fails with disk space errors
 
 **Solution**: Check available space and configuration:
+
 ```bash
 # Check disk space
 df -h ~/.kopi
@@ -1039,9 +1144,11 @@ echo 'min_disk_space_mb = 250' >> ~/.kopi/config.toml
 ```
 
 ##### Proxy Configuration Issues
+
 **Symptom**: Downloads fail behind corporate proxy
 
 **Solution**: Set proxy environment variables:
+
 ```bash
 export HTTP_PROXY=http://proxy.company.com:8080
 export HTTPS_PROXY=http://proxy.company.com:8080
@@ -1049,10 +1156,13 @@ export NO_PROXY=localhost,127.0.0.1
 ```
 
 ##### Permission Denied Errors
+
 **Symptom**: Installation or shim execution fails with permission errors
 
 **Solutions**:
+
 1. **Fix directory permissions**:
+
    ```bash
    chmod -R u+rwX ~/.kopi
    ```
@@ -1063,9 +1173,11 @@ export NO_PROXY=localhost,127.0.0.1
    ```
 
 ##### Version Detection Not Working
+
 **Symptom**: Kopi doesn't detect `.kopi-version` or `.java-version` files
 
 **Solutions**:
+
 1. **Check file location**: Files must be in current or parent directories
 2. **Verify file format**: Ensure no extra whitespace or characters
 3. **Test with explicit path**:
@@ -1076,7 +1188,9 @@ export NO_PROXY=localhost,127.0.0.1
 ### Diagnostic Tools
 
 #### Using kopi doctor
+
 The `doctor` command helps diagnose common issues:
+
 ```bash
 # Run all diagnostics
 kopi doctor
@@ -1091,14 +1205,18 @@ kopi -v doctor
 ```
 
 #### Debug Logging
+
 Enable debug logging for detailed troubleshooting:
+
 ```bash
 RUST_LOG=debug kopi install 21
 RUST_LOG=trace kopi current
 ```
 
 #### Manual Verification
+
 Check installation integrity:
+
 ```bash
 # List all installations
 kopi list

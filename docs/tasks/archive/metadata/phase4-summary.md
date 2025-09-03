@@ -7,22 +7,26 @@ Phase 4 successfully implemented the HttpMetadataSource, which serves as the pri
 ## Implemented Features
 
 ### 1. Core HttpMetadataSource (`src/metadata/http.rs`)
+
 - Fetches metadata from any HTTP/HTTPS static web server
 - Implements the `MetadataSource` trait with all required methods
 - Uses `attohttpc` for HTTP requests with proper error handling
 - Simple, stateless design without caching complexity
 
 ### 2. Platform Filtering
+
 - Automatically filters metadata based on current platform (architecture, OS, libc type)
 - Reduces bandwidth usage by 75-90% by only downloading relevant metadata
 - Supports all platforms: Linux (glibc/musl), macOS, Windows
 
 ### 3. Index File Support
+
 - Parses `index.json` to discover available metadata files
 - Supports version 2 index format with platform filtering metadata
 - Validates index structure and handles parsing errors gracefully
 
 ### 4. Error Handling
+
 - Graceful handling of network errors
 - Partial fetch success (continues if some files fail)
 - Clear error messages with context
@@ -50,6 +54,7 @@ let last_updated = source.last_updated()?;
 ## Testing
 
 ### Unit Tests (10 tests)
+
 - Basic functionality tests
 - Platform filtering logic
 - HTTP error handling
@@ -57,11 +62,13 @@ let last_updated = source.last_updated()?;
 - JSON serialization compatibility
 
 ### Integration Tests
+
 - Created `tests/http_metadata_integration.rs` for testing against real servers
 - Tests are marked with `#[ignore]` and can be run manually
 - Supports custom server URLs via environment variable
 
 ### Example Usage
+
 - Integration tests demonstrate real-world usage
 - Shows error handling patterns
 - Provides examples of fetching metadata by distribution

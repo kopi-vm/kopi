@@ -68,16 +68,19 @@ timeout_secs = 30
 ## Source-Specific Settings
 
 ### Foojay Source
+
 - `base_url`: API endpoint
 - `timeout_secs`: Request timeout
 - `retry_attempts`: Number of retries on failure
 
 ### Local Directory Source
+
 - `directory`: Path to directory containing tar.gz archives
 - `archive_pattern`: Glob pattern for archive files
 - `cache_extracted`: Whether to cache extracted metadata
 
 ### HTTP/Web Source
+
 - `base_url`: Base URL of the web server
 - `cache_locally`: Whether to cache downloaded metadata
 - `timeout_secs`: Request timeout
@@ -90,7 +93,7 @@ Configuration can be overridden with environment variables using the `KOPI_` pre
 # Override primary source
 export KOPI_METADATA__PRIMARY_SOURCE=local
 
-# Override fallback source  
+# Override fallback source
 export KOPI_METADATA__FALLBACK_SOURCE=foojay
 
 # Override specific source settings
@@ -105,6 +108,7 @@ export KOPI_METADATA__CACHE__AUTO_REFRESH=false
 ```
 
 The pattern follows: `KOPI_<SECTION>__<SUBSECTION>__<FIELD>`
+
 - Single underscore (`_`) after KOPI prefix
 - Double underscore (`__`) for nested field separation
 - All uppercase letters
@@ -161,6 +165,7 @@ The configuration is validated at startup:
 ## Examples
 
 ### Offline Environment
+
 ```toml
 [metadata]
 primary_source = "local"
@@ -174,6 +179,7 @@ enabled = false
 ```
 
 ### Corporate Network with Fallback
+
 ```toml
 [metadata]
 primary_source = "http"
@@ -187,6 +193,7 @@ enabled = true  # Fallback to public API if internal server is unavailable
 ```
 
 ### Default Configuration with Bundled Fallback
+
 ```toml
 [metadata]
 primary_source = "http"
@@ -202,6 +209,7 @@ directory = "${KOPI_HOME}/bundled-metadata"
 ```
 
 ### Development/Testing
+
 ```toml
 [metadata]
 primary_source = "local"

@@ -1,6 +1,6 @@
 # Traceable Development Lifecycle (TDL)
 
-*Structured phases, linked artifacts, verifiable outcomes*
+_Structured phases, linked artifacts, verifiable outcomes_
 
 This document describes the Traceable Development Lifecycle (TDL), a template-based development process that ensures full traceability from requirements to implementation.
 
@@ -20,6 +20,7 @@ graph LR
 ```
 
 **Key paths:**
+
 - Analysis discovers both requirements and architectural concerns
 - ADRs can generate new requirements (constraints/standards)
 - Both requirements and ADRs feed into design decisions
@@ -108,6 +109,7 @@ graph LR
 This project supports parallel development using git-worktree with unique IDs to prevent conflicts.
 
 **→ See [`parallel-development.md`](parallel-development.md) for details on:**
+
 - 5-character random ID generation
 - Avoiding merge conflicts
 - On-demand traceability viewing
@@ -133,7 +135,7 @@ This project supports parallel development using git-worktree with unique IDs to
   - Identifying architectural decisions that need to be made
 - **Traceability Update**: Add new analysis document to `docs/traceability.md` immediately upon creation
 
-### Step 2: Requirements (what/why) 
+### Step 2: Requirements (what/why)
 
 - **Purpose**: Formalize individual requirements with clear acceptance criteria
 - **Template**: [`templates/requirements.md`](templates/requirements.md) - Template for individual requirement documents (FR-<id>-<capability> or NFR-<id>-<quality>). Each requirement is a standalone, long-lived document
@@ -156,7 +158,7 @@ This project supports parallel development using git-worktree with unique IDs to
   - Don't assume patterns from other tools apply - each project has its own conventions
   - Reference specific code locations when describing current state
   - Document both the decision and its rationale with concrete examples
-- **Templates**: 
+- **Templates**:
   - [`templates/adr.md`](templates/adr.md) - Full ADR template for architecturally significant decisions, broad impact, or important trade-offs
   - [`templates/adr-lite.md`](templates/adr-lite.md) - Lightweight ADR for tactical choices with limited scope and clear best practices
 - **Output**: ADR documents with decisions, rationale, and consequences
@@ -314,7 +316,7 @@ Update the Links section in documents when:
 - For trivial fixes, you may skip the full workflow if **ALL** these criteria apply:
   - Code changes < 50 lines
   - No new dependencies
-  - No API changes  
+  - No API changes
   - No architectural impact
   - Single file modification
   - Estimated execution time < 30 minutes

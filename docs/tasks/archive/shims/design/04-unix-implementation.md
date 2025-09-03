@@ -31,23 +31,23 @@ fn install_shim_binary(shim_dir: &Path) -> Result<()> {
         .parent()
         .ok_or("Cannot find kopi installation directory")?
         .join("kopi-shim");
-    
+
     let dest = shim_dir.join("kopi-shim");
     fs::copy(&source, &dest)?;
-    
+
     // Make it executable
     let mut perms = fs::metadata(&dest)?.permissions();
     use std::os::unix::fs::PermissionsExt;
     perms.set_mode(0o755);
     fs::set_permissions(&dest, perms)?;
-    
+
     Ok(())
 }
 
 #[cfg(unix)]
 fn create_shim_for_tool(shim_dir: &Path, tool_name: &str) -> Result<()> {
     let shim_path = shim_dir.join(tool_name);
-    
+
     // Create symlink to kopi-shim (relative path for portability)
     if shim_path.exists() {
         fs::remove_file(&shim_path)?;

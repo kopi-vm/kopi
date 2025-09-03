@@ -1,6 +1,7 @@
 # Process-level locking for uninstallation operations
 
 ## Metadata
+
 - ID: FR-ui8x2
 - Type: Functional Requirement
 - Category: Platform
@@ -12,6 +13,7 @@
 - Date Modified: 2025-09-03
 
 ## Links
+
 - Implemented by Tasks: N/A – Not yet implemented
 - Related Requirements: FR-02uqo, FR-gbsz6
 - Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
@@ -26,6 +28,7 @@ The system SHALL provide exclusive process-level locking for JDK uninstallation 
 ## Rationale
 
 Without process-level locking, concurrent uninstallation operations could result in:
+
 - Partial directory deletions leaving orphaned files
 - Race conditions with installation processes
 - Conflicts when one process is using a JDK while another removes it
@@ -47,6 +50,7 @@ As a kopi user, I want uninstallation operations to be safe and atomic, so that 
 ## Technical Details (if applicable)
 
 ### Functional Requirement Details
+
 - Use the same lock file as installation: `~/.kopi/locks/{vendor}-{version}-{os}-{arch}.lock`
 - Lock type: Exclusive (writer) lock
 - Lock must be held for entire uninstallation process
@@ -56,17 +60,20 @@ As a kopi user, I want uninstallation operations to be safe and atomic, so that 
 ## Verification Method
 
 ### Test Strategy
+
 - Test Type: Integration
 - Test Location: `tests/locking_tests.rs` (planned)
 - Test Names: `test_fr_ui8x2_concurrent_uninstall`, `test_fr_ui8x2_install_uninstall_conflict`
 
 ### Verification Commands
+
 ```bash
 # Specific commands to verify this requirement
 cargo test test_fr_ui8x2
 ```
 
 ### Success Metrics
+
 - Metric 1: Zero partial removals during concurrent uninstall attempts
 - Metric 2: 100% atomic operations (complete success or complete failure)
 
@@ -78,24 +85,27 @@ cargo test test_fr_ui8x2
 ## Platform Considerations
 
 ### Unix
+
 - Directory removal using `std::fs::remove_dir_all`
 - Lock files in `$KOPI_HOME/locks/`
 
 ### Windows
+
 - Directory removal handling Windows file locks
 - Lock files in `%KOPI_HOME%\locks\`
 
 ### Cross-Platform
+
 - Consistent lock file naming across platforms
 - Handle platform-specific file deletion behaviors
 
 ## Risks & Mitigation
 
-| Risk | Impact | Likelihood | Mitigation | Validation |
-|------|--------|------------|------------|------------|
-| JDK in use during uninstall | High | Medium | Check for running processes | Test with active Java processes |
-| Partial deletion on crash | Medium | Low | Use transactional approach | Kill process during uninstall |
-| Lock file orphaned | Low | Low | Cleanup on startup | Monitor lock directory |
+| Risk                        | Impact | Likelihood | Mitigation                  | Validation                      |
+| --------------------------- | ------ | ---------- | --------------------------- | ------------------------------- |
+| JDK in use during uninstall | High   | Medium     | Check for running processes | Test with active Java processes |
+| Partial deletion on crash   | Medium | Low        | Use transactional approach  | Kill process during uninstall   |
+| Lock file orphaned          | Low    | Low        | Cleanup on startup          | Monitor lock directory          |
 
 ## Implementation Notes
 
@@ -105,6 +115,7 @@ cargo test test_fr_ui8x2
 - Clean up symlinks and shims after directory removal
 
 ## External References
+
 N/A – No external references
 
 ## Change History

@@ -26,25 +26,25 @@ use crate::error::Result;
 pub trait MetadataSource: Send + Sync {
     /// Get a unique identifier for this source
     fn id(&self) -> &str;
-    
+
     /// Get a human-readable name for this source
     fn name(&self) -> &str;
-    
+
     /// Check if the source is available and can be accessed
     fn is_available(&self) -> Result<bool>;
-    
+
     /// Fetch all available metadata from this source
     /// For foojay: returns metadata with is_complete=false
     /// For local/GitHub: returns metadata with is_complete=true
     fn fetch_all(&self) -> Result<Vec<JdkMetadata>>;
-    
+
     /// Fetch metadata for a specific distribution
     fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>>;
-    
+
     /// Fetch complete details for a specific package (used by MetadataResolver)
     /// Only needed for sources that return incomplete metadata
     fn fetch_package_details(&self, package_id: &str) -> Result<PackageDetails>;
-    
+
     /// Get the last update time of the source (if applicable)
     fn last_updated(&self) -> Result<Option<chrono::DateTime<chrono::Utc>>>;
 }
@@ -75,13 +75,13 @@ impl MetadataProvider {
         let source_id = source.id().to_string();
         let mut sources = HashMap::new();
         sources.insert(source_id.clone(), source);
-        
+
         Self {
             sources,
             primary_source: source_id,
         }
     }
-    
+
     /// Get metadata from the primary source
     pub fn fetch_all(&self) -> Result<Vec<JdkMetadata>> {
         let source = self.sources.get(&self.primary_source).ok_or_else(|| {
@@ -90,10 +90,10 @@ impl MetadataProvider {
                 self.primary_source
             ))
         })?;
-        
+
         source.fetch_all()
     }
-    
+
     /// Fetch metadata for a specific distribution
     pub fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>> {
         let source = self.sources.get(&self.primary_source).ok_or_else(|| {
@@ -102,10 +102,10 @@ impl MetadataProvider {
                 self.primary_source
             ))
         })?;
-        
+
         source.fetch_distribution(distribution)
     }
-    
+
     /// Ensure metadata has all required fields (lazy loading)
     pub fn ensure_complete(&self, metadata: &mut JdkMetadata) -> Result<()> {
         if !metadata.is_complete {
@@ -115,7 +115,7 @@ impl MetadataProvider {
                     self.primary_source
                 ))
             })?;
-            
+
             let details = source.fetch_package_details(&metadata.id)?;
             metadata.download_url = Some(details.download_url);
             metadata.checksum = details.checksum;
@@ -124,7 +124,7 @@ impl MetadataProvider {
         }
         Ok(())
     }
-    
+
     /// Batch resolve multiple metadata entries
     pub fn ensure_complete_batch(&self, metadata_list: &mut [JdkMetadata]) -> Result<()> {
         // For now, process each item individually
@@ -151,19 +151,19 @@ pub struct JdkMetadata {
     pub operating_system: OperatingSystem,
     pub package_type: PackageType,
     pub archive_type: ArchiveType,
-    
+
     // Lazy-loaded fields (may be None if not yet loaded from foojay)
     pub download_url: Option<String>,
     pub checksum: Option<String>,
     pub checksum_type: Option<ChecksumType>,
-    
+
     pub size: u64,
     pub lib_c_type: Option<String>,
     pub javafx_bundled: bool,
     pub term_of_support: Option<String>,
     pub release_status: Option<String>,
     pub latest_build_available: Option<bool>,
-    
+
     // Tracks whether lazy fields have been loaded
     #[serde(skip)]
     pub is_complete: bool,
@@ -177,16 +177,16 @@ pub struct JdkMetadata {
 pub enum MetadataSourceError {
     #[error("Source '{0}' is not available")]
     SourceUnavailable(String),
-    
+
     #[error("Failed to parse metadata: {0}")]
     ParseError(String),
-    
+
     #[error("Network error: {0}")]
     NetworkError(String),
-    
+
     #[error("Configuration error: {0}")]
     ConfigError(String),
-    
+
     #[error(transparent)]
     Other(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
@@ -199,7 +199,7 @@ pub enum MetadataSourceError {
 pub fn get_available_jdks(config: &KopiConfig) -> Result<Vec<JdkMetadata>> {
     let provider = MetadataProvider::from_config(config)?;
     let cache = provider.get_metadata()?;
-    
+
     // Use metadata as before
     let results = cache.search(&search_query)?;
     Ok(results)
@@ -209,13 +209,13 @@ pub fn get_available_jdks(config: &KopiConfig) -> Result<Vec<JdkMetadata>> {
 pub fn download_jdk(config: &KopiConfig, package_id: &str) -> Result<()> {
     let provider = MetadataProvider::from_config(config)?;
     let mut metadata = provider.find_package(package_id)?;
-    
+
     // Ensure download_url is loaded
     provider.ensure_complete(&mut metadata)?;
-    
+
     let download_url = metadata.download_url
         .ok_or_else(|| KopiError::MissingField("download_url"))?;
-    
+
     // Proceed with download...
 }
 ```

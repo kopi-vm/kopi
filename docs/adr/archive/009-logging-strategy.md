@@ -1,11 +1,12 @@
 # ADR-009: Logging Strategy
 
 ## Status
+
 Proposed
 
 ## Context
 
-Kopi requires a robust logging strategy to support debugging, monitoring, and operational visibility. The current codebase uses the `log` crate facade but lacks a logger implementation, resulting in no actual log output. 
+Kopi requires a robust logging strategy to support debugging, monitoring, and operational visibility. The current codebase uses the `log` crate facade but lacks a logger implementation, resulting in no actual log output.
 
 After researching popular CLI tools and version managers, we found that most tools use a combination of CLI flags (-v/--verbose) and environment variables for debug output. Structured logging is rarely used in CLI applications, and logging configuration in project files is considered an anti-pattern.
 
@@ -49,6 +50,7 @@ We need to select and implement a logging solution that meets the following requ
 We researched popular CLI tools to understand common patterns:
 
 **Version Managers:**
+
 - **nvm**: No built-in verbose/debug option
 - **pyenv**: Uses `PYENV_DEBUG=1` environment variable
 - **rbenv**: Uses `RBENV_DEBUG` or `rbenv --debug <command>`
@@ -56,12 +58,14 @@ We researched popular CLI tools to understand common patterns:
 - **fnm**: Supports both `FNM_LOGLEVEL=info` and `--log-level` flag
 
 **Package Managers:**
+
 - **npm**: Uses `-d/-dd/-ddd` flags and `NPM_CONFIG_LOGLEVEL` environment variable
 - **pip**: Uses `-v/-vv/-vvv` for verbosity levels
 - **cargo**: Separates user-facing verbosity (-v/-vv) from internal debug logging (CARGO_LOG)
 - **brew**: Uses `-v/--verbose` and `-d/--debug` flags plus `HOMEBREW_VERBOSE`
 
 **Key Insights:**
+
 1. Most tools default to minimal output
 2. CLI flags (-v/--verbose) are the primary interface for users
 3. Environment variables are used for persistent configuration or advanced debugging
@@ -71,6 +75,7 @@ We researched popular CLI tools to understand common patterns:
 ### Why NOT Project-Level Logging Configuration
 
 After analyzing tools like npm, cargo, and gradle, we found that NONE put logging config in project files:
+
 - **Security Risk**: Verbose logging can expose sensitive information
 - **Team Friction**: Different developers want different log levels
 - **Git Problems**: Accidentally committing debug configuration
@@ -83,6 +88,7 @@ After analyzing tools like npm, cargo, and gradle, we found that NONE put loggin
 The standard combination used by most Rust CLI tools.
 
 **Implementation:**
+
 ```rust
 // In main.rs
 use env_logger::Builder;
@@ -95,12 +101,13 @@ fn main() -> Result<()> {
         .format_timestamp(None)  // No timestamps for CLI
         .format_target(false)     // Cleaner output
         .init();
-    
+
     // Existing code...
 }
 ```
 
 **Advantages:**
+
 - Industry standard for Rust CLI tools
 - Users expect RUST_LOG to work
 - Minimal dependencies (env_logger = ~200KB)
@@ -109,12 +116,14 @@ fn main() -> Result<()> {
 - Compile-time optimization removes disabled levels
 
 **Disadvantages:**
+
 - Limited to console output without extensions
 - No built-in file logging or rotation
 - Basic formatting options
 - No structured logging without additional work
 
 **Usage Example:**
+
 ```bash
 # Normal operation - no output
 kopi install 21
@@ -134,6 +143,7 @@ RUST_LOG=trace kopi install 21
 More flexible logger with file output capabilities.
 
 **Implementation:**
+
 ```rust
 use flexi_logger::{Logger, LogSpecification};
 
@@ -142,12 +152,13 @@ fn main() -> Result<()> {
         .log_to_stdout()
         .format(flexi_logger::opt_format)
         .start()?;
-    
+
     // Existing code...
 }
 ```
 
 **Advantages:**
+
 - File logging with rotation support
 - Runtime log level changes
 - Multiple output targets
@@ -155,6 +166,7 @@ fn main() -> Result<()> {
 - Can write different levels to different outputs
 
 **Disadvantages:**
+
 - Larger dependency (~400KB)
 - More complex API
 - Overkill for simple CLI logging
@@ -165,6 +177,7 @@ fn main() -> Result<()> {
 Modern async-first logging and diagnostics.
 
 **Implementation:**
+
 ```rust
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -176,12 +189,13 @@ fn main() -> Result<()> {
             .with_thread_names(false))
         .with(tracing_subscriber::EnvFilter::from_default_env())
         .init();
-    
+
     // Existing code...
 }
 ```
 
 **Advantages:**
+
 - Structured logging with spans
 - Better for async code
 - Rich ecosystem
@@ -189,6 +203,7 @@ fn main() -> Result<()> {
 - Excellent performance
 
 **Disadvantages:**
+
 - Larger dependency footprint (~600KB)
 - More complex mental model
 - Overkill for synchronous CLI tool
@@ -199,6 +214,7 @@ fn main() -> Result<()> {
 Lightweight, performance-focused logger.
 
 **Implementation:**
+
 ```rust
 use fern;
 
@@ -220,12 +236,14 @@ fn setup_logging() -> Result<(), fern::InitError> {
 ```
 
 **Advantages:**
+
 - Zero-allocation design
 - Very fast
 - Clean configuration API
 - Small dependency
 
 **Disadvantages:**
+
 - No RUST_LOG support out of the box
 - Less community adoption
 - Manual environment variable handling needed
@@ -235,26 +253,28 @@ fn setup_logging() -> Result<(), fern::InitError> {
 Minimal logger implementation.
 
 **Advantages:**
+
 - Extremely simple
 - Tiny dependency
 - Good for basic needs
 
 **Disadvantages:**
+
 - Too basic for production use
 - No module filtering
 - Limited configuration
 
 ## Comparison Matrix
 
-| Aspect | env_logger | flexi_logger | tracing | fern | simple_logger |
-|--------|------------|--------------|---------|------|---------------|
-| **Setup Complexity** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Performance** | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Features** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
-| **Binary Size Impact** | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Ecosystem Standard** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
-| **Module Filtering** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ❌ |
-| **Future Flexibility** | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐ |
+| Aspect                 | env_logger | flexi_logger | tracing    | fern       | simple_logger |
+| ---------------------- | ---------- | ------------ | ---------- | ---------- | ------------- |
+| **Setup Complexity**   | ⭐⭐⭐⭐⭐ | ⭐⭐⭐       | ⭐⭐       | ⭐⭐⭐⭐   | ⭐⭐⭐⭐⭐    |
+| **Performance**        | ⭐⭐⭐⭐   | ⭐⭐⭐       | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐      |
+| **Features**           | ⭐⭐⭐     | ⭐⭐⭐⭐⭐   | ⭐⭐⭐⭐⭐ | ⭐⭐⭐     | ⭐⭐          |
+| **Binary Size Impact** | ⭐⭐⭐⭐   | ⭐⭐⭐       | ⭐⭐       | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐    |
+| **Ecosystem Standard** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐       | ⭐⭐⭐⭐   | ⭐⭐       | ⭐⭐          |
+| **Module Filtering**   | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐   | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐   | ❌            |
+| **Future Flexibility** | ⭐⭐⭐     | ⭐⭐⭐⭐     | ⭐⭐⭐⭐⭐ | ⭐⭐⭐     | ⭐            |
 
 ## Decision
 
@@ -280,6 +300,7 @@ We will use **log + env_logger** as our logging solution with a focus on CLI fla
 ### Implementation Strategy
 
 #### Phase 1: CLI-First Implementation
+
 ```rust
 // Cargo.toml
 [dependencies]
@@ -291,7 +312,7 @@ struct Cli {
     /// Increase verbosity (-v info, -vv debug, -vvv trace)
     #[clap(short, long, action = clap::ArgAction::Count, global = true)]
     verbose: u8,
-    
+
     #[clap(subcommand)]
     command: Commands,
 }
@@ -305,7 +326,7 @@ fn setup_logger(cli: &Cli) {
         2 => "debug",  // -vv: show debug messages
         _ => "trace",  // -vvv or more: show everything
     };
-    
+
     // RUST_LOG can override if set
     env_logger::Builder::from_env(
         env_logger::Env::default().default_filter_or(default_level)
@@ -317,6 +338,7 @@ fn setup_logger(cli: &Cli) {
 ```
 
 #### Phase 2: Usage Examples
+
 ```bash
 # Normal operation - warnings and errors only (silent by default)
 kopi install 21
@@ -324,7 +346,7 @@ kopi install 21
 # See what kopi is doing
 kopi install 21 -v
 
-# Debug installation issues  
+# Debug installation issues
 kopi install 21 -vv
 
 # Trace everything (very verbose)
@@ -341,6 +363,7 @@ kopi use 21
 ```
 
 #### Phase 3: Simple Logging Patterns
+
 ```rust
 // Keep logging simple - no structured logging needed
 log::info!("Installing JDK {}", version);
@@ -390,6 +413,7 @@ log::info!("Extracted {} files", count);
 ## Consequences
 
 ### Positive
+
 - Discoverable through `--help` (CLI flags)
 - Follows industry patterns from cargo, npm, pip
 - Simple implementation without structured logging complexity
@@ -399,11 +423,13 @@ log::info!("Extracted {} files", count);
 - Small binary size impact
 
 ### Negative
+
 - No structured logging (but not needed for CLI tools)
 - No project-specific logging config (intentional security choice)
 - Users must specify verbosity per invocation or set environment variable
 
 ### Neutral
+
 - RUST_LOG serves as advanced/power-user feature
 - Simple debug prints instead of structured logs
 - No log file output (can add later if needed)
@@ -419,6 +445,7 @@ log::info!("Extracted {} files", count);
 4. **Metrics**: Consider adding metrics collection separately from logging.
 
 ## References
+
 - [log crate documentation](https://docs.rs/log/)
 - [env_logger documentation](https://docs.rs/env_logger/)
 - [The Rust Programming Language - Using env_logger](https://rust-cli.github.io/book/tutorial/output.html)

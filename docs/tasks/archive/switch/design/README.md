@@ -14,12 +14,12 @@ All version switching commands integrate with Kopi's auto-installation feature (
 
 ## Command Structure
 
-| Scope | Primary Command | Alias Command | Priority | Persistence |
-|-------|----------------|---------------|----------|-------------|
-| Current | `kopi current` | - | - | Shows active version |
-| Shell | `kopi shell <version> [--shell <type>]` | `kopi use <version> [--shell <type>]` | Highest | Temporary (subprocess session) |
-| Project | `kopi local <version>` | `kopi pin <version>` | Medium | Persistent (.kopi-version file) |
-| Global | `kopi global <version>` | `kopi default <version>` | Lowest | Persistent (~/.kopi/version) |
+| Scope   | Primary Command                         | Alias Command                         | Priority | Persistence                     |
+| ------- | --------------------------------------- | ------------------------------------- | -------- | ------------------------------- |
+| Current | `kopi current`                          | -                                     | -        | Shows active version            |
+| Shell   | `kopi shell <version> [--shell <type>]` | `kopi use <version> [--shell <type>]` | Highest  | Temporary (subprocess session)  |
+| Project | `kopi local <version>`                  | `kopi pin <version>`                  | Medium   | Persistent (.kopi-version file) |
+| Global  | `kopi global <version>`                 | `kopi default <version>`              | Lowest   | Persistent (~/.kopi/version)    |
 
 ## Version Resolution Order
 
@@ -44,6 +44,7 @@ If no version is found through any of these methods, the shim will error and sug
 ### Version Format
 
 All commands support the following version formats:
+
 - Simple version: `17`, `11`, `21`
 - Full version: `17.0.5`, `11.0.2`
 - Distribution with version: `temurin@17`, `openjdk@11.0.2`, `corretto@17.0.5`
@@ -51,6 +52,7 @@ All commands support the following version formats:
 ### Error Handling
 
 All commands follow these error handling principles:
+
 - Clear error messages with actionable suggestions
 - Validation of version availability before setting
 - Graceful fallback when versions are not found
@@ -65,7 +67,8 @@ All commands follow these error handling principles:
 
 ## Implementation Status
 
-**Current Implementation State**: 
+**Current Implementation State**:
+
 - ✅ **Version Resolution**: Fully implemented in `src/version/resolver.rs` with proper priority order
 - ✅ **Shim System**: Complete with auto-installation, security validation, and tool discovery
 - ✅ **Platform Infrastructure**: Shell detection, process execution, and platform-specific utilities
@@ -74,8 +77,9 @@ All commands follow these error handling principles:
   - Only `install`, `cache`, `setup`, and `shim` commands are functional
 
 **Integration with Shim Architecture**:
+
 - Shims read environment variable and version files using `VersionResolver`
-- Version resolution happens at command execution time  
+- Version resolution happens at command execution time
 - Auto-installation provides seamless experience for missing versions
 - Security validation ensures safe tool execution
 
@@ -83,13 +87,14 @@ All commands follow these error handling principles:
 
 Commands have different behaviors when a non-existent version is specified:
 
-| Command | Auto-Install Support | Behavior |
-|---------|---------------------|----------|
-| `kopi shell` | Yes | Prompts to install missing version (if enabled in config) |
-| `kopi local` | Yes | Prompts to install missing version, creates version file regardless |
-| `kopi global` | Yes | Prompts to install missing version, only sets global if install succeeds |
+| Command       | Auto-Install Support | Behavior                                                                 |
+| ------------- | -------------------- | ------------------------------------------------------------------------ |
+| `kopi shell`  | Yes                  | Prompts to install missing version (if enabled in config)                |
+| `kopi local`  | Yes                  | Prompts to install missing version, creates version file regardless      |
+| `kopi global` | Yes                  | Prompts to install missing version, only sets global if install succeeds |
 
 This design allows:
+
 - All commands to offer convenient auto-installation when enabled
 - Local command to create version files even if installation is declined (for team collaboration)
 - Global command to ensure the version is actually available before setting it as default

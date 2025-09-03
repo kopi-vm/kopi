@@ -1,6 +1,7 @@
 # [Component/Feature] Design
 
 ## Metadata
+
 - Type: Design
 - Owner: [Person or role]
 - Reviewers: [Names/roles]
@@ -9,7 +10,9 @@
 - Date Created: YYYY-MM-DD
 
 ## Links
+
 <!-- Internal project artifacts only. For external resources, see External References section -->
+
 - Requirements: docs/tasks/T-<id>-<task>/requirements.md | N/A – <reason>
 - Plan: docs/tasks/T-<id>-<task>/plan.md | N/A – <reason>
 - Related ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
@@ -21,6 +24,7 @@
 [One-paragraph summary of the problem, motivation, and expected outcome.]
 
 ## Success Metrics
+
 - [ ] [Measurable product/engineering impact]
 - [ ] [Performance target (e.g., <X ms, <Y MB)]
 - [ ] [Reliability target (e.g., zero regressions)]
@@ -39,25 +43,31 @@
 - List referenced requirement IDs only; avoid duplicating full text.
 
 Referenced Functional Requirements
+
 - FR-<id>, FR-<id>, FR-<id>
 
 Referenced Non-Functional Requirements
+
 - NFR-<id> (performance), NFR-<id> (security), NFR-<id> (compatibility), etc.
 
 ## Proposed Design
 
 ### High-Level Architecture
+
 ```
 [ASCII diagram of components and data flows]
 ```
 
 ### Components
+
 - [Modules/structs/functions and responsibilities]
 
 ### Data Flow
+
 - [Sequence of operations from input to output]
 
 ### Storage Layout and Paths (if applicable)
+
 - JDKs: `~/.kopi/jdks/<vendor>-<version>/`
 - Shims: `~/.kopi/shims/`
 - Config: `~/.kopi/config.toml`
@@ -66,57 +76,69 @@ Referenced Non-Functional Requirements
 ### CLI/API Design (if applicable)
 
 Usage
+
 ```bash
 kopi <command> [options]
 ```
 
 Options
+
 - `--flag`: [Description]
 - `--option <value>`: [Description]
 
 Examples
+
 ```bash
 kopi <command> <example-1>
 kopi <command> <example-2> --flag
 ```
 
 Implementation Notes
+
 - Use `clap` derive API for argument parsing with clear, English help messages.
 
 ### Data Models and Types
+
 - [Structs/enums/fields; serialization formats; version formats]
 
 ### Error Handling
+
 - Use `KopiError` variants with actionable, English messages.
 - Integrate with `ErrorContext` for enriched output and correct exit codes.
 - Exit codes: [2 invalid input/config, 3 no local version, 4 JDK not installed, 13 permission, 20 network, 28 disk, 127 not found].
 
 ### Security Considerations
+
 - [HTTPS verification, checksum validation, unsafe path handling, permission checks]
 
 ### Performance Considerations
+
 - [Hot paths; caching strategy; async/concurrency; I/O; progress indicators]
 - Reference perf workflows: `cargo perf`, `cargo bench`.
 
 ### Platform Considerations
 
 #### Unix
+
 - [Paths/permissions/behavior; symlinks]
 
 #### Windows
+
 - [Registry/junctions; path separators; ACLs]
 
 #### Filesystem
+
 - [Case sensitivity; long paths; temp files]
 
 ## ADR References
 
 <!-- Map key design decisions to ADRs -->
-| Design Decision | ADR | Status |
-|-----------------|-----|--------|
-| [Error handling approach] | ADR-004 | Accepted |
-| [Caching strategy] | ADR-<id> | Proposed |
-| [New decision needed] | TBD | Draft needed |
+
+| Design Decision           | ADR      | Status       |
+| ------------------------- | -------- | ------------ |
+| [Error handling approach] | ADR-004  | Accepted     |
+| [Caching strategy]        | ADR-<id> | Proposed     |
+| [New decision needed]     | TBD      | Draft needed |
 
 ## Alternatives Considered
 
@@ -128,6 +150,7 @@ Implementation Notes
    - Cons: [List]
 
 Decision Rationale
+
 - [Why chosen approach; trade-offs]. Link/update ADR as needed.
 
 ## Migration and Compatibility
@@ -140,16 +163,20 @@ Decision Rationale
 ## Testing Strategy
 
 ### Unit Tests
+
 - Place tests next to code with `#[cfg(test)]`; cover happy paths and edge cases.
 
 ### Integration Tests
+
 - Add scenarios under `tests/`; avoid mocks; exercise CLI/IO boundaries.
 - Use alias `cargo it` for quick runs.
 
 ### External API Parsing (if applicable)
+
 - Include at least one unit test with captured JSON (curl) as an inline string parsed with `serde`; assert key fields.
 
 ### Performance & Benchmarks (if applicable)
+
 - `cargo perf` (feature `perf_tests`) and `cargo bench`; define thresholds and compare trends.
 
 ## Implementation Plan
@@ -161,11 +188,11 @@ Decision Rationale
 
 - Map requirements to design sections and tests for traceability.
 
-| Requirement | Design Section | Test(s) / Benchmark(s) |
-|-------------|----------------|-------------------------|
-| FR-001 | [Section name] | tests/[...], unit #[...] |
-| FR-002 | [Section name] | tests/[...], it #[...] |
-| NFR-010 | Performance Considerations | bench: [...], perf #[...] |
+| Requirement | Design Section             | Test(s) / Benchmark(s)    |
+| ----------- | -------------------------- | ------------------------- |
+| FR-001      | [Section name]             | tests/[...], unit #[...]  |
+| FR-002      | [Section name]             | tests/[...], it #[...]    |
+| NFR-010     | Performance Considerations | bench: [...], perf #[...] |
 
 ## Documentation Impact
 
@@ -174,7 +201,9 @@ Decision Rationale
 - Add or update `/docs/adr/` entries for design decisions (rationale and alternatives).
 
 ## External References (optional)
+
 <!-- External standards, specifications, articles, or documentation -->
+
 - [External resource title](https://example.com) - Brief description
 
 ## Open Questions
@@ -184,16 +213,19 @@ Decision Rationale
 ## Appendix
 
 ### Diagrams
+
 ```
 [Additional diagrams]
 ```
 
 ### Examples
+
 ```bash
 # End-to-end example flows
 ```
 
 ### Glossary
+
 - Term: [Definition]
 
 ---

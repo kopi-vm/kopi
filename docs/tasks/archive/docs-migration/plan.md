@@ -1,6 +1,7 @@
 # ADR Archive Migration Implementation Plan
 
 ## Metadata
+
 - Type: Implementation Plan
 - Owner: Development Team
 - Reviewers: Project Maintainers
@@ -9,7 +10,9 @@
 - Date Created: 2025-09-02
 
 ## Links
+
 <!-- Internal project artifacts only. For external resources, see External References section -->
+
 - Requirements: N/A – No formal requirements for documentation restructuring
 - Design: N/A – Straightforward file archival operation
 - Related ADRs: N/A – This is a documentation organization update
@@ -21,6 +24,7 @@
 This plan migrates existing ADR files and task directories to archive structures to better organize documentation. All 19 existing ADR files will be moved to `docs/adr/archive/` and all 14 existing task directories will be moved to `docs/tasks/archive/` to distinguish them from future documents that will follow new naming conventions. This maintains historical documentation while clearing the main directories for future documents with standardized naming.
 
 ## Success Metrics
+
 - [ ] All 19 ADR files moved to docs/adr/archive/
 - [ ] All 14 existing task directories moved to docs/tasks/archive/
 - [ ] All internal links updated and functional
@@ -30,11 +34,12 @@ This plan migrates existing ADR files and task directories to archive structures
 - [ ] No broken links in any documentation
 
 ## Scope
-- Goal: 
+
+- Goal:
   - Archive existing ADR files to `docs/adr/archive/` directory
   - Archive existing task directories to `docs/tasks/archive/` directory
   - Introduce new naming conventions for future documents
-- Non-Goals: 
+- Non-Goals:
   - Renaming existing ADR files or task directories (keeping original names)
   - Renaming existing FR/NFR files (only future files will use new format)
   - Modifying document content
@@ -43,6 +48,7 @@ This plan migrates existing ADR files and task directories to archive structures
 - Constraints: Minimize disruption to ongoing work
 
 ## Plan Summary
+
 - Phases: 3 phases covering archive creation, file migration, and link updates
 - Timeline: Single session implementation (estimated 1-2 hours)
 
@@ -51,9 +57,11 @@ This plan migrates existing ADR files and task directories to archive structures
 ## Phase 1: Archive Setup and Naming Convention Introduction
 
 ### Goal
+
 - Create archive directory structure and introduce new naming conventions for future documents
 
 ### Inputs
+
 - Documentation:
   - `/docs/templates/README.md` – Template overview and guidelines (to be updated with new naming conventions)
   - `/AGENTS.md` – Project process documentation (to be updated with new ADR format)
@@ -63,6 +71,7 @@ This plan migrates existing ADR files and task directories to archive structures
   - `/docs/tasks/archive/` – Archive location for existing task directories
 
 ### Tasks
+
 - [x] **Create archive directories**
   - [x] Create `/docs/adr/archive/` directory
   - [x] Create `/docs/tasks/archive/` directory
@@ -81,12 +90,14 @@ This plan migrates existing ADR files and task directories to archive structures
   - [x] Remove docs/adr/MIGRATION.md as obsolete
 
 ### Deliverables
+
 - Archive directory structure created
 - New naming conventions documented for future documents
 - Templates and AGENTS.md updated with new formats
 - Documentation updated to reflect both archive and new conventions
 
 ### Verification
+
 ```bash
 # Verify directories exist
 ls -la docs/adr/archive/
@@ -101,12 +112,14 @@ grep -E "ADR-[0-9]{4}" AGENTS.md
 ```
 
 ### Acceptance Criteria (Phase Gate)
+
 - Archive directories exist and are ready for files (both ADR and tasks)
 - New naming conventions documented in docs/templates/README.md
 - AGENTS.md updated with new ADR format
 - Documentation reflects both archive structures and new naming conventions
 
 ### Rollback/Fallback
+
 - Remove archive directory if issues arise
 
 ---
@@ -114,10 +127,12 @@ grep -E "ADR-[0-9]{4}" AGENTS.md
 ## Phase 2: ADR and Task Migration to Archives
 
 ### Goal
+
 - Move all 19 ADR files to ADR archive directory
 - Move all 14 existing task directories to task archive directory
 
 ### Inputs
+
 - Dependencies:
   - Phase 1: Archive directories created
 - Files to move (19 ADR files):
@@ -157,6 +172,7 @@ grep -E "ADR-[0-9]{4}" AGENTS.md
   - Note: `/docs/tasks/docs-migration/` stays (this current task)
 
 ### Tasks
+
 - [x] **Move ADR files using git mv**
   - [x] Move all 19 ADR files to docs/adr/archive/
   - [x] Preserve original file names (no renaming)
@@ -167,10 +183,12 @@ grep -E "ADR-[0-9]{4}" AGENTS.md
   - [x] Keep docs-migration in place (current active task)
 
 ### Deliverables
+
 - All ADR files moved to ADR archive with preserved git history
 - All existing task directories moved to task archive with preserved git history
 
 ### Verification
+
 ```bash
 # Verify all ADR files moved
 ls docs/adr/archive/*.md | wc -l  # Should output: 19
@@ -186,6 +204,7 @@ git log --follow docs/tasks/archive/install/
 ```
 
 ### Acceptance Criteria (Phase Gate)
+
 - All 19 ADR files successfully moved to ADR archive
 - All 14 task directories successfully moved to task archive
 - Git history preserved for all files and directories
@@ -193,6 +212,7 @@ git log --follow docs/tasks/archive/install/
 - Main tasks directory contains only docs-migration (current task)
 
 ### Rollback/Fallback
+
 - Git mv files back to original location if issues arise
 
 ---
@@ -200,9 +220,11 @@ git log --follow docs/tasks/archive/install/
 ## Phase 3: Cross-Reference Updates
 
 ### Goal
+
 - Update all internal documentation links to point to archived ADR locations
 
 ### Inputs
+
 - Dependencies:
   - Phase 2: ADR files moved to archive
 - Files potentially containing ADR references:
@@ -211,6 +233,7 @@ git log --follow docs/tasks/archive/install/
   - Source code comments (if any)
 
 ### Tasks
+
 - [x] **Update ADR references in documentation**
   - [x] Search for ADR references in all .md files
   - [x] Update paths from `docs/adr/` to `docs/adr/archive/`
@@ -221,10 +244,12 @@ git log --follow docs/tasks/archive/install/
   - [x] Update any found references to archive path
 
 ### Deliverables
+
 - All documentation with updated ADR archive links
 - No broken internal references
 
 ### Verification
+
 ```bash
 # Check for old ADR patterns (should only be in archive)
 grep -r "docs/adr/[0-9][0-9][0-9]-" docs/ --include="*.md" | grep -v archive
@@ -236,20 +261,24 @@ grep -r "docs/adr/archive/[0-9][0-9][0-9]-" docs/ --include="*.md"
 ```
 
 ### Acceptance Criteria (Phase Gate)
+
 - No broken ADR links outside archive directory
 - All links to ADRs point to archive location
 
 ### Rollback/Fallback
+
 - Use git diff to identify and revert link changes if needed
 
 ## Testing Strategy
 
 ### Documentation Testing
+
 - Manual review of all changed links
 - Automated grep patterns to find broken references
 - Git log verification for history preservation
 
 ### Integration Testing
+
 - Verify documentation renders correctly in GitHub
 - Check that IDEs can follow the archive links
 - Ensure any documentation generation tools still work
@@ -259,11 +288,13 @@ grep -r "docs/adr/archive/[0-9][0-9][0-9]-" docs/ --include="*.md"
 ## Dependencies
 
 ### External Tools
+
 - `git` – For mv operations and history preservation
 - `grep` – For searching and verification
 - Standard Unix tools (ls, wc, find)
 
 ### Internal Modules
+
 - No code module dependencies (documentation only)
 
 ---
@@ -290,11 +321,13 @@ grep -r "docs/adr/archive/[0-9][0-9][0-9]-" docs/ --include="*.md"
 ## Documentation & Change Management
 
 ### Documentation Updates
+
 - This plan itself documents the migration
 - README files will reflect new conventions
 - Consider adding a CHANGELOG entry
 
 ### Communication
+
 - Note in next PR that documentation naming has been standardized
 - Update any contributor guidelines if they exist
 
@@ -303,11 +336,13 @@ grep -r "docs/adr/archive/[0-9][0-9][0-9]-" docs/ --include="*.md"
 ## Implementation Guidelines
 
 ### File Operations
+
 - Use `git mv` for all moves to preserve history
 - Batch operations where possible for efficiency
 - Verify each phase before proceeding
 
 ### Archive Standards
+
 - Maintain original file names in archive
 - Preserve directory structure if needed
 - Keep archive README up to date
@@ -350,6 +385,7 @@ grep -r "docs/adr/archive/[0-9][0-9][0-9]-" docs/ --include="*.md"
 ## Notes
 
 This plan archives existing ADRs and task directories to maintain historical documentation while clearing the main directories for future documents. After this migration:
+
 - Existing ADRs will be in: `docs/adr/archive/`
 - Existing task directories will be in: `docs/tasks/archive/`
 - New ADRs will use: `ADR-####-<title>.md` in the main `docs/adr/` directory

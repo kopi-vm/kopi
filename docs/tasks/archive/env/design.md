@@ -7,6 +7,7 @@ The `kopi env` command outputs environment variables for shell evaluation, provi
 ## Purpose
 
 The primary purpose of `kopi env` is to provide environment variable configuration that can be:
+
 - Integrated into shell initialization scripts (`.bashrc`, `.zshrc`, etc.)
 - Used with shell hooks for automatic environment setup
 - Combined with tools like `direnv` for project-specific environments
@@ -121,26 +122,29 @@ Uses existing kopi exit codes from `src/error/exit_codes.rs`:
 The existing `ErrorContext` system in `src/error/context.rs` automatically provides helpful suggestions for each error type:
 
 1. **No Version Found** (Exit code: 3)
+
    ```bash
    $ kopi env
    Error: No JDK configured for current project
-   
+
    Run 'kopi global <version>' to set a default version
    ```
 
 2. **JDK Not Installed** (Exit code: 4)
+
    ```bash
    $ kopi env temurin@21
    Error: JDK 'temurin@21' is not installed
-   
+
    Run 'kopi install temurin@21' to install it
    ```
 
 3. **Invalid Shell** (Exit code: 7)
+
    ```bash
    $ kopi env --shell invalid
    Error: Shell 'invalid' is not supported
-   
+
    Supported shells: bash, zsh, fish, powershell, cmd.
    ```
 
@@ -149,6 +153,7 @@ The existing `ErrorContext` system in `src/error/context.rs` automatically provi
 ### Shell Initialization
 
 Add to `.bashrc` or `.zshrc`:
+
 ```bash
 # Automatically set JAVA_HOME based on kopi configuration
 eval "$(kopi env)"
@@ -157,6 +162,7 @@ eval "$(kopi env)"
 ### Project-Specific Setup
 
 In project directory with `.kopi-version`:
+
 ```bash
 $ cat .kopi-version
 temurin@21
@@ -179,6 +185,7 @@ $ echo $JAVA_HOME
 ### Direnv Integration
 
 In `.envrc`:
+
 ```bash
 eval "$(kopi env)"
 ```
@@ -194,18 +201,21 @@ $ echo $JAVA_HOME
 ## Testing Strategy
 
 ### Unit Tests
+
 - Version resolution logic
 - Shell detection accuracy
 - Output formatting for each shell
 - Error handling scenarios
 
 ### Integration Tests
+
 - Test with actual shells (bash, zsh, fish)
 - Verify environment variable setting
 - Test with various version specifications
 - Test project file detection
 
 ### Platform Tests
+
 - Linux: bash, zsh, fish
 - macOS: bash, zsh, fish
 - Windows: PowerShell, cmd
@@ -259,7 +269,7 @@ The following metrics will be measured post-implementation:
 
 # Measurement points
 - Binary startup time
-- Config file parsing time  
+- Config file parsing time
 - Version resolution time
 - Total execution time
 ```
@@ -267,6 +277,7 @@ The following metrics will be measured post-implementation:
 ### Decision Criteria
 
 After benchmarking, if total execution time exceeds 100ms in common scenarios:
+
 1. Analyze bottlenecks using profiling tools
 2. Attempt optimization within main binary
 3. If still inadequate, implement `kopi-env` as separate lightweight binary
@@ -276,16 +287,19 @@ This approach ensures we maintain a single binary for simplicity unless performa
 ## Comparison with Similar Tools
 
 ### direnv
+
 - `direnv` provides general environment management
 - `kopi env` focuses specifically on Java environment
 - Can be used together for comprehensive setup
 
 ### jenv
+
 - `jenv` modifies PATH and provides shims
 - `kopi env` only outputs environment variables
 - Lighter weight, suitable for non-interactive use
 
 ### SDKMAN
+
 - `SDKMAN` requires sourcing functions
 - `kopi env` outputs simple variable assignments
 - More compatible with standard shell practices

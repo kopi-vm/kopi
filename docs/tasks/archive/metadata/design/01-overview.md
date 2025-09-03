@@ -16,6 +16,7 @@ This project aims to abstract metadata retrieval in Kopi to support multiple sou
 ## Current Implementation Analysis
 
 ### Data Flow
+
 1. `ApiClient` fetches metadata from foojay.io API
 2. API responses are converted to `JdkMetadata` structs
 3. Metadata is stored in `MetadataCache` and persisted as JSON
@@ -23,12 +24,14 @@ This project aims to abstract metadata retrieval in Kopi to support multiple sou
 5. Cache implements TTL and refresh mechanisms
 
 ### Key Components
+
 - `JdkMetadata`: Core metadata structure for JDK packages
 - `MetadataCache`: Stores all metadata with distribution information
 - `ApiClient`: Handles HTTP requests to foojay.io
 - Cache storage: JSON serialization to disk
 
 ### Current Limitations
+
 - Tightly coupled to foojay.io API
 - No support for offline metadata sources
 - Limited flexibility for custom JDK distributions

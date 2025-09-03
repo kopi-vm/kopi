@@ -1,6 +1,7 @@
 # ADR-010: API Version Fallback Strategy
 
 ## Status
+
 Decided
 
 ## Context
@@ -28,11 +29,13 @@ Initially, Kopi implemented a version fallback mechanism that would try API vers
 Implement automatic fallback from v3.0 to v2.0 to v1.0 when requests fail.
 
 **Advantages:**
+
 - Maximum compatibility with API changes
 - Resilience against version-specific outages
 - Support for older API versions
 
 **Disadvantages:**
+
 - Increased code complexity
 - Difficult to distinguish between network errors and version incompatibility
 - Triple the latency in worst-case scenarios
@@ -43,6 +46,7 @@ Implement automatic fallback from v3.0 to v2.0 to v1.0 when requests fail.
 Use only API v3.0 without any fallback mechanism.
 
 **Advantages:**
+
 - Simplified codebase
 - Clear error messages with API version
 - Faster failure detection
@@ -50,6 +54,7 @@ Use only API v3.0 without any fallback mechanism.
 - Easier to test and maintain
 
 **Disadvantages:**
+
 - No automatic resilience to API version deprecation
 - Requires code changes when migrating to new API versions
 
@@ -58,11 +63,13 @@ Use only API v3.0 without any fallback mechanism.
 Allow users to configure which API version to use via environment variable or config file.
 
 **Advantages:**
+
 - User control over API version
 - Useful for debugging
 - Gradual migration path
 
 **Disadvantages:**
+
 - Additional configuration complexity
 - Users may set incorrect versions
 - Still requires maintaining multiple parsing logics
@@ -108,6 +115,7 @@ Err(KopiError::MetadataFetch(format!(
 ## Consequences
 
 ### Positive
+
 - **Simplified Code**: Removed ~40 lines of fallback logic
 - **Faster Failures**: No unnecessary retry attempts across versions
 - **Clear Errors**: All errors explicitly mention API v3.0
@@ -115,10 +123,12 @@ Err(KopiError::MetadataFetch(format!(
 - **Future-Ready**: Version constant makes future updates trivial
 
 ### Negative
+
 - **No Automatic Fallback**: If v3.0 is deprecated, code changes are required
 - **Less Resilient**: No protection against version-specific bugs (theoretical)
 
 ### Neutral
+
 - **Migration Path**: Future API version changes require explicit updates
 - **Testing**: Only need to test against one API version
 
@@ -149,6 +159,7 @@ When foojay.io releases a new API version (e.g., v4.0):
 4. **Telemetry**: Track API version usage for informed decisions
 
 ## References
+
 - [foojay.io DiscoAPI Documentation](https://api.foojay.io/swagger-ui/)
 - [ADR-004: Error Handling Strategy](./004-error-handling-strategy.md)
 - [ADR-005: Web API Mocking Strategy](./005-web-api-mocking-strategy.md)

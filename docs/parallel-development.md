@@ -5,6 +5,7 @@ This guide explains how to handle parallel development using git-worktree with t
 ## The Problem
 
 When multiple developers or AI agents work in parallel using git-worktree:
+
 1. **ID Collisions**: Sequential IDs (AN-0001, FR-0002) frequently collide
 2. **Merge Conflicts**: Central `docs/traceability.md` causes constant conflicts
 
@@ -21,6 +22,7 @@ Instead of sequential numbers, use randomly generated 5-character IDs:
 ```
 
 **Characteristics:**
+
 - **Format**: 5 random characters using base36 (0-9, a-z)
 - **Namespace**: ~60 million possible combinations
 - **Collision probability**: ~1% at 1,100 documents
@@ -49,12 +51,14 @@ Instead of maintaining a central `docs/traceability.md` that causes merge confli
 ### Creating New Documents
 
 1. **Generate a unique ID:**
+
    ```bash
    ./scripts/tdl-new-id.py
    # Output: a3bf2
    ```
 
 2. **Create document with the ID:**
+
    ```bash
    # Example for a new requirement
    cp docs/templates/requirements.md docs/requirements/FR-a3bf2-feature-name.md
@@ -95,7 +99,7 @@ Gaps:
 ✅ **No ID collisions** - Random IDs are unique across worktrees  
 ✅ **No merge conflicts** - No central file to conflict  
 ✅ **Parallel independence** - Each worktree operates independently  
-✅ **Always current** - Status generated on-demand from source documents  
+✅ **Always current** - Status generated on-demand from source documents
 
 ## Migration from Sequential IDs
 
@@ -110,6 +114,7 @@ For existing documents with sequential IDs (AN-0001, FR-0001):
 ### ID Generation Script
 
 Location: `scripts/tdl-new-id.py`
+
 - Uses Python's `secrets` module for cryptographic randomness
 - Checks existing documents to avoid collisions
 - Retries up to 10 times if collision detected
@@ -117,6 +122,7 @@ Location: `scripts/tdl-new-id.py`
 ### Status Display Script
 
 Location: `scripts/trace-status.py`
+
 - Parses Links sections from all TDL documents
 - No frontmatter required
 - Identifies gaps and orphan documents

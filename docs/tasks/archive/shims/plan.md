@@ -1,9 +1,11 @@
 # Shims System Implementation Plan
 
 ## Overview
+
 This document outlines the phased implementation plan for the Kopi shims system, which provides transparent JDK version switching by intercepting Java tool invocations and routing them to the appropriate JDK version based on project configuration.
 
 ## Command Syntax
+
 - `kopi setup` - Initial setup including shims directory creation and PATH configuration
 - `kopi shim add <tool>` - Create shim for a specific tool
 - `kopi shim remove <tool>` - Remove shim for a specific tool
@@ -14,11 +16,13 @@ This document outlines the phased implementation plan for the Kopi shims system,
 ## Phase 1: Core Shim Binary Implementation
 
 ### Input Resources
+
 - `/docs/tasks/shims/design/` - Complete shims system design
 - `/docs/adr/` - Architecture Decision Records
 - `/src/models/jdk.rs` - JDK models and structures
 
 ### Deliverables
+
 1. **Shim Binary Module** (`/src/shim/mod.rs`)
    - Tool name detection:
      - Unix: From argv[0]
@@ -59,6 +63,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
    - Error handling scenarios
 
 ### Success Criteria
+
 - Shim binary detects tool name correctly
 - Version resolution finds appropriate JDK
 - Process execution maintains < 20ms overhead
@@ -68,11 +73,13 @@ This document outlines the phased implementation plan for the Kopi shims system,
 ## Phase 2: Shim Management Infrastructure
 
 ### Input Resources
+
 - Phase 1 deliverables
 - `/docs/tasks/shims/design/10-shim-installation-management.md`
 - Platform-specific shim creation requirements
 
 ### Deliverables
+
 1. **Shim Installer Module** (`/src/shim/installer.rs`)
    - Shim directory creation (~/.kopi/shims/)
    - Unix: Symlink creation to kopi-shim binary
@@ -111,6 +118,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
    - Tool discovery from actual JDK installations
 
 ### Success Criteria
+
 - Shims created correctly on all platforms
 - Symlinks point to correct binary (Unix)
 - Individual executables work (Windows)
@@ -120,11 +128,13 @@ This document outlines the phased implementation plan for the Kopi shims system,
 ## Phase 3: Command Implementation and CLI Integration
 
 ### Input Resources
+
 - Phase 1 & 2 deliverables
 - `/src/main.rs` - Existing CLI structure
 - `/docs/adr/archive/001-kopi-command-structure.md` - Command guidelines
 
 ### Deliverables
+
 1. **Setup Command Enhancement** (`/src/commands/setup.rs`)
    - Create shims directory
    - Build kopi-shim binary
@@ -157,15 +167,16 @@ This document outlines the phased implementation plan for the Kopi shims system,
        - User configuration preferences
      - Report newly created shims to the user
    - Example output:
+
      ```
      Successfully installed graalvm 21.0.2 to ~/.kopi/jdks/graalvm-21.0.2
-     
+
      Verifying shims...
      Created 3 new shims:
        - gu
        - native-image
        - polyglot
-     
+
      To use this JDK, run: kopi use graalvm@21
      ```
 
@@ -195,6 +206,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
    - Post-install shim creation verification
 
 ### Success Criteria
+
 - `kopi setup` creates functioning shims
 - `kopi shim add java` creates java shim
 - `kopi shim verify` detects and fixes issues
@@ -204,11 +216,13 @@ This document outlines the phased implementation plan for the Kopi shims system,
 ## Phase 4: Auto-Installation and Error Handling
 
 ### Input Resources
+
 - Phase 1-3 deliverables
 - `/docs/tasks/shims/design/08-error-handling.md`
 - Install command implementation
 
 ### Deliverables
+
 1. **Auto-Install Module** (`/src/shim/auto_install.rs`)
    - Missing JDK detection
    - Configuration checking (auto-install enabled)
@@ -263,6 +277,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
    - Timeout handling
 
 ### Success Criteria
+
 - Missing JDKs trigger auto-install (when enabled)
 - Clear prompts for user confirmation
 - Concurrent shims coordinate properly
@@ -272,11 +287,13 @@ This document outlines the phased implementation plan for the Kopi shims system,
 ## Phase 5: Performance Optimization and Security
 
 ### Input Resources
+
 - All previous phase deliverables
 - `/docs/tasks/shims/design/07-performance-optimizations.md`
 - `/docs/tasks/shims/design/12-security.md`
 
 ### Deliverables
+
 1. **Performance Optimizations** (`/src/shim/` modules)
    - Binary size reduction (< 1MB target)
    - Direct path construction
@@ -288,7 +305,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
    - Path validation (stay within ~/.kopi)
    - Symlink target verification
    - Input sanitization:
-     - Version string validation (alphanumeric + @.-_)
+     - Version string validation (alphanumeric + @.-\_)
      - Tool name validation
    - Permission verification (executable permissions)
    - No privilege escalation
@@ -314,6 +331,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
    - Troubleshooting guide
 
 ### Success Criteria
+
 - Shim overhead < 20ms consistently
 - Binary size < 1MB
 - All security checks pass
@@ -323,6 +341,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
 ## Implementation Guidelines
 
 ### For Each Phase:
+
 1. Start with `/clear` command to reset context
 2. Load this plan.md and relevant phase resources
 3. Implement deliverables incrementally
@@ -336,6 +355,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
 ### Testing Strategy
 
 #### Unit Tests (use mocks extensively)
+
 - Test individual components in isolation
 - Mock filesystem, process, and OS operations
 - Focus on logic correctness
@@ -346,7 +366,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
   mod tests {
       use super::*;
       use mockall::*;
-      
+
       #[test]
       fn test_version_resolution_with_mock_fs() {
           let mut mock_fs = MockFileSystem::new();
@@ -358,6 +378,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
   ```
 
 #### Integration Tests (no mocks)
+
 - Test complete shim workflow end-to-end
 - Verify real filesystem operations
 - Measure actual performance
@@ -378,13 +399,15 @@ This document outlines the phased implementation plan for the Kopi shims system,
   ```
 
 ### Performance Priorities
+
 1. Tool name detection: < 1ms
-2. Version resolution (cached): < 1ms  
+2. Version resolution (cached): < 1ms
 3. Version resolution (file): < 5ms
 4. Process execution: < 5ms (Unix), < 20ms (Windows)
 5. Total overhead target: 1-20ms
 
 ### Security Considerations
+
 1. Validate all paths stay within ~/.kopi
 2. Verify symlink targets before following
 3. Sanitize version strings and tool names
@@ -395,11 +418,13 @@ This document outlines the phased implementation plan for the Kopi shims system,
 ### Platform-Specific Considerations
 
 #### Unix (Linux/macOS)
+
 - Use symlinks for efficiency
 - Leverage exec() for zero-overhead process replacement
 - Handle different shells (bash, zsh, fish)
 
 #### Windows
+
 - Create individual .exe files
 - Use CreateProcess and wait
 - Handle PowerShell and CMD
@@ -408,6 +433,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
 ## Design Principles (from design documents)
 
 ### Key Requirements
+
 1. **Zero Process Chains**: Direct execution without intermediate processes
 2. **Explicit Over Implicit**: Shims created only through explicit user actions
 3. **Predictable Behavior**: Users always know which shims exist
@@ -415,18 +441,20 @@ This document outlines the phased implementation plan for the Kopi shims system,
 5. **Graceful Degradation**: Clear, actionable error messages
 
 ### Error Message Guidelines
+
 - **Clear problem description**: What went wrong
 - **Root cause**: Why it happened
 - **Actionable solution**: How to fix it
 - **Example format**:
+
   ```
   Error: Java version 'temurin@21' not installed
-  
+
   The project requires temurin@21 but it's not installed.
-  
+
   To fix this, run:
     kopi install temurin@21
-  
+
   Or enable auto-install in ~/.kopi/config.toml:
     [shims]
     auto_install = true
@@ -435,6 +463,7 @@ This document outlines the phased implementation plan for the Kopi shims system,
 ## Updates from Design Review
 
 This plan has been updated based on the comprehensive design documents to include:
+
 1. **Platform-specific tool detection**: Windows uses current exe name, not just argv[0]
 2. **Specific performance targets**: < 10ms cold start time added
 3. **Distribution tool details**: Complete list of vendor-specific tools
@@ -447,4 +476,5 @@ This plan has been updated based on the comprehensive design documents to includ
 10. **Error message formatting**: Added guidelines for clear, actionable errors
 
 ## Next Steps
+
 Begin with Phase 1, focusing on building the core shim binary with efficient tool detection, version resolution, and process execution capabilities while maintaining the performance target of < 20ms overhead.

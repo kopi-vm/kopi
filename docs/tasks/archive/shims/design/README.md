@@ -11,45 +11,52 @@ This directory contains the detailed design documentation for Kopi's shim binary
 ## 📚 Documentation Structure
 
 ### Core Design
-| Document | Description |
-|----------|-------------|
-| [Overview](./01-overview.md) | High-level overview, goals, and design principles |
-| [Architecture](./02-architecture.md) | System architecture and component interactions |
-| [Implementation Details](./03-implementation-details.md) | Core shim binary implementation logic |
+
+| Document                                                 | Description                                       |
+| -------------------------------------------------------- | ------------------------------------------------- |
+| [Overview](./01-overview.md)                             | High-level overview, goals, and design principles |
+| [Architecture](./02-architecture.md)                     | System architecture and component interactions    |
+| [Implementation Details](./03-implementation-details.md) | Core shim binary implementation logic             |
 
 ### Platform-Specific Implementation
-| Document | Description |
-|----------|-------------|
-| [Unix Implementation](./04-unix-implementation.md) | Linux/macOS specific details (execve, signals) |
+
+| Document                                                 | Description                                    |
+| -------------------------------------------------------- | ---------------------------------------------- |
+| [Unix Implementation](./04-unix-implementation.md)       | Linux/macOS specific details (execve, signals) |
 | [Windows Implementation](./05-windows-implementation.md) | Windows specific details (CreateProcess, .exe) |
 
 ### Key Features
-| Document | Description |
-|----------|-------------|
-| [Version Resolution](../../adr/014-configuration-and-version-file-formats.md) | How shims determine which JDK version to use |
-| [Performance Optimizations](./07-performance-optimizations.md) | Techniques for minimizing overhead |
-| [Error Handling](./08-error-handling.md) | Error handling and automatic JDK installation |
-| [Distribution-Specific Tools](./09-distribution-specific-tools.md) | Handling vendor-specific tools |
+
+| Document                                                                      | Description                                   |
+| ----------------------------------------------------------------------------- | --------------------------------------------- |
+| [Version Resolution](../../adr/014-configuration-and-version-file-formats.md) | How shims determine which JDK version to use  |
+| [Performance Optimizations](./07-performance-optimizations.md)                | Techniques for minimizing overhead            |
+| [Error Handling](./08-error-handling.md)                                      | Error handling and automatic JDK installation |
+| [Distribution-Specific Tools](./09-distribution-specific-tools.md)            | Handling vendor-specific tools                |
 
 ### Operations & Management
-| Document | Description |
-|----------|-------------|
-| [Installation and Management](./10-shim-installation-management.md) | Shim installation strategy and management |
-| [Tool Discovery](./11-tool-discovery.md) | Creating and maintaining curated tool lists |
-| [Security Considerations](./12-security.md) | Security measures and validations |
+
+| Document                                                            | Description                                 |
+| ------------------------------------------------------------------- | ------------------------------------------- |
+| [Installation and Management](./10-shim-installation-management.md) | Shim installation strategy and management   |
+| [Tool Discovery](./11-tool-discovery.md)                            | Creating and maintaining curated tool lists |
+| [Security Considerations](./12-security.md)                         | Security measures and validations           |
 
 ## 💡 Reading Paths
 
 ### For Implementers
+
 1. [Overview](./01-overview.md) → [Architecture](./02-architecture.md) → [Implementation Details](./03-implementation-details.md)
 2. Choose your platform: [Unix](./04-unix-implementation.md) or [Windows](./05-windows-implementation.md)
 3. Review [Performance Optimizations](./07-performance-optimizations.md) and [Error Handling](./08-error-handling.md)
 
 ### For Operations
+
 1. [Installation and Management](./10-shim-installation-management.md)
 2. [Security Considerations](./12-security.md)
 
 ### For Contributors
+
 1. [Tool Discovery](./11-tool-discovery.md)
 2. Review existing platform implementations
 

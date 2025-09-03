@@ -46,7 +46,9 @@ This document outlines the design for adding multi-progress bar support to Kopi'
 ### Progress Bar Display Issues
 
 #### 1. Duplicate Output
+
 **Problem**: StatusReporter and IndicatifProgress display the same content, causing visual redundancy.
+
 ```
 Installing Eclipse Temurin 21...
 ⠋ Installing Eclipse Temurin 21 [████░░░░] 3/7 Downloading
@@ -57,7 +59,9 @@ Installing Eclipse Temurin 21...
 **Solution**: Use conditional output based on progress mode, or integrate StatusReporter functionality into ProgressIndicator.
 
 #### 2. Split Progress Bar
+
 **Problem**: Progress bar appears on two lines with incomplete rendering.
+
 ```
 Installing Eclipse Temurin 21...
 ⠋ Installing Eclipse Temurin 21 [
@@ -69,14 +73,17 @@ Installing Eclipse Temurin 21...
 **Solution**: Initialize IndicatifProgress with MultiProgress from the start, not on-demand.
 
 #### 3. Log Output Interference
+
 **Problem**: Log statements (log::info!, log::debug!) interrupt progress bar rendering.
+
 ```
 ⠋ Installing Eclipse Temurin 21 [[2025-08-28T00:25:11Z INFO  log_impact] Downloading JDK package
 ```
 
 **Root Cause**: Log output to stderr conflicts with indicatif's terminal control.
 
-**Solution**: 
+**Solution**:
+
 - Use MultiProgress.suspend() for safe log output
 - Consider console library for better terminal control
 
@@ -89,11 +96,13 @@ Installing Eclipse Temurin 21...
 ### Per-Operation Rules
 
 #### Download Operations
+
 - **Content-Length >= 10MB**: Display child progress bar with bytes/transfer rate
 - **Content-Length < 10MB**: No child progress bar
 - **Content-Length unknown**: No child progress bar
 
 #### Cache Operations
+
 - **Foojay API**: Always display child progress (typically 5-10 seconds)
 - **HTTP Metadata**: Display child progress if file size >= 10MB
 - **Local Files**: Never display child progress (too fast)
@@ -108,14 +117,14 @@ Environment-based behavior selection is critical for proper display. The system 
 
 #### Display Mode Selection Matrix
 
-| Condition | Implementation | Output Behavior |
-|-----------|----------------|-----------------|
-| `--no-progress` flag | SilentProgress | No output at all |
-| Non-TTY (pipe, redirect) | SimpleProgress | ASCII text only ("[OK]", "[ERROR]") |
-| CI environment (`CI` env var) | SimpleProgress | ASCII text only ("[OK]", "[ERROR]") |
-| Dumb terminal (`TERM=dumb`) | SimpleProgress | ASCII text only ("[OK]", "[ERROR]") |
-| NO_COLOR environment | SimpleProgress | ASCII text only ("[OK]", "[ERROR]") |
-| TTY Terminal (normal) | IndicatifProgress | Rich progress bars with animations |
+| Condition                     | Implementation    | Output Behavior                     |
+| ----------------------------- | ----------------- | ----------------------------------- |
+| `--no-progress` flag          | SilentProgress    | No output at all                    |
+| Non-TTY (pipe, redirect)      | SimpleProgress    | ASCII text only ("[OK]", "[ERROR]") |
+| CI environment (`CI` env var) | SimpleProgress    | ASCII text only ("[OK]", "[ERROR]") |
+| Dumb terminal (`TERM=dumb`)   | SimpleProgress    | ASCII text only ("[OK]", "[ERROR]") |
+| NO_COLOR environment          | SimpleProgress    | ASCII text only ("[OK]", "[ERROR]") |
+| TTY Terminal (normal)         | IndicatifProgress | Rich progress bars with animations  |
 
 #### Implementation
 
@@ -188,18 +197,21 @@ The ProgressIndicator trait has been extended with the following required method
 
 #### 1.2 Implementation Strategy
 
-**SilentProgress**: 
+**SilentProgress**:
+
 - `create_child()`: Returns a new SilentProgress instance, maintaining silent behavior
 - `suspend()`: Executes the closure without any special handling
 - `println()`: No-op, produces no output
 
-**SimpleProgress**: 
+**SimpleProgress**:
+
 - `create_child()`: Returns a SilentProgress instance to avoid log spam in CI environments
 - `suspend()`: Executes the closure directly (no progress bars to suspend)
 - `println()`: Direct println! output (safe since no progress bars are active)
 - **Output format**: Use ASCII symbols only ("[OK]", "[ERROR]") - no Unicode symbols ("✓", "✗")
 
-**IndicatifProgress**: 
+**IndicatifProgress**:
+
 - `create_child()`: Creates a child progress bar using indicatif's MultiProgress functionality
 - `suspend()`: Uses `MultiProgress::suspend()` to safely pause progress bars during output
 - `println()`: Uses `MultiProgress::println()` to output text above progress bars
@@ -220,21 +232,25 @@ The IndicatifProgress struct will be enhanced to support MultiProgress operation
 #### Implementation Details (Validated by Spike)
 
 **Template Configuration**:
+
 - Place `{spinner}` at the beginning of templates for line-start spinner display
 - Use template pattern: `{spinner} {prefix} [{bar:30}] {pos}/{len} {msg}`
 - Enable steady tick with `enable_steady_tick(Duration::from_millis(80))`
 
 **Visual Hierarchy**:
+
 - Use `insert_after()` instead of `insert_before()` for logical parent-child relationships
 - Child bars appear below parent bars, indented with spaces: `"  └─ {prefix}"`
 - Simplify progress chars to `██░` to reduce visual noise
 
 **API Considerations**:
+
 - No `join()` method on MultiProgress (removed from newer versions)
 - Progress bars are automatically rendered when added to MultiProgress
 - Use `finish_and_clear()` to remove bars from display entirely
 
 **Best Practices**:
+
 - Keep titles short to prevent interference with progress bar display
 - Add blank line after titles for better separation
 - Place dynamic messages at the end of template: `{pos}/{len} {msg}`
@@ -279,6 +295,7 @@ progress.println("Status: Processing item 5 of 10")?;
 ```
 
 Implementation behavior:
+
 - **IndicatifProgress**: Uses `MultiProgress::suspend()` and `MultiProgress::println()` for safe output
 - **SimpleProgress**: Direct output without special handling
 - **SilentProgress**: No output (methods are no-ops)
@@ -286,6 +303,7 @@ Implementation behavior:
 ### 3. StatusReporter Coexistence Strategy
 
 During the transition period:
+
 1. **Keep StatusReporter intact** - No immediate removal
 2. **Test ProgressIndicator in Install command first** - Validate the approach
 3. **Gradual migration** - Update other commands after validation
@@ -295,6 +313,7 @@ During the transition period:
 StatusReporter's key features are migrated to ProgressIndicator as follows:
 
 **Color/Symbol Detection Logic**:
+
 - **StatusReporter**: `should_use_color()` checks `NO_COLOR`, `TERM=dumb`, and terminal support
 - **ProgressIndicator**: `ProgressFactory::create()` performs the same checks to select appropriate implementation
   - Terminal with color support → `IndicatifProgress` (rich progress bars)
@@ -302,6 +321,7 @@ StatusReporter's key features are migrated to ProgressIndicator as follows:
   - `--no-progress` flag → `SilentProgress` (no output)
 
 **Success/Error Symbols**:
+
 - **StatusReporter**: Switches between "✓"/"✗" (Unicode) and "[OK]"/"[ERROR]" (ASCII)
 - **SimpleProgress**: Should use only ASCII symbols "[OK]"/"[ERROR]"
   - **Important**: Remove Unicode symbols ("✓"/"✗") from SimpleProgress implementation
@@ -315,6 +335,7 @@ This design ensures that StatusReporter's environment-aware behavior is preserve
 ### 4. Safe Log Output Methods
 
 When using MultiProgress, utilize its safe output methods:
+
 - **MultiProgress::println()** - Output text above progress bars
 - **MultiProgress::suspend()** - Temporarily hide bars for external output
 - Both methods prevent rendering conflicts
@@ -326,6 +347,7 @@ The install command will be the first to test the ProgressIndicator approach whi
 #### Integration Steps
 
 1. **Conditional StatusReporter usage**:
+
 ```rust
 // Only use StatusReporter when using SilentProgress (--no-progress flag)
 // SimpleProgress and IndicatifProgress handle their own output
@@ -335,17 +357,20 @@ if no_progress {
 ```
 
 2. **Download Operation**:
+
 - When starting a download, check the Content-Length header
 - If the size is 10MB or larger, create a child progress bar showing bytes downloaded and transfer rate
 - If the size is smaller or unknown, only update the parent progress message
 - The child progress bar updates continuously during the download and completes when finished
 
 3. **Cache Refresh Operation**:
+
 - When refreshing cache with Foojay API, always create a child progress bar
 - Show the number of packages being processed
 - Complete the child when cache refresh finishes
 
 4. **Log Output Handling**:
+
 - Use MultiProgress::suspend() for all log output (log::info!, log::debug!, println!, etc.)
 
 ### Phase 4: Cache Refresh Integration
@@ -353,16 +378,19 @@ if no_progress {
 The cache refresh command will implement child progress based on the metadata source type:
 
 **Foojay API Source**:
+
 - Always creates a child progress bar due to the operation typically taking 5-10 seconds
 - Shows package processing count and updates as packages are fetched
 - Completes with a summary of packages fetched
 
 **HTTP Metadata Source**:
+
 - First checks the file size through HEAD request or similar mechanism
 - If 10MB or larger, creates a child progress bar showing download progress
 - If smaller, processes without a child progress bar
 
 **Local File Source**:
+
 - Never creates a child progress bar as local file operations are typically instantaneous
 - Updates only the parent progress message
 
@@ -371,46 +399,56 @@ The cache refresh command will implement child progress based on the metadata so
 ### Problematic Patterns (To Avoid)
 
 #### Duplicate Output
+
 ```
 Installing Eclipse Temurin 21...
 ⠋ Installing Eclipse Temurin 21 [████░░░░░░░░░░░░░░] 3/7 Downloading
 ```
+
 Both StatusReporter and ProgressIndicator showing the same information.
 
 #### Split Progress Bar
+
 ```
 Installing Eclipse Temurin 21...
 ⠋ Installing Eclipse Temurin 21 [
 ⠋ Installing Eclipse Temurin 21 [████░░░░░░░░░░░░░░] 3/7 Downloading temurin 21.0.8+9...
 ```
+
 Progress bar split across two lines due to MultiProgress creation issue.
 
 #### Log Interference
+
 ```
 ⠋ Installing Eclipse Temurin 21 [[2025-08-28T00:25:11Z INFO  kopi::install] Downloading package
 ```
+
 Log output interrupting progress bar rendering.
 
 ### Correct Patterns (Target State)
 
 #### Install Command with Large Download
+
 ```
 ⣾ Installing temurin@21 [████████████░░░░░░] 3/8 Downloading
   └─ ⣟ Downloading temurin-21.0.5: 124.5MB / 256.3MB [48%] 2.3MB/s
 ```
 
 ### Cache Refresh with Foojay
+
 ```
 ⣽ Refreshing metadata cache [██████████░░░░░░░░] 2/5 Fetching sources
   └─ ⣻ Fetching Foojay packages: 1543 / 3217 [47%]
 ```
 
 ### Small File (No Child Progress)
+
 ```
 ⣿ Installing temurin@21 [████████████░░░░░░] 3/8 Downloading package (5.2MB)
 ```
 
 ### Nested Progress with Multiple Steps
+
 ```
 ⡿ Parent Task [██████████████████░] 2/3 Processing step 2 of 3
   └─ Subtask 2 [███████████░░░░] 25/50
@@ -429,7 +467,7 @@ pub trait ProgressIndicator: Send + Sync {
     fn complete(&mut self, message: Option<String>);
     fn error(&mut self, message: String);
     fn create_child(&mut self) -> Box<dyn ProgressIndicator>;
-    
+
     // New safe output methods
     fn suspend(&self, f: &mut dyn FnMut());
     fn println(&self, message: &str) -> std::io::Result<()>;
@@ -464,14 +502,17 @@ progress.suspend(&mut || {
 ### Implementation Details by Type
 
 **IndicatifProgress**:
+
 - `suspend()`: Delegates to `MultiProgress::suspend()` when MultiProgress is active
 - `println()`: Delegates to `MultiProgress::println()` when MultiProgress is active
 
 **SimpleProgress**:
+
 - `suspend()`: Direct execution (no progress bars to suspend)
 - `println()`: Direct `println!` (safe since no animated progress bars)
 
 **SilentProgress**:
+
 - `suspend()`: Direct execution (no output to manage)
 - `println()`: No-op (maintains silent behavior)
 
@@ -494,7 +535,7 @@ impl IndicatifProgress {
             is_child: false,  // Parent by default
         }
     }
-    
+
     fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
         Box::new(IndicatifProgress {
             multi: Arc::clone(&self.multi),  // Share parent's MultiProgress
@@ -502,16 +543,16 @@ impl IndicatifProgress {
             is_child: true,                  // Mark as child
         })
     }
-    
+
     fn start(&mut self, config: ProgressConfig) {
         let pb = match config.total {
             Some(total) => ProgressBar::new(total),
             None => ProgressBar::new_spinner(),
         };
-        
+
         // Generate template based on config and is_child flag
         let template = self.get_template_for_config(&config);
-        
+
         pb.set_style(
             ProgressStyle::default_bar()
                 .template(&template)
@@ -519,21 +560,21 @@ impl IndicatifProgress {
                 .progress_chars("██░")
                 .tick_chars("⣾⣽⣻⢿⡿⣟⣯⣷"),
         );
-        
+
         pb.enable_steady_tick(Duration::from_millis(80));
-        
+
         // Add to MultiProgress
         self.multi.add(pb.clone());
-        
+
         self.owned_bar = Some(pb);
     }
-    
+
     fn update(&mut self, progress: u64) {
         if let Some(ref pb) = self.owned_bar {
             pb.set_position(progress);
         }
     }
-    
+
     fn finish(&mut self) {
         if let Some(ref pb) = self.owned_bar {
             pb.finish_with_message("Complete");
@@ -545,12 +586,14 @@ impl IndicatifProgress {
 ## Testing Strategy
 
 ### Unit Tests
+
 1. Test `create_child()` for each ProgressIndicator implementation
 2. Test that SilentProgress children remain silent
 3. Test that SimpleProgress children don't produce output
 4. Test MultiProgress sharing between parent and child
 
 ### Integration Tests
+
 1. Test Install command with various file sizes (< 10MB, > 10MB, unknown)
 2. Test Cache refresh with different source types
 3. Test in CI environment (should use SimpleProgress)
@@ -558,6 +601,7 @@ impl IndicatifProgress {
 5. **Test log output during progress** - Ensure no display corruption
 
 ### Manual Testing
+
 1. Visual inspection of multi-progress display in terminal
 2. Test terminal resize during multi-progress operation
 3. Test Ctrl+C interruption handling
@@ -651,6 +695,7 @@ if no_progress {
 7. **Keep StatusReporter** - No removal, maintain compatibility
 
 **Validation Criteria**:
+
 - No display corruption in Install command
 - Safe log output using suspend()
 - StatusReporter doesn't conflict with ProgressIndicator
@@ -660,12 +705,14 @@ if no_progress {
 **Timeline**: After Install command validation
 
 Commands to update (in order):
+
 1. **Cache command** - Similar progress needs
 2. **List command** - Simpler, good for testing
 3. **Use/Local commands** - Minimal progress usage
 4. **Shell/Current commands** - StatusReporter only
 
 **Approach**:
+
 ```rust
 // Gradual replacement pattern
 if progress_indicator_validated {
@@ -687,6 +734,7 @@ if progress_indicator_validated {
 ### Rollback Plan
 
 If issues arise:
+
 1. **Keep StatusReporter active** - It's not being removed
 2. **Revert to SimpleProgress** - For problematic scenarios
 3. **Disable MultiProgress features** - Fall back to basic progress
@@ -720,6 +768,7 @@ While not in current scope, the following could be considered later:
 ### Common Issues and Solutions
 
 #### Issue: Progress bar appears on two lines
+
 ```
 ⠋ Installing Eclipse Temurin 21 [
 ⠋ Installing Eclipse Temurin 21 [████░░░░] 3/7 Downloading...
@@ -728,11 +777,13 @@ While not in current scope, the following could be considered later:
 **Cause**: MultiProgress was created lazily in create_child(), parent bar not added.
 
 **Solution**: Ensure IndicatifProgress::new() creates MultiProgress immediately:
+
 ```rust
 multi: Some(Arc::new(MultiProgress::new()))  // Not None
 ```
 
 #### Issue: Log messages corrupt progress display
+
 ```
 ⠋ Installing [INFO kopi] Downloading package
 ```
@@ -741,6 +792,7 @@ multi: Some(Arc::new(MultiProgress::new()))  // Not None
 
 **Solution**:
 Use MultiProgress::suspend() for safe log output:
+
 ```rust
 progress.multi.suspend(|| {
     log::info!("Safe output");
@@ -748,6 +800,7 @@ progress.multi.suspend(|| {
 ```
 
 #### Issue: Both StatusReporter and progress bar show
+
 ```
 Installing Eclipse Temurin 21...
 ⠋ Installing Eclipse Temurin 21 [████░░░░] 3/7
@@ -756,6 +809,7 @@ Installing Eclipse Temurin 21...
 **Cause**: StatusReporter::operation() called when progress bar is active.
 
 **Solution**: Conditionally use StatusReporter:
+
 ```rust
 if no_progress {
     status_reporter.operation(...);
@@ -767,6 +821,7 @@ if no_progress {
 **Cause**: Missing steady tick configuration.
 
 **Solution**: Enable steady tick:
+
 ```rust
 pb.enable_steady_tick(Duration::from_millis(80));
 ```
@@ -776,6 +831,7 @@ pb.enable_steady_tick(Duration::from_millis(80));
 **Cause**: Parent's MultiProgress not shared with child.
 
 **Solution**: Ensure child receives parent's MultiProgress:
+
 ```rust
 Box::new(IndicatifProgress {
     multi: Arc::clone(&self.multi),  // Share parent's MultiProgress
@@ -802,6 +858,7 @@ CI=1 cargo run -- install temurin@21
 A comprehensive spike was conducted to validate this design. Key outcomes:
 
 ### Validated Capabilities
+
 ✅ **Thread Safety**: Concurrent updates work correctly with Arc<MultiProgress>
 ✅ **Dynamic Management**: Progress bars can be added/removed during execution
 ✅ **Visual Hierarchy**: Parent-child relationships display correctly with indentation
@@ -809,6 +866,7 @@ A comprehensive spike was conducted to validate this design. Key outcomes:
 ✅ **Template Stability**: Dynamic messages don't disrupt layout
 
 ### Key Implementation Insights
+
 - `insert_after()` provides more logical parent-child positioning than `insert_before()`
 - Spinner placement at template start (`{spinner}`) creates clean visual hierarchy
 - Simplified progress chars (`██░`) reduce visual noise
@@ -824,6 +882,7 @@ A comprehensive spike was conducted to validate this design. Key outcomes:
 The multi-progress support implementation has been fully completed across all phases:
 
 #### Completed Phases
+
 1. ✅ **Phase 1**: Core Infrastructure - ProgressIndicator trait extended with `create_child()`, `suspend()`, and `println()` methods
 2. ✅ **Phase 2**: SimpleProgress - ASCII-only output implementation ("[OK]"/"[ERROR]")
 3. ✅ **Phase 3**: IndicatifProgress - Full MultiProgress support with parent-child relationships
@@ -835,7 +894,9 @@ The multi-progress support implementation has been fully completed across all ph
 9. ✅ **Phase 9**: Performance Optimization - CPU overhead reduced to < 1% with throttling
 
 #### Final Architecture
+
 The implementation evolved from the initial design with the following refinements:
+
 - **Arc<MultiProgress>** always initialized (not Option) for simpler code
 - **Template as field** determined at construction for cleaner parent/child separation
 - **is_child boolean field** for simple and efficient parent/child detection
@@ -925,6 +986,7 @@ The implementation evolved from the initial design with the following refinement
 ## Final Verification Results
 
 ### Test Coverage
+
 - **Unit Tests**: 595 tests passing (includes new multi-progress tests)
 - **Integration Tests**: 25 dedicated multi-progress tests all passing
 - **Test Scenarios Covered**:
@@ -936,19 +998,23 @@ The implementation evolved from the initial design with the following refinement
   - Suspend/println functionality
 
 ### Performance Validation
+
 - **CPU Overhead**: < 1% (validated through benchmarks)
 - **Memory Usage**: ~1KB per progress bar with proper cleanup
 - **Update Frequency**: Reduced by 80-90% through throttling
 - **No Performance Regression**: All existing operations maintain same speed
 
 ### Visual Quality
+
 - **Clean Hierarchy**: Parent-child relationships display with "└─" indentation
 - **Smooth Animation**: Spinner animation at 80ms/120ms tick rates
 - **No Corruption**: Log output properly suspended during progress
 - **Terminal Compatibility**: Works across iTerm2, Terminal.app, Windows Terminal
 
 ### Production Readiness
+
 ✅ **Ready for Production Use**
+
 - Comprehensive test coverage
 - Performance optimized
 - No known issues

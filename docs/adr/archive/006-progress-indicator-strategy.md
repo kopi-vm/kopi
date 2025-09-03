@@ -1,14 +1,17 @@
 # ADR-006: Progress Indicator Strategy for Downloads and Archive Extraction
 
 ## Status
+
 Proposed
 
 ## Context
+
 Kopi downloads JDK distributions from foojay.io and extracts tar/zip archives during the installation process. Users need visual feedback during these potentially long-running operations to understand progress and ensure the application hasn't frozen. We need a strategy for implementing progress indicators that works well with our existing HTTP client (attohttpc) and archive handling libraries.
 
 ## Decision
 
 ### Progress Indicator Library
+
 We will use **indicatif** as our progress indicator library for the following reasons:
 
 1. **Maturity and Maintenance**: Most popular Rust progress bar library with active maintenance
@@ -20,6 +23,7 @@ We will use **indicatif** as our progress indicator library for the following re
 ### Architecture
 
 #### Download Progress
+
 Since attohttpc doesn't provide streaming response capabilities suitable for progress tracking, we'll implement a hybrid approach:
 
 1. **Small Files (< 50MB)**: Download to memory, then write with progress
@@ -47,7 +51,7 @@ impl IndicatifProgressReporter {
             multi_progress: MultiProgress::new(),
         }
     }
-    
+
     fn create_download_progress(&self, size: Option<u64>) -> ProgressBar {
         let pb = match size {
             Some(size) => {
@@ -70,6 +74,7 @@ impl IndicatifProgressReporter {
 ```
 
 #### Archive Extraction Progress
+
 For archive extraction, we'll wrap file readers with progress tracking:
 
 ```rust
@@ -81,17 +86,17 @@ pub fn extract_tar_gz_with_progress<P: AsRef<Path>>(
 ) -> Result<()> {
     let file = File::open(&archive_path)?;
     let file_size = file.metadata()?.len();
-    
+
     let handle = progress.start_extraction("tar.gz", Some(file_size));
-    
+
     // Wrap the file reader with progress tracking
     let progress_reader = handle.wrap_read(file);
     let tar = GzDecoder::new(progress_reader);
     let mut archive = Archive::new(tar);
-    
+
     archive.unpack(&dest_dir)?;
     progress.finish(handle);
-    
+
     Ok(())
 }
 
@@ -103,15 +108,15 @@ pub fn extract_zip_with_progress<P: AsRef<Path>>(
 ) -> Result<()> {
     let file = File::open(&archive_path)?;
     let mut archive = ZipArchive::new(file)?;
-    
+
     let handle = progress.start_extraction("zip", Some(archive.len() as u64));
-    
+
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
         // Extract file with progress updates
         handle.inc(1);
     }
-    
+
     progress.finish(handle);
     Ok(())
 }
@@ -120,16 +125,19 @@ pub fn extract_zip_with_progress<P: AsRef<Path>>(
 ### Implementation Strategy
 
 #### Phase 1: Basic Progress Indicators
+
 - Implement spinners for all long-running operations
 - Add elapsed time display
 - Ensure proper cleanup on errors
 
 #### Phase 2: Detailed Progress Tracking
+
 - Implement byte-level progress for downloads (where possible)
 - Add file count progress for archive extraction
 - Show current file being extracted
 
 #### Phase 3: Enhanced User Experience
+
 - Multi-progress for concurrent operations
 - ETA calculations for large downloads
 - Transfer speed display
@@ -185,12 +193,14 @@ The configuration will be loaded at startup and applied to all progress operatio
 ## Consequences
 
 ### Positive
+
 - Improved user experience with visual feedback for long operations
 - Cross-platform compatibility maintained
 - Minimal performance overhead with proper throttling
 - Graceful degradation in non-TTY environments
 
 ### Negative
+
 - Additional dependency (indicatif and its transitive dependencies)
 - Slightly increased binary size
 - Need to carefully manage progress bar lifecycle to avoid visual artifacts
@@ -204,6 +214,7 @@ The configuration will be loaded at startup and applied to all progress operatio
 4. **linenoise/termion**: Too low-level for our needs
 
 ## References
+
 - [indicatif documentation](https://docs.rs/indicatif/)
 - [attohttpc streaming limitations](https://github.com/sbstp/attohttpc/issues)
 - [Rust CLI book - Output for humans and machines](https://rust-cli.github.io/book/tutorial/output.html)

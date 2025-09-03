@@ -46,21 +46,25 @@ RUST_LOG=kopi::download=debug,kopi::security=trace kopi install 21
 ### Common Debugging Scenarios
 
 **Installation Issues:**
+
 ```bash
 kopi install 21 -vv          # See download URLs, checksums, extraction paths
 ```
 
 **Version Resolution Problems:**
+
 ```bash
 RUST_LOG=kopi::version=debug kopi install temurin@21  # Debug version parsing
 ```
 
 **API Communication:**
+
 ```bash
 RUST_LOG=kopi::api=debug kopi list --remote           # Debug foojay.io API calls
 ```
 
 **Storage and Disk Space:**
+
 ```bash
 RUST_LOG=kopi::storage=debug kopi install 21          # Debug installation paths
 ```
@@ -126,7 +130,7 @@ Kopi's shims are designed for minimal performance impact:
 
 2. **Efficient Tool Detection**: Uses a static registry for O(1) tool lookups
 
-3. **Fast Version Resolution**: 
+3. **Fast Version Resolution**:
    - Caches version file locations
    - Minimal file I/O operations
    - Early exit on environment variable override
@@ -135,10 +139,10 @@ Kopi's shims are designed for minimal performance impact:
    - Direct process replacement on Unix (exec)
    - Efficient subprocess spawning on Windows
 
-
 ### Comparison with Direct Execution
 
 The shim overhead is negligible compared to JVM startup time:
+
 - JVM cold start: 100-500ms
 - Shim overhead: 5-20ms (2-4% of total)
 

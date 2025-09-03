@@ -2,7 +2,8 @@
 
 **Date**: 2025-06-26  
 **Review Subject**: Metadata Cache Feature Implementation  
-**Files Reviewed**: 
+**Files Reviewed**:
+
 - `src/cache/mod.rs`
 - `src/commands/cache.rs`
 - `src/api/mod.rs` (modifications)
@@ -20,10 +21,11 @@ This review examines the metadata cache feature implementation added to the kopi
    - `kopi cache refresh` - Update metadata
    - `kopi cache info` - Display cache information
    - `kopi cache clear` - Clear cache
-   
+
    These commands follow common CLI patterns and are easy for users to understand.
 
 2. **Appropriate Abstraction and Layer Separation**
+
    ```rust
    // Clear separation between API and cache layers
    pub fn fetch_and_cache_metadata() -> Result<MetadataCache> {
@@ -40,6 +42,7 @@ This review examines the metadata cache feature implementation added to the kopi
    - Clear and specific error messages
 
 4. **Atomic File Operations**
+
    ```rust
    // Safe write using temporary file
    let temp_path = path.with_extension("tmp");
@@ -54,15 +57,15 @@ This review examines the metadata cache feature implementation added to the kopi
 ### Areas for Improvement
 
 1. **Duplicate Data Structures**
-   
+
    Several similar structures are defined:
    - `api::Package` vs `cache::Architecture`
    - `api::Distribution` vs `cache::Distribution`
-   
+
    **Recommendation**: Reuse existing types from `models/jdk.rs` to reduce code duplication.
 
 2. **Architecture Key Generation Logic**
-   
+
    ```rust
    let arch_key = format!(
        "{}-{}",
@@ -70,19 +73,19 @@ This review examines the metadata cache feature implementation added to the kopi
        package.lib_c_type.as_deref().unwrap_or("default")
    );
    ```
-   
+
    While functional, consider using more standard architecture identifiers (e.g., `linux-x64`, `windows-arm64`).
 
 3. **Unimplemented Features**
-   
+
    ```rust
    checksum: String::new(), // TODO: Fetch checksum from package info
    ```
-   
+
    Checksum verification is an important security feature. Prioritize implementation.
 
 4. **Cache Expiration Management**
-   
+
    Currently lacks automatic cache refresh or expiration checking. Consider future features:
    - Automatic refresh based on cache age
    - Allow using stale cache when offline

@@ -7,7 +7,9 @@ Kopi installers bundle recent metadata snapshots to provide immediate offline ca
 ## Bundling Process
 
 ### 1. Metadata Generation
+
 Before each release:
+
 ```bash
 # Generate fresh metadata from foojay API
 kopi-metadata-gen generate --output ./metadata
@@ -20,13 +22,17 @@ kopi-metadata-gen validate --input ./metadata
 ```
 
 ### 2. Installer Integration
+
 The installer build process:
+
 1. Includes the latest metadata archive in the package
 2. Extracts it to `${KOPI_HOME}/bundled-metadata/` during installation
 3. Sets appropriate permissions on the extracted files
 
 ### 3. Directory Structure
+
 After installation:
+
 ```
 ${KOPI_HOME}/
 ├── bin/
@@ -46,16 +52,19 @@ ${KOPI_HOME}/
 ## Update Strategy
 
 ### Release Updates
+
 - Each Kopi release includes metadata from the release date
 - Metadata typically remains valid for months
 - Users get the latest JDK versions available at release time
 
 ### Runtime Updates
+
 1. **Normal Operation**: Fetches fresh metadata from HTTP source
 2. **Fallback**: Uses bundled metadata if HTTP fails
 3. **Cache**: Stores fetched metadata for configured duration
 
 ### Version Compatibility
+
 - Bundled metadata format matches the Kopi version
 - Older Kopi versions can read newer metadata formats
 - Forward compatibility through version field in index.json
@@ -70,12 +79,12 @@ fn get_metadata() -> Result<MetadataCache> {
         cache.store(metadata);
         return Ok(metadata);
     }
-    
+
     // 2. Check cache validity
     if let Some(cached) = cache.get_valid() {
         return Ok(cached);
     }
-    
+
     // 3. Fall back to pre-extracted bundled metadata
     // Already available at ${KOPI_HOME}/bundled-metadata/
     local_source.fetch_all()
@@ -104,14 +113,17 @@ fn get_metadata() -> Result<MetadataCache> {
 ## Platform-Specific Considerations
 
 ### Windows
+
 - Install to `%LOCALAPPDATA%\kopi\bundled-metadata\`
 - Handle path separators correctly
 
 ### macOS
+
 - Install to `~/Library/Application Support/kopi/bundled-metadata/`
 - Consider code signing requirements
 
 ### Linux
+
 - Install to `~/.kopi/bundled-metadata/`
 - Respect XDG base directory specification if set
 
@@ -122,6 +134,7 @@ kopi-metadata-YYYY-MM.tar.gz
 ```
 
 Where:
+
 - `YYYY`: Four-digit year
 - `MM`: Two-digit month
 
@@ -130,12 +143,15 @@ This allows multiple archives in the same directory without conflicts.
 ## Maintenance
 
 ### Regular Updates
+
 - Generate new metadata monthly or before releases
 - Monitor foojay API for schema changes
 - Test compatibility with older Kopi versions
 
 ### Emergency Updates
+
 If critical JDK updates are released:
+
 1. Generate new metadata archive
 2. Update HTTP source immediately
 3. Consider patch release with updated bundle

@@ -9,7 +9,7 @@ The HTTP source fetches metadata from any static web server. Originally designed
 Since we're just fetching static JSON files via HTTP, this approach is not limited to GitHub Pages:
 
 1. **No vendor lock-in**: Works with any web server
-2. **Simple deployment**: Just upload static files  
+2. **Simple deployment**: Just upload static files
 3. **No authentication complexity**: Public HTTP access
 4. **No rate limits**: Unlike GitHub API
 5. **Flexible hosting options**:
@@ -24,6 +24,7 @@ Since we're just fetching static JSON files via HTTP, this approach is not limit
 ## Required Structure
 
 The web server must host:
+
 1. An `index.json` that lists available metadata files
 2. JSON metadata files in subdirectories
 
@@ -55,11 +56,11 @@ The index file provides metadata about available files with filtering capabiliti
     {
       "path": "jdks/temurin-linux-x64-glibc-2024-01.json",
       "distribution": "temurin",
-      "architectures": ["x86_64"],  // Array to support files with multiple architectures
+      "architectures": ["x86_64"], // Array to support files with multiple architectures
       "operating_systems": ["linux"],
       "lib_c_types": ["glibc"],
-      "size": 45678,  // Size of the JSON metadata file in bytes
-      "checksum": "sha256:abc123...",  // SHA256 of the JSON metadata file content
+      "size": 45678, // Size of the JSON metadata file in bytes
+      "checksum": "sha256:abc123...", // SHA256 of the JSON metadata file content
       "last_modified": "2024-01-15T09:00:00Z"
     },
     {
@@ -67,7 +68,7 @@ The index file provides metadata about available files with filtering capabiliti
       "distribution": "temurin",
       "architectures": ["x86_64"],
       "operating_systems": ["windows"],
-      "lib_c_types": null,  // Windows doesn't use lib_c_type
+      "lib_c_types": null, // Windows doesn't use lib_c_type
       "size": 48900,
       "checksum": "sha256:ghi789...",
       "last_modified": "2024-01-15T09:00:00Z"
@@ -89,33 +90,33 @@ impl HttpMetadataSource {
     pub fn new(base_url: String) -> Self {
         let mut client = attohttpc::Session::new();
         client.header("User-Agent", "kopi-jdk-manager");
-        
+
         Self {
             base_url,
             client,
             cache_dir: None,
         }
     }
-    
+
     fn fetch_index(&self) -> Result<IndexFile> {
         let url = format!("{}/index.json", self.base_url);
         let response = self.client.get(&url).send()?;
-        
+
         if !response.is_success() {
             return Err(KopiError::MetadataFetch(
                 format!("Failed to fetch index: {}", response.status())
             ));
         }
-        
+
         let index: IndexFile = response.json()?;
         Ok(index)
     }
-    
+
     fn filter_files_for_platform(&self, files: Vec<IndexFileEntry>) -> Vec<IndexFileEntry> {
         let current_arch = crate::platform::get_current_architecture();
         let current_os = crate::platform::get_current_os();
         let current_libc = crate::platform::get_foojay_libc_type();
-        
+
         files.into_iter()
             .filter(|entry| {
                 // Check architecture
@@ -124,14 +125,14 @@ impl HttpMetadataSource {
                         return false;
                     }
                 }
-                
+
                 // Check operating system
                 if let Some(ref oses) = entry.operating_systems {
                     if !oses.contains(&current_os) {
                         return false;
                     }
                 }
-                
+
                 // Check lib_c_type (only for Linux)
                 if current_os == "linux" {
                     if let Some(ref lib_c_types) = entry.lib_c_types {
@@ -140,22 +141,22 @@ impl HttpMetadataSource {
                         }
                     }
                 }
-                
+
                 true
             })
             .collect()
     }
-    
+
     fn fetch_metadata_file(&self, path: &str) -> Result<Vec<JdkMetadata>> {
         let url = format!("{}/{}", self.base_url, path);
         let response = self.client.get(&url).send()?;
-        
+
         if !response.is_success() {
             return Err(KopiError::MetadataFetch(
                 format!("Failed to fetch metadata file: {}", response.status())
             ));
         }
-        
+
         let metadata: Vec<JdkMetadata> = response.json()?;
         Ok(metadata)
     }
@@ -165,11 +166,11 @@ impl MetadataSource for HttpMetadataSource {
     fn id(&self) -> &str {
         "http"
     }
-    
+
     fn name(&self) -> &str {
         "HTTP/Web"
     }
-    
+
     fn is_available(&self) -> Result<bool> {
         // Try to fetch index to check availability
         match self.fetch_index() {
@@ -177,16 +178,16 @@ impl MetadataSource for HttpMetadataSource {
             Err(_) => Ok(false),
         }
     }
-    
+
     fn fetch_all(&self) -> Result<Vec<JdkMetadata>> {
         let mut all_metadata = Vec::new();
-        
+
         // Fetch index file
         let index = self.fetch_index()?;
-        
+
         // Filter files for current platform
         let platform_files = self.filter_files_for_platform(index.files);
-        
+
         log::info!(
             "Filtered to {} files for current platform (arch: {}, os: {}, libc: {})",
             platform_files.len(),
@@ -194,7 +195,7 @@ impl MetadataSource for HttpMetadataSource {
             crate::platform::get_current_os(),
             crate::platform::get_foojay_libc_type()
         );
-        
+
         // Fetch only metadata files relevant to this platform
         for entry in platform_files {
             match self.fetch_metadata_file(&entry.path) {
@@ -208,22 +209,22 @@ impl MetadataSource for HttpMetadataSource {
                 Err(e) => log::warn!("Failed to fetch {}: {}", entry.path, e),
             }
         }
-        
+
         Ok(all_metadata)
     }
-    
+
     fn fetch_distribution(&self, distribution: &str) -> Result<Vec<JdkMetadata>> {
         let mut metadata = Vec::new();
-        
+
         // Fetch index file
         let index = self.fetch_index()?;
-        
+
         // Filter for platform AND distribution
         let filtered_files: Vec<IndexFileEntry> = self.filter_files_for_platform(index.files)
             .into_iter()
             .filter(|entry| entry.distribution == distribution)
             .collect();
-        
+
         // Fetch only the specific distribution files
         for entry in filtered_files {
             match self.fetch_metadata_file(&entry.path) {
@@ -236,17 +237,17 @@ impl MetadataSource for HttpMetadataSource {
                 Err(e) => log::warn!("Failed to fetch {}: {}", entry.path, e),
             }
         }
-        
+
         Ok(metadata)
     }
-    
+
     fn fetch_package_details(&self, _package_id: &str) -> Result<PackageDetails> {
         // HTTP source always returns complete metadata
         Err(KopiError::InvalidOperation(
             "HTTP source provides complete metadata".to_string()
         ))
     }
-    
+
     fn last_updated(&self) -> Result<Option<chrono::DateTime<chrono::Utc>>> {
         let index = self.fetch_index()?;
         let updated = chrono::DateTime::parse_from_rfc3339(&index.updated)
@@ -291,6 +292,7 @@ This reduces bandwidth usage by 75-90% compared to downloading all metadata file
 ## Hosting Options
 
 ### GitHub Pages
+
 ```yaml
 # .github/workflows/deploy-metadata.yml
 - name: Deploy to GitHub Pages
@@ -301,23 +303,26 @@ This reduces bandwidth usage by 75-90% compared to downloading all metadata file
 ```
 
 ### AWS S3 + CloudFront
+
 ```bash
 aws s3 sync ./metadata s3://my-bucket/metadata/ --delete
 aws cloudfront create-invalidation --distribution-id ABCD1234 --paths "/*"
 ```
 
 ### Cloudflare Pages
+
 ```bash
 npx wrangler pages publish metadata --project-name=kopi-metadata
 ```
 
 ### Corporate Internal Server
+
 ```nginx
 server {
     listen 80;
     server_name metadata.internal.company.com;
     root /var/www/metadata;
-    
+
     location / {
         add_header Access-Control-Allow-Origin *;
         try_files $uri $uri/ =404;

@@ -1,6 +1,7 @@
 # Concurrent Process Locking Analysis
 
 ## Metadata
+
 - Type: Analysis
 - Owner: Development Team
 - Status: Completed
@@ -8,9 +9,11 @@
 - Date Modified: 2025-09-03
 
 ## Links
+
 <!-- Internal project artifacts only -->
+
 - Related Analyses: N/A – Standalone analysis
-- Formal Requirements: 
+- Formal Requirements:
   - [`FR-02uqo-installation-locking.md`](../requirements/FR-02uqo-installation-locking.md)
   - [`FR-ui8x2-uninstallation-locking.md`](../requirements/FR-ui8x2-uninstallation-locking.md)
   - [`FR-v7ql4-cache-locking.md`](../requirements/FR-v7ql4-cache-locking.md)
@@ -29,6 +32,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 ## Problem Space
 
 ### Current State
+
 - Multiple kopi processes can execute simultaneously without coordination
 - No locking mechanism exists for protecting shared resources
 - Potential race conditions in:
@@ -38,7 +42,8 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
   - Shim installation and updates
 - Current mutex usage is limited to internal thread synchronization, not cross-process coordination
 
-### Desired State  
+### Desired State
+
 - Safe concurrent execution of multiple kopi processes
 - Atomic operations for critical sections (install, uninstall, cache refresh)
 - Consistent state maintenance across all operations
@@ -46,6 +51,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 - Minimal performance impact for non-conflicting operations
 
 ### Gap Analysis
+
 - Missing: Cross-process synchronization mechanism
 - Missing: Lock acquisition and release strategy
 - Missing: Timeout and deadlock prevention
@@ -54,16 +60,17 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 
 ## Stakeholder Analysis
 
-| Stakeholder | Interest/Need | Impact | Priority |
-|------------|---------------|---------|----------|
-| End Users | Reliable JDK management without corruption | High | P0 |
-| CI/CD Systems | Parallel build processes with kopi | High | P0 |
-| Development Teams | Multiple terminal sessions using kopi | Medium | P1 |
-| System Administrators | Automated JDK provisioning | Medium | P1 |
+| Stakeholder           | Interest/Need                              | Impact | Priority |
+| --------------------- | ------------------------------------------ | ------ | -------- |
+| End Users             | Reliable JDK management without corruption | High   | P0       |
+| CI/CD Systems         | Parallel build processes with kopi         | High   | P0       |
+| Development Teams     | Multiple terminal sessions using kopi      | Medium | P1       |
+| System Administrators | Automated JDK provisioning                 | Medium | P1       |
 
 ## Research & Discovery
 
 ### User Feedback
+
 - Potential issue: Concurrent installations may corrupt JDK directories
 - Potential issue: Cache refresh during installation may cause inconsistencies
 - Potential issue: Multiple processes modifying .kopi-version simultaneously
@@ -71,6 +78,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 ### Competitive Analysis
 
 #### nvm (Node Version Manager)
+
 - **Implementation**: No explicit file locking mechanism
 - **Architecture**: POSIX-compliant bash script
 - **Concurrency Strategy**: Relies on sequential command execution and shell behavior
@@ -80,6 +88,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 - **Source**: https://github.com/nvm-sh/nvm/blob/master/nvm.sh
 
 #### pyenv (Python Version Manager)
+
 - **Implementation**: Shell's `noclobber` option for atomic file creation
 - **Lock File Location**: `${PYENV_ROOT}/shims/.pyenv-shim` (prototype shim file)
 - **Timeout Mechanism**: 60-second default timeout with retry logic (0.1s sleep if supported, else 1s)
@@ -99,6 +108,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 - **Source**: https://github.com/pyenv/pyenv/blob/master/libexec/pyenv-rehash
 
 #### volta (JavaScript Tool Manager - Rust)
+
 - **Implementation**: Originally used `fs2` crate for cross-platform file locking
 - **Historical Note**: fs2 was the standard solution before Rust 1.89.0 added native file locking
 - **Lock File**: `volta.lock` in the Volta directory
@@ -114,6 +124,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 - **Source**: https://volta-cli.github.io/volta/main/volta_core/sync/index.html
 
 #### rustup/cargo (Rust Toolchain Manager)
+
 - **Implementation**: Custom flock wrapper in `cargo/util/flock.rs`
 - **Platform-specific**:
   - Unix: flock() system call (replaced fcntl for WSL compatibility)
@@ -129,6 +140,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 - **Source**: https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs
 
 #### sdkman (Software Development Kit Manager)
+
 - **Implementation**: No explicit file locking mechanism found
 - **Architecture**: Bash scripts with Rust rewrite in progress
 - **Installation Process**: Sequential operations without lock protection
@@ -139,18 +151,21 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 ### Competitive Analysis Summary
 
 #### Key Findings
+
 1. **Locking Adoption**: Only 2 out of 5 tools (40%) implement explicit file locking
 2. **Rust Tools Lead**: Both Rust-based tools (volta, rustup/cargo) have robust locking
 3. **Shell Scripts Lag**: Bash-based tools mostly lack locking (except pyenv's creative approach)
 4. **Platform Challenges**: NFS and WSL compatibility issues are common concerns
 
 #### Implementation Patterns
+
 - **No Locking** (nvm, sdkman): Risk of race conditions but simpler implementation
 - **Shell-based** (pyenv): Creative use of noclobber for portability
 - **Native System Calls** (volta, rustup): Robust but requires platform-specific code
 - **Reference Counting** (volta): Sophisticated approach for nested operations
 
 #### Lessons for kopi
+
 1. **Use std::fs::File locks**: Native in Rust 1.89.0+, eliminates all external dependencies
 2. **Implement User Feedback**: Follow rustup's example of clear messaging during lock waits
 3. **Handle NFS Carefully**: Follow cargo's approach of skipping locks on NFS
@@ -161,6 +176,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 ### Technical Investigation
 
 #### Advisory Locks vs Lock Files
+
 **Critical Distinction**: There are two fundamentally different locking approaches:
 
 1. **Advisory Locks (std::fs::File)** - Native in Rust 1.89.0+, used by modern Rust tools
@@ -176,6 +192,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
    - **How it works**: Creates file with PID/timestamp info
 
 #### Why std::fs::File Locks Eliminate Most Stale Lock Issues
+
 ```rust
 // With std::fs::File (Rust 1.89.0+): Lock automatically released on process exit
 let file = File::open("kopi.lock")?;
@@ -189,16 +206,19 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 ```
 
 #### When Timeouts Are Still Needed
+
 - **Lock acquisition timeout**: Prevent waiting forever for legitimate lock holder
 - **NFS fallback**: When std locks don't work, fallback to lock files needs stale detection
 - **Deadlock prevention**: Nested operations might deadlock without timeout
 
 #### Implementation precedents from competitive analysis:
+
 - Volta's reference counting for nested locks (prevents self-deadlock)
 - Cargo's NFS detection and bypass (avoids unreliable locking)
 - Pyenv's timeout is for **waiting**, not stale lock detection
 
 ### Data Analysis
+
 - Critical operations requiring locks:
   - Install: ~30-60 seconds (downloading + extracting)
   - Uninstall: ~1-5 seconds
@@ -209,6 +229,7 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 ## Discovered Requirements
 
 ### Functional Requirements (Potential)
+
 - [x] **FR-DRAFT-1**: Process-level locking for installation operations → Formalized as [`FR-02uqo`](../requirements/FR-02uqo-installation-locking.md)
   - Rationale: Prevent concurrent installations to same JDK version
   - Priority: P0
@@ -235,6 +256,7 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
   - Acceptance Criteria: Clear messages when waiting for locks
 
 ### Non-Functional Requirements (Potential)
+
 - [x] **NFR-DRAFT-1**: Lock acquisition timeout limit → Formalized as [`NFR-z6kan`](../requirements/NFR-z6kan-lock-timeout-performance.md)
   - Category: Performance
   - Target: Default 600 seconds (10 minutes) wait time before timeout, configurable
@@ -253,12 +275,14 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 ## Design Considerations
 
 ### Technical Constraints
+
 - Must work on both Unix and Windows platforms
 - Lock files must be in user-writable locations
 - Should handle network filesystems (NFS, SMB) gracefully
 - Must not require elevated permissions
 
 ### Potential Approaches
+
 1. **Option A**: Pure std::fs::File advisory locking (Chosen)
    - Pros: Native to Rust 1.89.0+, no external dependencies, automatic cleanup on crash, no stale locks
    - Cons: Doesn't work reliably on NFS
@@ -284,6 +308,7 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
    - Precedent: nvm and sdkman operate this way
 
 ### Architecture Impact
+
 - New ADR needed for lock file strategy and location
 - New ADR needed for timeout and recovery policies
 - Potential new module: `src/locking/` or integration into existing modules
@@ -291,12 +316,12 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 
 ## Risk Assessment
 
-| Risk | Probability | Impact | Mitigation Strategy |
-|------|------------|--------|-------------------|
-| Deadlock from crashed processes | Medium | High | Implement lock timeout and stale lock detection |
-| Performance degradation | Low | Medium | Use fine-grained locks, allow parallel non-conflicting operations |
-| Platform incompatibility | Low | High | Use Rust standard library (native since 1.89.0) |
-| Lock file corruption | Low | Medium | Use atomic file operations, implement lock validation |
+| Risk                            | Probability | Impact | Mitigation Strategy                                               |
+| ------------------------------- | ----------- | ------ | ----------------------------------------------------------------- |
+| Deadlock from crashed processes | Medium      | High   | Implement lock timeout and stale lock detection                   |
+| Performance degradation         | Low         | Medium | Use fine-grained locks, allow parallel non-conflicting operations |
+| Platform incompatibility        | Low         | High   | Use Rust standard library (native since 1.89.0)                   |
+| Lock file corruption            | Low         | Medium | Use atomic file operations, implement lock validation             |
 
 ## Open Questions
 
@@ -308,6 +333,7 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 ## Recommendations
 
 ### Immediate Actions
+
 1. Use std::fs::File for advisory locking (native in Rust 1.89.0+, automatic cleanup on crash)
 2. Implement acquisition timeout (600 seconds default, configurable) to prevent indefinite waiting
 3. Add NFS detection with skip strategy (atomic operations only)
@@ -318,16 +344,18 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 **Note**: After further analysis and discussion, the ADR-8mnaz chose a simpler approach than the hybrid strategy initially considered here.
 
 **Chosen Approach (per ADR-8mnaz): Native std::fs::File locks + Skip on NFS**
+
 - **Local filesystems**: std::fs::File advisory locks (native in Rust 1.89.0+)
 - **Network filesystems**: Skip locking, rely on atomic operations
 - **Detection**: Check filesystem type, warn user when on NFS
-- **Rationale**: 
+- **Rationale**:
   - No external dependencies needed
   - YAGNI principle for NFS support
   - cargo's proven pattern
   - Atomic operations provide sufficient safety
 
 **Alternative Considered: Hybrid std + PID-based fallback**
+
 - Would provide explicit locking on NFS
 - Adds complexity: stale detection, cleanup logic
 - Can be added later if real users report NFS issues
@@ -341,6 +369,7 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
   ```
 
 ### Next Steps
+
 1. [x] Create formal requirements: FR-02uqo through FR-c04js → Completed 2025-09-02
 2. [x] Create formal requirements: NFR-z6kan through NFR-g12ex → Completed 2025-09-02
 3. [x] Draft ADR for: Lock file strategy using native std::fs::File → Completed as ADR-8mnaz
@@ -349,6 +378,7 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 6. [ ] Monitor production: Collect NFS usage data to validate YAGNI approach
 
 ### Out of Scope
+
 - Distributed locking across multiple machines
 - Lock priority or fair queuing mechanisms (may revisit if contention becomes an issue)
 - GUI for lock monitoring
@@ -356,9 +386,11 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 ## Appendix
 
 ### Meeting Notes
+
 N/A - Initial analysis
 
 ### References
+
 - Rust std::fs::File documentation: https://doc.rust-lang.org/std/fs/struct.File.html (Native locking API, stable since 1.89.0)
 - Rust 1.89.0 Release Notes: File locking stabilization announcement
 - flock(2) man page: https://man7.org/linux/man-pages/man2/flock.2.html
@@ -370,7 +402,9 @@ N/A - Initial analysis
 - POSIX advisory locking specification
 
 ### Raw Data
+
 Example lock file structure (only relevant for PID-based locking approach, not chosen in ADR-8mnaz):
+
 ```json
 {
   "pid": 12345,

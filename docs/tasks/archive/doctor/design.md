@@ -7,6 +7,7 @@ The `kopi doctor` command is a diagnostic tool that checks the health of the kop
 ## Purpose
 
 The primary purpose of `kopi doctor` is to:
+
 - Diagnose common installation and configuration problems
 - Verify that kopi is properly integrated with the user's shell
 - Check system dependencies and permissions
@@ -56,7 +57,7 @@ Verify shell configuration and PATH setup:
 Check installed JDKs:
 
 - **Installation Integrity**: Verify JDK directories contain expected files
-- **Executable Permissions**: Check if Java executables have correct permissions  
+- **Executable Permissions**: Check if Java executables have correct permissions
 - **Symlink Validity**: Ensure shims point to valid JDK executables
 - **Version Consistency**: Match installed versions with metadata
 - **Disk Space**: Check available space for JDK installations
@@ -237,18 +238,20 @@ Note: The doctor command returns 0 only when all checks pass. Any failed checks 
 ### Error Scenarios
 
 1. **Permission Denied**
+
    ```
    Error: Cannot read kopi configuration
    Permission denied: ~/.kopi/config.toml
-   
+
    Try running with appropriate permissions or check file ownership.
    ```
 
 2. **Network Timeout**
+
    ```
    Warning: Network check timed out
    Unable to reach api.foojay.io
-   
+
    This may indicate network issues or firewall restrictions.
    Check your internet connection and proxy settings.
    ```
@@ -327,17 +330,21 @@ $ kopi doctor --check jdks
 ## Comparison with Similar Tools
 
 ### brew doctor (Homebrew)
+
 - Focus on formula and tap issues
 - Kopi focuses on JDK-specific concerns
 
 ### volta doctor
+
 - Checks Node.js toolchain health
 - Similar approach but different ecosystem
 
 ### sdk doctor (SDKMAN)
+
 - Basic installation checks
 - Kopi provides more comprehensive diagnostics
 
 ### rustup doctor
+
 - Toolchain and component verification
 - Similar category-based approach

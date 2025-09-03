@@ -1,6 +1,7 @@
 # Lock cleanup reliability
 
 ## Metadata
+
 - ID: NFR-vcxp8
 - Type: Non-Functional Requirement
 - Category: Reliability
@@ -12,6 +13,7 @@
 - Date Modified: 2025-09-03
 
 ## Links
+
 - Implemented by Tasks: N/A – Not yet implemented
 - Related Requirements: FR-02uqo, FR-ui8x2, FR-v7ql4
 - Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
@@ -26,6 +28,7 @@ The system SHALL achieve 100% automatic lock cleanup on local filesystems using 
 ## Rationale
 
 Lock cleanup reliability is critical to prevent system deadlocks:
+
 - Native advisory locks are automatically released by the kernel on process termination
 - This eliminates the need for complex stale lock detection
 - Network filesystems (NFS) have unreliable lock support, requiring alternative strategies
@@ -52,28 +55,32 @@ The system shall automatically clean up locks in all termination scenarios to en
 ## Technical Details (if applicable)
 
 ### Non-Functional Requirement Details
+
 - Reliability: 100% automatic cleanup on supported filesystems
 - Performance: Lock release < 1 second after process termination
 - Security: Lock files with 0600 permissions (owner read/write only)
 - Compatibility: Graceful degradation on unsupported filesystems
 
 ### Filesystem Support Matrix
+
 | Filesystem | Lock Support | Fallback Strategy |
-|------------|--------------|-------------------|
-| ext4 | Full | N/A |
-| APFS | Full | N/A |
-| NTFS | Full | N/A |
-| NFS | Unreliable | Atomic operations |
-| SMB/CIFS | Unreliable | Atomic operations |
+| ---------- | ------------ | ----------------- |
+| ext4       | Full         | N/A               |
+| APFS       | Full         | N/A               |
+| NTFS       | Full         | N/A               |
+| NFS        | Unreliable   | Atomic operations |
+| SMB/CIFS   | Unreliable   | Atomic operations |
 
 ## Verification Method
 
 ### Test Strategy
+
 - Test Type: Integration
 - Test Location: `tests/lock_reliability_tests.rs` (planned)
 - Test Names: `test_nfr_vcxp8_crash_cleanup`, `test_nfr_vcxp8_network_fs_fallback`
 
 ### Verification Commands
+
 ```bash
 # Specific commands to verify this requirement
 cargo test test_nfr_vcxp8
@@ -82,6 +89,7 @@ for i in {1..100}; do cargo test test_nfr_vcxp8_stress; done
 ```
 
 ### Success Metrics
+
 - Metric 1: 100% lock cleanup rate across 1000 forced terminations
 - Metric 2: Lock re-acquisition time < 1 second in all cases
 - Metric 3: Zero stale locks after test suite completion
@@ -94,26 +102,29 @@ for i in {1..100}; do cargo test test_nfr_vcxp8_stress; done
 ## Platform Considerations
 
 ### Unix
+
 - Advisory locks via flock()
 - Automatic cleanup by kernel on process termination
 - Detection of network filesystems via statfs()
 
 ### Windows
+
 - File locks via LockFileEx()
 - Automatic cleanup by Windows kernel
 - Network drive detection via GetDriveType()
 
 ### Cross-Platform
+
 - Consistent behavior for lock cleanup
 - Unified network filesystem detection
 
 ## Risks & Mitigation
 
-| Risk | Impact | Likelihood | Mitigation | Validation |
-|------|--------|------------|------------|------------|
-| Filesystem doesn't support locks | High | Low | Detect and use atomic operations | Test on various filesystems |
-| Kernel bug prevents cleanup | High | Very Low | Document known issues | Monitor kernel bug trackers |
-| Permission issues on lock directory | Medium | Low | Create with proper umask | Test with various umask values |
+| Risk                                | Impact | Likelihood | Mitigation                       | Validation                     |
+| ----------------------------------- | ------ | ---------- | -------------------------------- | ------------------------------ |
+| Filesystem doesn't support locks    | High   | Low        | Detect and use atomic operations | Test on various filesystems    |
+| Kernel bug prevents cleanup         | High   | Very Low   | Document known issues            | Monitor kernel bug trackers    |
+| Permission issues on lock directory | Medium | Low        | Create with proper umask         | Test with various umask values |
 
 ## Implementation Notes
 
@@ -124,6 +135,7 @@ for i in {1..100}; do cargo test test_nfr_vcxp8_stress; done
 - Implement atomic operations using rename() for fallback
 
 ## External References
+
 N/A – No external references
 
 ## Change History

@@ -11,9 +11,9 @@ This document outlines the implementation plan for adding progress indicator sup
 **Goal**: Update the `MetadataSource` trait and ALL implementations with new signatures to maintain compilation.
 
 ### Input Materials
+
 - **Documentation**:
   - `/docs/tasks/indicator/design_metadata.md` - Design specification
-  
 - **Source Code to Modify**:
   - `/src/metadata/source.rs` - MetadataSource trait definition
   - `/src/metadata/foojay.rs` - Foojay implementation
@@ -22,6 +22,7 @@ This document outlines the implementation plan for adding progress indicator sup
   - `/src/metadata/provider_tests.rs` - Mock implementation
 
 ### Tasks
+
 - [x] **Update MetadataSource trait**:
   - [x] Add `progress: &mut dyn ProgressIndicator` to `fetch_all()`
   - [x] Add `progress: &mut dyn ProgressIndicator` to `fetch_distribution()`
@@ -38,12 +39,13 @@ This document outlines the implementation plan for adding progress indicator sup
 - [x] Update trait documentation
 
 ### Example Implementation
+
 ```rust
 // In foojay.rs
 impl MetadataSource for FoojayMetadataSource {
     fn fetch_all(&self, _progress: &mut dyn ProgressIndicator) -> Result<Vec<JdkMetadata>> {
         // TODO: Phase 2 - Add actual progress reporting
-        
+
         // Existing implementation unchanged
         let packages = self.client.get_packages(None)?;
         // ...
@@ -52,12 +54,14 @@ impl MetadataSource for FoojayMetadataSource {
 ```
 
 ### Deliverables
+
 - Updated trait with new signatures
 - All implementations updated with minimal changes
 - All tests compilable with SilentProgress
 - Fully compilable codebase
 
 ### Verification ✅
+
 ```bash
 cargo fmt                              # ✅ Completed
 cargo clippy --all-targets -- -D warnings  # ✅ No warnings
@@ -72,6 +76,7 @@ cargo test --lib metadata --no-run     # ✅ All tests compile
 **Goal**: Add actual progress reporting to FoojayMetadataSource.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phase 1 (All signatures updated)
 
@@ -79,6 +84,7 @@ cargo test --lib metadata --no-run     # ✅ All tests compile
   - `/src/metadata/foojay.rs` - Foojay source implementation
 
 ### Tasks
+
 - [x] **Replace `_progress` with actual usage**:
   - [x] Remove underscore from parameter name
   - [x] Remove `// TODO: Phase 2` comment
@@ -95,11 +101,13 @@ cargo test --lib metadata --no-run     # ✅ All tests compile
   - [x] Tests verified with all 4 tests passing
 
 ### Deliverables
+
 - Fully implemented progress reporting in FoojayMetadataSource
 - Progress messages at key operation points
 - TODO comments removed
 
 ### Verification ✅
+
 ```bash
 cargo fmt                              # ✅ Completed
 cargo clippy --all-targets -- -D warnings  # ✅ No warnings
@@ -113,6 +121,7 @@ cargo test --lib metadata::foojay::tests  # ✅ All tests pass (4/4)
 **Goal**: Add actual progress reporting to HttpMetadataSource.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phase 1 (All signatures updated)
 
@@ -120,6 +129,7 @@ cargo test --lib metadata::foojay::tests  # ✅ All tests pass (4/4)
   - `/src/metadata/http.rs` - HTTP source implementation
 
 ### Tasks
+
 - [x] **Replace `_progress` with actual usage**:
   - [x] Remove underscore from parameter name
   - [x] Remove `// TODO: Phase 3` comment
@@ -137,11 +147,13 @@ cargo test --lib metadata::foojay::tests  # ✅ All tests pass (4/4)
   - [x] Show download size if available from headers
 
 ### Deliverables ✅
+
 - ✅ Fully implemented progress reporting in HttpMetadataSource
-- ✅ HTTP-specific progress information (file paths, URLs) 
+- ✅ HTTP-specific progress information (file paths, URLs)
 - ✅ TODO comments removed
 
 ### Verification ✅
+
 ```bash
 cargo fmt                               # ✅ Completed
 cargo clippy --all-targets -- -D warnings  # ✅ No warnings
@@ -155,6 +167,7 @@ cargo test --lib metadata::http_tests  # ✅ All tests pass
 **Goal**: Add actual progress reporting to LocalDirectorySource.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phase 1 (All signatures updated)
 
@@ -162,6 +175,7 @@ cargo test --lib metadata::http_tests  # ✅ All tests pass
   - `/src/metadata/local.rs` - Local source implementation
 
 ### Tasks
+
 - [x] **Replace `_progress` with actual usage**:
   - [x] Remove underscore from parameter name
   - [x] Remove `// TODO: Phase 4` comment
@@ -179,11 +193,13 @@ cargo test --lib metadata::http_tests  # ✅ All tests pass
   - [x] Show file count if known in advance
 
 ### Deliverables
+
 - Fully implemented progress reporting in LocalDirectorySource
-- File-by-file progress updates  
+- File-by-file progress updates
 - TODO comments removed
 
 ### Verification ✅
+
 ```bash
 cargo fmt                              # ✅ Completed
 cargo clippy --all-targets -- -D warnings  # ✅ No warnings
@@ -197,6 +213,7 @@ cargo test --lib metadata::local::tests    # ✅ All 9 tests passing
 **Goal**: Update MetadataProvider to propagate progress indicators and manage step-based progress.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phase 1 (All implementations have progress parameters)
   - Phases 2-4 (Optional - sources may or may not have actual progress yet)
@@ -205,6 +222,7 @@ cargo test --lib metadata::local::tests    # ✅ All 9 tests passing
   - `/src/metadata/provider.rs` - Provider implementation
 
 ### Tasks
+
 - [x] **Update `MetadataProvider` signatures**:
   - [x] Add `progress: &mut dyn ProgressIndicator` to `fetch_all()`
   - [x] Add `progress: &mut dyn ProgressIndicator` to `fetch_distribution()`
@@ -227,12 +245,14 @@ cargo test --lib metadata::local::tests    # ✅ All 9 tests passing
   - [x] Mark with TODO comments for Phase 8
 
 ### Deliverables
+
 - Updated provider methods accepting progress parameter
 - Progress properly propagated to all sources
 - `source_count()` method for caller's step calculation
 - Temporary fixes in cache module
 
 ### Verification ✅
+
 ```bash
 cargo fmt                              # ✅ Completed
 cargo clippy --all-targets -- -D warnings  # ✅ No warnings
@@ -246,6 +266,7 @@ cargo test --lib metadata::provider    # ✅ All tests pass (17/17)
 **Goal**: Update cache module functions to support progress indicators with step tracking.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phases 1-5 (Provider and sources updated)
 
@@ -254,6 +275,7 @@ cargo test --lib metadata::provider    # ✅ All tests pass (17/17)
   - `/src/cache/tests.rs` - Cache tests
 
 ### Tasks
+
 - [x] Update function signatures:
   - [x] Add progress and current_step to `fetch_and_cache_metadata()`
   - [x] Add progress and current_step to `fetch_and_cache_distribution()`
@@ -272,11 +294,13 @@ cargo test --lib metadata::provider    # ✅ All tests pass (17/17)
   - [x] Mark with TODO comments
 
 ### Deliverables
+
 - Updated `src/cache/mod.rs` with progress support
 - Step-based progress reporting
 - Temporary wrapper functions for compatibility
 
 ### Verification ✅
+
 ```bash
 cargo fmt                              # ✅ Completed
 cargo clippy --all-targets -- -D warnings  # ✅ No warnings
@@ -290,6 +314,7 @@ cargo test --lib cache::tests          # ✅ All tests pass (36/36)
 **Goal**: Update the cache refresh command to use step-based progress indicators.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phases 1-6 (All lower-level components)
 
@@ -297,6 +322,7 @@ cargo test --lib cache::tests          # ✅ All tests pass (36/36)
   - `/src/commands/cache.rs` - Cache command implementation
 
 ### Tasks
+
 - [x] Update `refresh_cache()` function:
   - [x] Calculate total steps: `5 + provider.source_count()`
   - [x] Initialize progress with `ProgressStyle::Count`
@@ -314,11 +340,13 @@ cargo test --lib cache::tests          # ✅ All tests pass (36/36)
   - [x] Keep backward compatibility wrappers for Phase 8
 
 ### Deliverables ✅
+
 - ✅ Updated `src/commands/cache.rs` with step-based progress
 - ✅ Proper progress calculation and initialization
 - ✅ Backward compatibility wrappers retained for Phase 8
 
 ### Verification ✅
+
 ```bash
 cargo fmt                              # ✅ Completed
 cargo clippy --all-targets -- -D warnings  # ✅ No warnings
@@ -335,6 +363,7 @@ kopi cache refresh --no-progress
 **Goal**: Update install command's cache refresh to use progress indicators.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phases 1-7 (Cache functions updated)
 
@@ -342,6 +371,7 @@ kopi cache refresh --no-progress
   - `/src/commands/install.rs` - Install command
 
 ### Tasks
+
 - [x] Update `ensure_fresh_cache()` method:
   - [x] Add `progress: &mut dyn ProgressIndicator` and `current_step` parameters
   - [x] Pass progress to `fetch_and_cache_metadata_with_progress()`
@@ -358,12 +388,14 @@ kopi cache refresh --no-progress
   - [x] Remove redundant TODO comments
 
 ### Deliverables ✅
+
 - ✅ Updated `ensure_fresh_cache()` with progress support
 - ✅ Progress propagation during cache refresh
 - ✅ Temporary progress usage in execute()
 - ✅ All ensure_complete calls using shared progress
 
 ### Verification ✅
+
 ```bash
 cargo fmt                               # ✅ Completed
 cargo clippy --all-targets -- -D warnings  # ✅ No warnings
@@ -377,6 +409,7 @@ cargo test --lib commands::install::tests  # ✅ All 19 tests passing
 **Goal**: Implement complete step-based progress for the install command.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phase 8 (ensure_fresh_cache updated)
 
@@ -384,6 +417,7 @@ cargo test --lib commands::install::tests  # ✅ All 19 tests passing
   - `/src/commands/install.rs` - Full install flow
 
 ### Tasks
+
 - [x] Create overall progress indicator:
   - [x] Calculate base steps (8)
   - [x] Add optional steps (checksum, shims)
@@ -391,7 +425,7 @@ cargo test --lib commands::install::tests  # ✅ All 19 tests passing
   - [x] Update total steps dynamically
 - [x] Implement step progression:
   - [x] Parse version step
-  - [x] Check cache step  
+  - [x] Check cache step
   - [x] Find package step
   - [x] Check installation step
   - [x] Download step (maintain separate progress)
@@ -404,12 +438,14 @@ cargo test --lib commands::install::tests  # ✅ All 19 tests passing
 - [x] **Remove all temporary code**
 
 ### Deliverables ✅
+
 - ✅ Full step-based progress for install command
 - ✅ Dynamic step calculation based on cache refresh and options
 - ✅ Independent download progress bar
 - ✅ Clean removal of all TODOs from Phase 9
 
 ### Verification ✅
+
 ```bash
 cargo fmt                              # ✅ Completed
 cargo clippy --all-targets -- -D warnings  # ✅ No warnings
@@ -426,6 +462,7 @@ kopi install --no-progress temurin@21 --dry-run
 **Goal**: Update all integration tests to work with new progress parameters.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phases 1-9 (All implementations complete)
 
@@ -434,6 +471,7 @@ kopi install --no-progress temurin@21 --dry-run
   - Other integration test files
 
 ### Tasks
+
 - [x] Update cache integration tests:
   - [x] Import `SilentProgress` from indicator module
   - [x] Update `test_fetch_and_cache_metadata()`
@@ -449,11 +487,13 @@ kopi install --no-progress temurin@21 --dry-run
 - [x] Update install integration tests (if any)
 
 ### Deliverables ✅
+
 - ✅ All integration tests updated and passing
 - ✅ New test helper for progress verification (`TestProgressCapture`)
 - ✅ Comprehensive progress behavior tests
 
 ### Verification ✅
+
 ```bash
 cargo fmt                                    # ✅ Completed
 cargo clippy --all-targets -- -D warnings   # ✅ No warnings
@@ -468,10 +508,12 @@ cargo test --test progress_indicator_integration  # ✅ All tests pass (30/30)
 **Goal**: Remove all temporary code and optimize progress reporting.
 
 ### Input Materials
+
 - **Dependencies**:
   - Phases 1-10 (All code migrated)
 
 ### Tasks
+
 - [x] Search for remaining TODOs:
   - [x] `grep -r "TODO.*progress" src/`
   - [x] Remove all temporary `SilentProgress` usage
@@ -487,12 +529,14 @@ cargo test --test progress_indicator_integration  # ✅ All tests pass (30/30)
 - [x] Final code review pass
 
 ### Deliverables ✅
+
 - ✅ Clean codebase with no temporary code (removed wrapper functions)
 - ✅ Optimized progress reporting (no redundant updates)
 - ✅ Consistent error handling (progress.error() on cache refresh failures)
 - ✅ Added `total_packages()` method to MetadataCache
 
 ### Verification ✅
+
 ```bash
 cargo fmt                                    # ✅ Completed
 cargo clippy --all-targets -- -D warnings   # ✅ No warnings
@@ -508,19 +552,23 @@ cargo test --test progress_indicator_integration  # ✅ All 30 tests passing
 **Goal**: Document the metadata progress implementation for developers.
 
 ### Input Materials
+
 - **Documentation to Update**:
   - `/docs/tasks/indicator/design_metadata.md`
 
 ### Tasks
+
 - [x] Update design document:
   - [x] Mark as implemented
   - [x] Add lessons learned
   - [x] Document any deviations
 
 ### Deliverables ✅
+
 - ✅ Design document marked complete
 
 ### Verification
+
 ```bash
 cargo doc --no-deps --open
 # Review generated documentation
@@ -531,21 +579,25 @@ cargo doc --no-deps --open
 ## Implementation Order Summary
 
 ### Lower-Level Components (Phases 1-4)
+
 1. **Phase 1**: MetadataSource trait and ALL implementations - minimal signature update (maintains compilation) ✅
 2. **Phase 2**: FoojayMetadataSource - add actual progress reporting ✅
 3. **Phase 3**: HttpMetadataSource - add actual progress reporting ✅
 4. **Phase 4**: LocalDirectorySource - add actual progress reporting ✅
 
 ### Mid-Level Components (Phases 5-6)
+
 5. **Phase 5**: MetadataProvider update ✅
 6. **Phase 6**: Cache module functions update ✅
 
 ### Command Integration (Phases 7-9)
+
 7. **Phase 7**: Cache command integration ✅
 8. **Phase 8**: Install command - cache refresh support ✅
 9. **Phase 9**: Install command - full progress integration ✅
 
 ### Testing and Cleanup (Phases 10-12)
+
 10. **Phase 10**: Integration tests update ✅
 11. **Phase 11**: Cleanup and optimization ✅
 12. **Phase 12**: Documentation and examples ✅

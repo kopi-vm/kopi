@@ -84,6 +84,7 @@ python3 -m http.server 8000
 ```
 
 Example output:
+
 ```
 version_parsing/simple_version
                         time:   [52.3 ns 52.8 ns 53.4 ns]
@@ -95,24 +96,26 @@ version_parsing/simple_version
 
 Based on current benchmarks, these are the performance targets:
 
-| Operation | Target | Description |
-|-----------|--------|-------------|
-| Simple version parse | < 100 ns | Parsing "21" |
-| Complex version parse | < 500 ns | Parsing "21.0.1+12-LTS" |
-| Cache search (1000 items) | < 10 µs | Finding version in cache |
-| JSON serialize (1000 items) | < 1 ms | Saving cache to disk |
-| Platform filter | < 5 µs | Filtering by OS/arch |
+| Operation                   | Target   | Description              |
+| --------------------------- | -------- | ------------------------ |
+| Simple version parse        | < 100 ns | Parsing "21"             |
+| Complex version parse       | < 500 ns | Parsing "21.0.1+12-LTS"  |
+| Cache search (1000 items)   | < 10 µs  | Finding version in cache |
+| JSON serialize (1000 items) | < 1 ms   | Saving cache to disk     |
+| Platform filter             | < 5 µs   | Filtering by OS/arch     |
 
 ### Continuous Performance Monitoring
 
 To prevent performance regressions:
 
 1. **Save current benchmarks:**
+
    ```bash
    ./scripts/save-benchmark.sh
    ```
 
 2. **Check for regressions against baseline:**
+
    ```bash
    ./scripts/check-performance.sh
    # Or compare with a specific baseline
@@ -153,6 +156,7 @@ To add a new benchmark:
    - Or create a new file and register it in `benches/kopi_bench.rs`
 
 2. Add your benchmark:
+
    ```rust
    group.bench_function("operation_name", |b| {
        b.iter(|| {
@@ -231,6 +235,7 @@ cargo build --release
 For faster feedback in your IDE:
 
 1. Enable `rust-analyzer` with these settings:
+
    ```json
    {
      "rust-analyzer.cargo.features": "all",
@@ -276,12 +281,14 @@ To track performance over time, save benchmark results:
 - **create-baseline.sh**: Creates a consolidated baseline JSON from benchmark results
 
 Benchmark results are stored in:
+
 - `benchmarks/baselines/` - Baseline results (tracked in Git)
   - `main.json` - Baseline for the main branch
   - `vX.Y.Z.json` - Baselines for version tags
 - `benchmarks/results/YYYY-MM-DD/` - Daily runs (local only, not in Git)
 
 The custom baseline system:
+
 - Automatically updates `main.json` when running benchmarks on the main branch
 - Creates version-specific baselines for tagged releases
 - Detects regressions > 5% when comparing with baselines

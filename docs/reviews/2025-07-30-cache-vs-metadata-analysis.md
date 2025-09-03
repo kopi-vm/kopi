@@ -15,6 +15,7 @@ This review analyzes the distinct roles and responsibilities of the `src/cache/`
 **Primary Responsibility**: Fetching JDK metadata from various external sources
 
 **Key Components**:
+
 - **MetadataSource trait**: Defines the interface for all metadata sources
 - **MetadataProvider**: Orchestrates multiple sources with fallback support
 - **Source implementations**:
@@ -28,6 +29,7 @@ This review analyzes the distinct roles and responsibilities of the `src/cache/`
 **Primary Responsibility**: Local storage, searching, and retrieval of JDK metadata
 
 **Key Components**:
+
 - **MetadataCache**: Core data structure for storing metadata
 - **DistributionCache**: Organizes packages by distribution
 - **Storage functions**: Atomic save/load operations
@@ -56,6 +58,7 @@ Local Files    ------>                     -----> (search)       ------>
 ## Responsibility Boundaries
 
 ### What src/metadata/ Does:
+
 1. Defines the contract for metadata sources (`MetadataSource` trait)
 2. Implements specific source adapters (Foojay, HTTP, Local)
 3. Manages source failover and retry logic
@@ -64,12 +67,14 @@ Local Files    ------>                     -----> (search)       ------>
 6. Generates static metadata files for offline distribution
 
 ### What src/metadata/ Does NOT Do:
+
 - Does not manage local storage format
 - Does not implement search or filtering logic
 - Does not handle cache invalidation policies
 - Does not provide direct query interfaces
 
 ### What src/cache/ Does:
+
 1. Defines the cache data structure (`MetadataCache`, `DistributionCache`)
 2. Implements atomic file persistence (save/load operations)
 3. Provides search functionality with various filters
@@ -78,6 +83,7 @@ Local Files    ------>                     -----> (search)       ------>
 6. Handles platform-specific filtering and compatibility checks
 
 ### What src/cache/ Does NOT Do:
+
 - Does not fetch data from external sources
 - Does not implement source-specific logic
 - Does not handle API authentication or network errors

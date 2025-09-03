@@ -1,6 +1,7 @@
 # Process-level locking for installation operations
 
 ## Metadata
+
 - ID: FR-02uqo
 - Type: Functional Requirement
 - Category: Platform
@@ -12,6 +13,7 @@
 - Date Modified: 2025-09-03
 
 ## Links
+
 - Implemented by Tasks: N/A – Not yet implemented
 - Related Requirements: FR-ui8x2, FR-v7ql4, FR-gbsz6, FR-c04js, NFR-vcxp8, NFR-g12ex
 - Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
@@ -26,6 +28,7 @@ The system SHALL provide exclusive process-level locking for JDK installation op
 ## Rationale
 
 Without process-level locking, multiple kopi processes attempting to install the same JDK version simultaneously could result in:
+
 - Corrupted JDK installations due to partial file writes
 - Race conditions during directory creation and file extraction
 - Inconsistent metadata states
@@ -97,6 +100,7 @@ As a kopi user, I want the tool to handle concurrent installation attempts safel
 ## Technical Details (if applicable)
 
 ### Functional Requirement Details
+
 - Lock acquisition must happen before any filesystem modifications
 - Lock key must be canonicalized after all alias resolution
 - Lock must be exclusive (write lock) to prevent any concurrent access
@@ -105,43 +109,50 @@ As a kopi user, I want the tool to handle concurrent installation attempts safel
 ## Verification Method
 
 ### Test Strategy
+
 - Test Type: Integration
 - Test Location: `tests/locking_tests.rs` (planned)
 - Test Names: `test_fr_02uqo_concurrent_install_lock`, `test_fr_02uqo_parallel_different_versions`
 
 ### Verification Commands
+
 ```bash
 # Specific commands to verify this requirement
 cargo test test_fr_02uqo
 ```
 
 ### Success Metrics
+
 - Metric 1: Zero corrupted installations during concurrent install attempts
 - Metric 2: Lock acquisition time < 100ms for uncontended locks
 
 ## Platform Considerations
 
 ### Unix
+
 - Uses advisory file locks via `flock` system call
 - Lock files stored in `$KOPI_HOME/locks/`
 
 ### Windows
+
 - Uses Windows file locking via `LockFileEx` API
 - Lock files stored in `%KOPI_HOME%\locks\`
 
 ### Cross-Platform
+
 - Lock file naming must be consistent across platforms
 - Path separators handled by std::path abstractions
 
 ## Risks & Mitigation
 
-| Risk | Impact | Likelihood | Mitigation | Validation |
-|------|--------|------------|------------|-----------|
-| Filesystem doesn't support locks | High | Low | Fallback to process-local mutex | Test on network filesystems |
-| Lock file permissions incorrect | Medium | Medium | Create with appropriate umask | Verify permissions in tests |
-| Stale lock files accumulate | Low | Medium | Cleanup on startup | Monitor lock directory size |
+| Risk                             | Impact | Likelihood | Mitigation                      | Validation                  |
+| -------------------------------- | ------ | ---------- | ------------------------------- | --------------------------- |
+| Filesystem doesn't support locks | High   | Low        | Fallback to process-local mutex | Test on network filesystems |
+| Lock file permissions incorrect  | Medium | Medium     | Create with appropriate umask   | Verify permissions in tests |
+| Stale lock files accumulate      | Low    | Medium     | Cleanup on startup              | Monitor lock directory size |
 
 ## External References
+
 N/A – No external references
 
 ## Change History

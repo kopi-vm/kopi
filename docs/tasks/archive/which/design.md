@@ -7,6 +7,7 @@ The `kopi which` command shows the installation path for a JDK version, providin
 ## Purpose
 
 The primary purpose of `kopi which` is to:
+
 - Locate the java executable path for the currently active JDK
 - Find the installation path for a specific JDK version
 - Verify that a JDK is properly installed by checking executable existence
@@ -75,6 +76,7 @@ Structured output for scripting:
 ```
 
 With `--tool javac`:
+
 ```json
 {
   "distribution": "temurin",
@@ -132,11 +134,13 @@ The command follows the standard kopi version resolution hierarchy:
 ### Platform Considerations
 
 #### Unix-like Systems (Linux, macOS)
+
 - Java executable: `<jdk_home>/bin/java`
 - No file extension needed
 - Use standard path separators
 
 #### Windows
+
 - Java executable: `<jdk_home>\bin\java.exe`
 - Add `.exe` extension
 - Handle backslash path separators
@@ -158,48 +162,53 @@ Uses existing kopi exit codes from `src/error/exit_codes.rs`:
 ### Error Scenarios
 
 1. **No Current Version** (Exit code: 3)
+
    ```bash
    $ kopi which
    Error: No JDK configured for current project
-   
+
    Run 'kopi global <version>' to set a default version
    ```
 
 2. **JDK Not Installed** (Exit code: 4)
+
    ```bash
    $ kopi which temurin@22
    Error: JDK 'temurin@22' is not installed
-   
+
    Run 'kopi install temurin@22' to install it
    ```
 
 3. **Multiple Matches** (Exit code: 2)
+
    ```bash
    $ kopi which 21
    Error: Multiple JDKs match version '21'
-   
+
    Found:
      temurin@21.0.5+11
      corretto@21.0.7.6.1
-   
+
    Please specify the full version or distribution
    ```
 
 4. **Corrupted Installation** (Exit code: 1)
+
    ```bash
    $ kopi which temurin@21
    Error: Java executable not found in JDK installation
-   
+
    Expected: /home/user/.kopi/jdks/temurin-21.0.5+11/bin/java
-   
+
    Run 'kopi install temurin@21 --force' to reinstall
    ```
 
 5. **Tool Not Found** (Exit code: 5)
+
    ```bash
    $ kopi which --tool native-image
    Error: Tool 'native-image' not found in JDK installation
-   
+
    The tool may not be included in this JDK distribution.
    ```
 
@@ -267,7 +276,7 @@ JAVAC_PATH=$(kopi which --tool javac)
   run: |
     JAVA_EXEC=$(kopi which)
     $JAVA_EXEC -version
-    
+
 # Or with specific version
 - name: Check Java 21
   run: |
@@ -367,22 +376,25 @@ Since `kopi which` may be used in scripts and shell prompts:
 ## Comparison with Similar Tools
 
 ### Traditional `which` command
+
 - Standard `which` finds executables in PATH
 - `kopi which` finds specific JDK installations
 - Provides version-aware path resolution
 
 ### jenv
+
 - `jenv which` shows shim location
 - `kopi which` shows actual JDK executable
 - More direct path to real binary
 
 ### SDKMAN
+
 - `sdk home java <version>` shows JAVA_HOME
 - `kopi which` shows java executable path
 - More focused on executable location
 
 ### jabba
+
 - `jabba which` shows current version name
 - `kopi which` shows executable path
 - Different focus (version vs path)
-

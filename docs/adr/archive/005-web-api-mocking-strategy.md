@@ -1,14 +1,17 @@
 # ADR-005: Web API Mocking Strategy for Unit Testing
 
 ## Status
+
 Proposed
 
 ## Context
+
 Kopi relies on the Foojay.io API to fetch JDK metadata and download information. To ensure robust unit testing without depending on external services, we need a strategy for mocking Web API calls. The project uses `attohttpc` as its HTTP client, which is a synchronous HTTP client that doesn't have built-in mocking capabilities.
 
 ## Decision
 
 ### Mocking Approach
+
 We will adopt a dual-strategy approach for handling Web API mocking:
 
 1. **Trait Abstraction Pattern** for unit tests - Create an abstraction layer around HTTP operations
@@ -17,6 +20,7 @@ We will adopt a dual-strategy approach for handling Web API mocking:
 ### Architecture
 
 #### HTTP Client Trait
+
 ```rust
 // src/http/client.rs
 use std::time::Duration;
@@ -40,7 +44,7 @@ impl HttpResponse {
         String::from_utf8(self.body.clone())
             .map_err(|e| KopiError::InvalidResponse(e.to_string()))
     }
-    
+
     pub fn json<T: DeserializeOwned>(&self) -> Result<T> {
         serde_json::from_slice(&self.body)
             .map_err(|e| KopiError::Json(e))
@@ -49,6 +53,7 @@ impl HttpResponse {
 ```
 
 #### Production Implementation
+
 ```rust
 // src/http/attohttpc_client.rs
 pub struct AttohttpcClient {
@@ -61,7 +66,7 @@ impl HttpClient for AttohttpcClient {
             .timeout(self.base_timeout)
             .send()
             .map_err(|e| KopiError::Http(e))?;
-        
+
         Ok(HttpResponse {
             status: response.status().as_u16(),
             headers: extract_headers(&response),
@@ -69,24 +74,25 @@ impl HttpClient for AttohttpcClient {
                 .map_err(|e| KopiError::Http(e))?,
         })
     }
-    
+
     fn download(&self, url: &str, path: &Path) -> Result<()> {
         let mut response = attohttpc::get(url)
             .send()
             .map_err(|e| KopiError::Http(e))?;
-        
+
         let mut file = std::fs::File::create(path)
             .map_err(|e| KopiError::Io(e))?;
-        
+
         response.write_to(&mut file)
             .map_err(|e| KopiError::Download(e.to_string()))?;
-        
+
         Ok(())
     }
 }
 ```
 
 #### Foojay API Client
+
 ```rust
 // src/foojay/client.rs
 pub struct FoojayClient<C: HttpClient> {
@@ -101,15 +107,15 @@ impl<C: HttpClient> FoojayClient<C> {
             base_url: "https://api.foojay.io".to_string(),
         }
     }
-    
+
     pub fn list_distributions(&self) -> Result<Vec<Distribution>> {
         let url = format!("{}/disco/v3.0/distributions", self.base_url);
         let response = self.http_client.get(&url)?;
-        
+
         if response.status != 200 {
             return Err(KopiError::ApiError(response.status, response.text()?));
         }
-        
+
         let data: FoojayResponse<Distribution> = response.json()?;
         Ok(data.result)
     }
@@ -119,16 +125,17 @@ impl<C: HttpClient> FoojayClient<C> {
 ### Testing Strategy
 
 #### Unit Tests with Mocks
+
 ```rust
 #[cfg(test)]
 mod tests {
     use super::*;
     use mockall::predicate::*;
-    
+
     #[test]
     fn test_list_distributions() {
         let mut mock_client = MockHttpClient::new();
-        
+
         mock_client
             .expect_get()
             .with(eq("https://api.foojay.io/disco/v3.0/distributions"))
@@ -148,18 +155,18 @@ mod tests {
                     }"#.to_vec(),
                 })
             });
-        
+
         let foojay = FoojayClient::new(mock_client);
         let distributions = foojay.list_distributions().unwrap();
-        
+
         assert_eq!(distributions.len(), 1);
         assert_eq!(distributions[0].id, "temurin");
     }
-    
+
     #[test]
     fn test_api_error_handling() {
         let mut mock_client = MockHttpClient::new();
-        
+
         mock_client
             .expect_get()
             .returning(|_| {
@@ -169,16 +176,17 @@ mod tests {
                     body: b"Service Unavailable".to_vec(),
                 })
             });
-        
+
         let foojay = FoojayClient::new(mock_client);
         let result = foojay.list_distributions();
-        
+
         assert!(matches!(result, Err(KopiError::ApiError(503, _))));
     }
 }
 ```
 
 #### Integration Tests with Mock Server
+
 ```rust
 // tests/foojay_integration.rs
 use mockito::Server;
@@ -186,7 +194,7 @@ use mockito::Server;
 #[test]
 fn test_full_jdk_installation_flow() {
     let mut server = Server::new();
-    
+
     // Mock the distributions endpoint
     let distributions_mock = server
         .mock("GET", "/disco/v3.0/distributions")
@@ -194,7 +202,7 @@ fn test_full_jdk_installation_flow() {
         .with_header("content-type", "application/json")
         .with_body(include_str!("fixtures/distributions.json"))
         .create();
-    
+
     // Mock the packages endpoint
     let packages_mock = server
         .mock("GET", "/disco/v3.0/packages")
@@ -202,19 +210,19 @@ fn test_full_jdk_installation_flow() {
         .with_status(200)
         .with_body(include_str!("fixtures/packages.json"))
         .create();
-    
+
     // Create client with mock server URL
     let http_client = AttohttpcClient::new();
     let mut foojay = FoojayClient::new(http_client);
     foojay.base_url = server.url();
-    
+
     // Test the flow
     let distributions = foojay.list_distributions().unwrap();
     assert!(!distributions.is_empty());
-    
+
     let packages = foojay.get_packages("temurin", "21").unwrap();
     assert!(!packages.is_empty());
-    
+
     // Verify mocks were called
     distributions_mock.assert();
     packages_mock.assert();
@@ -224,6 +232,7 @@ fn test_full_jdk_installation_flow() {
 ### Dependencies
 
 Add to `Cargo.toml`:
+
 ```toml
 [dependencies]
 # Existing dependencies...
@@ -247,6 +256,7 @@ mockito = "1.4"
 ## Consequences
 
 ### Positive
+
 - Clear separation between HTTP operations and business logic
 - Fast, deterministic unit tests without network dependencies
 - Easy to test error scenarios and edge cases
@@ -254,12 +264,14 @@ mockito = "1.4"
 - Type-safe mocking with compile-time guarantees
 
 ### Negative
+
 - Additional abstraction layer adds complexity
 - Need to maintain mock implementations
 - Slightly more boilerplate code for tests
 - Two different testing approaches to learn (unit vs integration)
 
 ### Neutral
+
 - Team members need to understand when to use mocks vs mock servers
 - Test fixtures need to be kept up-to-date with API changes
 - Mock setup can be verbose for complex scenarios
@@ -276,6 +288,7 @@ mockito = "1.4"
 8. Document testing patterns in the project README
 
 ## References
+
 - [mockall documentation](https://docs.rs/mockall/latest/mockall/)
 - [mockito documentation](https://docs.rs/mockito/latest/mockito/)
 - [Rust testing best practices](https://doc.rust-lang.org/book/ch11-00-testing.html)

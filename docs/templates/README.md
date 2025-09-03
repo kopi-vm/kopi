@@ -21,12 +21,14 @@ For complete TDL documentation and workflow, see [`../tdl.md`](../tdl.md).
 ## Template Usage Instructions
 
 ### Analysis Template (`analysis.md`)
+
 1. Use for exploring problem spaces and discovering requirements
 2. Include research, user feedback, technical investigations
 3. Document discovered requirements as FR-DRAFT and NFR-DRAFT
 4. Archive after requirements are formalized
 
 ### Individual Requirement Template (`requirements.md`)
+
 1. One requirement per file for clear ownership and traceability
 2. Define measurable acceptance criteria; keep brief and testable
 3. Requirements are long-lived and can be referenced by multiple tasks over time
@@ -34,6 +36,7 @@ For complete TDL documentation and workflow, see [`../tdl.md`](../tdl.md).
 5. Prefer clarity and safety: English-only messaging, avoid "manager"/"util" naming, do not use `unsafe`
 
 ### ADR Templates (`adr.md` and `adr-lite.md`)
+
 1. Use the Quick Selection Checklist below to choose between Full and Lite templates
 2. One decision per ADR; evolve via `Status` and `Supersedes/Superseded by` links
 3. Follow the Common Documentation Requirements for language, links, and traceability
@@ -43,6 +46,7 @@ For complete TDL documentation and workflow, see [`../tdl.md`](../tdl.md).
 #### Quick ADR Template Selection Checklist
 
 **Use Full ADR if ANY of these apply:**
+
 - [ ] Affects 3+ modules or components (quantitative threshold)
 - [ ] Has security/privacy implications (risk level: Medium/High)
 - [ ] Requires platform-specific handling (Unix/Windows differences)
@@ -54,6 +58,7 @@ For complete TDL documentation and workflow, see [`../tdl.md`](../tdl.md).
 - [ ] Reversibility effort > 8 hours of work
 
 **Use Lite ADR if ALL of these apply:**
+
 - [ ] Affects single module/component
 - [ ] Clear best practice exists
 - [ ] Low risk (easily reversible, < 8 hours to revert)
@@ -62,6 +67,7 @@ For complete TDL documentation and workflow, see [`../tdl.md`](../tdl.md).
 - [ ] Internal implementation detail only
 
 #### Detailed ADR Selection Criteria
+
 - Use the Full ADR when decisions are:
   - Architecturally significant
   - Broad in impact across modules/platforms
@@ -73,6 +79,7 @@ For complete TDL documentation and workflow, see [`../tdl.md`](../tdl.md).
   - Straightforward with a clear best practice
 
 ### Design Template (`design.md`)
+
 1. Reference requirement IDs (FR-<id>/NFR-<id>) in the Requirements Summary section
 2. Link to relevant ADRs and create new ones when this design introduces material decisions
 3. Capture concrete acceptance/success metrics to enable verification
@@ -81,6 +88,7 @@ For complete TDL documentation and workflow, see [`../tdl.md`](../tdl.md).
 6. Prefer clarity and safety over micro-optimizations; avoid `unsafe`, avoid vague names like "manager"/"util", and prefer functions for stateless behavior
 
 ### Plan Template (`plan.md`)
+
 1. Reference requirement IDs (FR-<id>/NFR-<id>) being implemented
 2. Adjust the number of phases based on complexity
 3. Break down work into specific, testable items
@@ -101,18 +109,21 @@ For complete TDL documentation and workflow, see [`../tdl.md`](../tdl.md).
 These requirements apply to ALL documentation templates:
 
 ### Document Structure
+
 - **Metadata**: Include Type/Owner/Reviewers/Status/Date Created consistently at the top
 - **Document IDs**: Must be in the filename and Metadata section (not in document titles)
 - **Links Section**: Mandatory in every template for traceability. If something doesn't apply, write: `N/A – <reason>`
 - **Change History**: Use Git history (`git log --follow <file>`)
 
 ### Writing Standards
+
 - **Language**: All documentation must be written in English (per `CLAUDE.md` policy)
 - **Date Format**: Use `YYYY-MM-DD` format consistently
 - **IDs & Naming**: Use explicit, stable IDs/names. Avoid vague terms like "manager" or "util"
 - **Consistency**: Don't duplicate requirements text; Design references requirement IDs; Plan references both
 
 ### Linking & Cross-References
+
 - **Cross-linking**: Use relative links between documents
 - **Links vs External References**: Maintain clear distinction:
   - **Links**: Internal project artifacts only (files in repo, issues, PRs)
@@ -123,6 +134,7 @@ These requirements apply to ALL documentation templates:
 - **Test References**: Reference IDs in tests where feasible
 
 ### Process Requirements
+
 - **Verification**: Use canonical cargo commands from `CLAUDE.md` in Verification blocks and Definition of Done
 - **PR Integration**: Link Requirements/Design/Plan and relevant ADRs in PRs
 
@@ -131,16 +143,19 @@ These requirements apply to ALL documentation templates:
 ### Template Examples
 
 #### Core Workflow Templates
+
 - Analysis: [`examples/analysis-example.md`](examples/analysis-example.md) - Problem exploration and requirement discovery
 - Individual Requirement: [`examples/requirement-example.md`](examples/requirement-example.md) - Single requirement document (e.g., FR-0001-user-authentication, NFR-0001-performance)
 - Design: [`examples/design-example.md`](examples/design-example.md) - Task-specific technical design referencing requirement IDs
 - Plan: [`examples/plan-example.md`](examples/plan-example.md) - Task-specific phased implementation with verification steps
 
 #### ADR Templates
+
 - Full ADR: [`examples/adr-full-example.md`](examples/adr-full-example.md) - Demonstrates all sections
 - Lite ADR: [`examples/adr-lite-example.md`](examples/adr-lite-example.md) - Lightweight format for simple decisions
 
 ### Real Project Examples (Archived)
+
 - Error Handling: [`../adr/archive/004-error-handling-strategy.md`](../adr/archive/004-error-handling-strategy.md) - Full ADR with multiple options analyzed
 - Logging Strategy: [`../adr/archive/009-logging-strategy.md`](../adr/archive/009-logging-strategy.md) - Comprehensive platform considerations
 - Configuration: [`../adr/archive/014-configuration-and-version-file-formats.md`](../adr/archive/014-configuration-and-version-file-formats.md) - Focused scope with clear trade-offs

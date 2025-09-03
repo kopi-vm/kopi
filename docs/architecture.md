@@ -64,12 +64,14 @@ kopi/
 ## Key Files
 
 ### Core Entry Points
+
 - `src/main.rs` - Main application entry point with CLI command parsing (uses `clap` v4.5.40 with derive feature)
 - `src/lib.rs` - Library entry point exposing shared functionality
 - `src/bin/kopi-shim.rs` - Shim binary for transparent JDK version switching
 - `src/bin/kopi-metadata-gen.rs` - Metadata generation utility
 
 ### Configuration & Models
+
 - `src/config.rs` - Global configuration management and loading
 - `src/models/` - Core data models:
   - `api.rs` - API response structures
@@ -79,6 +81,7 @@ kopi/
   - `platform.rs` - Platform-specific models
 
 ### Command Implementations
+
 - `src/commands/mod.rs` - Command registry and dispatch
 - `src/commands/install.rs` - JDK installation logic
 - `src/commands/cache.rs` - Cache management commands
@@ -86,6 +89,7 @@ kopi/
 - `src/commands/env.rs` - Shell environment setup
 
 ### Documentation & Process
+
 - `CLAUDE.md` - Repository conventions and AI assistant guidance
 - `AGENTS.md` - AI agent workflow instructions
 - `docs/tdl.md` - Traceable Development Lifecycle (TDL) documentation
@@ -94,6 +98,7 @@ kopi/
 - `docs/adr/` - Architecture Decision Records directory
 
 ### Development & Build
+
 - `Cargo.toml` - Project dependencies and metadata
 - `rust-toolchain.toml` - Rust version specification
 - `.cargo/config.toml` - Cargo build configuration
@@ -102,12 +107,14 @@ kopi/
 ## Key Architectural Components
 
 ### Command System
+
 - **CLI Interface**: Subcommand-based architecture using `clap` derive API
 - **Command Registry**: Centralized command dispatch in `src/commands/mod.rs`
 - **Subcommands**: Install, uninstall, cache, current, env, doctor, shell, local, global, etc.
 - **Exit Codes**: Standardized error codes for different failure scenarios (see `src/error/exit_codes.rs`)
 
 ### Metadata Management
+
 - **Data Sources**: Primary source from foojay.io API, with local index fallback
 - **Caching Strategy**: Hybrid approach with `~/.kopi/cache/metadata.json`
   - Network-first with fallback to cache
@@ -117,6 +124,7 @@ kopi/
 - **Provider Abstraction**: Flexible provider system supporting HTTP and local sources
 
 ### JDK Installation & Storage
+
 - **Installation Path**: `~/.kopi/jdks/<vendor>-<version>/`
 - **Archive Support**: TAR and ZIP extraction with platform-specific handling
 - **Download Management**: Progress reporting with resumable downloads
@@ -124,6 +132,7 @@ kopi/
 - **Uninstallation**: Safe batch uninstall with dependency checking
 
 ### Version Resolution
+
 - **Version Files**: `.kopi-version` (native with `@` separator) and `.java-version` (compatibility)
 - **Resolution Order**:
   1. Environment variable (`KOPI_JAVA_VERSION`)
@@ -132,30 +141,35 @@ kopi/
 - **Version Parser**: Flexible parsing supporting vendor@version format
 
 ### Shell Integration
+
 - **Shim System**: Transparent executable proxies in `~/.kopi/shims/`
 - **Shim Binary**: Lightweight Rust binary (`kopi-shim`) for JDK switching
 - **Tool Discovery**: Automatic detection of Java tools (java, javac, jar, etc.)
 - **Shell Support**: Bash, Zsh, Fish with environment setup commands
 
 ### User Feedback & Progress
+
 - **Progress Indicators**: Configurable indicators (simple, fancy, silent)
 - **Status Reporting**: Real-time feedback during long operations
 - **Diagnostic Tool**: `doctor` command for system health checks
 - **Error Formatting**: Context-aware error messages with actionable suggestions
 
 ### Platform Abstraction
+
 - **OS Detection**: Runtime platform detection for OS-specific behavior
 - **Path Handling**: Cross-platform path manipulation
 - **Symlink Management**: Platform-specific symlink creation and validation
 - **Process Execution**: Abstracted process spawning for cross-platform support
 
 ### Security & Validation
+
 - **HTTPS Enforcement**: All downloads use verified HTTPS connections
 - **Archive Validation**: Security checks before extraction
 - **Permission Checks**: File system permission validation
 - **Shim Security**: Protection against path traversal and injection
 
 ### Error Handling
+
 - **Error Context**: Rich error context with cause chains
 - **Recovery Suggestions**: Actionable error messages with fix hints
 - **Graceful Degradation**: Fallback strategies for network failures

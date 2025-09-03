@@ -1,10 +1,13 @@
 # ADR-015: Version Manager Migration Support
 
 ## Status
+
 Proposed
 
 ## Context
+
 Many developers already use other Java version managers like jenv, asdf, or sdkman. To facilitate adoption of Kopi, we need to provide a smooth migration path that allows users to:
+
 - Convert existing version files to Kopi format
 - Preserve their project configurations
 - Handle monorepo scenarios with multiple projects
@@ -44,6 +47,7 @@ kopi migrate --recursive
 ### Migration Mappings
 
 #### jenv Migration
+
 - File: `.java-version`
 - Format: `openjdk64-11.0.15` → `temurin@11.0.15`
 - Common patterns:
@@ -52,6 +56,7 @@ kopi migrate --recursive
   - `graalvm64-X.Y.Z` → `graalvm@X.Y.Z`
 
 #### asdf Migration
+
 - File: `.tool-versions`
 - Format: `java temurin-21.0.1+12` → `temurin@21.0.1+12`
 - Common patterns:
@@ -60,6 +65,7 @@ kopi migrate --recursive
   - `java zulu-X.Y.Z` → `zulu@X.Y.Z`
 
 #### sdkman Migration (Future)
+
 - File: `.sdkmanrc`
 - Format: `java=21.0.1-tem` → `temurin@21.0.1`
 - Vendor mappings:
@@ -104,12 +110,14 @@ kopi migrate --recursive
 ## Consequences
 
 ### Positive
+
 - Easy migration path for existing users
 - Maintains project version consistency
 - Supports gradual migration in large codebases
 - Clear audit trail with dry-run option
 
 ### Negative
+
 - Need to maintain mapping tables for various tools
 - Version format edge cases may require updates
 - Additional code complexity for parsing different formats
@@ -119,6 +127,7 @@ kopi migrate --recursive
 This is a Phase 3 feature, to be implemented after core functionality is stable. It's not critical for initial release but important for adoption.
 
 ## References
+
 - jenv: https://www.jenv.be/
 - asdf-java: https://github.com/halcyon/asdf-java
 - SDKMAN!: https://sdkman.io/

@@ -1,9 +1,11 @@
 # ADR-012: Build and Test Performance Optimization
 
 ## Status
+
 Accepted and Implemented
 
 ## Context
+
 The Kopi project's build and test execution times have become significantly long, impacting development efficiency. Analysis reveals several bottlenecks:
 
 - Total of 218 tests (126 unit tests, 92 integration tests)
@@ -64,7 +66,8 @@ debug = 1      # Limited debug info
 opt-level = 2
 ```
 
-**Impact**: 
+**Impact**:
+
 - Development builds: 2-3x faster compilation
 - Test execution: 30-50% faster with optimization
 - Debug builds: Faster iteration cycles
@@ -72,6 +75,7 @@ opt-level = 2
 ### 3. Implement Test Optimization Strategies
 
 #### 3.1 Control Test Parallelism
+
 ```toml
 # In Cargo.toml or as environment variable
 [env]
@@ -79,13 +83,16 @@ RUST_TEST_THREADS = "4"  # Limit concurrent test threads
 ```
 
 #### 3.2 Separate Heavy Tests
+
 Create a feature flag for performance tests:
+
 ```toml
 [features]
 perf-tests = []
 ```
 
 Mark heavy tests:
+
 ```rust
 #[cfg_attr(not(feature = "perf-tests"), ignore)]
 #[test]
@@ -95,6 +102,7 @@ fn test_cache_performance_large_dataset() {
 ```
 
 #### 3.3 Optimize Test Data Generation
+
 - Use lazy static test data where possible
 - Reduce performance test dataset sizes (e.g., from 8,100 to 1,000 items)
 - Share test fixtures between tests
@@ -102,14 +110,18 @@ fn test_cache_performance_large_dataset() {
 ### 4. Dependency Optimization
 
 #### 4.1 Consolidate Duplicate Dependencies
+
 Run regular dependency audits:
+
 ```bash
 cargo tree --duplicates
 cargo update
 ```
 
 #### 4.2 Feature Flag Optimization
+
 Review and minimize feature flags for dependencies:
+
 ```toml
 # Example: Use only required features
 attohttpc = { version = "0.29", default-features = false, features = ["tls-native"] }
@@ -118,13 +130,16 @@ attohttpc = { version = "0.29", default-features = false, features = ["tls-nativ
 ### 5. Build Caching Strategies
 
 #### 5.1 Incremental Compilation
+
 Incremental compilation is enabled by default:
+
 ```toml
 [build]
 incremental = true
 ```
 
 #### 5.2 CI/CD Optimization
+
 - Cache `~/.cargo/registry`
 - Cache `~/.cargo/git`
 - Cache `target/` directory between builds
@@ -133,6 +148,7 @@ incremental = true
 ### 6. Development Workflow Optimization
 
 Use appropriate build profiles:
+
 ```bash
 # Fast debug builds
 cargo build
@@ -147,6 +163,7 @@ cargo build --release
 ### 7. Benchmark Suite Implementation
 
 Add a benchmark suite to track performance over time:
+
 ```toml
 [[bench]]
 name = "kopi_bench"
@@ -159,6 +176,7 @@ criterion = "0.5"
 ## Consequences
 
 ### Positive
+
 - **Build Time Reduction**: Expected 40-60% reduction in development build times
 - **Test Execution**: Expected 30-50% faster test runs
 - **Developer Experience**: Faster feedback loops and improved productivity
@@ -166,12 +184,14 @@ criterion = "0.5"
 - **Binary Size**: Smaller binaries from removing unnecessary dependencies
 
 ### Negative
+
 - **Configuration Complexity**: More Cargo profiles to maintain
 - **Test Management**: Additional feature flags for test categorization
 - **Initial Setup**: One-time effort to implement all optimizations
 - **Monitoring Required**: Need to track build times to ensure optimizations remain effective
 
 ### Neutral
+
 - **Code Changes**: Minimal code changes required (mainly removing tokio)
 - **Compatibility**: No impact on end-user functionality
 - **Maintenance**: Regular dependency audits become necessary
@@ -187,6 +207,7 @@ criterion = "0.5"
 ## Metrics
 
 Track these metrics before and after implementation:
+
 - `cargo build` time (debug)
 - `cargo build --release` time
 - `cargo test` execution time

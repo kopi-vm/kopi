@@ -9,6 +9,7 @@ The metadata abstraction project has been partially implemented. The core infras
 ## Completed Components
 
 ### 1. Core Abstractions ✅
+
 - **MetadataSource trait** (`src/metadata/source.rs`)
   - Defines interface for all metadata sources
   - Supports lazy loading with `is_complete` flag
@@ -25,6 +26,7 @@ The metadata abstraction project has been partially implemented. The core infras
   - Converts API responses to JdkMetadata format
 
 ### 2. Metadata Generator Tool ✅
+
 - **kopi-metadata-gen binary** (`src/bin/kopi-metadata-gen.rs`)
   - Fully functional CLI tool for generating metadata
   - Supports distribution and platform filtering
@@ -43,6 +45,7 @@ The metadata abstraction project has been partially implemented. The core infras
   - Supports metadata file checksums and sizes
 
 ### 3. Features Implemented
+
 - ✅ Generate command with full filtering options
 - ✅ Update command for incremental updates
 - ✅ Validate command for metadata verification
@@ -61,16 +64,19 @@ The metadata abstraction project has been partially implemented. The core infras
 ## Not Yet Implemented
 
 ### 1. Additional Metadata Sources ❌
+
 - **HttpMetadataSource**: Fetch metadata from web servers
 - **LocalDirectorySource**: Read metadata from local tar.gz archives
 - **Bundled metadata support**: For offline installation
 
 ### 2. Integration with Existing Code ❌
+
 - Cache module still uses ApiClient directly
 - MetadataProvider not integrated into commands
 - No fallback logic between sources
 
 ### 3. Advanced Features ❌
+
 - Configuration file support (metadata-gen.toml)
 - Diff reporting for updates
 - Automated retry logic
@@ -79,6 +85,7 @@ The metadata abstraction project has been partially implemented. The core infras
 ## Next Steps
 
 ### High Priority
+
 1. **Integrate MetadataProvider with cache module**
    - Replace direct ApiClient usage
    - Update `fetch_and_cache_metadata` functions
@@ -95,6 +102,7 @@ The metadata abstraction project has been partially implemented. The core infras
    - Platform-specific filtering
 
 ### Medium Priority
+
 4. **Add fallback logic to MetadataProvider**
    - Try primary source first
    - Automatic fallback to secondary sources
@@ -106,6 +114,7 @@ The metadata abstraction project has been partially implemented. The core infras
    - Priority and fallback settings
 
 ### Low Priority
+
 6. **Implement advanced generator features**
    - Configuration file support
    - Diff reporting for updates
@@ -152,6 +161,7 @@ kopi config set metadata.sources[0].url https://kopi-vm.github.io/metadata
 ## Architecture Notes
 
 The implementation follows the adopted Option 3 from the architecture decisions:
+
 - Synchronous I/O for simplicity
 - Trait-based abstraction for extensibility
 - Lazy loading support to minimize API calls

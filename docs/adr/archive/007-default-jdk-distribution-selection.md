@@ -1,9 +1,11 @@
 # ADR-007: Default JDK Distribution Selection
 
 ## Status
+
 Proposed
 
 ## Context
+
 Kopi needs to select a default JDK distribution for users who run commands like `kopi install 21` without specifying a distribution. This default should balance reliability, community support, licensing considerations, and user expectations. We conducted research on similar tools and industry practices to make an informed decision.
 
 ## Decision
@@ -53,6 +55,7 @@ We will use **Eclipse Temurin** as the default JDK distribution for Kopi.
 ### Distribution Comparison
 
 #### Eclipse Temurin
+
 - **Pros**:
   - Backed by Eclipse Foundation with enterprise sponsors (Red Hat, IBM, Microsoft, Azul)
   - TCK certified for Java compatibility
@@ -64,6 +67,7 @@ We will use **Eclipse Temurin** as the default JDK distribution for Kopi.
   - May not include proprietary optimizations found in vendor-specific builds
 
 #### Oracle OpenJDK
+
 - **Pros**:
   - Reference implementation
   - Direct from Java's creators
@@ -85,6 +89,7 @@ We will use **Eclipse Temurin** as the default JDK distribution for Kopi.
 ## Implementation
 
 ### Default Behavior
+
 ```bash
 # These commands will install Temurin by default
 kopi install 21              # Installs temurin@21
@@ -93,6 +98,7 @@ kopi install latest --lts    # Installs latest Temurin LTS
 ```
 
 ### User Override
+
 ```bash
 # Users can change the default distribution
 kopi default corretto        # Set Amazon Corretto as default
@@ -103,14 +109,18 @@ kopi install corretto@21     # Install Corretto regardless of default
 ```
 
 ### Configuration
+
 The default distribution is stored in `~/.kopi/config.toml`:
+
 ```toml
 [defaults]
 distribution = "temurin"     # Can be changed by user
 ```
 
 ### First-Run Experience
+
 On first installation without a config file:
+
 1. Use Temurin as the default
 2. Create config file with explicit default
 3. Show message: "Using Eclipse Temurin as default JDK distribution (change with 'kopi default <distribution>')"
@@ -118,6 +128,7 @@ On first installation without a config file:
 ## Consequences
 
 ### Positive
+
 - Aligns with industry best practices and user expectations
 - Reduces decision fatigue for new users
 - Provides reliable, well-supported default option
@@ -125,12 +136,15 @@ On first installation without a config file:
 - Clear licensing without legal concerns
 
 ### Negative
+
 - May not be optimal for users requiring vendor-specific features
 - Some users might prefer Oracle OpenJDK as the "official" distribution
 - Need to maintain metadata for Temurin across all supported platforms
 
 ### Migration Strategy
+
 For users migrating from other tools:
+
 - AdoptOpenJDK users: Seamless transition (Temurin is the successor)
 - SDKMAN users: Same default behavior
 - Oracle JDK users: Need to explicitly set `kopi default oracle-open-jdk`
@@ -139,20 +153,18 @@ For users migrating from other tools:
 
 1. **Oracle OpenJDK**
    - Rejected due to short support cycles and potential licensing confusion
-   
 2. **Amazon Corretto**
    - Good option but less vendor-neutral than Temurin
    - Could be perceived as AWS-centric
-   
 3. **No Default**
    - Would require users to always specify distribution
    - Poor user experience for common use case
-   
 4. **User Choice on First Run**
    - Adds friction to initial experience
    - Most users lack context to make informed choice
 
 ## References
+
 - SDKMAN Documentation: https://sdkman.io/jdks
 - Eclipse Temurin: https://adoptium.net/
 - whichjdk.com recommendations

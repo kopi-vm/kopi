@@ -1,6 +1,7 @@
 # ADR-011: JRE Support Strategy
 
 ## Status
+
 Proposed
 
 ## Context
@@ -26,6 +27,7 @@ The foojay.io API already provides JRE packages alongside JDK packages, distingu
 ## Considered Options
 
 ### Option 1: Suffix Notation
+
 ```
 temurin@21-jre
 corretto@17.0.9-jre
@@ -33,14 +35,17 @@ corretto@17.0.9-jre
 ```
 
 **Advantages:**
+
 - Natural extension of existing version syntax
 - Similar to version tags like `-ea` or `-lts`
 
 **Disadvantages:**
+
 - Could be confused with version suffixes
 - Parsing complexity with existing version patterns
 
 ### Option 2: Prefix Notation (Jabba Style)
+
 ```
 jre@temurin@21
 jre@17.0.9
@@ -48,26 +53,31 @@ jre@corretto@17
 ```
 
 **Advantages:**
+
 - Clear distinction that this is a JRE
 - Similar to Jabba's `sjre@` prefix for Server JRE
 - Easy to parse (check prefix before passing to version parser)
 - Backward compatible (no prefix = JDK)
 
 **Disadvantages:**
+
 - Double `@` symbol might be confusing
 - Slightly longer syntax
 
 ### Option 3: Separate Parameter
+
 ```
 temurin@21 --type=jre
 17.0.9 --jre
 ```
 
 **Advantages:**
+
 - Clear separation of version and package type
 - Familiar command-line pattern
 
 **Disadvantages:**
+
 - Cannot be used in `.kopi-version` files
 - Inconsistent with version-only specification
 
@@ -78,6 +88,7 @@ We will adopt **Option 2: Prefix Notation** using the `jre@` prefix, following J
 ### Version Specification Format
 
 #### Command Line
+
 ```bash
 # JDK (implicit default - backward compatible)
 kopi install temurin@21
@@ -95,6 +106,7 @@ kopi install jre@corretto@17
 ```
 
 #### .kopi-version File
+
 ```
 # JDK (implicit default - backward compatible)
 temurin@21
@@ -127,6 +139,7 @@ JREs will be stored in a separate `jres/` directory parallel to `jdks/`:
 ```
 
 **Rationale:**
+
 - Maintains backward compatibility with existing `jdks/` directory
 - Clear separation between JDKs and JREs
 - Simplifies listing and management operations
@@ -137,18 +150,21 @@ JREs will be stored in a separate `jres/` directory parallel to `jdks/`:
 ## Implementation Plan
 
 ### Phase 1: Core Support
+
 1. Add `package_type` field to API models
 2. Extend `VersionParser` to handle `jre@` prefix
 3. Update `ParsedVersionRequest` to include `PackageType`
 4. Modify API client to accept package type parameter
 
 ### Phase 2: Storage Support
+
 1. Add `jres_dir()` method to `JdkRepository`
 2. Update installation paths based on package type
 3. Extend metadata to include package type information
 4. Update listing commands to show both JDKs and JREs
 
 ### Phase 3: Command Integration
+
 1. Update all commands to respect package type
 2. Add package type indicator to list output
 3. Update shell integration to handle both types
@@ -160,7 +176,7 @@ JREs will be stored in a separate `jres/` directory parallel to `jdks/`:
 // Version parsing with JDK/JRE support
 pub fn parse_version_spec(input: &str) -> Result<(ParsedVersionRequest, PackageType)> {
     let trimmed = input.trim();
-    
+
     if let Some(spec) = trimmed.strip_prefix("jre@") {
         let parsed = VersionParser::parse(spec)?;
         Ok((parsed, PackageType::Jre))
@@ -175,8 +191,8 @@ pub fn parse_version_spec(input: &str) -> Result<(ParsedVersionRequest, PackageT
 }
 
 // Storage path determination
-pub fn package_install_path(&self, package_type: &PackageType, 
-                           distribution: &Distribution, 
+pub fn package_install_path(&self, package_type: &PackageType,
+                           distribution: &Distribution,
                            version: &str) -> PathBuf {
     let dir = match package_type {
         PackageType::Jdk => self.jdks_dir(),
@@ -189,6 +205,7 @@ pub fn package_install_path(&self, package_type: &PackageType,
 ## Consequences
 
 ### Positive
+
 - **Expanded Use Cases**: Support for production and runtime environments
 - **Reduced Footprint**: Smaller installations for runtime-only needs
 - **Security**: JREs have smaller attack surface for production use
@@ -197,12 +214,14 @@ pub fn package_install_path(&self, package_type: &PackageType,
 - **Consistency**: Symmetric prefix notation for both package types
 
 ### Negative
+
 - **Increased Complexity**: Two package types to manage and test
 - **Storage Overhead**: Separate directories for JDKs and JREs
 - **Migration**: Existing users need to understand new syntax
 - **Tooling Updates**: Shell completions and integrations need updates
 
 ### Neutral
+
 - **Documentation**: Requires clear explanation of when to use JDK vs JRE
 - **Testing**: Doubles the test matrix for package operations
 - **Cache Management**: Metadata cache must distinguish package types
@@ -215,6 +234,7 @@ pub fn package_install_path(&self, package_type: &PackageType,
 4. **Package Conversion**: Could support extracting JRE from installed JDK
 
 ## References
+
 - [Jabba Version Manager](https://github.com/shyiko/jabba) - Inspiration for prefix notation
 - [foojay.io API Documentation](https://api.foojay.io/swagger-ui/) - Package type support
 - [ADR-003: JDK Storage Format](./003-jdk-storage-format.md) - Current storage structure

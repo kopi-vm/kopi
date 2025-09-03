@@ -9,10 +9,12 @@ Investigation into why kopi-shim binary size is larger than expected, currently 
 ## Current State
 
 ### Binary Sizes
+
 - Standard release profile: **2.5MB**
 - release-shim profile: **1.7MB** (32% reduction achieved through optimization flags)
 
 ### Build Configuration (release-shim profile)
+
 ```toml
 [profile.release-shim]
 inherits = "release"
@@ -26,6 +28,7 @@ strip = true     # Strip symbols
 ## Size Analysis
 
 ### Top Contributors (cargo bloat analysis)
+
 1. `regex_automata` - 69.2KB (6.2%) - Regular expression engine
 2. `kopi::shim::run_shim` - 21.3KB (1.9%) - Main shim function
 3. `toml_edit` - 20.7KB (1.8%) - TOML configuration parsing
@@ -57,6 +60,7 @@ The primary issue is that kopi-shim links the entire `kopi` library, which inclu
 ## Ideal Shim Requirements
 
 A minimal shim only needs:
+
 - Read `.kopi-version` or `.java-version` files
 - Resolve JDK installation path
 - Execute the appropriate Java binary

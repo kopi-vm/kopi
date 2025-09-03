@@ -33,7 +33,7 @@ pub fn resolve_version(current_dir: &Path) -> Result<Version> {
     if let Ok(version) = env::var("KOPI_JAVA_VERSION") {
         return Version::parse(&version);
     }
-    
+
     // 2. Do filesystem traversal (slower)
     find_version_in_directory_tree(current_dir)
 }
@@ -58,16 +58,16 @@ fn resolve_tool_path(tool_name: &str, version: &Version) -> Result<PathBuf> {
     let home = env::var("HOME")
         .or_else(|_| env::var("USERPROFILE"))
         .map_err(|_| "Cannot determine home directory")?;
-    
+
     let tool_path = Path::new(&home)
         .join(".kopi/jdks")
         .join(version.to_string())
         .join("bin")
         .join(tool_name);
-    
+
     #[cfg(windows)]
     let tool_path = tool_path.with_extension("exe");
-    
+
     // Single existence check
     if tool_path.exists() {
         Ok(tool_path)
@@ -79,34 +79,34 @@ fn resolve_tool_path(tool_name: &str, version: &Version) -> Result<PathBuf> {
 // Optimize directory traversal
 fn find_version_file(start_dir: &Path) -> Result<Version> {
     let mut dir = start_dir;
-    
+
     // Pre-allocate path buffer to avoid repeated allocations
     let mut path_buf = PathBuf::with_capacity(256);
-    
+
     loop {
         // Check both files in one directory access
         path_buf.clear();
         path_buf.push(dir);
         path_buf.push(".kopi-version");
-        
+
         if path_buf.exists() {
             return read_version_file(&path_buf);
         }
-        
+
         path_buf.pop();
         path_buf.push(".java-version");
-        
+
         if path_buf.exists() {
             return read_version_file(&path_buf);
         }
-        
+
         // Move to parent
         match dir.parent() {
             Some(parent) => dir = parent,
             None => break,
         }
     }
-    
+
     Err("No version file found".into())
 }
 ```
@@ -114,6 +114,7 @@ fn find_version_file(start_dir: &Path) -> Result<Version> {
 ## 4. Minimal Dependencies
 
 Keep the shim binary small and fast:
+
 - Avoid heavy dependencies
 - Statically link when possible
 - Use `no_std` where feasible for core functionality
@@ -122,15 +123,15 @@ Keep the shim binary small and fast:
 
 ## Performance Targets
 
-| Operation | Target Time | Actual (Typical) |
-|-----------|-------------|------------------|
-| Tool name detection | < 1ms | 0.1-0.5ms |
-| Version resolution (cached) | < 1ms | 0.2-0.5ms |
-| Version resolution (file) | < 5ms | 1-3ms |
-| Path resolution | < 1ms | 0.1-0.5ms |
-| Process exec (Unix) | < 5ms | 1-2ms |
-| Process spawn (Windows) | < 20ms | 10-15ms |
-| **Total overhead** | **1-20ms** | **1-10ms (Unix), 10-20ms (Windows)** |
+| Operation                   | Target Time | Actual (Typical)                     |
+| --------------------------- | ----------- | ------------------------------------ |
+| Tool name detection         | < 1ms       | 0.1-0.5ms                            |
+| Version resolution (cached) | < 1ms       | 0.2-0.5ms                            |
+| Version resolution (file)   | < 5ms       | 1-3ms                                |
+| Path resolution             | < 1ms       | 0.1-0.5ms                            |
+| Process exec (Unix)         | < 5ms       | 1-2ms                                |
+| Process spawn (Windows)     | < 20ms      | 10-15ms                              |
+| **Total overhead**          | **1-20ms**  | **1-10ms (Unix), 10-20ms (Windows)** |
 
 ## Benchmarking
 

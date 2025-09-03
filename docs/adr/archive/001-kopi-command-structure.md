@@ -1,9 +1,11 @@
 # ADR-001: Kopi Command Structure
 
 ## Status
+
 Proposed
 
 ## Context
+
 Kopi is a JDK version management tool that integrates with shells and fetches metadata from foojay.io. We need to design a command structure that is intuitive, consistent with existing version managers, and meets the specific needs of JDK management.
 
 ## Decision
@@ -34,6 +36,7 @@ After analyzing popular version managers (volta, nvm, pyenv, asdf, mise), we ide
 #### Core Commands
 
 1. **Installation & Setup**
+
    ```bash
    kopi install <version>              # Install a specific JDK version
    kopi install <distribution>@<version>  # Install specific distribution
@@ -42,6 +45,7 @@ After analyzing popular version managers (volta, nvm, pyenv, asdf, mise), we ide
    ```
 
 2. **Version Management**
+
    ```bash
    kopi use <version>              # Switch to a JDK version in current shell
    kopi shell                      # Launch new shell with JDK environment configured
@@ -51,6 +55,7 @@ After analyzing popular version managers (volta, nvm, pyenv, asdf, mise), we ide
    ```
 
 3. **Information Commands**
+
    ```bash
    kopi list                       # List installed JDK versions
    kopi current                    # Show current JDK version and details
@@ -58,6 +63,7 @@ After analyzing popular version managers (volta, nvm, pyenv, asdf, mise), we ide
    ```
 
 4. **Cache Management Commands**
+
    ```bash
    kopi cache search [version]     # Search available JDK versions from foojay.io
    kopi cache refresh              # Update metadata cache from foojay.io
@@ -65,12 +71,14 @@ After analyzing popular version managers (volta, nvm, pyenv, asdf, mise), we ide
    ```
 
 5. **Project Configuration**
+
    ```bash
    kopi init                       # Initialize kopi in current project
    kopi env                        # Show JDK environment variables
    ```
 
 6. **Setup and Maintenance**
+
    ```bash
    kopi setup                      # Initial setup and configuration
    kopi shim list                  # List installed shims
@@ -108,13 +116,16 @@ kopi install latest --lts        # Latest LTS version
 ```
 
 ### Default Distribution
+
 The default distribution is used when no distribution is specified in the install command. Users can change it using:
+
 ```
 kopi default temurin             # Set Eclipse Temurin as default
 kopi default corretto            # Set Amazon Corretto as default
 ```
 
 #### Supported Distributions
+
 - `temurin` - Eclipse Temurin (formerly AdoptOpenJDK)
 - `corretto` - Amazon Corretto
 - `zulu` - Azul Zulu
@@ -132,12 +143,12 @@ kopi default corretto            # Set Amazon Corretto as default
    - Global settings and preferences
 
 2. **Project Version Files**:
-   
+
    **`.java-version`** (Compatibility Mode)
    - Simple version numbers only: `21`, `11.0.2`, `21-ea`
    - No distribution specification
    - Maintains compatibility with GitHub Actions and other tools
-   
+
    **`.kopi-version`** (Native Format)
    - Uses `@` separator: `temurin@21`, `corretto@11.0.2+9`
    - Clear separation between distribution and version
@@ -148,11 +159,13 @@ Note: Kopi supports only exact version specifications. No Maven-style ranges (`[
 ### Shell Integration
 
 Following Volta's approach with shims:
+
 - Add `~/.kopi/bin` to PATH
 - Create shims for `java`, `javac`, `jar`, etc.
 - Automatic version switching based on project config
 
 The `kopi shell` command provides an alternative approach:
+
 - Launches a new shell subprocess with JDK environment variables properly configured
 - Sets `JAVA_HOME`, updates `PATH` to include JDK bin directory
 - Useful for isolated environments or when shim approach isn't suitable
@@ -170,12 +183,14 @@ The `kopi shell` command provides an alternative approach:
 ## Consequences
 
 ### Positive
+
 - Intuitive for users familiar with other version managers
 - Clear separation between global, local, and temporary (use) contexts
 - Flexible version specification
 - Easy shell integration
 
 ### Negative
+
 - Need to maintain shims for all JDK executables
 - Metadata caching complexity for offline usage
 - Potential conflicts with existing Java installations
@@ -188,6 +203,7 @@ The `kopi shell` command provides an alternative approach:
 4. Phase 4: Advanced features (`default`, `doctor`, `prune`) and shell completions
 
 ## References
+
 - Volta CLI: https://docs.volta.sh/
 - asdf: https://asdf-vm.com/
 - foojay.io API documentation

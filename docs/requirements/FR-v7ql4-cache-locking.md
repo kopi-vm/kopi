@@ -1,6 +1,7 @@
 # Process-level locking for cache operations
 
 ## Metadata
+
 - ID: FR-v7ql4
 - Type: Functional Requirement
 - Category: Platform
@@ -12,6 +13,7 @@
 - Date Modified: 2025-09-03
 
 ## Links
+
 - Implemented by Tasks: N/A – Not yet implemented
 - Related Requirements: FR-gbsz6
 - Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
@@ -26,6 +28,7 @@ The system SHALL provide exclusive writer locking for cache update operations wh
 ## Rationale
 
 The cache contains critical JDK metadata fetched from external APIs. Without proper locking:
+
 - Concurrent cache refreshes could corrupt the metadata file
 - Partial writes could leave the cache in an inconsistent state
 - Multiple API calls for the same data waste bandwidth and resources
@@ -47,6 +50,7 @@ As a kopi user, I want cache operations to be safe and consistent, so that I alw
 ## Technical Details (if applicable)
 
 ### Functional Requirement Details
+
 - Writer lock file: `~/.kopi/locks/cache.lock`
 - Lock type: Exclusive lock for writers only
 - Update strategy: Write to temporary file, then atomic rename
@@ -56,17 +60,20 @@ As a kopi user, I want cache operations to be safe and consistent, so that I alw
 ## Verification Method
 
 ### Test Strategy
+
 - Test Type: Integration
 - Test Location: `tests/cache_locking_tests.rs` (planned)
 - Test Names: `test_fr_v7ql4_concurrent_writers`, `test_fr_v7ql4_reader_writer_concurrent`
 
 ### Verification Commands
+
 ```bash
 # Specific commands to verify this requirement
 cargo test test_fr_v7ql4
 ```
 
 ### Success Metrics
+
 - Metric 1: Zero cache corruption incidents during concurrent operations
 - Metric 2: Read operations complete without blocking during cache updates
 
@@ -78,24 +85,27 @@ cargo test test_fr_v7ql4
 ## Platform Considerations
 
 ### Unix
+
 - Atomic rename via POSIX rename()
 - fsync for durability guarantees
 
 ### Windows
+
 - Atomic rename via MoveFileEx with MOVEFILE_REPLACE_EXISTING
 - FlushFileBuffers for durability
 
 ### Cross-Platform
+
 - Consistent temporary file naming pattern
 - Handle platform-specific atomic rename semantics
 
 ## Risks & Mitigation
 
-| Risk | Impact | Likelihood | Mitigation | Validation |
-|------|--------|------------|------------|------------|
-| Non-atomic rename on some filesystems | High | Low | Verify filesystem capabilities | Test on various filesystems |
-| Temporary file left after crash | Low | Medium | Cleanup on startup | Check for orphaned temp files |
-| Reader sees empty cache during first write | Medium | Low | Ship with default cache | Verify initial cache present |
+| Risk                                       | Impact | Likelihood | Mitigation                     | Validation                    |
+| ------------------------------------------ | ------ | ---------- | ------------------------------ | ----------------------------- |
+| Non-atomic rename on some filesystems      | High   | Low        | Verify filesystem capabilities | Test on various filesystems   |
+| Temporary file left after crash            | Low    | Medium     | Cleanup on startup             | Check for orphaned temp files |
+| Reader sees empty cache during first write | Medium | Low        | Ship with default cache        | Verify initial cache present  |
 
 ## Implementation Notes
 
@@ -105,6 +115,7 @@ cargo test test_fr_v7ql4
 - Log cache refresh operations for debugging
 
 ## External References
+
 N/A – No external references
 
 ## Change History

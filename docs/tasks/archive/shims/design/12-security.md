@@ -11,6 +11,7 @@ On Unix systems, symlinks require special attention to prevent security vulnerab
 ## Input Sanitization
 
 Version strings read from configuration files must be properly sanitized to prevent various attacks. The system should:
+
 - Limit input length to reasonable bounds (e.g., 100 characters)
 - Validate that only expected characters are present (alphanumeric, dots, hyphens, underscores, and @ symbols)
 - Reject any input containing path traversal sequences like "..", "/" or "\"
@@ -19,6 +20,7 @@ Version strings read from configuration files must be properly sanitized to prev
 ## Permission Checks
 
 Before executing any tool, the system must verify appropriate file permissions:
+
 - Confirm the file is executable by the current user
 - Issue warnings if files are world-writable, as this could indicate a security risk
 - Verify file ownership matches the current user where possible
@@ -27,6 +29,7 @@ Before executing any tool, the system must verify appropriate file permissions:
 ## Download Verification
 
 When auto-installing JDKs, the system must ensure download integrity through cryptographic verification. This involves:
+
 - Computing SHA-256 hashes of downloaded files
 - Comparing computed hashes against expected values from trusted sources
 - Immediately removing any files that fail verification
@@ -35,6 +38,7 @@ When auto-installing JDKs, the system must ensure download integrity through cry
 ## Environment Variable Injection
 
 Environment variables passed to child processes require careful handling:
+
 - Limit the length of environment variable values to prevent overflow attacks
 - Validate that values don't contain null bytes or other problematic characters
 - Sanitize any user-controlled values before passing them to subprocesses
@@ -55,13 +59,13 @@ The shim system adheres to these fundamental security principles:
 
 The system protects against these common attack vectors:
 
-| Attack Vector | Mitigation Strategy |
-|--------------|-------------------|
-| Path Traversal | Validate all file paths and reject sequences containing ".." or absolute paths outside expected directories |
-| Symlink Attacks | Verify symlink targets remain within kopi directories and resolve to expected locations |
-| Command Injection | Never construct shell commands from user input; use direct process execution instead |
-| Download MITM | Use HTTPS exclusively for downloads and verify checksums against trusted sources |
-| Privilege Escalation | Design system to work entirely with user permissions; never require elevated privileges |
-| Environment Injection | Sanitize and validate all environment variables before passing to child processes |
+| Attack Vector         | Mitigation Strategy                                                                                         |
+| --------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Path Traversal        | Validate all file paths and reject sequences containing ".." or absolute paths outside expected directories |
+| Symlink Attacks       | Verify symlink targets remain within kopi directories and resolve to expected locations                     |
+| Command Injection     | Never construct shell commands from user input; use direct process execution instead                        |
+| Download MITM         | Use HTTPS exclusively for downloads and verify checksums against trusted sources                            |
+| Privilege Escalation  | Design system to work entirely with user permissions; never require elevated privileges                     |
+| Environment Injection | Sanitize and validate all environment variables before passing to child processes                           |
 
 ## Next: [Migration and Compatibility](./13-migration-compatibility.md)
