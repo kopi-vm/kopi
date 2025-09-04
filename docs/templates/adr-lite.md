@@ -58,6 +58,7 @@
 
 <!-- External standards, specifications, articles, or documentation only -->
 
+- [ADR GitHub](https://adr.github.io/) - ADR methodology documentation
 - [External resource title](https://example.com) - Brief description
 
 ---

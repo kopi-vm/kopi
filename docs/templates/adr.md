@@ -120,7 +120,8 @@ kopi <command> `[args]`
 
 <!-- External standards, specifications, articles, or documentation only -->
 
-- [External resource title](https://example.com) - Brief description (e.g., [ADR GitHub](https://adr.github.io/) - ADR methodology documentation)
+- [ADR GitHub](https://adr.github.io/) - ADR methodology documentation
+- [External resource title](https://example.com) - Brief description
 
 ---
 
