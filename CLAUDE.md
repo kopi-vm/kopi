@@ -116,7 +116,9 @@ This project follows the Traceable Development Lifecycle (TDL), a template-based
 **See [`docs/templates/README.md`](docs/templates/README.md)** for template usage instructions.
 
 ### Completing Work
-When finishing any coding task, always run the following commands in order and fix any issues:
+
+#### Rust Code
+When finishing any Rust coding task, always run the following commands in order and fix any issues:
 
 1. `cargo fmt` - Auto-format code
 2. `cargo clippy --all-targets -- -D warnings` - Check for linting errors in test code
@@ -124,12 +126,19 @@ When finishing any coding task, always run the following commands in order and f
 
 Address any errors from each command before proceeding to the next. All must pass successfully before considering the work complete.
 
-When working on Markdown documentation (`.md` files), additionally run:
+#### Markdown Documentation
+When working on Markdown documentation (`.md` files), run the following commands:
 
-4. `bun format` - Check markdown formatting and linting
-   - Fix any warnings or errors reported
-   - Common issues: trailing spaces, inconsistent indentation, missing blank lines
+1. `bun format` - Auto-format markdown files
+   - Automatically fixes formatting issues
    - Ensures consistent markdown style across all documentation
+
+2. `bun lint` - Check markdown linting
+   - Identifies potential issues and violations
+   - Common issues: trailing spaces, inconsistent indentation, missing blank lines
+   - Fix any warnings or errors reported
+
+Both commands must pass successfully before considering the documentation work complete.
 
 ## Essential Commands
 
