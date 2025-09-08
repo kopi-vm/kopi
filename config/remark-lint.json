@@ -1,0 +1,39 @@
+{
+  "settings": {
+    "bullet": "-",
+    "emphasis": "_",
+    "rule": "-"
+  },
+  "plugins": [
+    "remark-frontmatter",
+    "remark-gfm",
+    "remark-preset-lint-recommended",
+    "remark-preset-prettier",
+    [
+      "remark-validate-links",
+      {
+        "repository": false
+      }
+    ],
+    [
+      "remark-lint-no-dead-urls",
+      {
+        "deadOrAliveOptions": {
+          "timeout": 10000
+        }
+      }
+    ],
+    [
+      "remark-lint-maximum-heading-length",
+      80
+    ],
+    [
+      "remark-lint-no-file-name-mixed-case",
+      false
+    ],
+    [
+      "remark-lint-no-file-name-irregular-characters",
+      false
+    ]
+  ]
+}
