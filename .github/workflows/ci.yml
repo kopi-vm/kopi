@@ -38,11 +38,11 @@ jobs:
     - name: Install Dependencies
       run: bun install
 
-    - name: Run Prettier
-      run: bun lint:prettier
+    - name: Format Markdown Files
+      run: bun format
 
-    - name: Run Remark
-      run: bun lint:md
+    - name: Lint Markdown Files
+      run: bun lint
 
     - name: Install Rust
       uses: actions-rust-lang/setup-rust-toolchain@v1
