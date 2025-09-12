@@ -1,118 +1,151 @@
 #!/usr/bin/env bun
+
 /**
- * Generate a new 5-character random TDL document ID.
- * Uses base36 (0-9, a-z) for human readability.
- * Collision probability: ~1% at ~1,100 documents.
- * 
+ * Generate a new random TDL document ID (base36, lowercase).
+ * - Uniform randomness via rejection sampling (no modulo bias)
+ * - Single-pass scan of docs to collect used IDs (no re-scan per attempt)
+ * - Strict path matching on segment boundaries
+ *
  * Environment Variables:
- *   ID_LEN: ID length (default: 5, min: 1)
+ *   ID_LEN   - ID length (default: 5, min: 1)
+ *   DOCS_DIR - Root directory to scan (default: "docs")
+ *
+ * CLI (optional, minimal):
+ *   tdl-new-id.ts [root]
+ *   - If provided, positional [root] overrides DOCS_DIR.
  */
 
-import { existsSync, readdirSync, statSync } from "fs";
+import { webcrypto as crypto } from "node:crypto";
+import type { Dirent } from "fs";
+import { existsSync, readdirSync } from "fs";
 import { join } from "path";
 
 // Default ID length
 const DEFAULT_ID_LENGTH = 5;
 
 // Valid TDL prefixes
-const VALID_PREFIXES = ['AN', 'FR', 'NFR', 'ADR', 'T'] as const;
+const VALID_PREFIXES = ["AN", "FR", "NFR", "ADR", "T"] as const;
+
+// Alphabet: 0-9, a-z
+const ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz" as const;
 
 /**
- * Generate a random base36 ID of specified length.
+ * Uniform random integer generator in [0, max).
+ * Uses rejection sampling over a single random byte.
+ */
+function randomIntExclusive(max: number): number {
+  if (!Number.isInteger(max) || max <= 0 || max > 256) {
+    throw new Error(`randomIntExclusive: max must be in 1..256, got ${max}`);
+  }
+  const limit = Math.floor(256 / max) * max; // largest multiple of max < 256
+  const buf = new Uint8Array(1);
+  for (;;) {
+    crypto.getRandomValues(buf);
+    const val = buf[0];
+    if (val < limit) return val % max;
+  }
+}
+
+/**
+ * Generate a random base36 ID of specified length using uniform selection.
  */
 function generateId(length: number = DEFAULT_ID_LENGTH): string {
-    const chars = '0123456789abcdefghijklmnopqrstuvwxyz'; // 0-9, a-z
-    let result = '';
-    
-    // Use crypto for secure random generation (equivalent to Python's secrets module)
-    const randomBytes = new Uint8Array(length);
-    crypto.getRandomValues(randomBytes);
-    
-    for (let i = 0; i < length; i++) {
-        // Map each byte to a character in our charset
-        result += chars[randomBytes[i] % chars.length];
-    }
-    
-    return result;
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += ALPHABET[randomIntExclusive(ALPHABET.length)];
+  }
+  return result;
 }
 
 /**
- * Recursively get all files and directories under a path.
+ * Recursively walk a directory tree using Dirent entries (no extra stat calls).
  */
-function* walkSync(dir: string): Generator<string> {
-    if (!existsSync(dir)) return;
-    
-    const files = readdirSync(dir);
-    
-    for (const file of files) {
-        const path = join(dir, file);
-        yield path;
-        
-        if (statSync(path).isDirectory()) {
-            yield* walkSync(path);
-        }
+function* walkPaths(rootDir: string): Generator<string> {
+  if (!existsSync(rootDir)) return;
+  const stack: string[] = [rootDir];
+  while (stack.length) {
+    const current = stack.pop() as string;
+    let entries: Dirent[];
+    try {
+      entries = readdirSync(current, { withFileTypes: true });
+    } catch {
+      // Ignore directories we cannot read
+      continue;
     }
+    for (const dirent of entries) {
+      const entryPath = join(current, dirent.name);
+      yield entryPath;
+      if (dirent.isDirectory()) stack.push(entryPath);
+    }
+  }
 }
 
 /**
- * Check if ID already exists in filenames/dirnames under docs/.
+ * Collect all used IDs from filenames/dirnames under the given root.
+ * Matches segment-boundary patterns: (AN|FR|NFR|ADR|T)-<id>-
  */
-function idExists(docId: string): boolean {
-    const docsDir = 'docs';
-    
-    // If no docs directory yet, there can't be a collision
-    if (!existsSync(docsDir)) {
-        return false;
+function collectUsedIds(rootDir: string): Set<string> {
+  const used = new Set<string>();
+  if (!existsSync(rootDir)) return used;
+
+  // e.g., .../requirements/FR-v7ql4-cache-locking.md or .../T-e7fa1-impl/
+  const idPattern = new RegExp(
+    String.raw`(?:^|[\\/])(?:${VALID_PREFIXES.join("|")})-([0-9a-z]+)-`,
+    "g",
+  );
+
+  for (const p of walkPaths(rootDir)) {
+    let m: RegExpExecArray | null;
+    idPattern.lastIndex = 0; // reset for safety across loop
+    while ((m = idPattern.exec(p)) !== null) {
+      used.add(m[1]);
     }
-    
-    // Build all patterns to check (e.g., "AN-{id}-", "FR-{id}-", etc.)
-    const patterns = VALID_PREFIXES.map(prefix => `${prefix}-${docId}-`);
-    
-    // Single pass through all files - O(files) instead of O(files * prefixes)
-    for (const path of walkSync(docsDir)) {
-        // Check if any pattern appears in the path
-        if (patterns.some(pattern => path.includes(pattern))) {
-            return true;
-        }
-    }
-    
-    return false;
+  }
+  return used;
 }
 
 /**
- * Main logic to generate unique ID.
+ * Main logic to generate unique ID (single scan, then in-memory checks).
  */
 function main(): number {
-    const maxAttempts = 10;
-    
-    // Robust input validation for ID_LEN
-    let idLength = DEFAULT_ID_LENGTH;
-    const idLenEnv = process.env.ID_LEN;
-    
-    if (idLenEnv !== undefined) {
-        const parsed = parseInt(idLenEnv, 10);
-        if (isNaN(parsed) || parsed < 1) {
-            console.error(`Warning: ID_LEN must be >= 1, using default ${DEFAULT_ID_LENGTH}`);
-            idLength = DEFAULT_ID_LENGTH;
-        } else {
-            idLength = parsed;
-        }
+  const maxAttempts = 10;
+
+  // Root selection: positional arg > DOCS_DIR env > default "docs"
+  const rootArg = process.argv[2];
+  const docsRoot = rootArg?.trim() || process.env.DOCS_DIR || "docs";
+
+  // Robust input validation for ID_LEN
+  let idLength = DEFAULT_ID_LENGTH;
+  const idLenEnv = process.env.ID_LEN;
+  if (idLenEnv !== undefined) {
+    const parsed = parseInt(idLenEnv, 10);
+    if (Number.isNaN(parsed) || parsed < 1) {
+      console.error(
+        `Warning: ID_LEN must be >= 1, using default ${DEFAULT_ID_LENGTH}`,
+      );
+      idLength = DEFAULT_ID_LENGTH;
+    } else {
+      idLength = parsed;
     }
-    
-    for (let i = 0; i < maxAttempts; i++) {
-        const newId = generateId(idLength);
-        
-        if (!idExists(newId)) {
-            console.log(newId);
-            return 0;
-        }
-        
-        // ID collision detected, try again
-        console.error(`ID collision detected for ${newId}, regenerating...`);
+  }
+
+  // Single pass: gather used IDs once
+  const usedIds = collectUsedIds(docsRoot);
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const newId = generateId(idLength);
+    if (!usedIds.has(newId)) {
+      console.log(newId);
+      return 0;
     }
-    
-    console.error(`Error: Could not generate unique ID after ${maxAttempts} attempts`);
-    return 1;
+    // ID collision detected, try again
+    console.error(`ID collision detected for ${newId}, regenerating...`);
+  }
+
+  console.error(
+    `Error: Could not generate unique ID after ${maxAttempts} attempts`,
+  );
+  return 1;
 }
 
 // Run the main function and exit with its return code
