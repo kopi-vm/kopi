@@ -175,6 +175,15 @@ When working on Markdown documentation (`.md` files), run the following commands
 
 Both commands must pass successfully before considering the documentation work complete.
 
+#### TypeScript Code
+When editing any TypeScript files, run each of the following commands and resolve any reported errors before moving on:
+
+1. `bun format:ts` - Format TypeScript sources
+2. `bun lint:ts` - Lint TypeScript code with project rules
+3. `bun test:ts` - Execute the TypeScript test suite
+
+All three commands must complete without errors to finish TypeScript-related work.
+
 ## Essential Commands
 
 - **Format**: `cargo fmt` - Format code using rustfmt
