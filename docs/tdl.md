@@ -255,9 +255,9 @@ These requirements apply to ALL documentation templates (Requirements, Design, P
 Traceability is maintained through Links sections in each document and viewed on-demand:
 
 ```bash
-python3 scripts/trace-status.py        # Full status
-python3 scripts/trace-status.py --gaps # Only gaps
-python3 scripts/trace-status.py --check # CI mode
+./scripts/trace-status.ts        # Full status
+./scripts/trace-status.ts --gaps # Only gaps
+./scripts/trace-status.ts --check # CI mode
 ```
 
 **→ See [`parallel-development.md`](parallel-development.md) for implementation details**
@@ -287,7 +287,7 @@ Update the Links section in documents when:
    - ✅ New relationships discovered → Update Links sections
 
 6. **Verification**
-   - ✅ Run `python3 scripts/trace-status.py` to check for gaps
+   - ✅ Run `./scripts/trace-status.ts` to check for gaps
    - ✅ Fix any orphan requirements or tasks before PR
 
 ## Pull Request Checklist
@@ -307,7 +307,7 @@ Update the Links section in documents when:
   - [ ] Error messages clear and in English (per `CLAUDE.md`)
   - [ ] Documentation updated (`docs/reference.md`, user docs if needed)
   - [ ] Platform behavior validated when relevant
-  - [ ] **Traceability verified**: Run `python3 scripts/trace-status.py --check`
+  - [ ] **Traceability verified**: Run `./scripts/trace-status.ts --check`
   - [ ] **Links sections updated**: All document relationships current
   - [ ] **No orphan documents**: All requirements have tasks (or are marked as future work)
 
@@ -322,7 +322,7 @@ Update the Links section in documents when:
   - Estimated execution time < 30 minutes
 - Create minimal `docs/tasks/T-<id>-<task>/plan.md` with a short Phase and DoD
 - Ensure all verification commands pass
-- **Traceability**: Run `python3 scripts/trace-status.py --check` to verify no gaps
+- **Traceability**: Run `./scripts/trace-status.ts --check` to verify no gaps
 
 ## Archive Policy
 

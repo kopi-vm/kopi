@@ -43,7 +43,7 @@ T-e7fa1-implement-locking/          # Task directory
 Instead of maintaining a central `docs/traceability.md` that causes merge conflicts:
 
 1. **Each document maintains its own Links section** (source of truth)
-2. **Status viewed on-demand** using `scripts/trace-status.py`
+2. **Status viewed on-demand** using `scripts/trace-status.ts`
 3. **File is in `.gitignore`** to prevent commits and conflicts
 
 ## Workflow
@@ -70,13 +70,13 @@ Instead of maintaining a central `docs/traceability.md` that causes merge confli
 
 ```bash
 # View full traceability status
-python3 scripts/trace-status.py
+./scripts/trace-status.ts
 
 # View only gaps (orphan requirements/tasks)
-python3 scripts/trace-status.py --gaps
+./scripts/trace-status.ts --gaps
 
 # CI check mode (exits with error if gaps found)
-python3 scripts/trace-status.py --check
+./scripts/trace-status.ts --check
 ```
 
 ### Example Output
@@ -107,7 +107,7 @@ For existing documents with sequential IDs (AN-0001, FR-0001):
 
 1. **Keep existing filenames** - No need to rename
 2. **New documents use random IDs** - Start using the new system going forward
-3. **Both formats work** - The trace-status.py script handles both
+3. **Both formats work** - The trace-status.ts script handles both
 
 ## Implementation Details
 
@@ -121,7 +121,7 @@ Location: `scripts/tdl-new-id.py`
 
 ### Status Display Script
 
-Location: `scripts/trace-status.py`
+Location: `scripts/trace-status.ts`
 
 - Parses Links sections from all TDL documents
 - No frontmatter required
@@ -134,7 +134,7 @@ Location: `scripts/trace-status.py`
 A: The script automatically detects and regenerates. With 5 characters, collision probability is negligible.
 
 **Q: How do I see the full project status?**\
-A: Run `python3 scripts/trace-status.py` anytime for current status.
+A: Run `./scripts/trace-status.ts` anytime for current status.
 
 **Q: What about existing sequential IDs?**\
 A: They continue to work. The system handles both formats.
