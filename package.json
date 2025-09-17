@@ -5,7 +5,7 @@
 		"lint": "remark --frail docs/ -r config/remark-lint.json",
 		"format:ts": "biome format --write",
 		"lint:ts": "biome lint",
-		"test:ts": "bun test"
+		"test:ts": "bun test --coverage"
 	},
 	"prettier": {
 		"endOfLine": "lf",
