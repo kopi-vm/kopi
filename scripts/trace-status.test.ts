@@ -10,8 +10,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
 
 import {
-  TraceabilityAnalyzer,
   capitalize,
+  createTraceabilityAnalyzer,
   extractDocumentId,
   extractDocumentStatus,
   extractDocumentTitle,
@@ -26,6 +26,7 @@ import {
   safeReadFile,
   toPosixPath,
   walkFiles,
+  type TraceabilityAnalyzer,
 } from "./trace-status";
 
 const tempRoots: string[] = [];
@@ -310,7 +311,7 @@ describe("TraceabilityAnalyzer", () => {
       "# T-0002 Unlinked\n- Status: Draft\n",
     );
 
-    const analyzer = new TraceabilityAnalyzer(repoRoot);
+    const analyzer: TraceabilityAnalyzer = createTraceabilityAnalyzer(repoRoot);
     const coverage = analyzer.calculateCoverage();
     expect(coverage.total_requirements).toBe(2);
     expect(coverage.requirements_with_tasks).toBe(1);
