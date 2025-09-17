@@ -39,7 +39,7 @@ type DocSource = {
   match: (relativePath: string) => boolean;
 };
 
-export class TDLDocument {
+export type TDLDocument = {
   readonly path: string;
   readonly filename: string;
   readonly docId: string;
@@ -47,17 +47,20 @@ export class TDLDocument {
   readonly links: LinkMap;
   readonly status: string;
   readonly title: string;
+};
 
-  constructor(filePath: string) {
-    this.path = filePath;
-    this.filename = filePath.split(/[/\\]/).pop() ?? filePath;
-    const content = safeReadFile(filePath);
-    this.docId = extractDocumentId(this.filename, filePath, content);
-    this.docType = inferDocumentType(this.filename, filePath);
-    this.links = parseDocumentLinks(content);
-    this.status = extractDocumentStatus(content);
-    this.title = extractDocumentTitle(content);
-  }
+export function makeTDLDocument(filePath: string): TDLDocument {
+  const filename = filePath.split(/[/\\]/).pop() ?? filePath;
+  const content = safeReadFile(filePath);
+  return {
+    path: filePath,
+    filename,
+    docId: extractDocumentId(filename, filePath, content),
+    docType: inferDocumentType(filename, filePath),
+    links: parseDocumentLinks(content),
+    status: extractDocumentStatus(content),
+    title: extractDocumentTitle(content),
+  };
 }
 
 export function extractDocumentId(
@@ -201,7 +204,7 @@ export class TraceabilityAnalyzer {
         )
           continue;
 
-        const doc = new TDLDocument(filePath);
+        const doc = makeTDLDocument(filePath);
         this.documents.set(doc.docId, doc);
       }
     }
