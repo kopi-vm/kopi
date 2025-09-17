@@ -16,10 +16,15 @@ import {
 import { dirname, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 
-type DocumentType = "analysis" | "requirement" | "adr" | "task" | "unknown";
+export type DocumentType =
+  | "analysis"
+  | "requirement"
+  | "adr"
+  | "task"
+  | "unknown";
 type LinkMap = Record<string, string[]>;
 
-type CoverageReport = {
+export type CoverageReport = {
   total_requirements: number;
   total_tasks: number;
   total_analyses: number;
@@ -34,7 +39,7 @@ type DocSource = {
   match: (relativePath: string) => boolean;
 };
 
-class TDLDocument {
+export class TDLDocument {
   readonly path: string;
   readonly filename: string;
   readonly docId: string;
@@ -47,105 +52,104 @@ class TDLDocument {
     this.path = filePath;
     this.filename = filePath.split(/[/\\]/).pop() ?? filePath;
     const content = safeReadFile(filePath);
-    this.docId = TDLDocument.extractId(this.filename, filePath, content);
-    this.docType = TDLDocument.extractType(this.filename, filePath);
-    this.links = TDLDocument.parseLinks(content);
-    this.status = TDLDocument.extractStatus(content);
-    this.title = TDLDocument.extractTitle(content);
-  }
-
-  private static extractId(
-    filename: string,
-    filePath: string,
-    content: string | null,
-  ): string {
-    const directMatch = filename.match(/^([A-Z]+-[^-]+)/);
-    if (directMatch) return directMatch[1];
-
-    const pathMatch = filePath.match(/([A-Z]+-[0-9a-z]+)(?=[-./\\]|$)/);
-    if (pathMatch) return pathMatch[1];
-
-    if (content) {
-      const metadataMatch = content.match(/^\s*-\s*ID:\s*([A-Z]+-[^\s]+)/im);
-      if (metadataMatch) return metadataMatch[1];
-    }
-
-    return filename;
-  }
-
-  private static extractType(filename: string, filePath: string): DocumentType {
-    if (filename.startsWith("AN-")) return "analysis";
-    if (filename.startsWith("FR-")) return "requirement";
-    if (filename.startsWith("NFR-")) return "requirement";
-    if (filename.startsWith("ADR-")) return "adr";
-    if (filename.startsWith("T-")) return "task";
-    // Fallback to directory-based inference for task documents (plan/design files)
-    const normalizedPath = filePath.replace(/\\/g, "/");
-    if (normalizedPath.includes("docs/tasks/T-")) return "task";
-    return "unknown";
-  }
-
-  private static parseLinks(content: string | null): LinkMap {
-    const links: LinkMap = {};
-    if (content === null) return links;
-
-    const linksMatch = content.match(/## Links\s*\n([\s\S]*?)(?=\n##|$)/);
-    if (!linksMatch) return links;
-
-    const linksContent = linksMatch[1];
-    const lines = linksContent.split(/\r?\n/);
-    let currentLinkType: string | null = null;
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line) {
-        currentLinkType = null;
-        continue;
-      }
-      if (!line.startsWith("- ")) continue;
-
-      const colonIndex = line.indexOf(":");
-      if (colonIndex !== -1) {
-        const label = line.slice(2, colonIndex).trim().toLowerCase();
-        const value = line.slice(colonIndex + 1);
-        const linkType = resolveLinkType(label);
-        currentLinkType = linkType;
-        if (!linkType) continue;
-
-        const ids = extractIds(value);
-        if (ids.length === 0) continue;
-
-        links[linkType] = links[linkType] ?? [];
-        links[linkType].push(...ids);
-        continue;
-      }
-
-      if (!currentLinkType) continue;
-      const ids = extractIds(line.slice(2));
-      if (ids.length === 0) continue;
-      links[currentLinkType] = links[currentLinkType] ?? [];
-      links[currentLinkType].push(...ids);
-    }
-
-    return links;
-  }
-
-  private static extractStatus(content: string | null): string {
-    if (content === null) return "Unknown";
-
-    const statusMatch = content.match(/^\s*-\s*Status:\s*(.+)$/m);
-    if (statusMatch) return statusMatch[1].trim();
-
-    return "Unknown";
-  }
-
-  private static extractTitle(content: string | null): string {
-    if (content === null) return "";
-    const match = content.match(/^#\s+(.+)$/m);
-    return match ? match[1].trim() : "";
+    this.docId = extractDocumentId(this.filename, filePath, content);
+    this.docType = inferDocumentType(this.filename, filePath);
+    this.links = parseDocumentLinks(content);
+    this.status = extractDocumentStatus(content);
+    this.title = extractDocumentTitle(content);
   }
 }
 
-class TraceabilityAnalyzer {
+function extractDocumentId(
+  filename: string,
+  filePath: string,
+  content: string | null,
+): string {
+  const directMatch = filename.match(/^([A-Z]+-[^-]+)/);
+  if (directMatch) return directMatch[1];
+
+  const pathMatch = filePath.match(/([A-Z]+-[0-9a-z]+)(?=[-./\\]|$)/);
+  if (pathMatch) return pathMatch[1];
+
+  if (content) {
+    const metadataMatch = content.match(/^\s*-\s*ID:\s*([A-Z]+-[^\s]+)/im);
+    if (metadataMatch) return metadataMatch[1];
+  }
+
+  return filename;
+}
+
+function inferDocumentType(filename: string, filePath: string): DocumentType {
+  if (filename.startsWith("AN-")) return "analysis";
+  if (filename.startsWith("FR-")) return "requirement";
+  if (filename.startsWith("NFR-")) return "requirement";
+  if (filename.startsWith("ADR-")) return "adr";
+  if (filename.startsWith("T-")) return "task";
+  const normalizedPath = filePath.replace(/\\/g, "/");
+  if (normalizedPath.includes("docs/tasks/T-")) return "task";
+  return "unknown";
+}
+
+function parseDocumentLinks(content: string | null): LinkMap {
+  const links: LinkMap = {};
+  if (content === null) return links;
+
+  const linksMatch = content.match(/## Links\s*\n([\s\S]*?)(?=\n##|$)/);
+  if (!linksMatch) return links;
+
+  const linksContent = linksMatch[1];
+  const lines = linksContent.split(/\r?\n/);
+  let currentLinkType: string | null = null;
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      currentLinkType = null;
+      continue;
+    }
+    if (!line.startsWith("- ")) continue;
+
+    const colonIndex = line.indexOf(":");
+    if (colonIndex !== -1) {
+      const label = line.slice(2, colonIndex).trim().toLowerCase();
+      const value = line.slice(colonIndex + 1);
+      const linkType = resolveLinkType(label);
+      currentLinkType = linkType;
+      if (!linkType) continue;
+
+      const ids = extractIds(value);
+      if (ids.length === 0) continue;
+
+      links[linkType] = links[linkType] ?? [];
+      links[linkType].push(...ids);
+      continue;
+    }
+
+    if (!currentLinkType) continue;
+    const ids = extractIds(line.slice(2));
+    if (ids.length === 0) continue;
+    links[currentLinkType] = links[currentLinkType] ?? [];
+    links[currentLinkType].push(...ids);
+  }
+
+  return links;
+}
+
+function extractDocumentStatus(content: string | null): string {
+  if (content === null) return "Unknown";
+
+  const statusMatch = content.match(/^\s*-\s*Status:\s*(.+)$/m);
+  if (statusMatch) return statusMatch[1].trim();
+
+  return "Unknown";
+}
+
+function extractDocumentTitle(content: string | null): string {
+  if (content === null) return "";
+  const match = content.match(/^#\s+(.+)$/m);
+  return match ? match[1].trim() : "";
+}
+
+export class TraceabilityAnalyzer {
   private readonly repoRoot: string;
   private readonly documents: Map<string, TDLDocument> = new Map();
 
@@ -286,8 +290,12 @@ class TraceabilityAnalyzer {
     return this.documents.get(docId);
   }
 
+  renderTraceabilityMarkdown(outputPath: string): string {
+    return this.buildTraceabilityMarkdown(outputPath);
+  }
+
   writeTraceabilityReport(outputPath: string): void {
-    const content = this.buildTraceabilityMarkdown(outputPath);
+    const content = this.renderTraceabilityMarkdown(outputPath);
     mkdirSync(dirname(outputPath), { recursive: true });
     writeFileSync(outputPath, content, "utf8");
   }
@@ -574,7 +582,7 @@ function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function findRepoRoot(startDir: string): string | null {
+export function findRepoRoot(startDir: string): string | null {
   let current = resolve(startDir);
   while (true) {
     if (
@@ -590,7 +598,7 @@ function findRepoRoot(startDir: string): string | null {
   return null;
 }
 
-function parseArgs(argv: string[]): {
+export function parseArgs(argv: string[]): {
   gapsOnly: boolean;
   checkMode: boolean;
   writePath: string | null;
@@ -619,7 +627,7 @@ function parseArgs(argv: string[]): {
   return { gapsOnly, checkMode, writePath };
 }
 
-function main(): number {
+export function main(): number {
   const { gapsOnly, checkMode, writePath } = parseArgs(process.argv.slice(2));
   const repoRoot = findRepoRoot(process.cwd());
   if (!repoRoot) {
@@ -660,7 +668,7 @@ function main(): number {
   return 0;
 }
 
-function resolveOutputPath(writePath: string, repoRoot: string): string {
+export function resolveOutputPath(writePath: string, repoRoot: string): string {
   if (writePath === "") return join(repoRoot, "docs", "traceability.md");
   if (writePath.startsWith("/")) return writePath;
   return resolve(repoRoot, writePath);
