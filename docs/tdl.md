@@ -104,6 +104,23 @@ graph LR
 </tbody>
 </table>
 
+## Supporting Automation
+
+### ID generation (`scripts/tdl-new-id.ts`)
+
+- Execute `./scripts/tdl-new-id.ts` to print a collision-resistant, base36 document ID.
+- The script scans existing TDL documents once, so it scales across large worktrees.
+- Optional environment overrides:
+  - `DOCS_DIR` (default: `docs`) points to the directory tree to scan for IDs.
+  - `ID_LEN` (default: `5`) controls the generated length; invalid values fall back to the default with a warning.
+
+### Traceability status (`scripts/trace-status.ts`)
+
+- `./scripts/trace-status.ts` prints the full status summary (coverage, gaps, counts).
+- `--gaps` limits output to orphan requirements and tasks.
+- `--check` exits with status code `1` when gaps exist (suitable for CI). Combine with `--write[=path]` to emit a markdown report without committing it.
+- `--write` without a path writes `docs/traceability.md`; `--write=custom/path.md` writes to a custom location.
+
 ## Parallel Development Support
 
 This project supports parallel development using git-worktree with unique IDs to prevent conflicts.
@@ -129,7 +146,7 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Output**: List of discovered requirements (FR-DRAFT, NFR-DRAFT) and architectural concerns
 - **Location**: `docs/analysis/AN-<id>-<topic>.md` (move to `archive/` when complete)
 - **Naming**: `AN-<id>-<topic>` format (e.g., `AN-a3bf2-cache-optimization.md`)
-- **ID Generation**: Run `./scripts/tdl-new-id.py` (see [`parallel-development.md`](parallel-development.md))
+- **ID Generation**: Run `./scripts/tdl-new-id.ts` (see [`parallel-development.md`](parallel-development.md))
 - **Transition**: Analysis can lead to:
   - Creating formal requirements from discoveries
   - Identifying architectural decisions that need to be made
@@ -142,7 +159,7 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Output**: Formal requirements with IDs (`FR-<id>-<capability>`, `NFR-<id>-<quality>`), measurable criteria
 - **Location**: `docs/requirements/FR-<id>-<capability>.md` and `docs/requirements/NFR-<id>-<quality>.md`
 - **Naming**: `FR-<id>-<capability>` and `NFR-<id>-<quality>` format
-- **ID Generation**: Run `./scripts/tdl-new-id.py` (see [`parallel-development.md`](parallel-development.md))
+- **ID Generation**: Run `./scripts/tdl-new-id.ts` (see [`parallel-development.md`](parallel-development.md))
 - **Sources**: Can come from:
   - Analysis documents (discovered requirements)
   - ADR decisions (derived requirements/constraints)
@@ -164,7 +181,7 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Output**: ADR documents with decisions, rationale, and consequences
 - **Location**: `docs/adr/ADR-<id>-<title>.md` (new) or `docs/adr/archive/###-<title>.md` (existing)
 - **Naming**: `ADR-<id>-<descriptive-title>.md` (e.g., `ADR-d6ef0-cache-storage-format.md`)
-- **ID Generation**: Run `./scripts/tdl-new-id.py` (see [`parallel-development.md`](parallel-development.md))
+- **ID Generation**: Run `./scripts/tdl-new-id.ts` (see [`parallel-development.md`](parallel-development.md))
 - **Sources**: Triggered by analysis findings or implementation needs
 - **Transition**: ADRs can:
   - Generate new requirements (constraints/standards)
@@ -182,7 +199,7 @@ This project supports parallel development using git-worktree with unique IDs to
 - **References**: FR/NFR IDs and relevant ADRs (don't duplicate requirement text)
 - **Location**: `docs/tasks/T-<id>-<task>/design.md` (task-scoped)
 - **Naming**: Task directory + fixed name (e.g., `docs/tasks/T-e7fa1-cache-refresh/design.md`)
-- **ID Generation**: Run `./scripts/tdl-new-id.py` for the task directory (see [`parallel-development.md`](parallel-development.md))
+- **ID Generation**: Run `./scripts/tdl-new-id.ts` for the task directory (see [`parallel-development.md`](parallel-development.md))
 - **Transition**: With design complete, create execution plan
 - **Traceability Update**: Add task to "Task Status" table; link task to requirements in matrix
 

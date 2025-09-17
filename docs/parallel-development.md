@@ -17,9 +17,12 @@ Instead of sequential numbers, use randomly generated 5-character IDs:
 
 ```bash
 # Generate a unique ID for new documents
-./scripts/tdl-new-id.py
+./scripts/tdl-new-id.ts
 # Output example: a3bf2
 ```
+
+> Tip: override `DOCS_DIR` to scan a different tree or `ID_LEN` to change the ID length
+> (invalid overrides fall back to the five-character default).
 
 **Characteristics:**
 
@@ -53,7 +56,7 @@ Instead of maintaining a central `docs/traceability.md` that causes merge confli
 1. **Generate a unique ID:**
 
    ```bash
-   ./scripts/tdl-new-id.py
+   ./scripts/tdl-new-id.ts
    # Output: a3bf2
    ```
 
@@ -77,6 +80,9 @@ Instead of maintaining a central `docs/traceability.md` that causes merge confli
 
 # CI check mode (exits with error if gaps found)
 ./scripts/trace-status.ts --check
+
+# Generate a report (defaults to docs/traceability.md without committing)
+./scripts/trace-status.ts --check --write
 ```
 
 ### Example Output
@@ -113,20 +119,22 @@ For existing documents with sequential IDs (AN-0001, FR-0001):
 
 ### ID Generation Script
 
-Location: `scripts/tdl-new-id.py`
+Location: `scripts/tdl-new-id.ts`
 
-- Uses Python's `secrets` module for cryptographic randomness
-- Checks existing documents to avoid collisions
-- Retries up to 10 times if collision detected
+- TypeScript script executed via Bun (`#!/usr/bin/env bun`)
+- Uses Bun's Web Crypto implementation to produce unbiased base36 output
+- Scans `DOCS_DIR` (default: `docs`) once to avoid per-attempt filesystem walks
+- Supports `ID_LEN` to override the default length (invalid values fall back with a warning)
+- Retries up to 10 times if a collision is detected
 
 ### Status Display Script
 
 Location: `scripts/trace-status.ts`
 
-- Parses Links sections from all TDL documents
-- No frontmatter required
-- Identifies gaps and orphan documents
-- Provides CI-friendly check mode
+- Parses Links sections from all TDL documents (no frontmatter required)
+- Calculates coverage statistics and highlights orphan requirements/tasks
+- `--gaps` prints only the gap summary; `--check` exits non-zero when gaps remain
+- `--write` and `--write=<path>` generate markdown reports without committing them
 
 ## FAQ
 
