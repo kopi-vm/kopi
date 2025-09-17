@@ -57,7 +57,8 @@ class TDLDocument {
     if (filename.startsWith("ADR-")) return "adr";
     if (filename.startsWith("T-")) return "task";
     // Fallback to directory-based inference for task documents (plan/design files)
-    if (/\bdocs[/\\]tasks\b/.test(filePath)) return "task";
+    if (/(?:^|[\/\\])docs[\/\\]tasks[\/\\]T-[^\/\\]+/.test(filePath))
+      return "task";
     return "unknown";
   }
 
