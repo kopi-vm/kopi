@@ -196,6 +196,6 @@ Use inline code (`` ` ``) for the following cases to ensure proper formatting an
 
 ### Real Project Examples (Archived)
 
-- Error Handling: [`../adr/archive/004-error-handling-strategy.md`](../adr/archive/004-error-handling-strategy.md) - Full ADR with multiple options analyzed
-- Logging Strategy: [`../adr/archive/009-logging-strategy.md`](../adr/archive/009-logging-strategy.md) - Comprehensive platform considerations
-- Configuration: [`../adr/archive/014-configuration-and-version-file-formats.md`](../adr/archive/014-configuration-and-version-file-formats.md) - Focused scope with clear trade-offs
+- Error Handling: [`../archive/adr/004-error-handling-strategy.md`](../archive/adr/004-error-handling-strategy.md) - Full ADR with multiple options analyzed
+- Logging Strategy: [`../archive/adr/009-logging-strategy.md`](../archive/adr/009-logging-strategy.md) - Comprehensive platform considerations
+- Configuration: [`../archive/adr/014-configuration-and-version-file-formats.md`](../archive/adr/014-configuration-and-version-file-formats.md) - Focused scope with clear trade-offs
