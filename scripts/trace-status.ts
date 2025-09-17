@@ -155,388 +155,7 @@ export function extractDocumentTitle(content: string | null): string {
   return match ? match[1].trim() : "";
 }
 
-export type TraceabilityAnalyzer = {
-  findImplementingTasks: (reqId: string) => string[];
-  findOrphanRequirements: () => string[];
-  findOrphanTasks: () => string[];
-  calculateCoverage: () => CoverageReport;
-  getDocument: (docId: string) => TDLDocument | undefined;
-  renderTraceabilityMarkdown: (outputPath: string) => string;
-  writeTraceabilityReport: (outputPath: string) => void;
-  printStatus: (gapsOnly: boolean) => void;
-  checkIntegrity: () => boolean;
-};
-
-export function createTraceabilityAnalyzer(
-  repoRoot: string,
-): TraceabilityAnalyzer {
-  const documents = loadDocuments(repoRoot);
-
-  return {
-    findImplementingTasks: (reqId: string) =>
-      findImplementingTasksFrom(documents, reqId),
-    findOrphanRequirements: () => findOrphanRequirementsFrom(documents),
-    findOrphanTasks: () => findOrphanTasksFrom(documents),
-    calculateCoverage: () => calculateCoverageForDocuments(documents),
-    getDocument: (docId: string) => documents.get(docId),
-    renderTraceabilityMarkdown: (outputPath: string) =>
-      renderTraceabilityMarkdownForDocuments(documents, outputPath),
-    writeTraceabilityReport: (outputPath: string) =>
-      writeTraceabilityReportForDocuments(documents, outputPath),
-    printStatus: (gapsOnly: boolean) =>
-      printStatusForDocuments(documents, gapsOnly),
-    checkIntegrity: () => checkIntegrityForDocuments(documents),
-  };
-}
-
-function requirementDocsFrom(
-  documents: Map<string, TDLDocument>,
-): TDLDocument[] {
-  return [...documents.values()].filter((doc) => doc.docType === "requirement");
-}
-
-function taskDocsFrom(documents: Map<string, TDLDocument>): TDLDocument[] {
-  return [...documents.values()].filter((doc) => doc.docType === "task");
-}
-
-function documentsByLinkingRequirementFrom(
-  documents: Map<string, TDLDocument>,
-  docType: DocumentType,
-): Map<string, Set<string>> {
-  const map = new Map<string, Set<string>>();
-  for (const doc of documents.values()) {
-    if (doc.docType !== docType) continue;
-    const requirements = doc.links.requirements ?? [];
-    for (const requirement of requirements) {
-      const bucket = map.get(requirement) ?? new Set<string>();
-      bucket.add(doc.docId);
-      map.set(requirement, bucket);
-    }
-  }
-  return map;
-}
-
-function findImplementingTasksFrom(
-  documents: Map<string, TDLDocument>,
-  reqId: string,
-): string[] {
-  const tasks: string[] = [];
-  for (const doc of taskDocsFrom(documents)) {
-    const linked = doc.links.requirements ?? [];
-    if (linked.includes(reqId)) tasks.push(doc.docId);
-  }
-  return tasks;
-}
-
-function findOrphanRequirementsFrom(
-  documents: Map<string, TDLDocument>,
-): string[] {
-  const orphans: string[] = [];
-  for (const doc of requirementDocsFrom(documents)) {
-    if (findImplementingTasksFrom(documents, doc.docId).length === 0) {
-      orphans.push(doc.docId);
-    }
-  }
-  return orphans;
-}
-
-function findOrphanTasksFrom(documents: Map<string, TDLDocument>): string[] {
-  const orphans: string[] = [];
-  for (const doc of taskDocsFrom(documents)) {
-    if ((doc.links.requirements ?? []).length === 0) {
-      orphans.push(doc.docId);
-    }
-  }
-  return orphans;
-}
-
-function calculateCoverageForDocuments(
-  documents: Map<string, TDLDocument>,
-): CoverageReport {
-  const requirements = requirementDocsFrom(documents);
-  const tasks = taskDocsFrom(documents);
-  const analyses = [...documents.values()].filter(
-    (doc) => doc.docType === "analysis",
-  );
-  const adrs = [...documents.values()].filter((doc) => doc.docType === "adr");
-
-  const requirementsWithTasks = requirements.filter(
-    (req) => findImplementingTasksFrom(documents, req.docId).length > 0,
-  ).length;
-  const coveragePercentage = requirements.length
-    ? (requirementsWithTasks / requirements.length) * 100
-    : 0;
-
-  return {
-    total_requirements: requirements.length,
-    total_tasks: tasks.length,
-    total_analyses: analyses.length,
-    total_adrs: adrs.length,
-    requirements_with_tasks: requirementsWithTasks,
-    coverage_percentage: coveragePercentage,
-  };
-}
-
-function formatDocLink(doc: TDLDocument, outputDir: string): string {
-  const relativePath = toPosixPath(relative(outputDir, doc.path));
-  return `[${doc.docId}](${relativePath})`;
-}
-
-function formatPrimaryDoc(doc: TDLDocument, outputDir: string): string {
-  const link = formatDocLink(doc, outputDir);
-  if (!doc.title) return link;
-  return `${link} - ${doc.title}`;
-}
-
-function formatLinkedDocsForDocuments(
-  documents: Map<string, TDLDocument>,
-  ids: Iterable<string>,
-  outputDir: string,
-  options: { includeStatus?: boolean } = {},
-): string {
-  const includeStatus = options.includeStatus ?? false;
-  const uniqueIds = [
-    ...new Set([...ids].map((id) => id.trim()).filter(Boolean)),
-  ];
-  if (uniqueIds.length === 0) return "—";
-
-  const parts = uniqueIds.map((id) => {
-    const doc = documents.get(id);
-    if (!doc) return id;
-    const link = formatDocLink(doc, outputDir);
-    if (includeStatus && doc.status !== "Unknown") {
-      return `${link} (${doc.status})`;
-    }
-    return includeStatus ? `${link} (Unknown)` : link;
-  });
-
-  return parts.join("<br>");
-}
-
-function renderTraceabilityMarkdownForDocuments(
-  documents: Map<string, TDLDocument>,
-  outputPath: string,
-): string {
-  const outputDir = dirname(outputPath);
-  const coverage = calculateCoverageForDocuments(documents);
-  const requirementDocuments = requirementDocsFrom(documents).sort((a, b) =>
-    a.docId.localeCompare(b.docId),
-  );
-  const analysesByRequirement = documentsByLinkingRequirementFrom(
-    documents,
-    "analysis",
-  );
-  const adrsByRequirement = documentsByLinkingRequirementFrom(documents, "adr");
-
-  const lines: string[] = [];
-  lines.push("# Kopi Traceability Overview");
-  lines.push("");
-  lines.push(`Generated on ${new Date().toISOString()}`);
-  lines.push("");
-
-  lines.push("## Summary");
-  lines.push("");
-  lines.push("| Metric | Count |");
-  lines.push("| --- | ---: |");
-  lines.push(`| Analyses | ${coverage.total_analyses} |`);
-  lines.push(`| Requirements | ${coverage.total_requirements} |`);
-  lines.push(`| ADRs | ${coverage.total_adrs} |`);
-  lines.push(`| Tasks | ${coverage.total_tasks} |`);
-  lines.push(
-    `| Requirements with tasks | ${coverage.requirements_with_tasks} (${coverage.coverage_percentage.toFixed(0)}%) |`,
-  );
-  lines.push("");
-
-  lines.push("## Traceability Matrix");
-  lines.push("");
-  if (requirementDocuments.length === 0) {
-    lines.push("No requirements found.");
-  } else {
-    lines.push("| Analyses | ADRs | Requirement | Status | Tasks |");
-    lines.push("| --- | --- | --- | --- | --- |");
-    for (const requirement of requirementDocuments) {
-      const requirementLink = formatPrimaryDoc(requirement, outputDir);
-
-      const taskIds = new Set<string>();
-      for (const id of findImplementingTasksFrom(
-        documents,
-        requirement.docId,
-      )) {
-        taskIds.add(id);
-      }
-      for (const id of requirement.links.tasks ?? []) {
-        taskIds.add(id);
-      }
-
-      const analysisIds = new Set<string>();
-      for (const id of requirement.links.analyses ?? []) {
-        analysisIds.add(id);
-      }
-      for (const id of analysesByRequirement.get(requirement.docId) ?? []) {
-        analysisIds.add(id);
-      }
-
-      const adrIds = new Set<string>();
-      for (const id of requirement.links.adrs ?? []) {
-        adrIds.add(id);
-      }
-      for (const id of adrsByRequirement.get(requirement.docId) ?? []) {
-        adrIds.add(id);
-      }
-
-      const analysesCell = formatLinkedDocsForDocuments(
-        documents,
-        analysisIds,
-        outputDir,
-      );
-      const adrsCell = formatLinkedDocsForDocuments(
-        documents,
-        adrIds,
-        outputDir,
-      );
-      const statusCell = requirement.status;
-      const tasksCell = formatLinkedDocsForDocuments(
-        documents,
-        taskIds,
-        outputDir,
-        {
-          includeStatus: true,
-        },
-      );
-
-      lines.push(
-        `| ${analysesCell} | ${adrsCell} | ${requirementLink} | ${statusCell} | ${tasksCell} |`,
-      );
-    }
-  }
-
-  lines.push("");
-  lines.push("## Traceability Gaps");
-  lines.push("");
-  const orphanRequirements = findOrphanRequirementsFrom(documents).sort();
-  const orphanTasks = findOrphanTasksFrom(documents).sort();
-
-  if (orphanRequirements.length === 0 && orphanTasks.length === 0) {
-    lines.push("No gaps detected.");
-  } else {
-    for (const reqId of orphanRequirements) {
-      const doc = documents.get(reqId);
-      const status = doc?.status ?? "Unknown";
-      lines.push(`- ${reqId}: No implementing task (Status: ${status})`);
-    }
-    for (const taskId of orphanTasks) {
-      const doc = documents.get(taskId);
-      const status = doc?.status ?? "Unknown";
-      lines.push(`- ${taskId}: No linked requirements (Status: ${status})`);
-    }
-  }
-
-  lines.push("");
-  lines.push(
-    "_This file is generated by `scripts/trace-status.ts`. Do not commit generated outputs to avoid merge conflicts._",
-  );
-  return lines.join("\n");
-}
-
-function writeTraceabilityReportForDocuments(
-  documents: Map<string, TDLDocument>,
-  outputPath: string,
-): void {
-  const content = renderTraceabilityMarkdownForDocuments(documents, outputPath);
-  mkdirSync(dirname(outputPath), { recursive: true });
-  writeFileSync(outputPath, content, "utf8");
-}
-
-function printStatusForDocuments(
-  documents: Map<string, TDLDocument>,
-  gapsOnly: boolean,
-): void {
-  if (!gapsOnly) {
-    console.log("=== Kopi TDL Status ===\n");
-    const coverage = calculateCoverageForDocuments(documents);
-    console.log("Coverage:");
-    console.log(
-      `  Documents: ${coverage.total_analyses} analyses, ${coverage.total_requirements} requirements, ` +
-        `${coverage.total_adrs} ADRs, ${coverage.total_tasks} tasks`,
-    );
-    console.log(
-      `  Implementation: ${coverage.requirements_with_tasks}/${coverage.total_requirements} requirements have tasks ` +
-        `(${coverage.coverage_percentage.toFixed(0)}%)`,
-    );
-    console.log();
-  }
-
-  const orphanRequirements = findOrphanRequirementsFrom(documents);
-  const orphanTasks = findOrphanTasksFrom(documents);
-
-  if (orphanRequirements.length || orphanTasks.length) {
-    console.log("Gaps:");
-    for (const reqId of orphanRequirements.sort()) {
-      const doc = documents.get(reqId);
-      const status = doc?.status ?? "Unknown";
-      console.log(`  ⚠ ${reqId}: No implementing task (Status: ${status})`);
-    }
-    for (const taskId of orphanTasks.sort()) {
-      console.log(`  ⚠ ${taskId}: No linked requirements`);
-    }
-    console.log();
-  } else if (!gapsOnly) {
-    console.log("✓ No gaps detected\n");
-  }
-
-  if (!gapsOnly) {
-    console.log("Status by Document Type:");
-    const byType = new Map<DocumentType, TDLDocument[]>();
-    for (const doc of documents.values()) {
-      let bucket = byType.get(doc.docType);
-      if (!bucket) {
-        bucket = [];
-        byType.set(doc.docType, bucket);
-      }
-      bucket.push(doc);
-    }
-
-    for (const docType of ["analysis", "requirement", "adr", "task"] as const) {
-      if (!byType.has(docType)) continue;
-      const docs = byType.get(docType);
-      if (!docs) continue;
-      console.log(`
-  ${capitalize(docType)}s:`);
-      const byStatus = new Map<string, number>();
-      for (const doc of docs) {
-        const status = doc.status;
-        byStatus.set(status, (byStatus.get(status) ?? 0) + 1);
-      }
-      for (const [status, count] of [...byStatus.entries()].sort((a, b) =>
-        a[0].localeCompare(b[0]),
-      )) {
-        console.log(`    ${status}: ${count}`);
-      }
-    }
-  }
-}
-
-function checkIntegrityForDocuments(
-  documents: Map<string, TDLDocument>,
-): boolean {
-  const orphanRequirements = findOrphanRequirementsFrom(documents);
-  const orphanTasks = findOrphanTasksFrom(documents);
-
-  if (orphanRequirements.length || orphanTasks.length) {
-    console.error("Traceability gaps detected:");
-    for (const reqId of orphanRequirements) {
-      console.error(`  - ${reqId}: No implementing task`);
-    }
-    for (const taskId of orphanTasks) {
-      console.error(`  - ${taskId}: No linked requirements`);
-    }
-    return false;
-  }
-
-  return true;
-}
-
-function loadDocuments(repoRoot: string): Map<string, TDLDocument> {
+export function loadDocuments(repoRoot: string): Map<string, TDLDocument> {
   const documents = new Map<string, TDLDocument>();
   const sources: DocSource[] = [
     {
@@ -584,6 +203,337 @@ function loadDocuments(repoRoot: string): Map<string, TDLDocument> {
   }
 
   return documents;
+}
+
+export function requirementDocsFrom(
+  documents: Map<string, TDLDocument>,
+): TDLDocument[] {
+  return [...documents.values()].filter((doc) => doc.docType === "requirement");
+}
+
+export function taskDocsFrom(
+  documents: Map<string, TDLDocument>,
+): TDLDocument[] {
+  return [...documents.values()].filter((doc) => doc.docType === "task");
+}
+
+export function documentsByLinkingRequirement(
+  documents: Map<string, TDLDocument>,
+  docType: DocumentType,
+): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const doc of documents.values()) {
+    if (doc.docType !== docType) continue;
+    const requirements = doc.links.requirements ?? [];
+    for (const requirement of requirements) {
+      const bucket = map.get(requirement) ?? new Set<string>();
+      bucket.add(doc.docId);
+      map.set(requirement, bucket);
+    }
+  }
+  return map;
+}
+
+export function findImplementingTasks(
+  documents: Map<string, TDLDocument>,
+  reqId: string,
+): string[] {
+  const tasks: string[] = [];
+  for (const doc of taskDocsFrom(documents)) {
+    const linked = doc.links.requirements ?? [];
+    if (linked.includes(reqId)) tasks.push(doc.docId);
+  }
+  return tasks;
+}
+
+export function findOrphanRequirements(
+  documents: Map<string, TDLDocument>,
+): string[] {
+  const orphans: string[] = [];
+  for (const doc of requirementDocsFrom(documents)) {
+    if (findImplementingTasks(documents, doc.docId).length === 0) {
+      orphans.push(doc.docId);
+    }
+  }
+  return orphans;
+}
+
+export function findOrphanTasks(documents: Map<string, TDLDocument>): string[] {
+  const orphans: string[] = [];
+  for (const doc of taskDocsFrom(documents)) {
+    if ((doc.links.requirements ?? []).length === 0) {
+      orphans.push(doc.docId);
+    }
+  }
+  return orphans;
+}
+
+export function calculateCoverage(
+  documents: Map<string, TDLDocument>,
+): CoverageReport {
+  const requirements = requirementDocsFrom(documents);
+  const tasks = taskDocsFrom(documents);
+  const analyses = [...documents.values()].filter(
+    (doc) => doc.docType === "analysis",
+  );
+  const adrs = [...documents.values()].filter((doc) => doc.docType === "adr");
+
+  const requirementsWithTasks = requirements.filter(
+    (req) => findImplementingTasks(documents, req.docId).length > 0,
+  ).length;
+  const coveragePercentage = requirements.length
+    ? (requirementsWithTasks / requirements.length) * 100
+    : 0;
+
+  return {
+    total_requirements: requirements.length,
+    total_tasks: tasks.length,
+    total_analyses: analyses.length,
+    total_adrs: adrs.length,
+    requirements_with_tasks: requirementsWithTasks,
+    coverage_percentage: coveragePercentage,
+  };
+}
+
+function formatDocLink(doc: TDLDocument, outputDir: string): string {
+  const relativePath = toPosixPath(relative(outputDir, doc.path));
+  return `[${doc.docId}](${relativePath})`;
+}
+
+function formatPrimaryDoc(doc: TDLDocument, outputDir: string): string {
+  const link = formatDocLink(doc, outputDir);
+  if (!doc.title) return link;
+  return `${link} - ${doc.title}`;
+}
+
+function formatLinkedDocs(
+  documents: Map<string, TDLDocument>,
+  ids: Iterable<string>,
+  outputDir: string,
+  options: { includeStatus?: boolean } = {},
+): string {
+  const includeStatus = options.includeStatus ?? false;
+  const uniqueIds = [
+    ...new Set([...ids].map((id) => id.trim()).filter(Boolean)),
+  ];
+  if (uniqueIds.length === 0) return "—";
+
+  const parts = uniqueIds.map((id) => {
+    const doc = documents.get(id);
+    if (!doc) return id;
+    const link = formatDocLink(doc, outputDir);
+    if (includeStatus && doc.status !== "Unknown") {
+      return `${link} (${doc.status})`;
+    }
+    return includeStatus ? `${link} (Unknown)` : link;
+  });
+
+  return parts.join("<br>");
+}
+
+export function renderTraceabilityMarkdown(
+  documents: Map<string, TDLDocument>,
+  outputPath: string,
+): string {
+  const outputDir = dirname(outputPath);
+  const coverage = calculateCoverage(documents);
+  const requirementDocuments = requirementDocsFrom(documents).sort((a, b) =>
+    a.docId.localeCompare(b.docId),
+  );
+  const analysesByRequirement = documentsByLinkingRequirement(
+    documents,
+    "analysis",
+  );
+  const adrsByRequirement = documentsByLinkingRequirement(documents, "adr");
+
+  const lines: string[] = [];
+  lines.push("# Kopi Traceability Overview");
+  lines.push("");
+  lines.push(`Generated on ${new Date().toISOString()}`);
+  lines.push("");
+
+  lines.push("## Summary");
+  lines.push("");
+  lines.push("| Metric | Count |");
+  lines.push("| --- | ---: |");
+  lines.push(`| Analyses | ${coverage.total_analyses} |`);
+  lines.push(`| Requirements | ${coverage.total_requirements} |`);
+  lines.push(`| ADRs | ${coverage.total_adrs} |`);
+  lines.push(`| Tasks | ${coverage.total_tasks} |`);
+  lines.push(
+    `| Requirements with tasks | ${coverage.requirements_with_tasks} (${coverage.coverage_percentage.toFixed(0)}%) |`,
+  );
+  lines.push("");
+
+  lines.push("## Traceability Matrix");
+  lines.push("");
+  if (requirementDocuments.length === 0) {
+    lines.push("No requirements found.");
+  } else {
+    lines.push("| Analyses | ADRs | Requirement | Status | Tasks |");
+    lines.push("| --- | --- | --- | --- | --- |");
+    for (const requirement of requirementDocuments) {
+      const requirementLink = formatPrimaryDoc(requirement, outputDir);
+
+      const taskIds = new Set<string>();
+      for (const id of findImplementingTasks(documents, requirement.docId)) {
+        taskIds.add(id);
+      }
+      for (const id of requirement.links.tasks ?? []) {
+        taskIds.add(id);
+      }
+
+      const analysisIds = new Set<string>();
+      for (const id of requirement.links.analyses ?? []) {
+        analysisIds.add(id);
+      }
+      for (const id of analysesByRequirement.get(requirement.docId) ?? []) {
+        analysisIds.add(id);
+      }
+
+      const adrIds = new Set<string>();
+      for (const id of requirement.links.adrs ?? []) {
+        adrIds.add(id);
+      }
+      for (const id of adrsByRequirement.get(requirement.docId) ?? []) {
+        adrIds.add(id);
+      }
+
+      const analysesCell = formatLinkedDocs(documents, analysisIds, outputDir);
+      const adrsCell = formatLinkedDocs(documents, adrIds, outputDir);
+      const statusCell = requirement.status;
+      const tasksCell = formatLinkedDocs(documents, taskIds, outputDir, {
+        includeStatus: true,
+      });
+
+      lines.push(
+        `| ${analysesCell} | ${adrsCell} | ${requirementLink} | ${statusCell} | ${tasksCell} |`,
+      );
+    }
+  }
+
+  lines.push("");
+  lines.push("## Traceability Gaps");
+  lines.push("");
+  const orphanRequirements = findOrphanRequirements(documents).sort();
+  const orphanTasks = findOrphanTasks(documents).sort();
+
+  if (orphanRequirements.length === 0 && orphanTasks.length === 0) {
+    lines.push("No gaps detected.");
+  } else {
+    for (const reqId of orphanRequirements) {
+      const doc = documents.get(reqId);
+      const status = doc?.status ?? "Unknown";
+      lines.push(`- ${reqId}: No implementing task (Status: ${status})`);
+    }
+    for (const taskId of orphanTasks) {
+      const doc = documents.get(taskId);
+      const status = doc?.status ?? "Unknown";
+      lines.push(`- ${taskId}: No linked requirements (Status: ${status})`);
+    }
+  }
+
+  lines.push("");
+  lines.push(
+    "_This file is generated by `scripts/trace-status.ts`. Do not commit generated outputs to avoid merge conflicts._",
+  );
+
+  return lines.join("\n");
+}
+
+export function writeTraceabilityReport(
+  documents: Map<string, TDLDocument>,
+  outputPath: string,
+): void {
+  const content = renderTraceabilityMarkdown(documents, outputPath);
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, content, "utf8");
+}
+
+export function printStatus(
+  documents: Map<string, TDLDocument>,
+  gapsOnly: boolean,
+): void {
+  if (!gapsOnly) {
+    console.log("=== Kopi TDL Status ===\n");
+    const coverage = calculateCoverage(documents);
+    console.log("Coverage:");
+    console.log(
+      `  Documents: ${coverage.total_analyses} analyses, ${coverage.total_requirements} requirements, ` +
+        `${coverage.total_adrs} ADRs, ${coverage.total_tasks} tasks`,
+    );
+    console.log(
+      `  Implementation: ${coverage.requirements_with_tasks}/${coverage.total_requirements} requirements have tasks ` +
+        `(${coverage.coverage_percentage.toFixed(0)}%)`,
+    );
+    console.log();
+  }
+
+  const orphanRequirements = findOrphanRequirements(documents);
+  const orphanTasks = findOrphanTasks(documents);
+
+  if (orphanRequirements.length || orphanTasks.length) {
+    console.log("Gaps:");
+    for (const reqId of orphanRequirements.sort()) {
+      const doc = documents.get(reqId);
+      const status = doc?.status ?? "Unknown";
+      console.log(`  ⚠ ${reqId}: No implementing task (Status: ${status})`);
+    }
+    for (const taskId of orphanTasks.sort()) {
+      console.log(`  ⚠ ${taskId}: No linked requirements`);
+    }
+    console.log();
+  } else if (!gapsOnly) {
+    console.log("✓ No gaps detected\n");
+  }
+
+  if (!gapsOnly) {
+    console.log("Status by Document Type:");
+    const byType = new Map<DocumentType, TDLDocument[]>();
+    for (const doc of documents.values()) {
+      let bucket = byType.get(doc.docType);
+      if (!bucket) {
+        bucket = [];
+        byType.set(doc.docType, bucket);
+      }
+      bucket.push(doc);
+    }
+
+    for (const docType of ["analysis", "requirement", "adr", "task"] as const) {
+      if (!byType.has(docType)) continue;
+      const docs = byType.get(docType);
+      if (!docs) continue;
+      console.log(`\n  ${capitalize(docType)}s:`);
+      const byStatus = new Map<string, number>();
+      for (const doc of docs) {
+        const status = doc.status;
+        byStatus.set(status, (byStatus.get(status) ?? 0) + 1);
+      }
+      for (const [status, count] of [...byStatus.entries()].sort((a, b) =>
+        a[0].localeCompare(b[0]),
+      )) {
+        console.log(`    ${status}: ${count}`);
+      }
+    }
+  }
+}
+
+export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
+  const orphanRequirements = findOrphanRequirements(documents);
+  const orphanTasks = findOrphanTasks(documents);
+
+  if (orphanRequirements.length || orphanTasks.length) {
+    console.error("Traceability gaps detected:");
+    for (const reqId of orphanRequirements) {
+      console.error(`  - ${reqId}: No implementing task`);
+    }
+    for (const taskId of orphanTasks) {
+      console.error(`  - ${taskId}: No linked requirements`);
+    }
+    return false;
+  }
+
+  return true;
 }
 
 export function safeReadFile(path: string): string | null {
@@ -695,15 +645,15 @@ export function main(): number {
     return 1;
   }
 
-  const analyzer = createTraceabilityAnalyzer(repoRoot);
+  const documents = loadDocuments(repoRoot);
 
   if (checkMode) {
-    if (!analyzer.checkIntegrity()) {
+    if (!checkIntegrity(documents)) {
       return 1;
     }
     if (writePath !== null) {
       const outputPath = resolveOutputPath(writePath, repoRoot);
-      analyzer.writeTraceabilityReport(outputPath);
+      writeTraceabilityReport(documents, outputPath);
       console.log(
         `✓ Traceability check passed; report written to ${relative(
           repoRoot,
@@ -718,13 +668,13 @@ export function main(): number {
 
   if (writePath !== null) {
     const outputPath = resolveOutputPath(writePath, repoRoot);
-    analyzer.writeTraceabilityReport(outputPath);
+    writeTraceabilityReport(documents, outputPath);
     console.log(
       `Traceability report written to ${relative(repoRoot, outputPath)}`,
     );
   }
 
-  analyzer.printStatus(gapsOnly);
+  printStatus(documents, gapsOnly);
   return 0;
 }
 

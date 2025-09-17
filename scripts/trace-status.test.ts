@@ -11,22 +11,26 @@ import { dirname, join, relative, sep } from "node:path";
 
 import {
   capitalize,
-  createTraceabilityAnalyzer,
+  calculateCoverage,
   extractDocumentId,
   extractDocumentStatus,
   extractDocumentTitle,
   extractIds,
   findRepoRoot,
+  findImplementingTasks,
+  findOrphanRequirements,
+  findOrphanTasks,
   inferDocumentType,
+  loadDocuments,
   main,
   parseArgs,
   parseDocumentLinks,
   resolveLinkType,
   resolveOutputPath,
+  renderTraceabilityMarkdown,
   safeReadFile,
   toPosixPath,
   walkFiles,
-  type TraceabilityAnalyzer,
 } from "./trace-status";
 
 const tempRoots: string[] = [];
@@ -271,7 +275,7 @@ describe("parseArgs", () => {
   });
 });
 
-describe("TraceabilityAnalyzer", () => {
+describe("traceability helpers", () => {
   it("calculates coverage and detects gaps", () => {
     const repoRoot = createTempDir();
 
@@ -311,8 +315,8 @@ describe("TraceabilityAnalyzer", () => {
       "# T-0002 Unlinked\n- Status: Draft\n",
     );
 
-    const analyzer: TraceabilityAnalyzer = createTraceabilityAnalyzer(repoRoot);
-    const coverage = analyzer.calculateCoverage();
+    const documents = loadDocuments(repoRoot);
+    const coverage = calculateCoverage(documents);
     expect(coverage.total_requirements).toBe(2);
     expect(coverage.requirements_with_tasks).toBe(1);
     expect(coverage.coverage_percentage).toBeCloseTo(50);
@@ -320,11 +324,12 @@ describe("TraceabilityAnalyzer", () => {
     expect(coverage.total_analyses).toBe(1);
     expect(coverage.total_adrs).toBe(1);
 
-    expect(analyzer.findOrphanRequirements()).toEqual(["FR-0002"]);
-    expect(analyzer.findOrphanTasks()).toEqual(["T-0002"]);
+    expect(findImplementingTasks(documents, "FR-0001")).toEqual(["T-0001"]);
+    expect(findOrphanRequirements(documents)).toEqual(["FR-0002"]);
+    expect(findOrphanTasks(documents)).toEqual(["T-0002"]);
 
     const outputPath = join(repoRoot, "docs", "traceability.md");
-    const markdown = analyzer.renderTraceabilityMarkdown(outputPath);
+    const markdown = renderTraceabilityMarkdown(documents, outputPath);
     expect(markdown).toContain("| Requirements | 2 |");
     expect(markdown).toContain("| Requirements with tasks | 1 (50%) |");
     expect(markdown).toContain(
