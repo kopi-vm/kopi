@@ -180,7 +180,7 @@ When editing any TypeScript files, run each of the following commands and resolv
 
 1. `bun format:ts` - Format TypeScript sources
 2. `bun lint:ts` - Lint TypeScript code with project rules
-3. `bun test:ts` - Execute the TypeScript test suite
+3. `AGENT=1 bun test:ts` - Execute the TypeScript test suite
 
 All three commands must complete without errors to finish TypeScript-related work.
 
