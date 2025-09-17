@@ -46,7 +46,7 @@ graph LR
 <td><code>analysis.md</code></td>
 <td><code>docs/analysis/AN-&lt;id&gt;-&lt;topic&gt;.md</code></td>
 <td><code>AN-&lt;5char-id&gt;-&lt;topic&gt;</code> (e.g., <code>AN-a3bf2-cache-optimization.md</code>)</td>
-<td>Temporary, archived after requirements formalized</td>
+<td>Working doc, remains in <code>docs/analysis/</code> after completion</td>
 </tr>
 <tr>
 <td rowspan="2"><strong>Requirements</strong></td>
@@ -144,7 +144,7 @@ This project supports parallel development using git-worktree with unique IDs to
   - Transition discovered requirements to formal FR/NFR documents when ready
 - **Template**: [`templates/analysis.md`](templates/analysis.md) - Template for exploratory analysis and problem space investigation. Used to discover requirements through research and stakeholder analysis
 - **Output**: List of discovered requirements (FR-DRAFT, NFR-DRAFT) and architectural concerns
-- **Location**: `docs/analysis/AN-<id>-<topic>.md` (move to `archive/` when complete)
+- **Location**: `docs/analysis/AN-<id>-<topic>.md` (remains in place after completion)
 - **Naming**: `AN-<id>-<topic>` format (e.g., `AN-a3bf2-cache-optimization.md`)
 - **ID Generation**: Run `./scripts/tdl-new-id.ts` (see [`parallel-development.md`](parallel-development.md))
 - **Transition**: Analysis can lead to:
@@ -179,7 +179,7 @@ This project supports parallel development using git-worktree with unique IDs to
   - [`templates/adr.md`](templates/adr.md) - Full ADR template for architecturally significant decisions, broad impact, or important trade-offs
   - [`templates/adr-lite.md`](templates/adr-lite.md) - Lightweight ADR for tactical choices with limited scope and clear best practices
 - **Output**: ADR documents with decisions, rationale, and consequences
-- **Location**: `docs/adr/ADR-<id>-<title>.md` (new) or `docs/adr/archive/###-<title>.md` (existing)
+- **Location**: `docs/adr/ADR-<id>-<title>.md` (new) or `docs/archive/adr/###-<title>.md` (legacy)
 - **Naming**: `ADR-<id>-<descriptive-title>.md` (e.g., `ADR-d6ef0-cache-storage-format.md`)
 - **ID Generation**: Run `./scripts/tdl-new-id.ts` (see [`parallel-development.md`](parallel-development.md))
 - **Sources**: Triggered by analysis findings or implementation needs
@@ -343,11 +343,12 @@ Update the Links section in documents when:
 
 ## Archive Policy
 
-- **Analysis documents**: Move to `docs/analysis/archive/` after requirements are formalized
-- **Completed tasks**: New tasks remain in place; legacy tasks in `docs/tasks/archive/`
+- **Analysis documents**: Remain in `docs/analysis/` after requirements are formalized; keep the latest state in place
+- **Completed tasks**: Active task directories stay in `docs/tasks/`; legacy task directories moved to `docs/archive/tasks/`
+- **Legacy documentation**: Artifacts created before TDL adoption now live under `docs/archive/` (e.g., `docs/archive/adr/`, `docs/archive/tasks/`, `docs/archive/reviews/`)
 - **Deprecated requirements**: Update status to "Deprecated" but keep in `docs/requirements/`
 - **Superseded ADRs**: Update status and link to superseding ADR
-- **Legacy ADRs**: Pre-2025 ADRs archived in `docs/adr/archive/`
+- **Legacy ADRs**: Pre-2025 ADRs stored in `docs/archive/adr/`
 
 ## Templates
 
