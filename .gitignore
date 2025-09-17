@@ -1,5 +1,6 @@
 /target
 /release
+/coverage
 
 node_modules/
 
