@@ -109,9 +109,10 @@
 
 ## Open Questions
 
-- [ ] `[Question that needs investigation]` → Owner: `[Name]` → Due: YYYY-MM-DD
-- [ ] `[Decision that needs to be made]` → Forum: `[Where to discuss]`
-- [ ] `[Information that needs gathering]` → Method: `[How to get it]`
+- [ ] `[Question that needs investigation]`
+- [ ] `[Decision that needs to be made]` → Next step: `[Where to resolve (e.g., schedule review, draft ADR)]`
+- [ ] `[Information that needs gathering]` → Method: `[How to obtain insight]`
+<!-- Complex investigations should spin out into their own ADR or analysis document -->
 
 ## Recommendations
 
