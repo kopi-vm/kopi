@@ -83,7 +83,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 - **Lock Files**: None identified
 - **Observations**: Uses temporary directories for downloads and careful file management, but no flock, pid files, or lock files
 - **Risk Assessment**: Potential for race conditions in concurrent executions
-- **Source**: https://github.com/nvm-sh/nvm/blob/master/nvm.sh
+- **Source**: <https://github.com/nvm-sh/nvm/blob/master/nvm.sh>
 
 #### pyenv (Python Version Manager)
 
@@ -103,7 +103,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 - **Purpose**: Ensures only one pyenv-rehash process runs at a time
 - **Cleanup**: Uses trap to clean up prototype shim on exit
 - **Advantages**: Portable, no external dependencies, works on NFS
-- **Source**: https://github.com/pyenv/pyenv/blob/master/libexec/pyenv-rehash
+- **Source**: <https://github.com/pyenv/pyenv/blob/master/libexec/pyenv-rehash>
 
 #### volta (JavaScript Tool Manager - Rust)
 
@@ -119,7 +119,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 - **Purpose**: Prevents multiple processes from modifying Volta directory simultaneously
 - **Intra-process Handling**: Count mechanism prevents deadlocks when multiple code paths need locks
 - **Platform Support**: Uses flock(2) on Unix, LockFileEx on Windows
-- **Source**: https://volta-cli.github.io/volta/main/volta_core/sync/index.html
+- **Source**: <https://volta-cli.github.io/volta/main/volta_core/sync/index.html>
 
 #### rustup/cargo (Rust Toolchain Manager)
 
@@ -135,7 +135,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
   - **Filesystem Support**: Gracefully handles filesystems without lock support
 - **Error Handling**: Detailed error context, ignores unsupported lock errors
 - **No Timeout**: Blocks indefinitely (design choice)
-- **Source**: https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs
+- **Source**: <https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs>
 
 #### sdkman (Software Development Kit Manager)
 
@@ -144,7 +144,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 - **Installation Process**: Sequential operations without lock protection
 - **Observations**: No flock usage, lock files, or pid-based locking identified
 - **Risk Assessment**: Vulnerable to concurrent installation conflicts
-- **Source**: https://github.com/sdkman/sdkman-cli
+- **Source**: <https://github.com/sdkman/sdkman-cli>
 
 ### Competitive Analysis Summary
 
@@ -218,9 +218,9 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 ### Data Analysis
 
 - Critical operations requiring locks:
-  - Install: ~30-60 seconds (downloading + extracting)
-  - Uninstall: ~1-5 seconds
-  - Cache refresh: ~5-30 seconds (API calls)
+  - Install: \~30-60 seconds (downloading + extracting)
+  - Uninstall: \~1-5 seconds
+  - Cache refresh: \~5-30 seconds (API calls)
   - Config updates: <1 second
 - Lock contention expected to be low in typical usage
 
@@ -389,14 +389,14 @@ N/A - Initial analysis
 
 ### References
 
-- Rust std::fs::File documentation: https://doc.rust-lang.org/std/fs/struct.File.html (Native locking API, stable since 1.89.0)
+- Rust std::fs::File documentation: <https://doc.rust-lang.org/std/fs/struct.File.html> (Native locking API, stable since 1.89.0)
 - Rust 1.89.0 Release Notes: File locking stabilization announcement
-- flock(2) man page: https://man7.org/linux/man-pages/man2/flock.2.html
-- cargo flock implementation: https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs
-- volta sync module: https://volta-cli.github.io/volta/main/volta_core/sync/index.html (Historical fs2 usage)
-- pyenv rehash implementation: https://github.com/pyenv/pyenv/blob/master/libexec/pyenv-rehash
-- nvm source code: https://github.com/nvm-sh/nvm/blob/master/nvm.sh
-- sdkman CLI repository: https://github.com/sdkman/sdkman-cli
+- flock(2) man page: <https://man7.org/linux/man-pages/man2/flock.2.html>
+- cargo flock implementation: <https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs>
+- volta sync module: <https://volta-cli.github.io/volta/main/volta_core/sync/index.html> (Historical fs2 usage)
+- pyenv rehash implementation: <https://github.com/pyenv/pyenv/blob/master/libexec/pyenv-rehash>
+- nvm source code: <https://github.com/nvm-sh/nvm/blob/master/nvm.sh>
+- sdkman CLI repository: <https://github.com/sdkman/sdkman-cli>
 - POSIX advisory locking specification
 
 ### Raw Data
@@ -419,4 +419,4 @@ Note: The chosen std::fs::File advisory lock approach doesn't require storing an
 
 ## Template Usage
 
-For detailed instructions and key principles, see [Template Usage Instructions](README.md#analysis-template-analysismd) in the templates README.
+For detailed instructions and key principles, see [Template Usage Instructions](../templates/README.md#analysis-template-analysismd) in the templates README.

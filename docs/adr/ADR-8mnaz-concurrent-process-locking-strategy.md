@@ -14,7 +14,7 @@
 
 <!-- Internal project artifacts only. The Links section is mandatory for traceability. If a link does not apply, use "N/A – <reason>". -->
 
-- Analysis: [`AN-m9efc-concurrent-process-locking.md`](../analysis/archive/AN-m9efc-concurrent-process-locking.md)
+- Analysis: [`AN-m9efc-concurrent-process-locking.md`](../analysis/AN-m9efc-concurrent-process-locking.md)
 - Requirements:
   - [`FR-02uqo-installation-locking.md`](../requirements/FR-02uqo-installation-locking.md)
   - [`FR-ui8x2-uninstallation-locking.md`](../requirements/FR-ui8x2-uninstallation-locking.md)
