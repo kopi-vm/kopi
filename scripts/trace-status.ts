@@ -6,8 +6,14 @@
  */
 
 import type { Dirent } from "node:fs";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join, resolve, sep } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 
 type DocumentType = "analysis" | "requirement" | "adr" | "task" | "unknown";
@@ -35,19 +41,36 @@ class TDLDocument {
   readonly docType: DocumentType;
   readonly links: LinkMap;
   readonly status: string;
+  readonly title: string;
 
   constructor(filePath: string) {
     this.path = filePath;
     this.filename = filePath.split(/[/\\]/).pop() ?? filePath;
-    this.docId = TDLDocument.extractId(this.filename);
+    const content = safeReadFile(filePath);
+    this.docId = TDLDocument.extractId(this.filename, filePath, content);
     this.docType = TDLDocument.extractType(this.filename, filePath);
-    this.links = TDLDocument.parseLinks(filePath);
-    this.status = TDLDocument.extractStatus(filePath);
+    this.links = TDLDocument.parseLinks(content);
+    this.status = TDLDocument.extractStatus(content);
+    this.title = TDLDocument.extractTitle(content);
   }
 
-  private static extractId(filename: string): string {
-    const match = filename.match(/^([A-Z]+-[^-]+)/);
-    return match ? match[1] : filename;
+  private static extractId(
+    filename: string,
+    filePath: string,
+    content: string | null,
+  ): string {
+    const directMatch = filename.match(/^([A-Z]+-[^-]+)/);
+    if (directMatch) return directMatch[1];
+
+    const pathMatch = filePath.match(/([A-Z]+-[0-9a-z]+)(?=[-./\\]|$)/);
+    if (pathMatch) return pathMatch[1];
+
+    if (content) {
+      const metadataMatch = content.match(/^\s*-\s*ID:\s*([A-Z]+-[^\s]+)/im);
+      if (metadataMatch) return metadataMatch[1];
+    }
+
+    return filename;
   }
 
   private static extractType(filename: string, filePath: string): DocumentType {
@@ -57,14 +80,13 @@ class TDLDocument {
     if (filename.startsWith("ADR-")) return "adr";
     if (filename.startsWith("T-")) return "task";
     // Fallback to directory-based inference for task documents (plan/design files)
-    if (/(?:^|[\/\\])docs[\/\\]tasks[\/\\]T-[^\/\\]+/.test(filePath))
-      return "task";
+    const normalizedPath = filePath.replace(/\\/g, "/");
+    if (normalizedPath.includes("docs/tasks/T-")) return "task";
     return "unknown";
   }
 
-  private static parseLinks(filePath: string): LinkMap {
+  private static parseLinks(content: string | null): LinkMap {
     const links: LinkMap = {};
-    const content = safeReadFile(filePath);
     if (content === null) return links;
 
     const linksMatch = content.match(/## Links\s*\n([\s\S]*?)(?=\n##|$)/);
@@ -72,36 +94,54 @@ class TDLDocument {
 
     const linksContent = linksMatch[1];
     const lines = linksContent.split(/\r?\n/);
+    let currentLinkType: string | null = null;
     for (const rawLine of lines) {
       const line = rawLine.trim();
+      if (!line) {
+        currentLinkType = null;
+        continue;
+      }
       if (!line.startsWith("- ")) continue;
 
       const colonIndex = line.indexOf(":");
-      if (colonIndex === -1) continue;
+      if (colonIndex !== -1) {
+        const label = line.slice(2, colonIndex).trim().toLowerCase();
+        const value = line.slice(colonIndex + 1);
+        const linkType = resolveLinkType(label);
+        currentLinkType = linkType;
+        if (!linkType) continue;
 
-      const label = line.slice(2, colonIndex).trim().toLowerCase();
-      const value = line.slice(colonIndex + 1);
-      const linkType = resolveLinkType(label);
-      if (!linkType) continue;
+        const ids = extractIds(value);
+        if (ids.length === 0) continue;
 
-      const ids = extractIds(value);
+        links[linkType] = links[linkType] ?? [];
+        links[linkType].push(...ids);
+        continue;
+      }
+
+      if (!currentLinkType) continue;
+      const ids = extractIds(line.slice(2));
       if (ids.length === 0) continue;
-
-      links[linkType] = links[linkType] ?? [];
-      links[linkType].push(...ids);
+      links[currentLinkType] = links[currentLinkType] ?? [];
+      links[currentLinkType].push(...ids);
     }
 
     return links;
   }
 
-  private static extractStatus(filePath: string): string {
-    const content = safeReadFile(filePath);
+  private static extractStatus(content: string | null): string {
     if (content === null) return "Unknown";
 
     const statusMatch = content.match(/^\s*-\s*Status:\s*(.+)$/m);
     if (statusMatch) return statusMatch[1].trim();
 
     return "Unknown";
+  }
+
+  private static extractTitle(content: string | null): string {
+    if (content === null) return "";
+    const match = content.match(/^#\s+(.+)$/m);
+    return match ? match[1].trim() : "";
   }
 }
 
@@ -158,6 +198,22 @@ class TraceabilityAnalyzer {
         this.documents.set(doc.docId, doc);
       }
     }
+  }
+
+  private documentsByLinkingRequirement(
+    docType: DocumentType,
+  ): Map<string, Set<string>> {
+    const map = new Map<string, Set<string>>();
+    for (const doc of this.documents.values()) {
+      if (doc.docType !== docType) continue;
+      const requirements = doc.links.requirements ?? [];
+      for (const requirement of requirements) {
+        const bucket = map.get(requirement) ?? new Set<string>();
+        bucket.add(doc.docId);
+        map.set(requirement, bucket);
+      }
+    }
+    return map;
   }
 
   private requirementDocs(): TDLDocument[] {
@@ -224,6 +280,156 @@ class TraceabilityAnalyzer {
       requirements_with_tasks: requirementsWithTasks,
       coverage_percentage: coveragePercentage,
     };
+  }
+
+  getDocument(docId: string): TDLDocument | undefined {
+    return this.documents.get(docId);
+  }
+
+  writeTraceabilityReport(outputPath: string): void {
+    const content = this.buildTraceabilityMarkdown(outputPath);
+    mkdirSync(dirname(outputPath), { recursive: true });
+    writeFileSync(outputPath, content, "utf8");
+  }
+
+  private buildTraceabilityMarkdown(outputPath: string): string {
+    const outputDir = dirname(outputPath);
+    const coverage = this.calculateCoverage();
+    const requirementDocs = this.requirementDocs().sort((a, b) =>
+      a.docId.localeCompare(b.docId),
+    );
+    const analysesByRequirement =
+      this.documentsByLinkingRequirement("analysis");
+    const adrsByRequirement = this.documentsByLinkingRequirement("adr");
+
+    const lines: string[] = [];
+    lines.push("# Kopi Traceability Overview");
+    lines.push("");
+    lines.push(`Generated on ${new Date().toISOString()}`);
+    lines.push("");
+
+    lines.push("## Summary");
+    lines.push("");
+    lines.push("| Metric | Count |");
+    lines.push("| --- | ---: |");
+    lines.push(`| Analyses | ${coverage.total_analyses} |`);
+    lines.push(`| Requirements | ${coverage.total_requirements} |`);
+    lines.push(`| ADRs | ${coverage.total_adrs} |`);
+    lines.push(`| Tasks | ${coverage.total_tasks} |`);
+    lines.push(
+      `| Requirements with tasks | ${coverage.requirements_with_tasks} (${coverage.coverage_percentage.toFixed(0)}%) |`,
+    );
+    lines.push("");
+
+    lines.push("## Traceability Matrix");
+    lines.push("");
+    if (requirementDocs.length === 0) {
+      lines.push("No requirements found.");
+    } else {
+      lines.push("| Analyses | ADRs | Requirement | Status | Tasks |");
+      lines.push("| --- | --- | --- | --- | --- |");
+      for (const requirement of requirementDocs) {
+        const requirementLink = this.formatPrimaryDoc(requirement, outputDir);
+
+        const taskIds = new Set<string>();
+        for (const id of this.findImplementingTasks(requirement.docId)) {
+          taskIds.add(id);
+        }
+        for (const id of requirement.links.tasks ?? []) {
+          taskIds.add(id);
+        }
+
+        const analysisIds = new Set<string>();
+        for (const id of requirement.links.analyses ?? []) {
+          analysisIds.add(id);
+        }
+        for (const id of analysesByRequirement.get(requirement.docId) ?? []) {
+          analysisIds.add(id);
+        }
+
+        const adrIds = new Set<string>();
+        for (const id of requirement.links.adrs ?? []) {
+          adrIds.add(id);
+        }
+        for (const id of adrsByRequirement.get(requirement.docId) ?? []) {
+          adrIds.add(id);
+        }
+
+        const analysesCell = this.formatLinkedDocs(analysisIds, outputDir);
+        const adrsCell = this.formatLinkedDocs(adrIds, outputDir);
+        const statusCell = requirement.status;
+        const tasksCell = this.formatLinkedDocs(taskIds, outputDir, {
+          includeStatus: true,
+        });
+
+        lines.push(
+          `| ${analysesCell} | ${adrsCell} | ${requirementLink} | ${statusCell} | ${tasksCell} |`,
+        );
+      }
+    }
+
+    lines.push("");
+    lines.push("## Traceability Gaps");
+    lines.push("");
+    const orphanRequirements = this.findOrphanRequirements().sort();
+    const orphanTasks = this.findOrphanTasks().sort();
+
+    if (orphanRequirements.length === 0 && orphanTasks.length === 0) {
+      lines.push("No gaps detected.");
+    } else {
+      for (const reqId of orphanRequirements) {
+        const doc = this.getDocument(reqId);
+        const status = doc?.status ?? "Unknown";
+        lines.push(`- ${reqId}: No implementing task (Status: ${status})`);
+      }
+      for (const taskId of orphanTasks) {
+        const doc = this.getDocument(taskId);
+        const status = doc?.status ?? "Unknown";
+        lines.push(`- ${taskId}: No linked requirements (Status: ${status})`);
+      }
+    }
+
+    lines.push("");
+    lines.push(
+      "_This file is generated by `scripts/trace-status.ts`. Do not commit generated outputs to avoid merge conflicts._",
+    );
+
+    return lines.join("\n");
+  }
+
+  private formatPrimaryDoc(doc: TDLDocument, outputDir: string): string {
+    const link = this.formatDocLink(doc, outputDir);
+    if (!doc.title) return link;
+    return `${link} - ${doc.title}`;
+  }
+
+  private formatLinkedDocs(
+    ids: Iterable<string>,
+    outputDir: string,
+    options: { includeStatus?: boolean } = {},
+  ): string {
+    const includeStatus = options.includeStatus ?? false;
+    const uniqueIds = [
+      ...new Set([...ids].map((id) => id.trim()).filter(Boolean)),
+    ];
+    if (uniqueIds.length === 0) return "—";
+
+    const parts = uniqueIds.map((id) => {
+      const doc = this.getDocument(id);
+      if (!doc) return id;
+      const link = this.formatDocLink(doc, outputDir);
+      if (includeStatus && doc.status !== "Unknown") {
+        return `${link} (${doc.status})`;
+      }
+      return includeStatus ? `${link} (Unknown)` : link;
+    });
+
+    return parts.join("<br>");
+  }
+
+  private formatDocLink(doc: TDLDocument, outputDir: string): string {
+    const relativePath = toPosixPath(relative(outputDir, doc.path));
+    return `[${doc.docId}](${relativePath})`;
   }
 
   printStatus(gapsOnly: boolean): void {
@@ -349,20 +555,17 @@ function* walkFiles(rootDir: string, recursive: boolean): Generator<string> {
 }
 
 function resolveLinkType(label: string): string | null {
-  if (label.includes("formal requirement") || label.includes("requirements"))
-    return "requirements";
-  if (label.includes("related adr")) return "adrs";
-  if (label.includes("related analyse") || label.includes("related analysis"))
-    return "analyses";
-  if (label === "design") return "design";
-  if (label === "plan") return "plan";
+  if (label.includes("requirement")) return "requirements";
+  if (label.includes("analysis")) return "analyses";
+  if (label.includes("adr")) return "adrs";
+  if (label.includes("task")) return "tasks";
+  if (label.includes("design")) return "design";
+  if (label.includes("plan")) return "plan";
   return null;
 }
 
 function extractIds(value: string): string[] {
-  const matches = value.match(
-    /[A-Z]+-[0-9a-z]{4,5}(?:-[^/\s\]]+)?|[A-Z]+-\d+/g,
-  );
+  const matches = value.match(/[A-Z]+-[0-9a-z]{4,5}|[A-Z]+-\d+/g);
   return matches ? matches : [];
 }
 
@@ -387,24 +590,37 @@ function findRepoRoot(startDir: string): string | null {
   return null;
 }
 
-function parseArgs(argv: string[]): { gapsOnly: boolean; checkMode: boolean } {
+function parseArgs(argv: string[]): {
+  gapsOnly: boolean;
+  checkMode: boolean;
+  writePath: string | null;
+} {
   let gapsOnly = false;
   let checkMode = false;
+  let writePath: string | null = null;
   for (const arg of argv) {
     if (arg === "--gaps") {
       gapsOnly = true;
     } else if (arg === "--check") {
       checkMode = true;
+    } else if (arg === "--write") {
+      writePath = "";
+    } else if (arg.startsWith("--write=")) {
+      writePath = arg.slice("--write=".length).trim();
+      if (!writePath) {
+        console.error("Error: --write= requires a path");
+        process.exit(2);
+      }
     } else {
       console.error(`Unknown argument: ${arg}`);
       process.exit(2);
     }
   }
-  return { gapsOnly, checkMode };
+  return { gapsOnly, checkMode, writePath };
 }
 
 function main(): number {
-  const { gapsOnly, checkMode } = parseArgs(process.argv.slice(2));
+  const { gapsOnly, checkMode, writePath } = parseArgs(process.argv.slice(2));
   const repoRoot = findRepoRoot(process.cwd());
   if (!repoRoot) {
     console.error("Error: Could not find repository root");
@@ -417,12 +633,41 @@ function main(): number {
     if (!analyzer.checkIntegrity()) {
       return 1;
     }
+    if (writePath !== null) {
+      const outputPath = resolveOutputPath(writePath, repoRoot);
+      analyzer.writeTraceabilityReport(outputPath);
+      console.log(
+        `✓ Traceability check passed; report written to ${relative(
+          repoRoot,
+          outputPath,
+        )}`,
+      );
+      return 0;
+    }
     console.log("✓ Traceability check passed");
     return 0;
   }
 
+  if (writePath !== null) {
+    const outputPath = resolveOutputPath(writePath, repoRoot);
+    analyzer.writeTraceabilityReport(outputPath);
+    console.log(
+      `Traceability report written to ${relative(repoRoot, outputPath)}`,
+    );
+  }
+
   analyzer.printStatus(gapsOnly);
   return 0;
+}
+
+function resolveOutputPath(writePath: string, repoRoot: string): string {
+  if (writePath === "") return join(repoRoot, "docs", "traceability.md");
+  if (writePath.startsWith("/")) return writePath;
+  return resolve(repoRoot, writePath);
+}
+
+function toPosixPath(pathValue: string): string {
+  return pathValue.split(sep).join("/");
 }
 
 if (import.meta.main) {
