@@ -16,15 +16,15 @@
  */
 
 import { webcrypto as crypto } from "node:crypto";
-import type { Dirent } from "fs";
-import { existsSync, readdirSync } from "fs";
-import { join } from "path";
+import type { Dirent } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
 // Default ID length
-const DEFAULT_ID_LENGTH = 5;
+export const DEFAULT_ID_LENGTH = 5;
 
 // Valid TDL prefixes
-const VALID_PREFIXES = ["AN", "FR", "NFR", "ADR", "T"] as const;
+export const VALID_PREFIXES = ["AN", "FR", "NFR", "ADR", "T"] as const;
 
 // Alphabet: 0-9, a-z
 const ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz" as const;
@@ -33,7 +33,7 @@ const ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz" as const;
  * Uniform random integer generator in [0, max).
  * Uses rejection sampling over a single random byte.
  */
-function randomIntExclusive(max: number): number {
+export function randomIntExclusive(max: number): number {
   if (!Number.isInteger(max) || max <= 0 || max > 256) {
     throw new Error(`randomIntExclusive: max must be in 1..256, got ${max}`);
   }
@@ -49,7 +49,7 @@ function randomIntExclusive(max: number): number {
 /**
  * Generate a random base36 ID of specified length using uniform selection.
  */
-function generateId(length: number = DEFAULT_ID_LENGTH): string {
+export function generateId(length: number = DEFAULT_ID_LENGTH): string {
   let result = "";
   for (let i = 0; i < length; i++) {
     result += ALPHABET[randomIntExclusive(ALPHABET.length)];
@@ -60,7 +60,7 @@ function generateId(length: number = DEFAULT_ID_LENGTH): string {
 /**
  * Recursively walk a directory tree using Dirent entries (no extra stat calls).
  */
-function* walkPaths(rootDir: string): Generator<string> {
+export function* walkPaths(rootDir: string): Generator<string> {
   if (!existsSync(rootDir)) return;
   const stack: string[] = [rootDir];
   while (stack.length) {
@@ -84,7 +84,7 @@ function* walkPaths(rootDir: string): Generator<string> {
  * Collect all used IDs from filenames/dirnames under the given root.
  * Matches segment-boundary patterns: (AN|FR|NFR|ADR|T)-<id>-
  */
-function collectUsedIds(rootDir: string): Set<string> {
+export function collectUsedIds(rootDir: string): Set<string> {
   const used = new Set<string>();
   if (!existsSync(rootDir)) return used;
 
@@ -97,7 +97,9 @@ function collectUsedIds(rootDir: string): Set<string> {
   for (const p of walkPaths(rootDir)) {
     let m: RegExpExecArray | null;
     idPattern.lastIndex = 0; // reset for safety across loop
-    while ((m = idPattern.exec(p)) !== null) {
+    for (;;) {
+      m = idPattern.exec(p);
+      if (m === null) break;
       used.add(m[1]);
     }
   }
@@ -107,7 +109,7 @@ function collectUsedIds(rootDir: string): Set<string> {
 /**
  * Main logic to generate unique ID (single scan, then in-memory checks).
  */
-function main(): number {
+export function main(): number {
   const maxAttempts = 10;
 
   // Root selection: positional arg > DOCS_DIR env > default "docs"
@@ -118,7 +120,7 @@ function main(): number {
   let idLength = DEFAULT_ID_LENGTH;
   const idLenEnv = process.env.ID_LEN;
   if (idLenEnv !== undefined) {
-    const parsed = parseInt(idLenEnv, 10);
+    const parsed = Number.parseInt(idLenEnv, 10);
     if (Number.isNaN(parsed) || parsed < 1) {
       console.error(
         `Warning: ID_LEN must be >= 1, using default ${DEFAULT_ID_LENGTH}`,
@@ -148,5 +150,7 @@ function main(): number {
   return 1;
 }
 
-// Run the main function and exit with its return code
-process.exit(main());
+// Run the main function and exit with its return code when executed directly
+if (import.meta.main) {
+  process.exit(main());
+}

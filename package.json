@@ -4,7 +4,8 @@
 		"format": "remark docs/ --frail --output -r config/remark-format.json",
 		"lint": "remark --frail docs/ -r config/remark-lint.json",
 		"format:ts": "biome format --write",
-		"lint:ts": "biome lint"
+		"lint:ts": "biome lint",
+		"test:ts": "bun test"
 	},
 	"prettier": {
 		"endOfLine": "lf",
