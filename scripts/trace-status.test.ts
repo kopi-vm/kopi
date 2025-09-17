@@ -28,6 +28,7 @@ import {
   resolveLinkType,
   resolveOutputPath,
   renderTraceabilityMarkdown,
+  printStatus,
   safeReadFile,
   toPosixPath,
   walkFiles,
@@ -339,6 +340,69 @@ describe("traceability helpers", () => {
     expect(markdown).toContain(
       "- FR-0002: No implementing task (Status: Backlog)",
     );
+  });
+});
+
+describe("printStatus", () => {
+  const originalLog = console.log;
+  const originalError = console.error;
+  let logCalls: string[];
+
+  beforeEach(() => {
+    logCalls = [];
+    console.log = (...args: unknown[]) => {
+      logCalls.push(args.map(String).join(" "));
+    };
+    console.error = (...args: unknown[]) => {
+      logCalls.push(args.map(String).join(" "));
+    };
+  });
+
+  afterEach(() => {
+    console.log = originalLog;
+    console.error = originalError;
+  });
+
+  it("prints summary and gaps when gapsOnly=false", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-1000-missing-task.md",
+      "# FR-1000 Missing Task\n- Status: Draft\n",
+    );
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-2000-unlinked/plan.md",
+      "# T-2000 Unlinked\n- Status: Draft\n",
+    );
+
+    const documents = loadDocuments(repoRoot);
+    printStatus(documents, false);
+
+    const output = logCalls.join("\n");
+    expect(output).toContain("=== Kopi TDL Status ===");
+    expect(output).toContain("Coverage:");
+    expect(output).toContain("Gaps:");
+    expect(output).toContain("FR-1000");
+    expect(output).toContain("T-2000");
+    expect(output).toContain("Status by Document Type:");
+  });
+
+  it("suppresses summary when gapsOnly=true but still lists gaps", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-3000-gap.md",
+      "# FR-3000 Gap\n- Status: Draft\n",
+    );
+
+    const documents = loadDocuments(repoRoot);
+    printStatus(documents, true);
+
+    const output = logCalls.join("\n");
+    expect(output).not.toContain("=== Kopi TDL Status ===");
+    expect(output).toContain("Gaps:");
+    expect(output).toContain("FR-3000");
   });
 });
 
