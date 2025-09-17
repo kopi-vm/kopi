@@ -60,7 +60,7 @@ export class TDLDocument {
   }
 }
 
-function extractDocumentId(
+export function extractDocumentId(
   filename: string,
   filePath: string,
   content: string | null,
@@ -79,7 +79,10 @@ function extractDocumentId(
   return filename;
 }
 
-function inferDocumentType(filename: string, filePath: string): DocumentType {
+export function inferDocumentType(
+  filename: string,
+  filePath: string,
+): DocumentType {
   if (filename.startsWith("AN-")) return "analysis";
   if (filename.startsWith("FR-")) return "requirement";
   if (filename.startsWith("NFR-")) return "requirement";
@@ -90,7 +93,7 @@ function inferDocumentType(filename: string, filePath: string): DocumentType {
   return "unknown";
 }
 
-function parseDocumentLinks(content: string | null): LinkMap {
+export function parseDocumentLinks(content: string | null): LinkMap {
   const links: LinkMap = {};
   if (content === null) return links;
 
@@ -134,7 +137,7 @@ function parseDocumentLinks(content: string | null): LinkMap {
   return links;
 }
 
-function extractDocumentStatus(content: string | null): string {
+export function extractDocumentStatus(content: string | null): string {
   if (content === null) return "Unknown";
 
   const statusMatch = content.match(/^\s*-\s*Status:\s*(.+)$/m);
@@ -143,7 +146,7 @@ function extractDocumentStatus(content: string | null): string {
   return "Unknown";
 }
 
-function extractDocumentTitle(content: string | null): string {
+export function extractDocumentTitle(content: string | null): string {
   if (content === null) return "";
   const match = content.match(/^#\s+(.+)$/m);
   return match ? match[1].trim() : "";
@@ -529,7 +532,7 @@ export class TraceabilityAnalyzer {
   }
 }
 
-function safeReadFile(path: string): string | null {
+export function safeReadFile(path: string): string | null {
   try {
     return readFileSync(path, "utf8");
   } catch (error) {
@@ -540,7 +543,10 @@ function safeReadFile(path: string): string | null {
   }
 }
 
-function* walkFiles(rootDir: string, recursive: boolean): Generator<string> {
+export function* walkFiles(
+  rootDir: string,
+  recursive: boolean,
+): Generator<string> {
   const stack: string[] = [rootDir];
   while (stack.length) {
     const current = stack.pop();
@@ -562,7 +568,7 @@ function* walkFiles(rootDir: string, recursive: boolean): Generator<string> {
   }
 }
 
-function resolveLinkType(label: string): string | null {
+export function resolveLinkType(label: string): string | null {
   if (label.includes("requirement")) return "requirements";
   if (label.includes("analysis")) return "analyses";
   if (label.includes("adr")) return "adrs";
@@ -572,12 +578,12 @@ function resolveLinkType(label: string): string | null {
   return null;
 }
 
-function extractIds(value: string): string[] {
+export function extractIds(value: string): string[] {
   const matches = value.match(/[A-Z]+-[0-9a-z]{4,5}|[A-Z]+-\d+/g);
   return matches ? matches : [];
 }
 
-function capitalize(value: string): string {
+export function capitalize(value: string): string {
   if (!value) return value;
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
@@ -674,7 +680,7 @@ export function resolveOutputPath(writePath: string, repoRoot: string): string {
   return resolve(repoRoot, writePath);
 }
 
-function toPosixPath(pathValue: string): string {
+export function toPosixPath(pathValue: string): string {
   return pathValue.split(sep).join("/");
 }
 
