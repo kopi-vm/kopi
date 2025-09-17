@@ -21,7 +21,10 @@ function createTempDir(): string {
 
 afterEach(() => {
 	while (tempDirs.length) {
-		const dir = tempDirs.pop()!;
+		const dir = tempDirs.pop();
+		if (dir === undefined) {
+			continue;
+		}
 		rmSync(dir, { recursive: true, force: true });
 	}
 });
