@@ -324,9 +324,9 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 
 ## Open Questions
 
-- [ ] Should locks be per-JDK-version or global per-operation-type?
-- [ ] How should we detect NFS reliably across platforms? → Next step: Research cargo's implementation
-- [ ] Should we implement lock priority or queuing? → Next step: Benchmark typical usage patterns
+- [x] Should locks be per-JDK-version or global per-operation-type? → Resolved in `ADR-8mnaz-concurrent-process-locking-strategy.md`: per-JDK-version locks for installs/uninstalls plus a single cache writer lock.
+- [x] How should we detect NFS reliably across platforms? → Resolved in `ADR-8mnaz-concurrent-process-locking-strategy.md`: detect filesystem type via `statfs` (Unix) / `GetVolumeInformation` (Windows) and treat NFS/NFS4/CIFS/SMB as network mounts.
+- [x] Should we implement lock priority or queuing? → Resolved in `ADR-8mnaz-concurrent-process-locking-strategy.md`: use simple FIFO queuing with no priority levels.
 - [x] ~~How to handle stale locks?~~ → Resolved: std locks handle automatically, NFS fallback uses PID checking
 
 ## Recommendations

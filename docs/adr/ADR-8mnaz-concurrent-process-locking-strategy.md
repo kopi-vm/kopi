@@ -319,6 +319,8 @@ The implementation should support three lock modes:
 - **Std**: Forces the use of native std::fs::File advisory locks regardless of filesystem type
 - **None**: Disables locking entirely, relying only on atomic operations
 
+**Wait Handling**: Because kopi is primarily a single-user developer tool, we will keep contention handling simple by processing lock waiters in first-in-first-out order. No priority scheme is added; every contender queues behind the current holder until the lock becomes available.
+
 Lock wait behavior should support three patterns:
 
 - **No wait**: Fail immediately if lock cannot be acquired (timeout = 0)
