@@ -4,7 +4,8 @@
 
 - Type: Analysis
 - Owner: Development Team
-- Status: Completed
+- Reviewers: Architecture Team (pending sign-off)
+- Status: In Progress
 
 ## Links
 
@@ -323,9 +324,9 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 
 ## Open Questions
 
-- [ ] Should locks be per-JDK-version or global per-operation-type? → Owner: Architecture Team → Due: 2025-09-05
-- [ ] How to detect NFS reliably across platforms? → Method: Research cargo's implementation
-- [ ] Should we implement lock priority/queuing? → Method: Benchmark typical usage patterns
+- [ ] Should locks be per-JDK-version or global per-operation-type?
+- [ ] How should we detect NFS reliably across platforms? → Next step: Research cargo's implementation
+- [ ] Should we implement lock priority or queuing? → Next step: Benchmark typical usage patterns
 - [x] ~~How to handle stale locks?~~ → Resolved: std locks handle automatically, NFS fallback uses PID checking
 
 ## Recommendations
