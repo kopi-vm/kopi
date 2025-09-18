@@ -112,6 +112,7 @@
 - [ ] `[Question that needs investigation]`
 - [ ] `[Decision that needs to be made]` → Next step: `[Where to resolve (e.g., schedule review, draft ADR)]`
 - [ ] `[Information that needs gathering]` → Method: `[How to obtain insight]`
+
 <!-- Complex investigations should spin out into their own ADR or analysis document -->
 
 ## Recommendations
