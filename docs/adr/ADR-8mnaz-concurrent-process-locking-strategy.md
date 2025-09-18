@@ -26,6 +26,7 @@
   - [`NFR-g12ex-cross-platform-compatibility.md`](../requirements/NFR-g12ex-cross-platform-compatibility.md)
 - Design: N/A – Design phase not started
 - Plan: N/A – Planning phase not started
+- Related Tasks: [`T-9r1su-fs2-dependency-retirement`](../tasks/T-9r1su-fs2-dependency-retirement/README.md)
 - Related ADRs: N/A – First ADR for this feature
 - Issue: N/A – No tracking issue created yet
 - PR: N/A – Implementation not started
@@ -296,16 +297,7 @@ mv "$staging_dir" "~/.kopi/jdks/temurin-21"  # Atomic!
    - `try_lock_exclusive()` → `try_lock()`
    - `unlock()` remains the same
 
-2. **Disk Space Checking** (requires alternative):
-   - `src/storage/disk_space.rs`: `fs2::available_space()`
-   - `src/doctor/checks/jdks.rs`: `fs2::available_space()`
-   - Recommendation: Use `sysinfo` crate for cross-platform disk operations
-
-**Benefits of Migration**:
-
-- Eliminate unmaintained fs2 dependency
-- Align with Rust ecosystem best practices
-- Reduce security surface area
+Disk space checks that still rely on `fs2::available_space()` are explicitly out of scope for this decision and are tracked separately in task `T-9r1su-disk-space-api-migration`.
 
 ### Filesystem Detection
 
@@ -421,6 +413,18 @@ For concurrent operations, ensure that:
 - Use statfs/statvfs on other Unix systems
 - Windows: Check if path is UNC or mapped network drive
 
+### Network Filesystem Decision Matrix
+
+| Scenario                                     | Expected Behaviour                                                   | Mitigation / Messaging                                                                   | Requirements Satisfied                          |
+| -------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `lock-mode=auto`, local filesystem           | Acquire `std::fs::File` lock; continue normally                      | n/a                                                                                      | `NFR-g12ex`, `FR-02uqo`, `FR-ui8x2`, `FR-v7ql4` |
+| `lock-mode=auto`, NFS/CIFS detected          | Skip advisory lock, rely on staging + rename                         | Emit warning: `Network filesystem detected; using atomic operations only` (INFO)         | `NFR-g12ex`, `FR-c04js`, `FR-gbsz6`             |
+| `lock-mode=std`, NFS/CIFS detected           | Attempt lock; on first failure downgrade to atomics and emit warning | Record downgrade in logs for postmortem review                                           | `NFR-g12ex`, `FR-gbsz6`                         |
+| `lock-mode=none`                             | Never attempt lock                                                   | Warn once per invocation; remind about contention risk                                   | `FR-c04js`                                      |
+| Automatic detection failure (false negative) | Lock attempt on unsupported FS fails repeatedly                      | After 3 retries (3 × 100 ms backoff) fall back to atomics and suggest `--lock-mode=none` | `FR-gbsz6`, `NFR-z6kan`                         |
+
+Contingency: if user feedback indicates persistent NFS contention or corruption, escalate a follow-up ADR to re-evaluate the hybrid PID fallback proposed in `AN-m9efc`.
+
 ### WSL Considerations
 
 - WSL1 doesn't support fcntl locks (use flock like cargo)
@@ -434,6 +438,7 @@ For concurrent operations, ensure that:
 
 ## Monitoring & Logging (required if applicable)
 
+- Detailed telemetry aggregation ownership will be addressed in a future revision (decision on 2025-09-18 to defer action item 3).
 - Log lock acquisition/release at DEBUG level
 - Log lock contentions at INFO level
 - Include wait duration in lock acquisition messages
