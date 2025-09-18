@@ -119,6 +119,14 @@ Templates use the following placeholder conventions:
      c. Generate new requirements if applicable (e.g., NFR for error handling)
      d. Update plan with mitigation steps
 
+### Task Template (`task.md`)
+
+1. Create as soon as the TDL uncovers actionable work (during Analysis, ADR, or review).
+2. Populate Metadata, Links, Summary, and Scope before opening related work items.
+3. Define Success Metrics tied to FR/NFR IDs where applicable to support later verification.
+4. Use the Detailed Plan section for milestone breakdowns when a full `plan.md` is not yet warranted.
+5. Keep Notes for risks, follow-up decisions, or coordination details.
+
 ## Common Documentation Requirements
 
 These requirements apply to ALL documentation templates:

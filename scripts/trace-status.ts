@@ -183,6 +183,11 @@ export function loadDocuments(repoRoot: string): Map<string, TDLDocument> {
       recursive: true,
       match: (p) => p.endsWith("design.md"),
     },
+    {
+      baseDir: join(repoRoot, "docs", "tasks"),
+      recursive: true,
+      match: (p) => p.endsWith("README.md"),
+    },
   ];
 
   for (const source of sources) {

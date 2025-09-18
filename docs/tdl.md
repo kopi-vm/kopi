@@ -74,7 +74,7 @@ graph LR
 <tr>
 <td rowspan="3"><strong>Tasks</strong></td>
 <td>Task Directory</td>
-<td>N/A</td>
+<td><code>task.md</code></td>
 <td><code>docs/tasks/T-&lt;id&gt;-&lt;name&gt;/</code></td>
 <td><code>T-&lt;5char-id&gt;-&lt;name&gt;</code> (e.g., <code>T-e7fa1-cache-refresh/</code>)</td>
 <td>Task-scoped container</td>
@@ -103,6 +103,12 @@ graph LR
 </tr>
 </tbody>
 </table>
+
+## Task Creation Guidelines
+
+- When Analysis or ADR work identifies concrete follow-up implementation, create a new task directory at `docs/tasks/T-<id>-<name>/` immediately.
+- Always add a `README.md` inside the task directory as the first artifact. Use [`templates/task.md`](templates/task.md) to populate the README so it captures task metadata (type, owner, reviewers, status), a concise summary, source links, and the initial checklist of outstanding work.
+- Additional task documents (`design.md`, `plan.md`, etc.) build on top of the README, but the README must ship with the directory from the moment the task is introduced.
 
 ## Supporting Automation
 
