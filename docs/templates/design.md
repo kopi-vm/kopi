@@ -3,16 +3,16 @@
 ## Metadata
 
 - Type: Design
-- Status: Draft / In Review / Approved
+- Status: Draft | In Review | Approved
   <!-- Draft: Work in progress | In Review: Awaiting technical review | Approved: Ready for implementation -->
 
 ## Links
 
 <!-- Internal project artifacts only. For external resources, see External References section -->
 
-- Requirements: docs/tasks/T-<id>-<task>/requirements.md | N/A – <reason>
+- Requirements: FR-<id>, NFR-<id> | N/A – <reason>
 - Plan: docs/tasks/T-<id>-<task>/plan.md | N/A – <reason>
-- Related ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
+- ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
 
 ## Overview
 

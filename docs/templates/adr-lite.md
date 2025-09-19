@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: ADR (Lite)
-- Status: Proposed / Accepted / Rejected / Deprecated / Superseded by ADR-<id>
+- Status: Proposed | Accepted | Rejected | Deprecated | Superseded by ADR-<id>
   <!-- Proposed: Under discussion | Accepted: Approved and to be implemented | Rejected: Considered but not approved | Deprecated: No longer recommended | Superseded: Replaced by another ADR -->
 
 ## Links
@@ -14,9 +14,7 @@
 - Requirements: FR-<id>, NFR-<id> | N/A – <reason>
 - Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
 - Plan: docs/tasks/T-<id>-<task>/plan.md | N/A – <reason>
-- Related ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
-- Supersedes: ADR-<id> | N/A – First version
-- Superseded by: ADR-<id> | N/A – Current version
+- ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
 
 ## Context
 

@@ -10,9 +10,10 @@
 
 <!-- Internal project artifacts only. For external resources, see External References section -->
 
-- Implemented by Tasks: task-name-1, task-name-2 | N/A – Not yet implemented
-- Related Requirements: FR-<id>, NFR-<id> | N/A – Standalone requirement
-- Related ADRs: ADR-<id> | N/A – No related ADRs
+- Analysis: AN-<id> | N/A – <reason>
+- Requirements: FR-<id>, NFR-<id> | N/A – <reason>
+- Plan: docs/tasks/T-<id>-<task>/plan.md | N/A – <reason>
+- Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
 
 ## Requirement Statement
 

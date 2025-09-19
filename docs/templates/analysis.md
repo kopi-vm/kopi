@@ -10,9 +10,9 @@
 
 <!-- Internal project artifacts only -->
 
-- Related Analyses: `[other-analysis.md]` | N/A – Standalone analysis
-- Existing Requirements: FR-<id>, NFR-<id> | N/A – New area
-- Existing ADRs: ADR-<id> | N/A – No related decisions yet
+- Analysis: AN-<id> | N/A – <reason>
+- Requirements: FR-<id>, NFR-<id> | N/A – New area
+- ADRs: ADR-<id> | N/A – No related decisions yet
 
 ## Executive Summary
 

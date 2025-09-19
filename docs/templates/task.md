@@ -3,15 +3,16 @@
 ## Metadata
 
 - Type: Task
-- Status: `[Proposed|In Progress|Blocked|Complete]`
+- Status: Proposed | In Progress | Blocked | Complete | Deprecated
+  <!-- Proposed: Under discussion | In Progress: Actively working | Blocked: External dependency | Complete: Code complete | Deprecated: No longer applicable -->
 
 ## Links
 
-- Analysis: `[Link or N/A – <reason>]`
-- Requirements: `[List FR/NFR IDs or N/A – <reason>]`
-- ADRs: `[List ADR IDs or N/A – <reason>]`
-- Design: `[Link or N/A – <reason>]`
-- Plan: `[Link or N/A – <reason>]`
+- Analysis: AN-<id> | N/A – <reason>
+- Requirements: FR-<id>, NFR-<id> | N/A – <reason>
+- ADRs: ADR-<id> | N/A – No related decisions yet
+- Plan: docs/tasks/T-<id>-<task>/plan.md | N/A – <reason>
+- Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
 
 ## Summary
 

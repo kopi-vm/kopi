@@ -3,16 +3,16 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Not Started / Phase X In Progress / Blocked / Under Review / Completed
+- Status: Not Started | Phase X In Progress | Blocked | Under Review | Completed
   <!-- Not Started: Planning complete, awaiting start | Phase X In Progress: Actively working | Blocked: External dependency | Under Review: Implementation complete | Completed: All phases done and verified -->
 
 ## Links
 
 <!-- Internal project artifacts only. For external resources, see External References section -->
 
-- Requirements: docs/tasks/T-<id>-<task>/requirements.md | N/A – <reason>
+- Requirements: FR-<id>, NFR-<id> | N/A – <reason>
 - Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
-- Related ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
+- ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
 
 ## Overview
 
