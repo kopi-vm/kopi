@@ -2,64 +2,54 @@
 
 ## Metadata
 
-- ID: NFR-vcxp8
 - Type: Non-Functional Requirement
-- Category: Reliability
-- Priority: P0 (Critical)
-- Owner: Development Team
-- Reviewers: Architecture Team
 - Status: Accepted
+  <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
 
 ## Links
 
 - Implemented by Tasks: N/A – Not yet implemented
 - Related Requirements: FR-02uqo, FR-ui8x2, FR-v7ql4
-- Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+- Related ADRs: ADR-8mnaz
 - Tests: N/A – Not yet tested
 - Issue: N/A – No tracking issue created yet
 - PR: N/A – Not yet implemented
 
 ## Requirement Statement
 
-The system SHALL achieve 100% automatic lock cleanup on local filesystems using native std::fs::File advisory locks, with graceful degradation to atomic operations only on network filesystems.
+The system SHALL ensure 100% automatic cleanup of lock state on supported local filesystems while providing graceful degradation to atomic operations when advisory locks are unavailable or unreliable.
 
 ## Rationale
 
-Lock cleanup reliability is critical to prevent system deadlocks:
-
-- Native advisory locks are automatically released by the kernel on process termination
-- This eliminates the need for complex stale lock detection
-- Network filesystems (NFS) have unreliable lock support, requiring alternative strategies
-- Atomic filesystem operations provide sufficient safety without locks
+Reliable cleanup prevents deadlocks, eliminates manual intervention after crashes, reduces complexity associated with stale lock detection, and ensures subsequent operations can progress without delay.
 
 ## User Story (if applicable)
 
-The system shall automatically clean up locks in all termination scenarios to ensure subsequent operations can proceed without manual intervention.
+The system shall automatically release locks after every exit condition so that users never have to manually remove stale lock artifacts.
 
 ## Acceptance Criteria
 
-- [ ] Locks automatically released in 100% of cases on local filesystems
-- [ ] Includes normal exit, panic, SIGKILL, and system crash scenarios
-- [ ] No manual cleanup required
-- [ ] System skips file locking on network filesystems (NFS, CIFS, SMB)
-- [ ] Operations rely on atomic filesystem operations when locks unavailable
-- [ ] Warning displayed when network filesystem detected
-- [ ] Lock files contain no data (kernel manages state)
-- [ ] Lock files created with owner-only permissions (0600)
-- [ ] Lock file existence does not indicate lock is held
-- [ ] Locks available immediately after process termination (< 1 second)
-- [ ] No timeout or polling required for cleanup
+- [ ] Local filesystem locks (ext4, APFS, NTFS) are automatically released in 100% of cases after normal exit, panic, SIGKILL, or system crash.
+- [ ] Network or degraded filesystems (NFS, SMB/CIFS) trigger detection logic that disables advisory locks and switches to atomic operation strategies with warning output.
+- [ ] No manual lock cleanup steps are required; lock files remain zero-length placeholders with no stateful contents.
+- [ ] Lock files are created with owner-only permissions (`0600`), ensuring security and reliable cleanup.
+- [ ] Locks become reacquirable within 1 second of process termination in stress tests covering 1000 forced exits.
+- [ ] Startup hygiene scans clean up any orphaned temporary files associated with fallback strategies.
 
 ## Technical Details (if applicable)
 
+### Functional Requirement Details
+
+N/A – Not applicable.
+
 ### Non-Functional Requirement Details
 
-- Reliability: 100% automatic cleanup on supported filesystems
-- Performance: Lock release < 1 second after process termination
-- Security: Lock files with 0600 permissions (owner read/write only)
-- Compatibility: Graceful degradation on unsupported filesystems
+- Reliability: 100% automatic cleanup rate on supported filesystems across 1000 forced termination tests.
+- Performance: Lock release availability within 1 second post-termination.
+- Security: Lock directories created with restrictive permissions; no secrets stored in lock files.
+- Compatibility: Detect filesystem capabilities using `statfs` (Unix) and `GetVolumeInformation`/`GetDriveType` (Windows).
 
-### Filesystem Support Matrix
+#### Filesystem Support Matrix
 
 | Filesystem | Lock Support | Fallback Strategy |
 | ---------- | ------------ | ----------------- |
@@ -81,62 +71,58 @@ The system shall automatically clean up locks in all termination scenarios to en
 
 ```bash
 # Specific commands to verify this requirement
-cargo test test_nfr_vcxp8
-# Stress test
+cargo test test_nfr_vcxp8_crash_cleanup
+cargo test test_nfr_vcxp8_network_fs_fallback
 for i in {1..100}; do cargo test test_nfr_vcxp8_stress; done
 ```
 
 ### Success Metrics
 
-- Metric 1: 100% lock cleanup rate across 1000 forced terminations
-- Metric 2: Lock re-acquisition time < 1 second in all cases
-- Metric 3: Zero stale locks after test suite completion
+- Metric 1: Observed cleanup rate of 100% across 1000 forced termination iterations.
+- Metric 2: Lock reacquisition occurs within 1 second of process termination in 99% of cases.
+- Metric 3: Zero stale lock incidents reported across two release cycles.
 
 ## Dependencies
 
-- Depends on: Native std::fs::File locking API (Rust 1.89.0+)
-- Blocks: FR-02uqo, FR-ui8x2, FR-v7ql4 (all require reliable cleanup)
+- Depends on: Rust `std::fs::File` locking API (1.89.0+)
+- Blocks: FR-02uqo, FR-ui8x2, FR-v7ql4 (all rely on reliable cleanup)
 
 ## Platform Considerations
 
 ### Unix
 
-- Advisory locks via flock()
-- Automatic cleanup by kernel on process termination
-- Detection of network filesystems via statfs()
+- Advisory locks via `flock`; detect filesystem type using `statfs` and adjust strategy for network mounts.
 
 ### Windows
 
-- File locks via LockFileEx()
-- Automatic cleanup by Windows kernel
-- Network drive detection via GetDriveType()
+- File locks via `LockFileEx`; detect network drives with `GetDriveType` and fallback appropriately.
 
 ### Cross-Platform
 
-- Consistent behavior for lock cleanup
-- Unified network filesystem detection
+- Provide consistent warning and logging when falling back to atomic operations.
+- Maintain a shared startup cleanup routine to address orphaned artifacts.
 
 ## Risks & Mitigation
 
-| Risk                                | Impact | Likelihood | Mitigation                       | Validation                     |
-| ----------------------------------- | ------ | ---------- | -------------------------------- | ------------------------------ |
-| Filesystem doesn't support locks    | High   | Low        | Detect and use atomic operations | Test on various filesystems    |
-| Kernel bug prevents cleanup         | High   | Very Low   | Document known issues            | Monitor kernel bug trackers    |
-| Permission issues on lock directory | Medium | Low        | Create with proper umask         | Test with various umask values |
+| Risk                                | Impact | Likelihood | Mitigation                              | Validation                     |
+| ----------------------------------- | ------ | ---------- | --------------------------------------- | ------------------------------ |
+| Filesystem lacks advisory locks     | High   | Low        | Detect and use atomic operations        | Test across filesystem matrix  |
+| Kernel bug prevents cleanup         | High   | Very Low   | Document known issues; provide override | Monitor vendor advisories      |
+| Permission issues on lock directory | Medium | Low        | Create directories with strict umask    | Test with varying umask values |
 
 ## Implementation Notes
 
-- Use `std::fs::File::lock_exclusive()` from Rust 1.89.0
-- Detect filesystem type at runtime
-- Log filesystem detection results at debug level
-- Consider caching filesystem type detection
-- Implement atomic operations using rename() for fallback
+- Use debug logging to capture filesystem detection outcomes and cleanup actions.
+- Cache detection results per path to avoid repeated syscalls while allowing manual override.
+- Provide configuration toggle to force fallback mode for troubleshooting.
+- Document fallback behavior in user documentation maintained externally.
 
 ## External References
 
 N/A – No external references
 
-## Change History
+---
 
-- 2025-09-02: Initial version
-- 2025-09-03: Updated to use 5-character ID format
+## Template Usage
+
+For detailed instructions, see [Template Usage Instructions](../templates/README.md#individual-requirement-template-requirementsmd).

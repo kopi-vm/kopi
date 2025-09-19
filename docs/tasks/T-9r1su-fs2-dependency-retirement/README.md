@@ -3,8 +3,6 @@
 ## Metadata
 
 - Type: Task
-- Owner: Development Team
-- Reviewers: TBD
 - Status: Proposed
 
 ## Links
@@ -14,7 +12,6 @@
 - ADRs: [`ADR-8mnaz-concurrent-process-locking-strategy.md`](../../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Design: N/A – Not started
 - Plan: N/A – Not started
-- Issue: N/A – Not created
 
 ## Summary
 

@@ -2,66 +2,54 @@
 
 ## Metadata
 
-- ID: NFR-g12ex
 - Type: Non-Functional Requirement
-- Category: Compatibility
-- Priority: P0 (Critical)
-- Owner: Development Team
-- Reviewers: Architecture Team
 - Status: Accepted
+  <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
 
 ## Links
 
 - Implemented by Tasks: N/A – Not yet implemented
 - Related Requirements: FR-02uqo, FR-ui8x2, FR-v7ql4
-- Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+- Related ADRs: ADR-8mnaz
 - Tests: N/A – Not yet tested
 - Issue: N/A – No tracking issue created yet
 - PR: N/A – Not yet implemented
 
 ## Requirement Statement
 
-The system SHALL provide identical locking behavior and semantics across Unix (Linux, macOS) and Windows platforms using Rust's standard library abstractions.
+The system SHALL deliver identical lock semantics and reliability across Linux, macOS, Windows, and WSL platforms using Rust standard library abstractions, ensuring consistent behavior regardless of operating system or filesystem.
 
 ## Rationale
 
-Cross-platform compatibility ensures:
-
-- Consistent user experience regardless of operating system
-- Single codebase without platform-specific branches
-- Predictable behavior in mixed-OS environments
-- Simplified testing and maintenance
+Cross-platform consistency guarantees a predictable user experience, avoids divergent code paths, simplifies testing, and prevents subtle lock bugs when teams operate across multiple operating systems and filesystems.
 
 ## User Story (if applicable)
 
-The system shall work identically across all supported platforms to ensure users have a consistent experience regardless of their operating system.
+The system shall provide consistent locking across all supported platforms to ensure users receive the same behavior regardless of operating system.
 
 ## Acceptance Criteria
 
-- [ ] Same Rust std::fs::File locking API works on all platforms
-- [ ] No platform-specific code paths required for basic operations
-- [ ] Platform differences handled by the standard library
-- [ ] Lock acquisition, holding, and release behave identically
-- [ ] Timeout mechanisms work the same across platforms
-- [ ] Error conditions reported consistently
-- [ ] Linux (`x86_64`, `aarch64`) fully supported
-- [ ] macOS (`x86_64`, `aarch64`/M1) fully supported
-- [ ] Windows (`x86_64`) fully supported
-- [ ] WSL2 supported as Linux environment
-- [ ] ext4, APFS, NTFS support full locking functionality
-- [ ] FAT32 gracefully degrades if locking unavailable
-- [ ] Network filesystems detected on all platforms
+- [ ] Lock acquisition, holding, and release semantics behave identically on Linux, macOS, Windows, and WSL environments.
+- [ ] Standard library file locking APIs (`std::fs::File`) suffice without platform-specific branches for primary flows.
+- [ ] Timeout mechanisms and error reporting return equivalent messages and exit codes across platforms.
+- [ ] Supported filesystems include ext4, APFS, NTFS, and WSL ext4 with full lock support; detection occurs at runtime.
+- [ ] Unsupported or degraded filesystems (e.g., FAT32, certain network filesystems) trigger graceful fallback strategies (documented warnings plus atomic ops).
+- [ ] Platform coverage in CI executes lock tests on Linux, macOS, Windows, and WSL runners.
 
 ## Technical Details (if applicable)
 
+### Functional Requirement Details
+
+N/A – Not applicable.
+
 ### Non-Functional Requirement Details
 
-- Compatibility: 100% API compatibility across platforms
-- Performance: Platform-specific optimizations allowed if behavior unchanged
-- Reliability: Same error recovery on all platforms
-- Security: Consistent permission model where applicable
+- Compatibility: Maintain 100% API parity across supported operating systems and architectures.
+- Reliability: Ensure lock lifecycle hooks (acquire/release) map to platform-specific APIs without divergence.
+- Performance: Allow platform-specific optimizations provided they do not alter behavior.
+- Security: Normalize permission handling for lock files across platforms.
 
-### Platform Support Matrix
+#### Platform Support Matrix
 
 | Platform | Architecture        | Filesystem       | Lock Support |
 | -------- | ------------------- | ---------------- | ------------ |
@@ -83,71 +71,59 @@ The system shall work identically across all supported platforms to ensure users
 ### Verification Commands
 
 ```bash
-# Linux testing
-cargo test test_nfr_g12ex
-
-# macOS testing
-cargo test test_nfr_g12ex
-
-# Windows testing
-cargo test test_nfr_g12ex
-
-# CI matrix testing
-# Defined in .github/workflows/test.yml
+# Specific commands to verify this requirement
+cargo test test_nfr_g12ex_platform_behavior
+cargo test test_nfr_g12ex_filesystem_support
+# CI workflows execute on Linux, macOS, Windows, and WSL runners
 ```
 
 ### Success Metrics
 
-- Metric 1: 100% test pass rate on all supported platforms
-- Metric 2: Identical behavior logs across platforms for same operations
-- Metric 3: No platform-specific bug reports
+- Metric 1: 100% pass rate for lock integration tests across all supported platforms in CI.
+- Metric 2: Identical log outputs for equivalent operations across platforms (line-by-line comparison allowance ± timestamps).
+- Metric 3: Zero platform-specific lock regressions reported across two release cycles.
 
 ## Dependencies
 
-- Depends on: Rust std::fs::File locking API (1.89.0+)
-- Blocks: N/A – Blocks nothing
+- Depends on: Rust `std::fs::File` locking API (1.89.0+)
+- Blocks: FR-02uqo, FR-ui8x2, FR-v7ql4 (all require cross-platform guarantees)
 
 ## Platform Considerations
 
 ### Unix
 
-- Uses flock() system call
-- POSIX-compliant behavior
-- Handle EINTR appropriately
+- Uses `flock` via Rust standard library; handle `EINTR` and other POSIX-specific nuances.
 
 ### Windows
 
-- Uses LockFileEx() API
-- Windows-specific error codes mapped to std::io::Error
-- Handle `ERROR_LOCK_VIOLATION`
+- Uses `LockFileEx`; ensure proper error translation to `std::io::Error` and support for overlapped operations when necessary.
 
 ### Cross-Platform
 
-- Rust standard library abstracts platform differences
-- Use cfg attributes only for platform-specific optimizations
-- Ensure consistent error messages
+- Detect filesystem characteristics at runtime to decide between advisory locks and fallback strategies.
+- Provide consistent logging and error messaging regardless of OS.
 
 ## Risks & Mitigation
 
-| Risk                     | Impact | Likelihood | Mitigation                   | Validation                  |
-| ------------------------ | ------ | ---------- | ---------------------------- | --------------------------- |
-| Platform API differences | High   | Low        | Use std library abstractions | CI testing on all platforms |
-| Filesystem quirks        | Medium | Medium     | Test on various filesystems  | Filesystem test matrix      |
-| WSL compatibility issues | Low    | Medium     | Test in WSL environments     | Include WSL in CI           |
+| Risk                     | Impact | Likelihood | Mitigation                                            | Validation                  |
+| ------------------------ | ------ | ---------- | ----------------------------------------------------- | --------------------------- |
+| Platform API differences | High   | Low        | Rely on std library abstractions; integration testing | CI matrix coverage          |
+| Filesystem quirks        | Medium | Medium     | Detect filesystem type and adjust strategy            | Filesystem acceptance tests |
+| WSL compatibility issues | Low    | Medium     | Treat WSL as Linux but verify path handling           | Include WSL in CI runs      |
 
 ## Implementation Notes
 
-- Rely on Rust standard library for platform abstraction
-- Avoid platform-specific code unless absolutely necessary
-- Use `#[cfg(target_os)]` only for optimizations, not behavior
-- Ensure error messages are platform-agnostic
-- Test with platform-specific CI runners
+- Avoid `#[cfg]` branches except where absolutely necessary; when required, encapsulate them behind a common trait.
+- Cache filesystem detection results to minimize repeated syscalls while retaining change detection.
+- Surface platform and filesystem info in debug logs to aid support cases.
+- Document fallback behavior in user-facing docs maintained in `../kopi-vm.github.io/`.
 
 ## External References
 
 N/A – No external references
 
-## Change History
+---
 
-- 2025-09-02: Initial version
-- 2025-09-03: Updated to use 5-character ID format
+## Template Usage
+
+For detailed instructions, see [Template Usage Instructions](../templates/README.md#individual-requirement-template-requirementsmd).

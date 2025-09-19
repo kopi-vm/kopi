@@ -2,107 +2,52 @@
 
 ## Metadata
 
-- ID: FR-02uqo
 - Type: Functional Requirement
-- Category: Platform
-- Priority: P0 (Critical)
-- Owner: Development Team
-- Reviewers: Architecture Team
 - Status: Accepted
+  <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
 
 ## Links
 
 - Implemented by Tasks: N/A – Not yet implemented
 - Related Requirements: FR-ui8x2, FR-v7ql4, FR-gbsz6, FR-c04js, NFR-vcxp8, NFR-g12ex
-- Related ADRs: [ADR-8mnaz](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+- Related ADRs: ADR-8mnaz
 - Tests: N/A – Not yet tested
 - Issue: N/A – No tracking issue created yet
 - PR: N/A – Not yet implemented
 
 ## Requirement Statement
 
-The system SHALL provide exclusive process-level locking for JDK installation operations to prevent concurrent installations to the same JDK version. The lock SHALL be acquired using a canonicalized coordinate (vendor-version-os-arch) to ensure that different representations of the same JDK version map to the same lock.
+The system SHALL provide exclusive process-level locking for JDK installation operations so that concurrent installation attempts targeting the same vendor-version-os-arch coordinate never execute simultaneously.
 
 ## Rationale
 
-Without process-level locking, multiple kopi processes attempting to install the same JDK version simultaneously could result in:
-
-- Corrupted JDK installations due to partial file writes
-- Race conditions during directory creation and file extraction
-- Inconsistent metadata states
-- Wasted bandwidth from duplicate downloads
-
-## Acceptance Criteria
-
-1. **Exclusive Lock Acquisition**
-   - GIVEN multiple kopi processes
-   - WHEN two or more processes attempt to install the same JDK version
-   - THEN only one process SHALL acquire the installation lock
-   - AND other processes SHALL wait or fail based on timeout configuration
-
-2. **Lock Granularity**
-   - GIVEN a JDK installation request
-   - WHEN acquiring locks
-   - THEN the lock SHALL be specific to the canonicalized version coordinate (vendor-version-os-arch)
-   - AND the coordinate SHALL be normalized after all alias resolution
-   - AND installations of different versions SHALL proceed in parallel
-
-3. **Lock Release**
-   - GIVEN a process holding an installation lock
-   - WHEN the installation completes (success or failure)
-   - THEN the lock SHALL be released
-   - AND waiting processes SHALL be able to proceed
-
-4. **Crash Recovery**
-   - GIVEN a process holding an installation lock
-   - WHEN the process crashes or is killed
-   - THEN the lock SHALL be automatically released by the operating system
-   - AND other processes SHALL be able to acquire the lock
-
-## Implementation Notes
-
-- Use native `std::fs::File` locking API (stable since Rust 1.89.0):
-  - `File::lock_exclusive()` for blocking lock acquisition
-  - `File::try_lock_exclusive()` for non-blocking lock acquisition
-  - `File::unlock()` for lock release (or automatic on file drop)
-- Lock file location: `$KOPI_HOME/locks/{vendor}-{version}-{os}-{arch}.lock`
-  - Where `$KOPI_HOME` is the resolved Kopi home directory
-  - Lock key components must be canonicalized post-alias resolution
-- Lock type: Exclusive (writer) lock
-- Lock acquisition: Support both blocking and non-blocking modes
-
-## Verification Steps
-
-1. **Concurrent Installation Test**
-   - Start two processes installing the same JDK version
-   - Verify only one proceeds while the other waits
-
-2. **Parallel Different Version Test**
-   - Start two processes installing different JDK versions
-   - Verify both proceed in parallel
-
-3. **Crash Recovery Test**
-   - Start installation process and kill it mid-operation
-   - Verify lock is released and new process can acquire it
-
-## Dependencies
-
-- Native std::fs::File locking API (Rust 1.89.0+)
-- Filesystem support for advisory locks (see NFR-0002 for fallback behavior on unsupported filesystems)
-- Cross-platform compatibility constraints (see NFR-0003)
+Without process-level locking, multiple kopi processes attempting to install the same JDK version could corrupt installations, trigger race conditions during directory creation, leave metadata inconsistent, and waste bandwidth on duplicate downloads.
 
 ## User Story (if applicable)
 
-As a kopi user, I want the tool to handle concurrent installation attempts safely, so that my JDK installations don't become corrupted when multiple processes run simultaneously.
+As a kopi user, I want the tool to acquire an exclusive installation lock before modifying the filesystem, so that concurrent installation attempts cannot corrupt my JDK installs.
+
+## Acceptance Criteria
+
+- [ ] Exclusive lock acquisition prevents more than one process from installing the same canonicalized vendor-version-os-arch coordinate at a time.
+- [ ] Lock keys are derived from canonicalized coordinates after alias resolution to guarantee equivalent requests share the same lock file.
+- [ ] Lock release occurs on both successful and failed installation exits, returning the system to an unlocked state.
+- [ ] Operating-system-managed cleanup releases locks automatically when a process crashes or is killed, allowing new installers to proceed without manual intervention.
+- [ ] Installations for different coordinates run in parallel without blocking each other.
 
 ## Technical Details (if applicable)
 
 ### Functional Requirement Details
 
-- Lock acquisition must happen before any filesystem modifications
-- Lock key must be canonicalized after all alias resolution
-- Lock must be exclusive (write lock) to prevent any concurrent access
-- Lock release must be automatic on process termination
+- Use native `std::fs::File::lock_exclusive()` for blocking acquisition and `try_lock_exclusive()` for optional non-blocking modes.
+- Lock files reside at `$KOPI_HOME/locks/{vendor}-{version}-{os}-{arch}.lock` with normalized components.
+- Acquire the lock before any filesystem mutations and hold it until installation completes or aborts.
+- Support both blocking waits (default) and configurable non-blocking attempts driven by timeout settings.
+- Dropping the file handle or invoking `unlock()` releases the lock; cleanup relies on OS semantics.
+
+### Non-Functional Requirement Details
+
+N/A – Not applicable.
 
 ## Verification Method
 
@@ -110,56 +55,66 @@ As a kopi user, I want the tool to handle concurrent installation attempts safel
 
 - Test Type: Integration
 - Test Location: `tests/locking_tests.rs` (planned)
-- Test Names: `test_fr_02uqo_concurrent_install_lock`, `test_fr_02uqo_parallel_different_versions`
+- Test Names: `test_fr_02uqo_concurrent_install_lock`, `test_fr_02uqo_parallel_different_versions`, `test_fr_02uqo_crash_releases_lock`
 
 ### Verification Commands
 
 ```bash
 # Specific commands to verify this requirement
-cargo test test_fr_02uqo
+cargo test test_fr_02uqo_concurrent_install_lock
+cargo test test_fr_02uqo_parallel_different_versions
+cargo test test_fr_02uqo_crash_releases_lock
 ```
 
 ### Success Metrics
 
-- Metric 1: Zero corrupted installations during concurrent install attempts
-- Metric 2: Lock acquisition time < 100ms for uncontended locks
+- Metric 1: Zero corrupted installations after 100 concurrent installation stress tests.
+- Metric 2: Lock acquisition time for uncontended locks remains below 100 ms.
+- Metric 3: Locks become available within 1 second after forced process termination in 100% of observed cases.
+
+## Dependencies
+
+- Depends on: N/A – No dependencies
+- Blocks: FR-gbsz6, FR-ui8x2, FR-v7ql4 (shared locking infrastructure)
 
 ## Platform Considerations
 
 ### Unix
 
-- Uses advisory file locks via `flock` system call
-- Lock files stored in `$KOPI_HOME/locks/`
+- Implements advisory locking via `flock` through Rust standard library wrappers.
+- Stores lock files in `$KOPI_HOME/locks/` with owner-only permissions.
 
 ### Windows
 
-- Uses Windows file locking via `LockFileEx` API
-- Lock files stored in `%KOPI_HOME%\locks\`
+- Uses `LockFileEx` via Rust standard library.
+- Stores lock files in `%KOPI_HOME%\locks\` and relies on kernel-managed cleanup.
 
 ### Cross-Platform
 
-- Lock file naming must be consistent across platforms
-- Path separators handled by std::path abstractions
+- Lock filenames must remain identical across platforms after normalization.
+- Path handling must use `std::path` to accommodate separators.
 
 ## Risks & Mitigation
 
-| Risk                             | Impact | Likelihood | Mitigation                      | Validation                  |
-| -------------------------------- | ------ | ---------- | ------------------------------- | --------------------------- |
-| Filesystem doesn't support locks | High   | Low        | Fallback to process-local mutex | Test on network filesystems |
-| Lock file permissions incorrect  | Medium | Medium     | Create with appropriate umask   | Verify permissions in tests |
-| Stale lock files accumulate      | Low    | Medium     | Cleanup on startup              | Monitor lock directory size |
+| Risk                            | Impact | Likelihood | Mitigation                    | Validation                  |
+| ------------------------------- | ------ | ---------- | ----------------------------- | --------------------------- |
+| Filesystem lacks advisory locks | High   | Low        | Detect and fall back to mutex | Test on network filesystems |
+| Lock file permissions incorrect | Medium | Medium     | Create with restricted umask  | Verify permissions in tests |
+| Stale lock files accumulate     | Low    | Medium     | Cleanup on startup before use | Monitor lock directory size |
+
+## Implementation Notes
+
+- Provide configurable blocking vs. timeout-driven behavior through FR-gbsz6 settings.
+- Canonicalize coordinates after resolving aliases, architecture defaults, and vendor synonyms.
+- Ensure logging captures lock acquisition, contention, and release events for diagnostics.
+- Treat lock files as zero-length placeholders; never persist metadata inside them.
 
 ## External References
 
 N/A – No external references
 
-## Change History
+---
 
-- 2025-09-02: Initial version
-- 2025-09-03: Updated to use 5-character ID format
+## Template Usage
 
-## Out of Scope
-
-- Distributed locking across multiple machines
-- Lock priority or queuing mechanisms
-- GUI for lock monitoring
+For detailed instructions, see [Template Usage Instructions](../templates/README.md#individual-requirement-template-requirementsmd).

@@ -3,8 +3,6 @@
 ## Metadata
 
 - Type: Analysis
-- Owner: Development Team
-- Reviewers: Architecture Team (pending sign-off)
 - Status: In Progress
 
 ## Links
