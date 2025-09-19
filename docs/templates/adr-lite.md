@@ -3,8 +3,6 @@
 ## Metadata
 
 - Type: ADR (Lite)
-- Owner: `[Person or role who proposed this]`
-- Reviewers: `[Names/roles who reviewed]`
 - Status: Proposed / Accepted / Rejected / Deprecated / Superseded by ADR-<id>
   <!-- Proposed: Under discussion | Accepted: Approved and to be implemented | Rejected: Considered but not approved | Deprecated: No longer recommended | Superseded: Replaced by another ADR -->
 
@@ -17,8 +15,6 @@
 - Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
 - Plan: docs/tasks/T-<id>-<task>/plan.md | N/A – <reason>
 - Related ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
-- Issue: #XXX | N/A – <reason>
-- PR: #XXX | N/A – <reason>
 - Supersedes: ADR-<id> | N/A – First version
 - Superseded by: ADR-<id> | N/A – Current version
 

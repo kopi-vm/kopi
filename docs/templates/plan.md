@@ -3,8 +3,6 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Owner: `[Person or role]`
-- Reviewers: `[Names/roles]`
 - Status: Not Started / Phase X In Progress / Blocked / Under Review / Completed
   <!-- Not Started: Planning complete, awaiting start | Phase X In Progress: Actively working | Blocked: External dependency | Under Review: Implementation complete | Completed: All phases done and verified -->
 
@@ -15,8 +13,6 @@
 - Requirements: docs/tasks/T-<id>-<task>/requirements.md | N/A – <reason>
 - Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
 - Related ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
-- Issue: #XXX | N/A – <reason>
-- PR: #XXX | N/A – <reason>
 
 ## Overview
 

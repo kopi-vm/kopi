@@ -2,12 +2,7 @@
 
 ## Metadata
 
-- ID: `[FR-<id> or NFR-<id>]`
 - Type: Functional Requirement | Non-Functional Requirement
-- Category: `[e.g., Performance, Security, Usability, API, CLI, Platform]`
-- Priority: P0 (Critical) | P1 (High) | P2 (Medium) | P3 (Low)
-- Owner: `[Person or role]`
-- Reviewers: `[Names/roles]`
 - Status: Proposed | Accepted | Implemented | Verified | Deprecated
   <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
 
@@ -18,9 +13,6 @@
 - Implemented by Tasks: task-name-1, task-name-2 | N/A – Not yet implemented
 - Related Requirements: FR-<id>, NFR-<id> | N/A – Standalone requirement
 - Related ADRs: ADR-<id> | N/A – No related ADRs
-- Tests: `test_name_fr_<id>`, `bench_name_nfr_<id>` | N/A – Not yet tested
-- Issue: #XXX | N/A – <reason>
-- PR: #XXX | N/A – <reason>
 
 ## Requirement Statement
 

@@ -3,7 +3,6 @@
 ## Metadata
 
 - Type: Analysis
-- Owner: `[Person or role]`
 - Status: Draft | Active | Complete | Archived
   <!-- Draft: Initial exploration | Active: Ongoing analysis | Complete: Ready for requirements | Archived: Analysis concluded -->
 
@@ -14,7 +13,6 @@
 - Related Analyses: `[other-analysis.md]` | N/A – Standalone analysis
 - Existing Requirements: FR-<id>, NFR-<id> | N/A – New area
 - Existing ADRs: ADR-<id> | N/A – No related decisions yet
-- Issue/Discussion: #XXX | N/A – No tracking issue
 
 ## Executive Summary
 

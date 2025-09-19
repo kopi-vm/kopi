@@ -3,8 +3,6 @@
 ## Metadata
 
 - Type: Task
-- Owner: `[Person or role]`
-- Reviewers: `[Person or role]`
 - Status: `[Proposed|In Progress|Blocked|Complete]`
 
 ## Links
@@ -14,7 +12,6 @@
 - ADRs: `[List ADR IDs or N/A – <reason>]`
 - Design: `[Link or N/A – <reason>]`
 - Plan: `[Link or N/A – <reason>]`
-- Issue: `[Tracking ticket or N/A – <reason>]`
 
 ## Summary
 

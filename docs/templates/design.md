@@ -3,8 +3,6 @@
 ## Metadata
 
 - Type: Design
-- Owner: `[Person or role]`
-- Reviewers: `[Names/roles]`
 - Status: Draft / In Review / Approved
   <!-- Draft: Work in progress | In Review: Awaiting technical review | Approved: Ready for implementation -->
 
@@ -15,8 +13,6 @@
 - Requirements: docs/tasks/T-<id>-<task>/requirements.md | N/A – <reason>
 - Plan: docs/tasks/T-<id>-<task>/plan.md | N/A – <reason>
 - Related ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
-- Issue: #XXX | N/A – <reason>
-- PR: #XXX | N/A – <reason>
 
 ## Overview
 
