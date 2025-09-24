@@ -10,14 +10,14 @@
 
 <!-- Internal project artifacts only. The Links section is mandatory for traceability. Replace or remove bullets as appropriate. -->
 
-- Analysis:
+- Related Analyses:
   - [AN-<id>-<topic>](../analysis/AN-<id>-<topic>.md)
-- Requirements:
+- Related Requirements:
   - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
   - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
-- ADRs:
+- Related ADRs:
   - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
-- Tasks:
+- Related Tasks:
   - [T-<id>-<task>](../tasks/T-<id>-<task>/README.md)
 
 ## Context

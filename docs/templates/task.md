@@ -8,16 +8,16 @@
 
 ## Links
 
-- Analysis:
+- Related Analyses:
   - [AN-<id>-<topic>](../analysis/AN-<id>-<topic>.md)
-- Requirements:
+- Related Requirements:
   - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
   - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
-- ADRs:
+- Related ADRs:
   - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
-- Plan:
+- Associated Plan Document:
   - [T-<id>-<task>-plan](../tasks/T-<id>-<task>/plan.md)
-- Design:
+- Associated Design Document:
   - [T-<id>-<task>-design](../tasks/T-<id>-<task>/design.md)
 
 ## Summary

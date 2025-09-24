@@ -10,16 +10,16 @@
 
 <!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-- Analysis:
+- Related Analyses:
   - [AN-<id>-<topic>](../analysis/AN-<id>-<topic>.md)
-- Depends on:
+- Prerequisite Requirements:
   - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
   - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
-- Blocks:
+- Dependent Requirements:
   - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
-- ADRs:
+- Related ADRs:
   - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
-- Tasks:
+- Related Tasks:
   - [T-<id>-<task>](../tasks/T-<id>-<task>/README.md)
 
 ## Requirement Statement

@@ -10,10 +10,10 @@
 
 <!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-- Requirements:
+- Related Requirements:
   - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
   - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
-- ADRs:
+- Related ADRs:
   - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
 
 ## Overview
