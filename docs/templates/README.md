@@ -73,6 +73,16 @@ Guidelines:
 - Remove unused labels or mark them `N/A – Not applicable`; do not leave template text untouched.
 - Tasks often have multiple files (`README.md`, `plan.md`, `design.md`). Keep Links and Status consistent across them—`scripts/trace-status.ts` prioritizes `README.md`, then `plan.md`, then `design.md` when merging.
 
+### Agent Usage (Claude & Codex)
+
+Both AI collaborators follow the same TDL conventions. Use this checklist whenever Claude or Codex generates or edits documentation:
+
+- Start by running `./scripts/tdl-new-id.ts` to obtain a fresh ID before copying any template.
+- Copy the appropriate template, replace every placeholder, and update Metadata and Links immediately.
+- When documentation changes accompany code, queue the required verification commands from this README (`bun format`, `bun lint`) plus language-specific toolchains noted in `CLAUDE.md` (Claude) or `AGENTS.md` (Codex).
+- Before handing off between agents, run `./scripts/trace-status.ts --check` to confirm there are no orphan links or placeholder leftovers.
+- Note any template sections intentionally removed or marked `N/A – <reason>` so the next agent retains context without reopening the template.
+
 ### Analysis Template (`analysis.md`)
 
 1. Use for exploring problem spaces and discovering requirements
@@ -148,7 +158,7 @@ Guidelines:
 4. Define verification commands and phase acceptance criteria
 5. Identify risks early, with mitigation and fallback
 6. Keep status updated as work progresses
-7. Phase independence: Ensure each phase is self-contained; the `/clear` command may be executed at phase boundaries to reset context
+7. Phase independence: Ensure each phase is self-contained; reset context at phase boundaries using `/clear` (Claude) or `/new` (Codex)
 8. Update or add ADRs when design decisions change
 9. Error Recovery Patterns:
    - When blocked during implementation:
@@ -178,7 +188,7 @@ These requirements apply to ALL documentation templates:
 
 ### Writing Standards
 
-- **Language**: All documentation must be written in English (per `CLAUDE.md` policy)
+- **Language**: All documentation must be written in English (per `CLAUDE.md` and `AGENTS.md`)
 - **Date Format**: Use `YYYY-MM-DD` format consistently
 - **IDs & Naming**: Use explicit, stable IDs/names. Avoid vague terms like "manager" or "util"
 - **Consistency**: Don't duplicate requirements text; Design references requirement IDs; Plan references both
@@ -221,7 +231,7 @@ Use inline code (`` ` ``) for the following cases to ensure proper formatting an
 
 ### Process Requirements
 
-- **Verification**: Use canonical cargo commands from `CLAUDE.md` in Verification blocks and Definition of Done
+- **Verification**: Use canonical cargo commands referenced in `CLAUDE.md` (Claude) or `AGENTS.md` (Codex) in Verification blocks and Definition of Done
 - **PR Integration**: Link Requirements/Design/Plan and relevant ADRs in PRs
 
 ## Examples
