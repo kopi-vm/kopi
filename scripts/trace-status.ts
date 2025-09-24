@@ -793,10 +793,12 @@ export function* walkFiles(
 }
 
 export function resolveLinkType(label: string): string | null {
-  if (label.includes("requirement")) return "requirements";
-  if (label.includes("depend")) return "depends_on";
+  if (label.includes("prerequisite")) return "depends_on";
+  if (label.includes("dependent")) return "blocks";
   if (label.includes("blocked by")) return "blocked_by";
+  if (label.includes("depend")) return "depends_on";
   if (label.includes("block")) return "blocks";
+  if (label.includes("requirement")) return "requirements";
   if (label.includes("analysis")) return "analyses";
   if (label.includes("adr")) return "adrs";
   if (label.includes("task")) return "tasks";

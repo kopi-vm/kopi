@@ -2,6 +2,19 @@
 
 > Structured phases, linked artifacts, verifiable outcomes
 
+## Metadata
+
+- Type: Process Documentation
+- Owner: Kopi Maintainers
+- Status: Active
+
+## Links
+
+- Templates Overview: [docs/templates/README.md](templates/README.md)
+- Traceability Script: [scripts/trace-status.ts](../scripts/trace-status.ts)
+- ID Generator Script: [scripts/tdl-new-id.ts](../scripts/tdl-new-id.ts)
+- Traceability Report: [docs/traceability.md](traceability.md)
+
 This document describes the Traceable Development Lifecycle (TDL), a template-based development process that ensures full traceability from requirements to implementation.
 
 ## Overview
@@ -28,87 +41,23 @@ graph LR
 
 ## Document Organization
 
-<table>
-<thead>
-<tr>
-<th>Phase</th>
-<th>Document Type</th>
-<th>Template</th>
-<th>Created Files Location</th>
-<th>Naming Convention</th>
-<th>Lifecycle</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Discovery</strong></td>
-<td>Analysis</td>
-<td><code>analysis.md</code></td>
-<td><code>docs/analysis/AN-&lt;id&gt;-&lt;topic&gt;.md</code></td>
-<td><code>AN-&lt;5char-id&gt;-&lt;topic&gt;</code> (e.g., <code>AN-a3bf2-cache-optimization.md</code>)</td>
-<td>Working doc, remains in <code>docs/analysis/</code> after completion</td>
-</tr>
-<tr>
-<td rowspan="2"><strong>Requirements</strong></td>
-<td>Functional Req</td>
-<td><code>requirements.md</code></td>
-<td><code>docs/requirements/FR-&lt;id&gt;-&lt;capability&gt;.md</code></td>
-<td><code>FR-&lt;5char-id&gt;-&lt;capability&gt;</code> (e.g., <code>FR-b4cd8-user-authentication.md</code>)</td>
-<td>Long-lived, evolve independently</td>
-</tr>
-<tr>
-<td>Non-Functional Req</td>
-<td><code>requirements.md</code></td>
-<td><code>docs/requirements/NFR-&lt;id&gt;-&lt;quality&gt;.md</code></td>
-<td><code>NFR-&lt;5char-id&gt;-&lt;quality&gt;</code> (e.g., <code>NFR-c5de9-performance.md</code>)</td>
-<td>Long-lived, evolve independently</td>
-</tr>
-<tr>
-<td><strong>Decisions</strong></td>
-<td>ADRs</td>
-<td><code>adr.md</code><br><code>adr-lite.md</code></td>
-<td><code>docs/adr/ADR-&lt;id&gt;-&lt;title&gt;.md</code></td>
-<td><code>ADR-&lt;5char-id&gt;-&lt;title&gt;</code> (e.g., <code>ADR-d6ef0-cache-storage-format.md</code>)</td>
-<td>Long-lived, document decisions</td>
-</tr>
-<tr>
-<td rowspan="3"><strong>Tasks</strong></td>
-<td>Task Directory</td>
-<td><code>task.md</code></td>
-<td><code>docs/tasks/T-&lt;id&gt;-&lt;name&gt;/</code></td>
-<td><code>T-&lt;5char-id&gt;-&lt;name&gt;</code> (e.g., <code>T-e7fa1-cache-refresh/</code>)</td>
-<td>Task-scoped container</td>
-</tr>
-<tr>
-<td>Task Design</td>
-<td><code>design.md</code></td>
-<td><code>docs/tasks/T-&lt;id&gt;-&lt;name&gt;/design.md</code></td>
-<td>Fixed name <code>design.md</code> within task directory</td>
-<td>Task-scoped</td>
-</tr>
-<tr>
-<td>Task Plan</td>
-<td><code>plan.md</code></td>
-<td><code>docs/tasks/T-&lt;id&gt;-&lt;name&gt;/plan.md</code></td>
-<td>Fixed name <code>plan.md</code> within task directory</td>
-<td>Task-scoped</td>
-</tr>
-<tr>
-<td><strong>Tracking</strong></td>
-<td>Traceability</td>
-<td>N/A (not a template)</td>
-<td><code>docs/traceability.md</code></td>
-<td>Single file (project document)</td>
-<td>Long-lived, central N:M mapping</td>
-</tr>
-</tbody>
-</table>
+| Phase            | Document Type                | Template                 | Created Files Location                      | Naming Convention                                                      | Lifecycle                                |
+| ---------------- | ---------------------------- | ------------------------ | ------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------- |
+| **Discovery**    | Analysis                     | `analysis.md`            | `docs/analysis/AN-<id>-<topic>.md`          | `AN-<5char-id>-<topic>` (e.g., `AN-a3bf2-cache-optimization.md`)       | Working doc, remains in `docs/analysis/` |
+| **Requirements** | Functional Requirement       | `requirements.md`        | `docs/requirements/FR-<id>-<capability>.md` | `FR-<5char-id>-<capability>` (e.g., `FR-b4cd8-user-authentication.md`) | Long-lived, evolve independently         |
+|                  | Non-Functional Requirement   | `requirements.md`        | `docs/requirements/NFR-<id>-<quality>.md`   | `NFR-<5char-id>-<quality>` (e.g., `NFR-c5de9-performance.md`)          | Long-lived, evolve independently         |
+| **Decisions**    | Architecture Decision Record | `adr.md` / `adr-lite.md` | `docs/adr/ADR-<id>-<title>.md`              | `ADR-<5char-id>-<title>` (e.g., `ADR-d6ef0-cache-storage-format.md`)   | Long-lived, document decisions           |
+| **Tasks**        | Task README                  | `task.md`                | `docs/tasks/T-<id>-<name>/README.md`        | `T-<5char-id>-<name>/README.md`                                        | Task-scoped container                    |
+|                  | Task Design                  | `design.md`              | `docs/tasks/T-<id>-<name>/design.md`        | Fixed name `design.md` within task directory                           | Task-scoped                              |
+|                  | Task Plan                    | `plan.md`                | `docs/tasks/T-<id>-<name>/plan.md`          | Fixed name `plan.md` within task directory                             | Task-scoped                              |
+| **Tracking**     | Traceability Report          | (Generated)              | `docs/traceability.md`                      | Single file (project document)                                         | Long-lived, central N:M mapping          |
 
 ## Task Creation Guidelines
 
 - When Analysis or ADR work identifies concrete follow-up implementation, create a new task directory at `docs/tasks/T-<id>-<name>/` immediately.
 - Always add a `README.md` inside the task directory as the first artifact. Use [`templates/task.md`](templates/task.md) to populate the README so it captures task metadata (type, owner, reviewers, status), a concise summary, source links, and the initial checklist of outstanding work.
 - Additional task documents (`design.md`, `plan.md`, etc.) build on top of the README, but the README must ship with the directory from the moment the task is introduced.
+- Keep the task README's Links section synchronized with `Related Analyses`, `Related Requirements`, `Related ADRs`, `Associated Plan Document`, and `Associated Design Document` entries; use `N/A – <reason>` if an entry does not apply yet.
 
 ## Supporting Automation
 
@@ -156,7 +105,7 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Transition**: Analysis can lead to:
   - Creating formal requirements from discoveries
   - Identifying architectural decisions that need to be made
-- **Traceability Update**: Add new analysis document to `docs/traceability.md` immediately upon creation
+- **Traceability Update**: Fill `Related Analyses`/`Related Requirements`/`Related ADRs` in the Links section and add the analysis to `docs/traceability.md` immediately upon creation
 
 ### Step 2: Requirements (what/why)
 
@@ -171,7 +120,10 @@ This project supports parallel development using git-worktree with unique IDs to
   - ADR decisions (derived requirements/constraints)
 - **Transition**: Requirements feed into design
 - **Relationships**: One analysis can discover multiple requirements; requirements can span multiple tasks (N:M)
-- **Traceability Update**: Add each new requirement to "Requirements → Tasks → Tests Matrix" with source analysis/ADR
+- **Traceability Update**:
+  - Populate the `Links` section using the template labels: `Related Analyses`, `Prerequisite Requirements`, `Dependent Requirements`, `Related ADRs`, `Related Tasks`
+  - Record upstream prerequisites and downstream dependents so the Requirement Dependencies table remains accurate
+  - Add each new requirement to the Traceability Matrix generated by `scripts/trace-status.ts`
 
 ### Step 3: Architecture Decisions (decisions/trade-offs)
 
@@ -192,7 +144,9 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Transition**: ADRs can:
   - Generate new requirements (constraints/standards)
   - Feed directly into design for architectural constraints
-- **Traceability Update**: Update ADRs column for affected requirements; add any new derived requirements
+- **Traceability Update**:
+  - Use the template link labels `Related Analyses`, `Impacted Requirements`, `Supersedes`, `Superseded By`, and `Related Tasks`
+  - Update the affected requirements' `Related ADRs` entries and add derived requirements where needed
 
 ### Step 4: Design (how to implement)
 
@@ -207,7 +161,9 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Naming**: Task directory + fixed name (e.g., `docs/tasks/T-e7fa1-cache-refresh/design.md`)
 - **ID Generation**: Run `./scripts/tdl-new-id.ts` for the task directory (see [`parallel-development.md`](parallel-development.md))
 - **Transition**: With design complete, create execution plan
-- **Traceability Update**: Add task to "Task Status" table; link task to requirements in matrix
+- **Traceability Update**:
+  - Add the task to the Traceability Matrix and ensure requirement coverage is reflected
+  - Maintain `Related Requirements` and `Related ADRs` within the design's Links section using the template wording
 
 ### Step 5: Plan & Execution (phases/tasks)
 
@@ -225,11 +181,13 @@ This project supports parallel development using git-worktree with unique IDs to
   - Context may be reset between phases (`/clear` command)
   - Critical information must be documented in phase deliverables
   - Dependencies between phases must be explicitly stated
-- **Traceability Update**: Update requirement status (Proposed → In Progress → Implemented → Verified) as work progresses
+- **Traceability Update**:
+  - Update requirement status (Proposed → In Progress → Implemented → Verified) as work progresses
+  - Keep the plan's `Links` section aligned with `Related Requirements` and `Related ADRs`
 
 ## Common Documentation Requirements
 
-These requirements apply to ALL documentation templates (Requirements, Design, Plan, and ADRs):
+These requirements apply to ALL documentation templates (Analysis, Requirements, ADRs, Task README, Design, and Plan):
 
 ### Document Structure
 
@@ -257,6 +215,19 @@ These requirements apply to ALL documentation templates (Requirements, Design, P
 - **Requirements Mapping**: Include Requirements Mapping table in Design documents
 - **Test References**: Reference IDs in tests where feasible
 
+**Link Label Conventions**
+
+| Template                 | Expected Link Labels                                                                                                 | Purpose                                               |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `analysis.md`            | `Related Analyses`, `Related Requirements`, `Related ADRs`                                                           | Capture downstream work discovered during exploration |
+| `requirements.md`        | `Related Analyses`, `Prerequisite Requirements`, `Dependent Requirements`, `Related ADRs`, `Related Tasks`           | Document requirement lineage and dependencies         |
+| `adr.md` / `adr-lite.md` | `Related Analyses`, `Impacted Requirements`, `Supersedes`, `Superseded By`, `Related Tasks`                          | Track architectural decisions and their impact        |
+| `task.md`                | `Related Analyses`, `Related Requirements`, `Related ADRs`, `Associated Plan Document`, `Associated Design Document` | Provide task entry-point context                      |
+| `design.md`              | `Related Requirements`, `Related ADRs`                                                                               | Preserve implementation context                       |
+| `plan.md`                | `Related Requirements`, `Related ADRs`                                                                               | Preserve implementation context                       |
+
+Use `N/A – <reason>` when a link grouping does not apply.
+
 ### Process Requirements
 
 - **Verification**: Use canonical cargo commands from `CLAUDE.md` in Verification blocks and Definition of Done
@@ -269,6 +240,7 @@ These requirements apply to ALL documentation templates (Requirements, Design, P
 - **Source of Truth**: Each document's Links section maintains its relationships
 - **Analysis → Requirements**: Track in analysis document's Links section
 - **Requirements → Tasks**: Track in task document's Links section
+- **Requirement Dependencies**: Record prerequisites and dependents in requirement documents so the generated Requirement Dependencies table remains accurate
 - **In-Doc Links**: All documents must maintain Links sections for traceability
 - **Tests**: Reference `FR-<id>`/`NFR-<id>` in test names or comments when feasible
 - **Review Order**: Analysis (exploration) → Requirements (scope) → ADR (decisions) → Design (architecture) → Plan (execution)
@@ -281,6 +253,7 @@ Traceability is maintained through Links sections in each document and viewed on
 ./scripts/trace-status.ts        # Full status
 ./scripts/trace-status.ts --gaps # Only gaps
 ./scripts/trace-status.ts --check # CI mode
+# Add --write (optionally with =<path>) to emit `docs/traceability.md`, including the Traceability Matrix and Requirement Dependencies tables
 ```
 
 **→ See [`parallel-development.md`](parallel-development.md) for implementation details**
