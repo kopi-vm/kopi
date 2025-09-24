@@ -11,10 +11,10 @@
 <!-- Internal project artifacts only. For external resources, see External References section -->
 
 - Analysis: AN-<id> | N/A – <reason>
-- ADRs: ADR-<id> | N/A – No ADRs
 - Depends on: FR-<id>, NFR-<id> | N/A – No dependencies
 - Blocks: FR-<id>, NFR-<id> | N/A – Blocks nothing
-- Tasks: T-<id>-<task> | N/A – Not yet implemented
+- ADRs: ADR-<id> | N/A – No ADRs
+- Tasks: T-<id> | N/A – Not yet implemented
 
 ## Requirement Statement
 

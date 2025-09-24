@@ -12,9 +12,8 @@
 
 - Analysis: AN-<id> | N/A – <reason>
 - Requirements: FR-<id>, NFR-<id> | N/A – <reason>
-- Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
-- Plan: docs/tasks/T-<id>-<task>/plan.md | N/A – <reason>
 - ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
+- Tasks: T-<id> | N/A – Not yet implemented
 
 ## Context
 

@@ -11,7 +11,6 @@
 <!-- Internal project artifacts only. For external resources, see External References section -->
 
 - Requirements: FR-<id>, NFR-<id> | N/A – <reason>
-- Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
 - ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
 
 ## Overview
