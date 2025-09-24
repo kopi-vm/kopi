@@ -3,94 +3,91 @@
 ## Metadata
 
 - Type: Design
-- Owner: Backend Team Lead
-- Reviewers: Platform Architect, Senior Engineers
 - Status: Approved
   <!-- Draft: Work in progress | In Review: Awaiting technical review | Approved: Ready for implementation -->
 
 ## Links
 
-<!-- Internal project artifacts only. For external resources, see External References section -->
+<!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-- Requirements: FR-twzx0-cache-metadata-ttl, FR-7y2x8-offline-mode, FR-0cv9r-cache-management, NFR-j3cf1-cache-performance, NFR-z0jyi-cache-size
-- Plan: [`docs/tasks/T-df1ny-cache-implementation/plan.md`](plan.md)
-- Related ADRs: [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md), ADR-ygma7-http-client-selection, ADR-6vgm3-progress-indicators
-- Issue: #234
-- PR: N/A – Not yet implemented
+- Related Requirements:
+  - [FR-twzx0-cache-metadata-ttl](../../requirements/FR-twzx0-cache-metadata-ttl.md)
+  - [FR-7y2x8-offline-mode](../../requirements/FR-7y2x8-offline-mode.md)
+  - [FR-0cv9r-cache-management](../../requirements/FR-0cv9r-cache-management.md)
+  - [NFR-j3cf1-cache-performance](../../requirements/NFR-j3cf1-cache-performance.md)
+  - [NFR-z0jyi-cache-size](../../requirements/NFR-z0jyi-cache-size.md)
+- Related ADRs:
+  - [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md)
+  - [ADR-ygma7-http-client-selection](../../adr/ADR-ygma7-http-client-selection.md)
 
 ## Overview
 
-This design implements a local caching layer for JDK metadata to reduce API calls and improve performance. The cache uses a TTL-based expiration strategy with checksum validation for data integrity.
+This design introduces a persistent cache for foojay.io metadata with TTL-based freshness checks to eliminate redundant network calls and ensure sub-100ms lookups for repeated queries.
 
 ## Success Metrics
 
-- [x] Cache lookups complete in <100ms (currently ~5000ms)
-- [x] 80% reduction in API calls during normal usage
-- [x] Zero data corruption incidents in production
+- [ ] Achieve ≥80% cache hit rate during normal CLI use.
+- [ ] Maintain cache lookups under 100ms at the 95th percentile.
+- [ ] Ensure zero regressions in JDK discovery workflows.
 
 ## Background and Current State
 
-- Context: Kopi fetches JDK metadata from foojay.io on every operation
-- Current behavior: Direct API calls with no caching, ~5s latency
-- Pain points: Slow searches, network dependency, API rate limits
-- Constraints: Must maintain backward compatibility
-- Related ADRs: ADR-ygma7-http-client-selection (Serialization Format), ADR-6vgm3-progress-indicators (Progress Indicators)
+- Context: Kopi retrieves remote metadata during version discovery and installation.
+- Current behavior: Each command performs a full API fetch, taking 3-5 seconds on average.
+- Pain points: Slow searches, inability to function offline, API rate limit pressure.
+- Constraints: No additional background services; must function on Windows, macOS, and Linux.
+- Related ADRs: ADR-ygma7-http-client-selection (HTTP client baseline), ADR-6vgm3-progress-indicators (rendering progress).
 
-## Requirements Summary
+## Requirements Summary (from requirements.md)
 
-Referenced Functional Requirements:
+Referenced Functional Requirements
 
-- **FR-twzx0-cache-metadata-ttl**: Cache JDK metadata locally with TTL
-- **FR-7y2x8-offline-mode**: Provide offline mode using cached data
-- **FR-0cv9r-cache-management**: Manual cache invalidation command
+- FR-twzx0-cache-metadata-ttl
+- FR-7y2x8-offline-mode
+- FR-0cv9r-cache-management
 
-Referenced Non-Functional Requirements:
+Referenced Non-Functional Requirements
 
-- **NFR-j3cf1-cache-performance**: Cache operations complete in <100ms
-- **NFR-z0jyi-cache-size**: Cache size under 100MB
-- **NFR-07c4m-concurrent-access**: Support concurrent access
+- NFR-j3cf1-cache-performance
+- NFR-z0jyi-cache-size
+- NFR-07c4m-concurrent-access
 
 ## Proposed Design
 
 ### High-Level Architecture
 
-```
-┌─────────────┐     ┌──────────────┐     ┌──────────────┐
-│   CLI       │────▶│ Cache Layer  │────▶│ foojay.io    │
-│  Commands   │     │              │     │    API       │
-└─────────────┘     └──────────────┘     └──────────────┘
-                           │
-                           ▼
-                    ┌──────────────┐
-                    │ Local Cache  │
-                    │   Storage    │
-                    └──────────────┘
+```text
+┌────────────┐      ┌────────────────┐      ┌──────────────┐
+│ CLI Command│ ───▶ │ Cache Orchestrator │ ─▶ │ foojay.io API│
+└────────────┘      └────────────────┘      └──────────────┘
+        │                     │
+        │                     ▼
+        │             ┌──────────────┐
+        └────────────▶│ Local Storage│
+                      └──────────────┘
 ```
 
 ### Components
 
-- `CacheStore`: SQLite-based storage (per ADR-bw6wd-cache-storage-format and FR-twzx0-cache-metadata-ttl)
-- `CacheManager`: TTL management and expiration (FR-twzx0-cache-metadata-ttl)
-- `OfflineHandler`: Fallback for network failures (FR-7y2x8-offline-mode)
-- `CacheCommands`: CLI commands for cache control (FR-0cv9r-cache-management)
+- `CacheOrchestrator`: Coordinates cache lookups, TTL checks, and fallback to the network.
+- `CacheStore`: SQLite-backed repository that persists metadata blobs and metadata about freshness.
+- `OfflineResolver`: Determines whether to rely on cached data when the network is unavailable.
+- `CacheCli`: Provides `kopi cache` subcommands for inspection, refresh, and clearing.
 
 ### Data Flow
 
-1. Command requests metadata
-2. CacheManager checks local cache
-3. If valid (TTL not expired), return cached data
-4. If invalid/missing, fetch from API
-5. Store with timestamp and checksum
-6. Return fresh data
+- Command requests metadata via `CacheOrchestrator`.
+- Orchestrator queries `CacheStore`; if entry is fresh, returns cached payload.
+- Stale or missing entries trigger a remote fetch, after which responses are stored with updated timestamps and checksums.
+- `OfflineResolver` short-circuits network calls when offline mode is enforced.
 
-### Storage Layout and Paths
+### Storage Layout and Paths (if applicable)
 
-- Cache root: `~/.kopi/cache/` (all platforms)
-- Database: `~/.kopi/cache/metadata.db` (SQLite, per ADR-bw6wd-cache-storage-format)
-- Config: TTL configured in `~/.kopi/config.toml`
-- Size limit: 100MB max (NFR-z0jyi-cache-size)
+- Cache root: `~/.kopi/cache/` (Unix) / `%LOCALAPPDATA%\kopi\cache\` (Windows).
+- Database: `metadata.db` (SQLite) containing tables for manifests and TTL metadata.
+- Temporary files: `metadata.tmp` within the cache directory for atomic writes.
 
-### CLI/API Design
+### CLI/API Design (if applicable)
 
 Usage
 
@@ -98,203 +95,177 @@ Usage
 kopi cache <subcommand> [options]
 ```
 
+Options
+
+- `info`: Display cache statistics and TTL status.
+- `refresh`: Force re-fetch of metadata, bypassing cache.
+- `clear`: Remove all cache entries.
+- `--offline`: Restrict commands to cached content only.
+
+Examples
+
+```bash
+kopi cache info
+kopi cache refresh --offline=false
+```
+
 Implementation Notes
 
-- Use existing clap command structure
-- Add `CacheCommand` enum with subcommands
-- Integrate with existing error handling
+- Extend the existing Clap configuration with a `cache` command tree.
+- Reuse progress indicator settings from ADR-6vgm3 to surface cache refresh status.
 
 ### Data Models and Types
 
-```rust
-pub struct CachedMetadata {
-    pub timestamp: DateTime<Utc>,
-    pub ttl_seconds: u64,
-    pub checksum: String,
-    pub data: MetadataContent,
-}
-
-pub struct CacheConfig {
-    pub default_ttl: Duration,
-    pub max_size_mb: u64,
-    pub location: PathBuf,
-}
-```
+- `CachedMetadata { id: String, payload: Vec<u8>, ttl_expires_at: DateTime<Utc>, checksum: String }`
+- `CacheConfig { default_ttl: Duration, max_size_mb: u64, location: PathBuf }`
 
 ### Error Handling
 
-- Use `KopiError::CacheCorrupted` for integrity failures
-- Use `KopiError::CacheExpired` for TTL expiration
-- Exit codes: 2 (invalid cache), 20 (network required but offline)
+- Use `KopiError::CacheExpired`, `KopiError::CacheCorrupted`, and `KopiError::OfflineUnavailable` with actionable messages.
+- Attach `ErrorContext` entries specifying cache path, TTL, and command parameters.
+- Exit codes: `2` for invalid cache data, `20` for enforced offline failures, `28` for disk write issues.
 
 ### Security Considerations
 
-- SHA256 checksums for cache integrity
-- Atomic file writes to prevent corruption
-- Validate JSON structure before parsing
-- No sensitive data in cache files
+- Strip credentials from request keys before persisting to cache.
+- Enforce file permissions `0o600` (Unix) and `FILE_GENERIC_READ|FILE_GENERIC_WRITE` (Windows).
+- Validate checksums before serving cached payloads.
 
 ### Performance Considerations
 
-- Memory-mapped files for large cache reads
-- Lazy loading of cache segments
-- Background refresh for nearly-expired cache
-- Progress indicators during refresh operations
+- Batch writes using transactions to minimize disk I/O.
+- Track hit/miss counters and log summary at `INFO` when `--verbose` is enabled.
+- Provide metrics hooks for future perf benchmarking.
 
 ### Platform Considerations
 
 #### Unix
 
-- Use flock for cache file locking
-- Respect XDG_CACHE_HOME if set
+- Respect `$XDG_DATA_HOME` overrides for cache location.
+- Support concurrent access via POSIX advisory locks.
 
 #### Windows
 
-- Use Windows file locking APIs
-- Store in %LOCALAPPDATA%\kopi\cache
+- Handle long path support (`\\?\` prefix) for cache directory.
+- Utilize Windows file locking primitives to avoid corruption.
 
 #### Filesystem
 
-- Handle case-insensitive filesystems
-- Support paths up to 260 chars on Windows
+- Normalize case when storing cache keys to avoid duplicate entries on case-insensitive filesystems.
+- Ensure atomic replace via `rename` semantics on supported platforms.
 
 ## ADR References
 
-<!-- Map key design decisions to ADRs -->
-
-| Design Decision              | ADR                                                                           | Status   | Requirement                 |
-| ---------------------------- | ----------------------------------------------------------------------------- | -------- | --------------------------- |
-| SQLite for cache storage     | [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md) | Accepted | FR-twzx0-cache-metadata-ttl |
-| TTL-based expiration         | ADR-6vgm3-progress-indicators                                                 | Accepted | FR-twzx0-cache-metadata-ttl |
-| Error handling with fallback | ADR-efx08-error-handling                                                      | Accepted | FR-7y2x8-offline-mode       |
+| Design Decision             | ADR                               | Status   |
+| --------------------------- | --------------------------------- | -------- |
+| Cache storage format        | ADR-bw6wd-cache-storage-format    | Accepted |
+| HTTP client selection       | ADR-ygma7-http-client-selection   | Accepted |
+| Progress rendering strategy | ADR-6vgm3-progress-indicators     | Accepted |
 
 ## Alternatives Considered
 
-1. JSON File Cache
-   - Pros: Human-readable, simple implementation
-   - Cons: Poor concurrent access, slow for large datasets
-   - Decision: Rejected due to NFR-j3cf1-cache-performance requirements
+1. In-memory cache only
+   - Pros: Simplest implementation, fastest lookups.
+   - Cons: No offline support; data lost between runs; fails FR-7y2x8.
+2. JSON file-based cache
+   - Pros: Human-readable, easy debugging.
+   - Cons: Slow for large payloads, concurrency concerns; fails NFR-j3cf1.
 
-2. Memory-only Cache
-   - Pros: Fastest possible access
-   - Cons: Lost on restart, doesn't support FR-7y2x8-offline-mode
-   - Decision: Rejected, doesn't meet requirements
+Decision Rationale
 
-3. Custom Binary Format
-   - Pros: Optimal performance and size
-   - Cons: Complex implementation, hard to debug
-   - Decision: Rejected, SQLite provides better tradeoffs
-
-Decision Rationale (ADR-bw6wd-cache-storage-format)
-
-- SQLite selected for ACID compliance and concurrent access (NFR-07c4m-concurrent-access)
-- Built-in with rusqlite, no external dependencies
-- Meets all performance requirements (NFR-j3cf1-cache-performance)
+SQLite provides transactional safety, cross-platform support, and performant queries while keeping implementation effort moderate.
 
 ## Migration and Compatibility
 
-- Backward compatibility: Old versions ignore cache files
-- Rollout plan: Feature flag `--enable-cache` for gradual adoption
-- Telemetry: Track cache hit rates and performance metrics
-- Deprecation: None required
+- Backward compatibility: Older Kopi clients ignore the cache directory safely.
+- Rollout plan: Feature flag `cache.enabled` defaults to true but can be toggled for staged adoption.
+- Telemetry: Record hit/miss metrics and average lookup time in debug logs for manual analysis.
+- Deprecation plan: None; legacy behavior remains available by disabling cache.
 
 ## Testing Strategy
 
 ### Unit Tests
 
-- `src/cache/mod.rs`: TTL calculation (FR-twzx0-cache-metadata-ttl), expiration logic
-- Mock SQLite operations for reliability
-- Test concurrent access patterns (NFR-07c4m-concurrent-access)
+- `src/cache/storage.rs`: TTL arithmetic and checksum validation.
+- `src/cache/orchestrator.rs`: Offline fallback and hit/miss counting.
 
 ### Integration Tests
 
-- `tests/cache_integration.rs`: End-to-end cache scenarios
-- Test concurrent access and corruption recovery
+- `tests/cache_cli.rs`: Validate CLI commands (`info`, `refresh`, `clear`).
+- `tests/cache_offline.rs`: Simulate offline usage and stale cache recovery.
 
-### External API Parsing
+### External API Parsing (if applicable)
 
-```rust
-#[test]
-fn test_foojay_response_parsing_fr_twzx0() {
-    let json = r#"{"result": [{"id": "abc", "version": "21.0.1"}]}"#;
-    let parsed: ApiResponse = serde_json::from_str(json).unwrap();
-    assert_eq!(parsed.result[0].version, "21.0.1");
-}
-```
+- Include captured foojay.io JSON in `tests/cache_parsing.rs` to validate schema compatibility.
 
-### Performance & Benchmarks
+### Performance & Benchmarks (if applicable)
 
-- `benches/cache_bench.rs`: Measure lookup times
-- Target: <100ms for cache hits
+- `benches/cache_lookup.rs`: Measure lookup times and log 95th percentile results.
 
 ## Implementation Plan
 
-- Phase 1: Core cache infrastructure (FR-twzx0-cache-metadata-ttl)
-- Phase 2: Offline mode support (FR-7y2x8-offline-mode)
-- Phase 3: Cache management commands (FR-0cv9r-cache-management)
-- See [`docs/tasks/T-df1ny-cache-implementation/plan.md`](plan.md) for details
+- Phase 1: Introduce `CacheStore` with SQLite tables and TTL enforcement.
+- Phase 2: Add `CacheOrchestrator` integration into existing CLI commands.
+- Phase 3: Deliver CLI tooling and offline mode refinements.
 
 ## Requirements Mapping
 
-| Requirement                 | Design Section               | Test(s) / Benchmark(s)    |
-| --------------------------- | ---------------------------- | ------------------------- |
-| FR-twzx0-cache-metadata-ttl | Storage Layout, Data Flow    | tests/cache_ttl.rs        |
-| FR-7y2x8-offline-mode       | OfflineHandler component     | tests/offline_mode.rs     |
-| FR-0cv9r-cache-management   | CLI/API Design               | tests/cache_commands.rs   |
-| NFR-j3cf1-cache-performance | Performance section          | benches/cache_bench.rs    |
-| NFR-z0jyi-cache-size        | Storage Layout (100MB limit) | tests/cache_size_limit.rs |
-| NFR-07c4m-concurrent-access | Concurrent Access            | tests/concurrent_cache.rs |
+| Requirement                 | Design Section                     | Test(s) / Benchmark(s)     |
+| --------------------------- | ---------------------------------- | -------------------------- |
+| FR-twzx0-cache-metadata-ttl | Data Flow, Storage Layout          | tests/cache_cli.rs         |
+| FR-7y2x8-offline-mode       | OfflineResolver, Testing Strategy  | tests/cache_offline.rs     |
+| FR-0cv9r-cache-management   | CLI/API Design                     | tests/cache_cli.rs         |
+| NFR-j3cf1-cache-performance | Performance Considerations         | benches/cache_lookup.rs    |
+| NFR-z0jyi-cache-size        | Storage Layout and Paths           | tests/cache_limits.rs      |
+| NFR-07c4m-concurrent-access | Platform Considerations (Unix/Win) | tests/cache_concurrency.rs |
 
 ## Documentation Impact
 
-- Update `docs/reference.md` with new cache commands
-- Add cache troubleshooting section to user docs
-- Document cache file format for debugging
+- Update `docs/reference.md` with `kopi cache` usage examples.
+- Coordinate with `../kopi-vm.github.io/` to publish user-facing cache guidance.
+- Reference ADR updates for cache eviction decisions when finalized.
 
 ## External References (optional)
 
-<!-- External standards, specifications, articles, or documentation only -->
-
-- [Caffeine Cache Design](https://github.com/ben-manes/caffeine/wiki/Design) - High-performance cache design patterns
+- [Caffeine Cache Design](https://github.com/ben-manes/caffeine/wiki/Design) - High-performance cache design patterns.
 
 ## Open Questions
 
-- Should we implement cache warming on startup? → Team → Design review
+- Do we need configurable per-namespace TTLs? → Platform Team → Q2 roadmap review.
 
 ## Appendix
 
 ### Diagrams
 
-```
+```text
 Cache State Machine:
     ┌──────┐
-    │ Empty │
-    └───┬───┘
-        │ fetch
-    ┌───▼───┐
-    │ Valid  │◄──── refresh
-    └───┬───┘
-        │ expire
-    ┌───▼───┐
-    │Expired│
-    └───────┘
+    │Empty │
+    └─┬────┘
+      │ fetch
+    ┌─▼────┐   refresh   ┌─────────┐
+    │Valid │────────────▶│Refreshing│
+    └─┬────┘             └────┬────┘
+      │ expire                 │ complete
+    ┌─▼────┐                   ▼
+    │Stale │◀──────────────────┘
+    └──────┘
 ```
 
 ### Examples
 
 ```bash
-# Force refresh
-kopi cache refresh --no-cache
+# Force refresh regardless of TTL
+kopi cache refresh --offline=false
 
-# Check cache status
-kopi cache info
-# Output: Cache age: 2 hours, Size: 1.2 MB, Entries: 145
+# Inspect cache statistics
+kopi cache info --verbose
 ```
 
 ### Glossary
 
-- TTL: Time To Live, duration before cache expiration
-- Checksum: Hash value for data integrity verification
+- TTL: Time to Live; duration before cached data is considered stale.
+- Checksum: SHA-256 digest validating payload integrity.
 
 ---
 

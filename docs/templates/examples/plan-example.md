@@ -3,43 +3,45 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Owner: Backend Team Lead
-- Reviewers: Senior Engineers, QA Lead
 - Status: Phase 2 In Progress
   <!-- Not Started: Planning complete, awaiting start | Phase X In Progress: Actively working | Blocked: External dependency | Under Review: Implementation complete | Completed: All phases done and verified -->
 
 ## Links
 
-<!-- Internal project artifacts only. For external resources, see External References section -->
+<!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-- Requirements: FR-twzx0-cache-metadata-ttl, FR-7y2x8-offline-mode, FR-0cv9r-cache-management, NFR-j3cf1-cache-performance, NFR-z0jyi-cache-size
-- Design: [`docs/tasks/T-df1ny-cache-implementation/design.md`](design.md)
-- Related ADRs: [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md), ADR-efx08-error-handling, ADR-6vgm3-progress-indicators
-- Issue: #234
-- PR: #256 (Phase 1), #267 (Phase 2 - WIP)
+- Related Requirements:
+  - [FR-twzx0-cache-metadata-ttl](../../requirements/FR-twzx0-cache-metadata-ttl.md)
+  - [FR-7y2x8-offline-mode](../../requirements/FR-7y2x8-offline-mode.md)
+  - [FR-0cv9r-cache-management](../../requirements/FR-0cv9r-cache-management.md)
+  - [NFR-j3cf1-cache-performance](../../requirements/NFR-j3cf1-cache-performance.md)
+  - [NFR-z0jyi-cache-size](../../requirements/NFR-z0jyi-cache-size.md)
+- Related ADRs:
+  - [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md)
+  - [ADR-6vgm3-progress-indicators](../../adr/ADR-6vgm3-progress-indicators.md)
 
 ## Overview
 
-Implementation of requirements FR-twzx0-cache-metadata-ttl (cache with TTL), FR-7y2x8-offline-mode (offline mode), and FR-0cv9r-cache-management (cache management) to improve performance and reduce API calls to foojay.io. This plan breaks down the work into three phases aligned with the requirements.
+Deliver the caching subsystem required to meet performance, offline, and management capabilities while reducing foojay.io traffic by more than 80%.
 
 ## Success Metrics
 
-- [x] Cache operations complete in <100ms
-- [x] 80% reduction in API calls verified
-- [ ] Zero cache corruption issues in 30-day production run
-- [x] All existing tests pass; no regressions in search functionality
+- [x] Cache operations complete in <100ms (95th percentile).
+- [x] 80% reduction in API calls observed via telemetry.
+- [ ] Zero cache corruption incidents across a 30-day soak test.
+- [x] All existing tests pass; no regressions in search functionality.
 
 ## Scope
 
-- Goal: Implement complete caching solution with TTL management
-- Non-Goals: Cache sharing between users, custom API endpoints
-- Assumptions: foojay.io API remains stable during implementation
-- Constraints: Must ship by end of Q1 2024
+- Goal: Provide resilient, TTL-based metadata caching with CLI controls.
+- Non-Goals: Multi-user cache sharing, distributed cache layers.
+- Assumptions: foojay.io API contract remains stable throughout execution.
+- Constraints: Must land before end of Q1 2025 with no new external services.
 
 ## Plan Summary
 
-- Phases: Core Infrastructure → CLI Integration → Performance Optimization
-- Timeline: 3 sprints (6 weeks total)
+- Phases: Core Storage → CLI + Offline Integration → Performance Hardening.
+- Timeline (optional): Target completion in 3 sprints (6 weeks).
 
 ---
 
@@ -47,224 +49,168 @@ Implementation of requirements FR-twzx0-cache-metadata-ttl (cache with TTL), FR-
 
 ### Goal
 
-Implement FR-twzx0-cache-metadata-ttl: Cache JDK metadata locally with TTL
+Implement persistent storage, TTL tracking, and checksum validation for cached metadata.
 
 ### Inputs
 
-- Requirements: FR-twzx0-cache-metadata-ttl, NFR-j3cf1-cache-performance, NFR-z0jyi-cache-size
 - Documentation:
-  - `/docs/adr/ADR-bw6wd-cache-storage-format.md` – SQLite storage decision
-  - `/docs/adr/ADR-efx08-error-handling.md` – Error types to implement
+  - `/docs/adr/ADR-bw6wd-cache-storage-format.md` – SQLite storage decision.
+  - `/docs/adr/ADR-efx08-error-handling.md` – Error taxonomy and exit codes.
 - Source Code to Modify:
-  - `/src/lib.rs` – Add cache module
-  - `/src/error.rs` – Add cache-specific errors
+  - `/src/cache/mod.rs` – New cache module entry point.
+  - `/src/error.rs` – Introduce cache-specific error variants.
 - Dependencies:
-  - Internal: `src/models/` – Metadata structures
-  - External crates: `sha2` – Checksum calculation
+  - Internal: `src/models/` – Metadata representations.
+  - External crates: `sha2` – Checksum calculation; `chrono` – Timestamp handling.
 
 ### Tasks
 
 - [x] **Cache Module Structure**
-  - [x] Create `src/cache/mod.rs`
-  - [x] Define `CacheManager` struct
-  - [x] Implement `MetadataCache` trait
+  - [x] Scaffold `CacheOrchestrator` and submodules.
+  - [x] Define traits for storage adapters.
 - [x] **Storage Implementation**
-  - [x] File I/O operations
-  - [x] Atomic writes with temp files
-  - [x] Platform-specific path handling
+  - [x] Create SQLite schema and migrations.
+  - [x] Implement atomic writes with temp files.
 - [x] **Validation Logic**
-  - [x] SHA256 checksum generation
-  - [x] TTL expiration checks
-  - [x] Corruption detection
+  - [x] TTL comparison helpers.
+  - [x] SHA-256 checksum verification.
 
 ### Deliverables
 
-- Working cache module with unit tests
-- Cache storage/retrieval functionality
-- Error handling for corruption cases
+- SQLite-backed cache capable of storing and loading metadata blobs with TTL metadata.
 
 ### Verification
 
 ```bash
-# Build and checks
 cargo check
 cargo fmt
 cargo clippy --all-targets -- -D warnings
-# Focused unit tests
 cargo test --lib --quiet cache
 ```
 
 ### Acceptance Criteria (Phase Gate)
 
-- Cache can store and retrieve metadata
-- Checksums validate correctly
-- TTL expiration works as designed
+- Cache persists metadata to disk and retrieves it within TTL windows.
+- Corruption detection triggers `KopiError::CacheCorrupted` with actionable context.
 
 ### Rollback/Fallback
 
-- Feature flag to disable cache entirely
-- Manual cache clear command available
+- Feature flag `cache.enabled=false` disables the system entirely.
+- Manual cleanup script removes cache directory if corruption occurs.
 
 ---
 
-## Phase 2: Offline Mode and CLI Integration (FR-7y2x8-offline-mode, FR-0cv9r-cache-management)
+## Phase 2: CLI Integration and Offline Mode (FR-7y2x8-offline-mode, FR-0cv9r-cache-management)
 
-### Goal
+### Phase 2 Goal
 
-Implement FR-7y2x8-offline-mode (offline mode) and FR-0cv9r-cache-management (cache management commands)
+Expose cache management commands and enable offline-first execution paths.
 
-### Inputs
+### Phase 2 Inputs
 
-- Requirements: FR-7y2x8-offline-mode, FR-0cv9r-cache-management
 - Dependencies:
-  - Phase 1: Core cache implementation (FR-twzx0-cache-metadata-ttl)
-  - `src/commands/` – Existing command structure
+  - Phase 1 artifacts must be available in `main`.
+  - CLI command registry located under `src/commands/`.
 - Source Code to Modify:
-  - `/src/commands/cache.rs` – New cache commands
-  - `/src/commands/search.rs` – Integrate cache lookups
+  - `/src/commands/cache.rs` – New `kopi cache` subcommands.
+  - `/src/commands/search.rs` – Integrate cache lookups.
 
-### Tasks
+### Phase 2 Tasks
 
-- [x] **Cache Commands (FR-0cv9r-cache-management)**
-  - [x] `cache refresh` implementation
-  - [x] `cache clear` implementation
-  - [ ] `cache info` implementation
-- [ ] **Offline Mode (FR-7y2x8-offline-mode)**
-  - [x] Modify search to use cache
-  - [ ] Add `--no-cache` flag support
-  - [ ] Add `--offline` flag for forced offline mode
-- [ ] **Configuration**
-  - [ ] Add cache settings to config.toml
-  - [ ] Environment variable overrides
+- [ ] **Cache CLI**
+  - [x] Implement `cache info` output with hit/miss statistics.
+  - [ ] Implement `cache clear` to remove persisted entries.
+- [ ] **Offline Execution**
+  - [x] Respect `--offline` flag across search/install flows.
+  - [ ] Add fallback messaging when fresh data is unavailable.
 
-### Deliverables
+### Phase 2 Deliverables
 
-- Complete cache command suite
-- Cache-aware search functionality
-- Configuration options
+- End-to-end CLI interactions (`info`, `refresh`, `clear`) and offline command support.
 
-### Verification
+### Phase 2 Verification
 
 ```bash
 cargo check
 cargo fmt
 cargo clippy --all-targets -- -D warnings
 cargo test --lib --quiet commands::cache
-# Integration tests
-cargo it cache_commands
+cargo test --test cache_integration
 ```
 
-### Acceptance Criteria (Phase Gate)
+### Phase 2 Acceptance Criteria
 
-- FR-7y2x8-offline-mode: Offline mode works with cached data
-- FR-0cv9r-cache-management: All cache management commands functional
-- NFR-j3cf1-cache-performance: Cache operations under 100ms
+- CLI commands manipulate cache state as expected.
+- Offline flag prevents network calls and surfaces clear messaging.
 
-### Rollback/Fallback
+### Phase 2 Rollback/Fallback
 
-- Existing direct API calls remain as fallback
-- Cache can be disabled via config
+- Hide cache subcommands behind feature flag if defects appear.
+- Provide troubleshooting guide to manually delete cache directory.
 
 ---
 
-## Phase 3: Performance Optimization (NFR-j3cf1-cache-performance, NFR-z0jyi-cache-size)
+## Phase 3: Performance Hardening and Telemetry
 
-### Goal
+### Phase 3 Goal
 
-Optimize for NFR-j3cf1-cache-performance (<100ms operations) and NFR-z0jyi-cache-size (size under 100MB)
+Ensure cache meets non-functional requirements and add observability.
 
-### Inputs
+### Phase 3 Inputs
 
 - Dependencies:
-  - Phase 2: Complete cache implementation
-  - Performance baseline measurements
+  - Phase 2 functionality merged and available for benchmarking.
 - Source Code to Modify:
-  - `/src/cache/` – Performance improvements
+  - `/benches/cache_lookup.rs` – Benchmark harness.
+  - `/src/telemetry/` – Hook cache metrics.
 
-### Tasks
+### Phase 3 Tasks
 
-- [ ] **Performance Tuning**
-  - [ ] Implement memory-mapped files for large caches
-  - [ ] Add lazy loading for cache segments
-  - [ ] Background refresh for expiring cache
-- [ ] **Monitoring**
-  - [ ] Cache hit/miss metrics
-  - [ ] Performance counters
-  - [ ] Debug logging improvements
-- [ ] **Testing**
-  - [ ] Load testing with large metadata sets
-  - [ ] Concurrent access testing
-  - [ ] Platform-specific testing
+- [ ] **Benchmarking**
+  - [ ] Capture baseline and optimized lookup timings.
+  - [ ] Validate disk usage under repeated refresh cycles.
+- [ ] **Telemetry Hooks**
+  - [ ] Emit hit/miss counters via existing logging framework.
+  - [ ] Document manual verification steps.
 
-### Deliverables
+### Phase 3 Deliverables
 
-- Optimized cache with <100ms lookups
-- Monitoring and metrics
-- Complete test coverage
+- Benchmark results published in task notes.
+- Logging output demonstrating cache health indicators.
 
-### Verification
+### Phase 3 Verification
 
 ```bash
-cargo fmt
-cargo clippy --all-targets -- -D warnings
-# Performance benchmarks
-cargo bench cache
-# Load tests
-cargo test --features perf-tests
+cargo bench cache_lookup
+cargo test --lib --quiet telemetry
 ```
 
-### Acceptance Criteria (Phase Gate)
+### Phase 3 Acceptance Criteria
 
-- Cache lookups consistently <100ms
-- No performance degradation under load
-- Metrics show 80%+ cache hit rate
+- Meets NFR-j3cf1-cache-performance and NFR-z0jyi-cache-size targets.
+- Provides observable metrics for ongoing monitoring.
 
----
+### Phase 3 Rollback/Fallback
 
-## Testing Strategy
-
-### Unit Tests
-
-- Test each cache operation in isolation (FR-twzx0-cache-metadata-ttl)
-- Mock SQLite operations for reliability
-- Test TTL expiration logic (FR-twzx0-cache-metadata-ttl)
-
-### Integration Tests
-
-- End-to-end cache scenarios (FR-twzx0-cache-metadata-ttl, FR-7y2x8-offline-mode)
-- Concurrent access patterns (NFR-07c4m-concurrent-access)
-- Offline mode functionality (FR-7y2x8-offline-mode)
-- Cache management commands (FR-0cv9r-cache-management)
-
-### External API Parsing
-
-- Captured foojay.io responses in tests
-- Verify parsing with real data
-
-### Performance & Benchmarks
-
-- Benchmark cache operations
-- Compare with direct API calls
-- Monitor memory usage
+- Disable telemetry hooks if they introduce regressions; keep core cache active.
 
 ---
 
-## Platform Matrix
+## Platform Matrix (if applicable)
 
 ### Unix
 
-- Test on Ubuntu 22.04, macOS 14
-- Verify XDG_CACHE_HOME support
+- Verify cache directory honors `$XDG_DATA_HOME` when set.
+- Ensure file permissions default to `0o600`.
 
 ### Windows
 
-- Test on Windows 11
-- Verify %LOCALAPPDATA% usage
+- Validate `%LOCALAPPDATA%` paths and long path handling.
+- Confirm file locking prevents concurrent corruption.
 
 ### Filesystem
 
-- Test case-insensitive filesystems
-- Verify long path support
+- Test on case-insensitive filesystems and with long paths.
 
 ---
 
@@ -272,27 +218,27 @@ cargo test --features perf-tests
 
 ### External Crates
 
-- `sha2 = "0.10"` – Checksum calculation
-- `chrono = "0.4"` – Timestamp handling
+- `rusqlite` – SQLite access.
+- `sha2` – Digest computation.
 
 ### Internal Modules
 
-- `src/models/` – Metadata structures
-- `src/error/` – Error types
+- `src/models/` – Metadata serialization.
+- `src/telemetry/` – Metrics plumbing.
 
 ---
 
 ## Risks & Mitigations
 
-1. Risk: Cache corruption during concurrent access
-   - Mitigation: File locking implementation
-   - Validation: Concurrent access tests
-   - Fallback: Auto-recovery on corruption
+1. Risk: Cache corruption during concurrent writes.
+   - Mitigation: Use transactional writes and file locking.
+   - Validation: Stress tests with concurrent commands.
+   - Fallback: Auto-rebuild cache on corruption detection.
 
-2. Risk: Performance regression in search
-   - Mitigation: Comprehensive benchmarking
-   - Validation: A/B testing with/without cache
-   - Fallback: Feature flag to disable
+2. Risk: Missed TTL refresh leading to stale data.
+   - Mitigation: Include TTL checks before every cache read.
+   - Validation: CLI integration tests enforce expected refresh behavior.
+   - Fallback: Provide `kopi cache refresh` guidance in troubleshooting docs.
 
 ---
 
@@ -300,12 +246,12 @@ cargo test --features perf-tests
 
 ### CLI/Behavior Changes
 
-- Update `docs/reference.md` with cache commands
-- Add cache section to troubleshooting guide
+- Update `docs/reference.md` with new cache commands and flags.
+- Provide troubleshooting entry for stale cache scenarios.
 
 ### ADR Impact
 
-- Consider ADR for cache eviction strategy if needed
+- Follow up with eviction policy ADR if future iterations require LRU behavior.
 
 ---
 
@@ -313,18 +259,15 @@ cargo test --features perf-tests
 
 ### Error Handling
 
-- Use `KopiError::CacheCorrupted` for integrity failures
-- Clear error messages with recovery suggestions
+- Emit precise `KopiError` variants with remediation guidance; avoid generic failures.
 
 ### Naming & Structure
 
-- Avoid generic names like `Manager` or `Utils`
-- Use specific names like `CacheStore`, `MetadataRepository`
+- Prefer descriptive component names like `CacheOrchestrator`; avoid vague labels such as `Manager` or `Util`.
 
 ### Safety & Clarity
 
-- No `unsafe` code in cache implementation
-- Prefer clarity over micro-optimizations
+- No `unsafe` blocks; favor readability over premature optimization.
 
 ---
 
@@ -335,40 +278,38 @@ cargo test --features perf-tests
 - [x] `cargo clippy --all-targets -- -D warnings`
 - [x] `cargo test --lib --quiet`
 - [ ] Integration/perf/bench: `cargo it`, `cargo perf`, `cargo bench`
-- [ ] Requirements verified: FR-twzx0-cache-metadata-ttl, FR-7y2x8-offline-mode, FR-0cv9r-cache-management functional
-- [ ] Performance: NFR-j3cf1-cache-performance (<100ms), NFR-z0jyi-cache-size (<100MB) met
-- [ ] `docs/reference.md` updated with cache commands
-- [ ] ADRs added for significant decisions
+- [ ] Requirements verified: FR-twzx0, FR-7y2x8, FR-0cv9r, NFR-j3cf1, NFR-z0jyi
+- [ ] Performance targets met (<100ms hits, <100MB storage)
+- [ ] `docs/reference.md` updated for user-facing changes
+- [ ] ADRs written for any additional design decisions
 - [x] Error messages actionable and in English
 - [ ] Platform verification completed (Unix/Windows)
-- [x] No `unsafe` and no vague naming (no "manager"/"util")
+- [x] No `unsafe` and no vague naming
 
 ---
 
 ## Status Tracking
 
-- Phase 1: Completed 2024-02-01
-- Phase 2: In Progress (70% complete)
-- Phase 3: Not Started
+- Phase 1: Completed 2025-01-31
+- Phase 2: In progress (70% complete)
+- Phase 3: Not started
 
 ---
 
 ## External References (optional)
 
-<!-- External standards, specifications, articles, or documentation only -->
-
-- [Git Index Format](https://git-scm.com/docs/index-format) - Efficient cache file format reference
+- [Git Index Format](https://git-scm.com/docs/index-format) - Efficient cache file format reference.
 
 ## Open Questions
 
-- Should cache warm on startup? → Team → Sprint planning
-- Max cache size limits? → SRE → Capacity planning
+- Should cache warming run at startup? → Team → Sprint planning.
+- Do we need configurable TTL per namespace? → SRE → Capacity planning.
 
 ---
 
 ## Visual/UI Reference (optional)
 
-```
+```text
 $ kopi cache info
 Cache Status: Valid
 Location: /home/user/.kopi/cache/

@@ -2,66 +2,54 @@
 
 ## Metadata
 
-- ID: FR-twzx0-cache-metadata-ttl
 - Type: Functional Requirement
-- Category: Performance, Caching
-- Priority: P0 (Critical)
-- Owner: Backend Team Lead
-- Reviewers: Platform Team, SRE Team
 - Status: Implemented
+  <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
 
 ## Links
 
-<!-- Internal project artifacts only -->
+<!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-- Implemented by Tasks: [`T-df1ny-cache-implementation`](../../tasks/T-df1ny-cache-implementation/), [`T-h5ys6-cache-config`](../../tasks/T-h5ys6-cache-config/)
-- Related Requirements: FR-7y2x8-offline-mode (Offline Mode), NFR-j3cf1-cache-performance (Cache Performance)
-- Related ADRs: [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md) (SQLite for cache storage)
-- Tests: `test_cache_ttl_fr_twzx0`, `test_cache_hit_rate_fr_twzx0`, `bench_cache_performance_nfr_j3cf1`
-- Issue: #234
-- PR: #567
+- Related Analyses:
+  - [AN-21-cache-optimization](../../analysis/AN-21-cache-optimization.md)
+- Prerequisite Requirements:
+  - N/A – First requirement in caching track
+- Dependent Requirements:
+  - [FR-7y2x8-offline-mode](../../requirements/FR-7y2x8-offline-mode.md)
+- Related ADRs:
+  - [ADR-bw6wd-cache-storage-format](../../adr/ADR-bw6wd-cache-storage-format.md)
+- Related Tasks:
+  - [T-df1ny-cache-implementation](../../tasks/T-df1ny-cache-implementation/README.md)
 
 ## Requirement Statement
 
-The system shall cache JDK metadata from the foojay.io API locally with a configurable Time-To-Live (TTL), defaulting to 3600 seconds, to reduce redundant network calls and improve response times.
+The system shall cache foojay.io metadata locally with a configurable Time-To-Live (TTL), defaulting to 3600 seconds, to reduce redundant network calls and improve response times.
 
 ## Rationale
 
-Analysis showed that 78% of API requests retrieve identical metadata within a 24-hour period. Network calls to foojay.io take 3-5 seconds on average, while cached queries can complete in under 100ms. Implementing local caching will significantly improve user experience and reduce API server load.
+Telemetry shows 78% of API requests retrieve identical metadata within a 24-hour window. Each network call introduces 3-5 seconds of latency, while cached responses complete in <100ms. Local caching drastically improves user experience and lowers foojay.io load.
 
-## User Story
+## User Story (if applicable)
 
-As a Kopi user, I want JDK metadata to be cached locally, so that repeated searches and operations are fast and don't require network calls every time.
+As a Kopi user, I want metadata to be cached locally so that repeated searches run quickly even when I have intermittent connectivity.
 
 ## Acceptance Criteria
 
-- [x] Metadata is stored in local SQLite database at `~/.kopi/cache/metadata.db`
-- [x] Cache TTL is configurable via `cache.ttl_seconds` in config.toml
-- [x] Default TTL is 3600 seconds (1 hour)
-- [x] Cache hit rate exceeds 90% for repeated queries within TTL period
-- [x] Expired cache entries are automatically refreshed on next access
-- [x] Cache operations handle concurrent access correctly
-- [x] Cache can be manually cleared with `kopi cache clear` command
-- [x] Cache respects ETag headers when available
+- [x] Metadata persists to `~/.kopi/cache/metadata.db` (Unix) or `%LOCALAPPDATA%\kopi\cache\metadata.db` (Windows).
+- [x] Default TTL is 3600 seconds and configurable via `cache.ttl_seconds` in `config.toml`.
+- [x] Cache hit rate exceeds 90% for repeated queries within the TTL window.
+- [x] Expired entries automatically refresh on the next access.
+- [x] Cache can be cleared via `kopi cache clear`.
+- [x] Concurrent access across multiple Kopi processes remains safe.
+- [x] Cache respects ETag headers when provided by foojay.io.
 
-## Technical Details
+## Technical Details (if applicable)
 
 ### Functional Requirement Details
 
-**Cache Storage:**
-
-- Location: `~/.kopi/cache/metadata.db`
-- Format: SQLite database (per ADR-bw6wd-cache-storage-format)
-- Schema includes: metadata content, timestamp, ETag, TTL
-
-**Cache Behavior:**
-
-- On cache miss: Fetch from API, store with timestamp
-- On cache hit within TTL: Return cached data
-- On cache hit beyond TTL: Fetch fresh data, update cache
-- On API failure with stale cache: Use stale cache with warning
-
-**Configuration:**
+- Cache entries store payload, checksum, TTL expiration timestamp, and source ETag.
+- Fresh entries are served directly; stale entries trigger a network refresh with fallback to stale data if offline.
+- Configuration surface:
 
 ```toml
 [cache]
@@ -70,84 +58,52 @@ ttl_seconds = 3600
 max_size_mb = 100
 ```
 
-## Verification Method
+### Non-Functional Requirement Details
 
-### Test Strategy
-
-- Test Type: Unit, Integration, Benchmark
-- Test Location: `tests/cache_tests.rs`, `src/cache/mod.rs#[cfg(test)]`
-- Test Names: `test_cache_ttl_fr_0001`, `bench_cache_hit_rate_fr_0001`
-
-### Verification Commands
-
-```bash
-# Unit tests for cache TTL logic
-cargo test test_cache_ttl
-
-# Integration test for cache behavior
-cargo test --test cache_integration
-
-# Benchmark cache performance
-cargo bench bench_cache_performance
-
-# Manual verification
-kopi cache refresh
-sleep 3601  # Wait for TTL to expire
-kopi cache refresh  # Should fetch fresh data
-```
-
-### Success Metrics
-
-- Cache hit rate > 90% within TTL period
-- Cache miss fetches complete in < 5 seconds
-- Cache hit queries complete in < 100ms
-- Zero data corruption over 10,000 read/write cycles
-
-## Dependencies
-
-- Depends on: N/A – No dependencies
-- Blocks: FR-0002 (Offline mode requires cache to function)
+- Performance: Cache hit latency ≤100ms at P95, measured via integration benchmarks.
+- Reliability: Cache recovers from corruption by rebuilding after checksum failure.
+- Compatibility: Works on Windows, macOS, and Linux using platform-specific paths.
 
 ## Platform Considerations
 
 ### Unix
 
-- Cache directory: `~/.kopi/cache/`
-- File permissions: 0600 (user read/write only)
+Cache stored at `~/.kopi/cache/metadata.db` with permissions set to `0o600`.
 
 ### Windows
 
-- Cache directory: `%USERPROFILE%\.kopi\cache\`
-- Uses Windows file locking for concurrent access
+Cache stored at `%LOCALAPPDATA%\kopi\cache\metadata.db` with user-only access control.
 
 ### Cross-Platform
 
-- SQLite handles platform differences transparently
-- Path separators normalized by Rust's std::path
+Cache keys normalize casing and path separators to avoid duplicates on case-insensitive filesystems.
 
 ## Risks & Mitigation
 
-| Risk                  | Impact | Likelihood | Mitigation                        | Validation              |
-| --------------------- | ------ | ---------- | --------------------------------- | ----------------------- |
-| Cache corruption      | High   | Low        | SQLite ACID properties, checksums | Integrity tests on read |
-| Disk space exhaustion | Medium | Low        | 100MB size limit, auto-cleanup    | Monitor cache size      |
-| Stale data served     | Low    | Medium     | TTL expiration, ETag validation   | Timestamp checks        |
+| Risk                  | Impact | Likelihood | Mitigation                            | Validation                          |
+| --------------------- | ------ | ---------- | ------------------------------------- | ----------------------------------- |
+| Cache corruption      | High   | Low        | Atomic writes with temp files         | Integration tests simulate crashes  |
+| Disk space exhaustion | Medium | Low        | Enforce 100MB limit and cleanup tasks | Monitor cache size during testing   |
+| Serving stale data    | Low    | Medium     | TTL enforcement and ETag validation   | Automated tests cover TTL rollover  |
 
 ## Implementation Notes
 
-- Use `rusqlite` crate for SQLite access
-- Implement connection pooling for concurrent access
-- Use `tokio::sync::RwLock` for in-memory cache layer
-- Consider bloom filter for quick existence checks
-- Log cache hits/misses at DEBUG level for monitoring
+- Use `rusqlite` with WAL mode for concurrent reads.
+- Emit cache hit/miss metrics at `DEBUG` level to aid troubleshooting.
+- Document manual cache clear steps in troubleshooting guides.
 
 ## External References
 
-- [SQLite Write-Ahead Logging](https://sqlite.org/wal.html) - For concurrent access
-- [HTTP ETag](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag) - Cache validation
+- [SQLite Write-Ahead Logging](https://sqlite.org/wal.html) - Concurrency strategy.
+- [HTTP ETag](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag) - Revalidation mechanism.
 
-## Change History
+---
 
-- 2024-01-15: Initial version
-- 2024-01-20: Added ETag support requirement
-- 2024-02-10: Marked as Implemented after PR #567
+## Template Usage
+
+For detailed instructions, see [Template Usage Instructions](../README.md#individual-requirement-template-requirementsmd) in the templates README.
+
+- Tasks:
+  - [T-df1ny-cache-implementation](../../tasks/T-df1ny-cache-implementation/README.md)
+
+<!--lint enable remark-validate-links -->

@@ -3,23 +3,23 @@
 ## Metadata
 
 - Type: ADR
-- Owner: Platform Team Lead
-- Reviewers: Backend Team, SRE Team
 - Status: Accepted
   <!-- Proposed: Under discussion | Accepted: Approved and to be implemented | Rejected: Considered but not approved | Deprecated: No longer recommended | Superseded: Replaced by another ADR -->
 
 ## Links
 
-<!-- Internal project artifacts only. The Links section is mandatory for traceability. If a link does not apply, use "N/A – <reason>". -->
+<!-- Internal project artifacts only. The Links section is mandatory for traceability. Replace or remove bullets as appropriate. -->
 
-- Requirements: [`docs/tasks/T-m20lm-caching/requirements.md`](../../tasks/T-m20lm-caching/requirements.md)
-- Design: [`docs/tasks/T-m20lm-caching/design.md`](../../tasks/T-m20lm-caching/design.md)
-- Plan: [`docs/tasks/T-m20lm-caching/plan.md`](../../tasks/T-m20lm-caching/plan.md)
-- Related ADRs: ADR-ygma7-http-client-selection, ADR-6vgm3-progress-indicators
-- Issue: #123
-- PR: #456
-- Supersedes: N/A – First caching strategy
-- Superseded by: N/A – Current version
+- Related Analyses:
+  - N/A – Standalone decision
+- Related Requirements:
+  - [FR-twzx0-cache-metadata-ttl](../../requirements/FR-twzx0-cache-metadata-ttl.md)
+  - [NFR-j3cf1-cache-performance](../../requirements/NFR-j3cf1-cache-performance.md)
+- Related ADRs:
+  - [ADR-ygma7-http-client-selection](../../adr/ADR-ygma7-http-client-selection.md)
+  - [ADR-6vgm3-progress-indicators](../../adr/ADR-6vgm3-progress-indicators.md)
+- Related Tasks:
+  - [T-df1ny-cache-implementation](../../tasks/T-df1ny-cache-implementation/README.md)
 
 ## Context
 
@@ -50,15 +50,15 @@ We will introduce a centralized cache layer with namespaced stores for HTTP, fil
 
 ### Considered Options (optional)
 
-- Per-feature ad-hoc caches
-- Centralized, namespaced cache (chosen)
-- No caching
+- Option A: Per-feature ad-hoc caches
+- Option B: Centralized, namespaced cache (chosen)
+- Option C: No caching
 
 ### Option Analysis (optional)
 
-- Ad-hoc — Pros: Simple locally | Cons: Inconsistent, duplicated logic
-- Centralized — Pros: Consistent, observable | Cons: Upfront design effort
-- No caching — Pros: Simpler | Cons: Slower repeated operations
+- Option A — Pros: Simple locally | Cons: Inconsistent, duplicated logic
+- Option B — Pros: Consistent, observable | Cons: Upfront design effort
+- Option C — Pros: Simpler | Cons: Slower repeated operations
 
 ## Rationale
 
@@ -93,7 +93,7 @@ kopi fetch --verbose  # prints cache stats at exit
 ```
 
 ```rust
-// Pseudocode
+// Pseudocode illustrating cache lookup with fallback
 let cache = Cache::open(namespace::HTTP)?;
 if let Some(v) = cache.get(key) { return Ok(v) }
 let v = fetch_remote()?;
@@ -120,13 +120,13 @@ cache.put(key, &v, Ttl::hours(1))?;
 <!-- Questions that arose during decision-making but don't block the decision -->
 
 - Should we implement cache pre-warming on startup? → Platform Team → Q2 planning
-- What's the optimal default TTL for different cache types? → SRE Team → Performance testing
+- What is the optimal default TTL for different cache types? → SRE Team → Performance testing
 
 ## External References (optional)
 
 <!-- External standards, specifications, articles, or documentation only -->
 
-- [HTTP Caching RFC 7234](https://tools.ietf.org/html/rfc7234) - HTTP caching semantics
+- [HTTP Caching RFC 7234](https://www.rfc-editor.org/rfc/rfc7234.html) - HTTP caching semantics
 - [Caffeine Cache](https://github.com/ben-manes/caffeine) - High-performance caching library design patterns
 
 ---
@@ -134,3 +134,8 @@ cache.put(key, &v, Ttl::hours(1))?;
 ## Template Usage
 
 For detailed instructions on using this template, see [Template Usage Instructions](../README.md#adr-templates-adrmd-and-adr-litemd) in the templates README.
+
+- Tasks:
+  - [T-df1ny-cache-implementation](../../tasks/T-df1ny-cache-implementation/README.md)
+
+<!--lint enable remark-validate-links -->
