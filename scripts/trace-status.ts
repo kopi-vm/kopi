@@ -46,6 +46,7 @@ export type TDLDocument = {
   readonly docType: DocumentType;
   readonly links: LinkMap;
   readonly status: string;
+  readonly metadataType: string;
   readonly title: string;
 };
 
@@ -59,8 +60,116 @@ export function makeTDLDocument(filePath: string): TDLDocument {
     docType: inferDocumentType(filename, filePath),
     links: parseDocumentLinks(content),
     status: extractDocumentStatus(content),
+    metadataType: extractDocumentMetadataType(content),
     title: extractDocumentTitle(content),
   };
+}
+
+function mergeTDLDocuments(
+  existing: TDLDocument,
+  incoming: TDLDocument,
+): TDLDocument {
+  const mergedLinks = mergeLinkMaps(existing.links, incoming.links);
+  const preferredForPath = preferDocument(
+    existing,
+    incoming,
+    documentSourcePriority,
+  );
+  const preferredForStatus = preferDocument(existing, incoming, statusPriority);
+  const preferredForTitle = preferDocument(
+    existing,
+    incoming,
+    documentSourcePriority,
+  );
+
+  const mergedDocType =
+    existing.docType === "unknown" && incoming.docType !== "unknown"
+      ? incoming.docType
+      : existing.docType;
+
+  const mergedMetadataType = selectMetadataType(existing, incoming);
+
+  return {
+    path: preferredForPath.path,
+    filename: preferredForPath.filename,
+    docId: existing.docId,
+    docType: mergedDocType,
+    links: mergedLinks,
+    status: preferredForStatus.status,
+    metadataType: mergedMetadataType,
+    title: preferredForTitle.title,
+  };
+}
+
+function mergeLinkMaps(first: LinkMap, second: LinkMap): LinkMap {
+  const merged: LinkMap = {};
+  const keys = new Set([...Object.keys(first), ...Object.keys(second)]);
+  for (const key of keys) {
+    const combined = [...(first[key] ?? []), ...(second[key] ?? [])]
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const unique = [...new Set(combined)].sort((a, b) => a.localeCompare(b));
+    if (unique.length > 0) {
+      merged[key] = unique;
+    }
+  }
+  return merged;
+}
+
+type PrioritySelector = (doc: TDLDocument) => number;
+
+function preferDocument(
+  existing: TDLDocument,
+  incoming: TDLDocument,
+  selector: PrioritySelector,
+): TDLDocument {
+  const existingScore = selector(existing);
+  const incomingScore = selector(incoming);
+  return incomingScore < existingScore ? incoming : existing;
+}
+
+function documentSourcePriority(doc: TDLDocument): number {
+  const name = doc.filename.toLowerCase();
+  if (name === "readme.md") return 0;
+  if (name === "plan.md") return 1;
+  if (name === "design.md") return 2;
+  return 5;
+}
+
+function statusPriority(doc: TDLDocument): number {
+  const base = isMeaningfulStatus(doc.status) ? 0 : 20;
+  return base + documentSourcePriority(doc);
+}
+
+function isMeaningfulStatus(status: string): boolean {
+  if (!status) return false;
+  if (status === "Unknown") return false;
+  return true;
+}
+
+function selectMetadataType(
+  existing: TDLDocument,
+  incoming: TDLDocument,
+): string {
+  const existingType = sanitizeMetadataType(existing.metadataType);
+  const incomingType = sanitizeMetadataType(incoming.metadataType);
+
+  const existingScore = metadataPriority(existing, existingType);
+  const incomingScore = metadataPriority(incoming, incomingType);
+
+  if (incomingScore < existingScore) return incomingType;
+  return existingType;
+}
+
+function sanitizeMetadataType(value: string | undefined): string {
+  if (!value) return "";
+  if (isTemplatePlaceholder(value)) return "";
+  return value.trim();
+}
+
+function metadataPriority(doc: TDLDocument, metadataType: string): number {
+  const base = metadataType ? 0 : 20;
+  return base + documentSourcePriority(doc);
 }
 
 export function extractDocumentId(
@@ -144,7 +253,11 @@ export function extractDocumentStatus(content: string | null): string {
   if (content === null) return "Unknown";
 
   const statusMatch = content.match(/^\s*-\s*Status:\s*(.+)$/m);
-  if (statusMatch) return statusMatch[1].trim();
+  if (statusMatch) {
+    const raw = statusMatch[1].split("<!--")[0].trim();
+    if (isTemplatePlaceholder(raw)) return "Unknown";
+    return raw;
+  }
 
   return "Unknown";
 }
@@ -153,6 +266,25 @@ export function extractDocumentTitle(content: string | null): string {
   if (content === null) return "";
   const match = content.match(/^#\s+(.+)$/m);
   return match ? match[1].trim() : "";
+}
+
+export function extractDocumentMetadataType(content: string | null): string {
+  if (content === null) return "";
+
+  const typeMatch = content.match(/^\s*-\s*Type:\s*(.+)$/m);
+  if (!typeMatch) return "";
+
+  const raw = typeMatch[1].split("<!--")[0].trim();
+  if (isTemplatePlaceholder(raw)) return "";
+  return raw;
+}
+
+function isTemplatePlaceholder(value: string): boolean {
+  if (!value) return true;
+  if (value.includes("|")) return true;
+  if (/^`.*`$/.test(value)) return true;
+  if (/^\[.*\]$/.test(value)) return true;
+  return false;
 }
 
 export function loadDocuments(repoRoot: string): Map<string, TDLDocument> {
@@ -203,7 +335,12 @@ export function loadDocuments(repoRoot: string): Map<string, TDLDocument> {
       }
 
       const doc = makeTDLDocument(filePath);
-      documents.set(doc.docId, doc);
+      const existing = documents.get(doc.docId);
+      if (existing) {
+        documents.set(doc.docId, mergeTDLDocuments(existing, doc));
+      } else {
+        documents.set(doc.docId, doc);
+      }
     }
   }
 
@@ -350,6 +487,51 @@ export function renderTraceabilityMarkdown(
     "analysis",
   );
   const adrsByRequirement = documentsByLinkingRequirement(documents, "adr");
+  const dependenciesByRequirement = new Map<string, Set<string>>();
+  const blocksByRequirement = new Map<string, Set<string>>();
+  const blockedByRequirement = new Map<string, Set<string>>();
+
+  const ensureSet = (
+    map: Map<string, Set<string>>,
+    key: string,
+  ): Set<string> => {
+    let bucket = map.get(key);
+    if (!bucket) {
+      bucket = new Set<string>();
+      map.set(key, bucket);
+    }
+    return bucket;
+  };
+
+  for (const requirement of requirementDocuments) {
+    const dependencyIds = new Set<string>([
+      ...(requirement.links.depends_on ?? []),
+      ...(requirement.links.blocked_by ?? []),
+      ...(requirement.links.requirements ?? []),
+    ]);
+
+    const dependencySet = ensureSet(
+      dependenciesByRequirement,
+      requirement.docId,
+    );
+    const blocksSet = ensureSet(blocksByRequirement, requirement.docId);
+    const blockedBySet = ensureSet(blockedByRequirement, requirement.docId);
+
+    for (const id of dependencyIds) {
+      dependencySet.add(id);
+      blockedBySet.add(id);
+      const parentBlocks = ensureSet(blocksByRequirement, id);
+      parentBlocks.add(requirement.docId);
+    }
+
+    for (const blockedId of requirement.links.blocks ?? []) {
+      blocksSet.add(blockedId);
+      const childBlockedBy = ensureSet(blockedByRequirement, blockedId);
+      childBlockedBy.add(requirement.docId);
+      const childDependencies = ensureSet(dependenciesByRequirement, blockedId);
+      childDependencies.add(requirement.docId);
+    }
+  }
 
   const lines: string[] = [];
   lines.push("# Kopi Traceability Overview");
@@ -413,6 +595,39 @@ export function renderTraceabilityMarkdown(
 
       lines.push(
         `| ${analysesCell} | ${adrsCell} | ${requirementLink} | ${statusCell} | ${tasksCell} |`,
+      );
+    }
+  }
+
+  lines.push("");
+  lines.push("### Requirement Dependencies");
+  lines.push("");
+
+  if (requirementDocuments.length === 0) {
+    lines.push("No requirement dependencies found.");
+  } else {
+    lines.push("| Requirement | Depends On | Blocks | Blocked By |");
+    lines.push("| --- | --- | --- | --- |");
+    for (const requirement of requirementDocuments) {
+      const requirementLink = formatPrimaryDoc(requirement, outputDir);
+      const dependsCell = formatLinkedDocs(
+        documents,
+        dependenciesByRequirement.get(requirement.docId) ?? [],
+        outputDir,
+      );
+      const blocksCell = formatLinkedDocs(
+        documents,
+        blocksByRequirement.get(requirement.docId) ?? [],
+        outputDir,
+      );
+      const blockedByCell = formatLinkedDocs(
+        documents,
+        blockedByRequirement.get(requirement.docId) ?? [],
+        outputDir,
+      );
+
+      lines.push(
+        `| ${requirementLink} | ${dependsCell} | ${blocksCell} | ${blockedByCell} |`,
       );
     }
   }
@@ -508,7 +723,7 @@ export function printStatus(
       if (!byType.has(docType)) continue;
       const docs = byType.get(docType);
       if (!docs) continue;
-      console.log(`\n  ${capitalize(docType)}s:`);
+      console.log(`\n  ${docTypeDisplayName(docType)}:`);
       const byStatus = new Map<string, number>();
       for (const doc of docs) {
         const status = doc.status;
@@ -579,6 +794,9 @@ export function* walkFiles(
 
 export function resolveLinkType(label: string): string | null {
   if (label.includes("requirement")) return "requirements";
+  if (label.includes("depend")) return "depends_on";
+  if (label.includes("blocked by")) return "blocked_by";
+  if (label.includes("block")) return "blocks";
   if (label.includes("analysis")) return "analyses";
   if (label.includes("adr")) return "adrs";
   if (label.includes("task")) return "tasks";
@@ -588,13 +806,25 @@ export function resolveLinkType(label: string): string | null {
 }
 
 export function extractIds(value: string): string[] {
-  const matches = value.match(/[A-Z]+-[0-9a-z]{4,5}|[A-Z]+-\d+/g);
+  const matches = value.match(/\b[A-Z]+-[0-9a-z]+\b/g);
   return matches ? matches : [];
 }
 
 export function capitalize(value: string): string {
   if (!value) return value;
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+const DOC_TYPE_DISPLAY_NAMES: Record<DocumentType, string> = {
+  analysis: "Analyses",
+  requirement: "Requirements",
+  adr: "ADRs",
+  task: "Tasks",
+  unknown: "Unknown Documents",
+};
+
+function docTypeDisplayName(docType: DocumentType): string {
+  return DOC_TYPE_DISPLAY_NAMES[docType] ?? capitalize(docType);
 }
 
 export function findRepoRoot(startDir: string): string | null {

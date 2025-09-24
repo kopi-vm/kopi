@@ -143,6 +143,12 @@ describe("extractDocumentStatus", () => {
   it("returns Unknown when absent", () => {
     expect(extractDocumentStatus("# Heading")).toBe("Unknown");
   });
+
+  it("treats template placeholders as Unknown", () => {
+    const placeholder =
+      "- Status: Proposed | Accepted | Implemented | Verified | Deprecated";
+    expect(extractDocumentStatus(placeholder)).toBe("Unknown");
+  });
 });
 
 describe("extractDocumentTitle", () => {
@@ -341,6 +347,39 @@ describe("traceability helpers", () => {
       "- FR-0002: No implementing task (Status: Backlog)",
     );
   });
+
+  it("merges links from task artifacts sharing the same ID", () => {
+    const repoRoot = createTempDir();
+
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-5000-new-feature.md",
+      "# FR-5000 New Feature\n- Status: Accepted\n",
+    );
+
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-5000-example/README.md",
+      "# T-5000 Example Task\n\n## Metadata\n- Type: Task\n- Status: Proposed\n\n## Links\n- Requirements: N/A – Pending plan updates\n",
+    );
+
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-5000-example/plan.md",
+      "# T-5000 Example Plan\n\n## Metadata\n- Type: Implementation Plan\n- Status: Phase 1 In Progress\n\n## Links\n- Related Requirements:\n  - [FR-5000-new-feature](../../requirements/FR-5000-new-feature.md)\n",
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const taskDoc = documents.get("T-5000");
+
+    expect(taskDoc).toBeDefined();
+    expect(taskDoc?.links.requirements).toEqual(["FR-5000"]);
+    expect(taskDoc?.status).toBe("Proposed");
+    expect(taskDoc?.metadataType).toBe("Task");
+    expect(taskDoc?.path.endsWith("README.md")).toBe(true);
+
+    expect(findImplementingTasks(documents, "FR-5000")).toEqual(["T-5000"]);
+  });
 });
 
 describe("printStatus", () => {
@@ -386,6 +425,8 @@ describe("printStatus", () => {
     expect(output).toContain("FR-1000");
     expect(output).toContain("T-2000");
     expect(output).toContain("Status by Document Type:");
+    expect(output).toContain("  Requirements:");
+    expect(output).toContain("  Tasks:");
   });
 
   it("suppresses summary when gapsOnly=true but still lists gaps", () => {
