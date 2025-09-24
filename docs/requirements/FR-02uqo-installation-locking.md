@@ -8,11 +8,18 @@
 
 ## Links
 
-- Analysis: AN-m9efc
-- ADRs: ADR-8mnaz
-- Depends on: N/A – No dependencies
-- Blocks: FR-gbsz6, FR-ui8x2, FR-v7ql4 (shared locking infrastructure)
-- Tasks: N/A – Not yet implemented
+- Related Analyses:
+  - [AN-m9efc-concurrent-process-locking](../analysis/AN-m9efc-concurrent-process-locking.md)
+- Prerequisite Requirements:
+  - N/A – No prerequisites
+- Dependent Requirements:
+  - [FR-gbsz6-lock-timeout-recovery](../requirements/FR-gbsz6-lock-timeout-recovery.md)
+  - [FR-ui8x2-uninstallation-locking](../requirements/FR-ui8x2-uninstallation-locking.md)
+  - [FR-v7ql4-cache-locking](../requirements/FR-v7ql4-cache-locking.md)
+- Related ADRs:
+  - [ADR-8mnaz-concurrent-process-locking-strategy](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+- Related Tasks:
+  - N/A – Not yet implemented
 
 ## Requirement Statement
 

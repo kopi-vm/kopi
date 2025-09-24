@@ -8,11 +8,16 @@
 
 ## Links
 
-- Analysis: AN-m9efc
-- ADRs: ADR-8mnaz
-- Depends on: FR-gbsz6 (timeout mechanism implementation)
-- Blocks: N/A – Blocks nothing
-- Tasks: N/A – Not yet implemented
+- Related Analyses:
+  - [AN-m9efc-concurrent-process-locking](../analysis/AN-m9efc-concurrent-process-locking.md)
+- Prerequisite Requirements:
+  - [FR-gbsz6-lock-timeout-recovery](../requirements/FR-gbsz6-lock-timeout-recovery.md)
+- Dependent Requirements:
+  - N/A – Blocks nothing
+- Related ADRs:
+  - [ADR-8mnaz-concurrent-process-locking-strategy](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+- Related Tasks:
+  - N/A – Not yet implemented
 
 ## Requirement Statement
 
