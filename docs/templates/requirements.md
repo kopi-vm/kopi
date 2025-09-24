@@ -11,9 +11,10 @@
 <!-- Internal project artifacts only. For external resources, see External References section -->
 
 - Analysis: AN-<id> | N/A – <reason>
-- Requirements: FR-<id>, NFR-<id> | N/A – <reason>
-- Plan: docs/tasks/T-<id>-<task>/plan.md | N/A – <reason>
-- Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
+- ADRs: ADR-<id> | N/A – No ADRs
+- Depends on: FR-<id>, NFR-<id> | N/A – No dependencies
+- Blocks: FR-<id>, NFR-<id> | N/A – Blocks nothing
+- Tasks: T-<id>-<task> | N/A – Not yet implemented
 
 ## Requirement Statement
 
@@ -60,35 +61,6 @@ The system shall `[constraint/quality attribute]` to ensure `[benefit/goal]`.
 - Reliability: `[Availability, retry behavior]`
 - Compatibility: `[Platform-specific requirements]`
 - Usability: `[UX requirements, message standards]`
-
-## Verification Method
-
-### Test Strategy
-
-- Test Type: Unit | Integration | Benchmark | Manual | E2E
-- Test Location: `tests/[file].rs` or `src/[module].rs#[cfg(test)]`
-- Test Names: `test_fr_<id>_description` or `bench_nfr_<id>_metric`
-
-### Verification Commands
-
-```bash
-# Specific commands to verify this requirement
-cargo test test_fr_<id>
-cargo bench bench_nfr_<id>
-# Platform-specific verification if needed
-```
-
-### Success Metrics
-
-`[How to measure that the requirement is successfully implemented]`
-
-- Metric 1: `[Specific measurement and target]`
-- Metric 2: `[Specific measurement and target]`
-
-## Dependencies
-
-- Depends on: FR-<id>, NFR-<id> | N/A – No dependencies
-- Blocks: FR-<id>, NFR-<id> | N/A – Blocks nothing
 
 ## Platform Considerations
 
