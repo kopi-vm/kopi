@@ -8,12 +8,11 @@
 
 ## Links
 
-- Implemented by Tasks: N/A – Not yet implemented
-- Related Requirements: FR-02uqo, FR-ui8x2, FR-v7ql4, NFR-z6kan
-- Related ADRs: ADR-8mnaz
-- Tests: N/A – Not yet tested
-- Issue: N/A – No tracking issue created yet
-- PR: N/A – Not yet implemented
+- Analysis: AN-m9efc
+- ADRs: ADR-8mnaz
+- Depends on: N/A – No dependencies
+- Blocks: FR-02uqo, FR-ui8x2, FR-v7ql4, NFR-z6kan (all rely on timeout behavior)
+- Tasks: N/A – Not yet implemented
 
 ## Requirement Statement
 
@@ -49,34 +48,6 @@ As a kopi user, I want lock acquisition to respect a configurable timeout and co
 ### Non-Functional Requirement Details
 
 N/A – Not applicable.
-
-## Verification Method
-
-### Test Strategy
-
-- Test Type: Integration
-- Test Location: `tests/timeout_tests.rs` (planned)
-- Test Names: `test_fr_gbsz6_timeout_exceeded`, `test_fr_gbsz6_timeout_priority`, `test_fr_gbsz6_infinite_timeout`
-
-### Verification Commands
-
-```bash
-# Specific commands to verify this requirement
-cargo test test_fr_gbsz6_timeout_exceeded
-cargo test test_fr_gbsz6_timeout_priority
-KOPI_LOCK_TIMEOUT=1 cargo test test_fr_gbsz6_env
-```
-
-### Success Metrics
-
-- Metric 1: Timeout expiration occurs within configured duration ±1 second in 99% of cases.
-- Metric 2: Configuration precedence selects the highest-priority source in 100% of tests covering all combinations.
-- Metric 3: Interrupt handling releases locks and cleans up within 1 second of signal receipt.
-
-## Dependencies
-
-- Depends on: N/A – No dependencies
-- Blocks: FR-02uqo, FR-ui8x2, FR-v7ql4, NFR-z6kan (all rely on timeout behavior)
 
 ## Platform Considerations
 

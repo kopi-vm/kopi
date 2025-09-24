@@ -8,12 +8,11 @@
 
 ## Links
 
-- Implemented by Tasks: N/A – Not yet implemented
-- Related Requirements: FR-gbsz6, NFR-vcxp8
-- Related ADRs: ADR-8mnaz
-- Tests: N/A – Not yet tested
-- Issue: N/A – No tracking issue created yet
-- PR: N/A – Not yet implemented
+- Analysis: AN-m9efc
+- ADRs: ADR-8mnaz
+- Depends on: FR-gbsz6 (timeout and contention handling)
+- Blocks: N/A – Blocks nothing
+- Tasks: N/A – Not yet implemented
 
 ## Requirement Statement
 
@@ -47,33 +46,6 @@ As a kopi user, I want metadata cache updates to occur safely without blocking r
 ### Non-Functional Requirement Details
 
 N/A – Not applicable.
-
-## Verification Method
-
-### Test Strategy
-
-- Test Type: Integration
-- Test Location: `tests/cache_locking_tests.rs` (planned)
-- Test Names: `test_fr_v7ql4_concurrent_writers`, `test_fr_v7ql4_reader_writer_concurrent`
-
-### Verification Commands
-
-```bash
-# Specific commands to verify this requirement
-cargo test test_fr_v7ql4_concurrent_writers
-cargo test test_fr_v7ql4_reader_writer_concurrent
-```
-
-### Success Metrics
-
-- Metric 1: Zero cache corruption incidents during 100 concurrent writer stress tests.
-- Metric 2: Reader latency impact remains under 5% when a writer is active.
-- Metric 3: Cache refresh completion time remains within baseline ±10% under contention.
-
-## Dependencies
-
-- Depends on: FR-gbsz6 (timeout and contention handling)
-- Blocks: N/A – Blocks nothing
 
 ## Platform Considerations
 

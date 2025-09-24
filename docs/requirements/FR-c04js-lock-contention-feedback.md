@@ -8,12 +8,11 @@
 
 ## Links
 
-- Implemented by Tasks: N/A – Not yet implemented
-- Related Requirements: FR-gbsz6
-- Related ADRs: ADR-8mnaz
-- Tests: N/A – Not yet tested
-- Issue: N/A – No tracking issue created yet
-- PR: N/A – Not yet implemented
+- Analysis: AN-m9efc
+- ADRs: ADR-8mnaz
+- Depends on: FR-gbsz6 (timeout configuration and signaling)
+- Blocks: N/A – Blocks nothing
+- Tasks: N/A – Not yet implemented
 
 ## Requirement Statement
 
@@ -49,34 +48,6 @@ As a kopi user, I want to understand when an operation is waiting for a lock and
 ### Non-Functional Requirement Details
 
 N/A – Not applicable.
-
-## Verification Method
-
-### Test Strategy
-
-- Test Type: Integration
-- Test Location: `tests/ui_feedback_tests.rs` (planned)
-- Test Names: `test_fr_c04js_wait_message`, `test_fr_c04js_progress_display`
-
-### Verification Commands
-
-```bash
-# Specific commands to verify this requirement
-cargo test test_fr_c04js_wait_message
-cargo test test_fr_c04js_progress_display
-cargo run -- install temurin@21 & cargo run -- install temurin@21
-```
-
-### Success Metrics
-
-- Metric 1: Lock wait message appears within 100 ms in 95% of observed waits.
-- Metric 2: Progress updates render at least once per second (TTY) or every 5 seconds (non-TTY).
-- Metric 3: User satisfaction rating for lock feedback improves in usability testing (baseline to be defined in UX research).
-
-## Dependencies
-
-- Depends on: FR-gbsz6 (timeout configuration and signaling)
-- Blocks: N/A – Blocks nothing
 
 ## Platform Considerations
 

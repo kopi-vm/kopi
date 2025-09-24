@@ -8,12 +8,11 @@
 
 ## Links
 
-- Implemented by Tasks: N/A – Not yet implemented
-- Related Requirements: FR-ui8x2, FR-v7ql4, FR-gbsz6, FR-c04js, NFR-vcxp8, NFR-g12ex
-- Related ADRs: ADR-8mnaz
-- Tests: N/A – Not yet tested
-- Issue: N/A – No tracking issue created yet
-- PR: N/A – Not yet implemented
+- Analysis: AN-m9efc
+- ADRs: ADR-8mnaz
+- Depends on: N/A – No dependencies
+- Blocks: FR-gbsz6, FR-ui8x2, FR-v7ql4 (shared locking infrastructure)
+- Tasks: N/A – Not yet implemented
 
 ## Requirement Statement
 
@@ -48,34 +47,6 @@ As a kopi user, I want the tool to acquire an exclusive installation lock before
 ### Non-Functional Requirement Details
 
 N/A – Not applicable.
-
-## Verification Method
-
-### Test Strategy
-
-- Test Type: Integration
-- Test Location: `tests/locking_tests.rs` (planned)
-- Test Names: `test_fr_02uqo_concurrent_install_lock`, `test_fr_02uqo_parallel_different_versions`, `test_fr_02uqo_crash_releases_lock`
-
-### Verification Commands
-
-```bash
-# Specific commands to verify this requirement
-cargo test test_fr_02uqo_concurrent_install_lock
-cargo test test_fr_02uqo_parallel_different_versions
-cargo test test_fr_02uqo_crash_releases_lock
-```
-
-### Success Metrics
-
-- Metric 1: Zero corrupted installations after 100 concurrent installation stress tests.
-- Metric 2: Lock acquisition time for uncontended locks remains below 100 ms.
-- Metric 3: Locks become available within 1 second after forced process termination in 100% of observed cases.
-
-## Dependencies
-
-- Depends on: N/A – No dependencies
-- Blocks: FR-gbsz6, FR-ui8x2, FR-v7ql4 (shared locking infrastructure)
 
 ## Platform Considerations
 

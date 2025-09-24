@@ -8,12 +8,11 @@
 
 ## Links
 
-- Implemented by Tasks: N/A – Not yet implemented
-- Related Requirements: FR-02uqo, FR-ui8x2, FR-v7ql4
-- Related ADRs: ADR-8mnaz
-- Tests: N/A – Not yet tested
-- Issue: N/A – No tracking issue created yet
-- PR: N/A – Not yet implemented
+- Analysis: AN-m9efc
+- ADRs: ADR-8mnaz
+- Depends on: N/A – No dependencies
+- Blocks: FR-02uqo, FR-ui8x2, FR-v7ql4 (all rely on reliable cleanup)
+- Tasks: N/A – Not yet implemented
 
 ## Requirement Statement
 
@@ -59,34 +58,6 @@ N/A – Not applicable.
 | NFS        | Unreliable   | Atomic operations |
 | SMB/CIFS   | Unreliable   | Atomic operations |
 
-## Verification Method
-
-### Test Strategy
-
-- Test Type: Integration
-- Test Location: `tests/lock_reliability_tests.rs` (planned)
-- Test Names: `test_nfr_vcxp8_crash_cleanup`, `test_nfr_vcxp8_network_fs_fallback`
-
-### Verification Commands
-
-```bash
-# Specific commands to verify this requirement
-cargo test test_nfr_vcxp8_crash_cleanup
-cargo test test_nfr_vcxp8_network_fs_fallback
-for i in {1..100}; do cargo test test_nfr_vcxp8_stress; done
-```
-
-### Success Metrics
-
-- Metric 1: Observed cleanup rate of 100% across 1000 forced termination iterations.
-- Metric 2: Lock reacquisition occurs within 1 second of process termination in 99% of cases.
-- Metric 3: Zero stale lock incidents reported across two release cycles.
-
-## Dependencies
-
-- Depends on: Rust `std::fs::File` locking API (1.89.0+)
-- Blocks: FR-02uqo, FR-ui8x2, FR-v7ql4 (all rely on reliable cleanup)
-
 ## Platform Considerations
 
 ### Unix
@@ -119,7 +90,7 @@ for i in {1..100}; do cargo test test_nfr_vcxp8_stress; done
 
 ## External References
 
-N/A – No external references
+- [`std::fs::File`](https://doc.rust-lang.org/std/fs/struct.File.html) - Rust standard library documentation for file locking behavior and cleanup semantics
 
 ---
 

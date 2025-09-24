@@ -8,12 +8,11 @@
 
 ## Links
 
-- Implemented by Tasks: N/A – Not yet implemented
-- Related Requirements: FR-gbsz6
-- Related ADRs: ADR-8mnaz
-- Tests: N/A – Not yet tested
-- Issue: N/A – No tracking issue created yet
-- PR: N/A – Not yet implemented
+- Analysis: AN-m9efc
+- ADRs: ADR-8mnaz
+- Depends on: FR-gbsz6 (timeout mechanism implementation)
+- Blocks: N/A – Blocks nothing
+- Tasks: N/A – Not yet implemented
 
 ## Requirement Statement
 
@@ -53,34 +52,6 @@ N/A – Not applicable.
 
 - Provide separate defaults per operation type if required (`install`: 600 s, `cache`: 60 s, `uninstall`: 300 s) while retaining global fallback.
 - Expose timeout configuration via CLI flag, environment variable, and config file consistent with FR-gbsz6.
-
-## Verification Method
-
-### Test Strategy
-
-- Test Type: Benchmark
-- Test Location: `benches/lock_performance.rs` (planned)
-- Test Names: `bench_nfr_z6kan_lock_overhead`, `bench_nfr_z6kan_timeout_accuracy`
-
-### Verification Commands
-
-```bash
-# Specific commands to verify this requirement
-cargo bench bench_nfr_z6kan_lock_overhead
-cargo bench bench_nfr_z6kan_timeout_accuracy
-cargo test test_nfr_z6kan_timeout_accuracy
-```
-
-### Success Metrics
-
-- Metric 1: CPU usage during lock waits remains <0.1% of a single core averaged over 5 minutes.
-- Metric 2: Timeout triggers occur within ±1 second of configured values in 99% of benchmark samples.
-- Metric 3: Progress output updates at least once per second in TTY environments and every 5 seconds in non-TTY contexts.
-
-## Dependencies
-
-- Depends on: FR-gbsz6 (timeout mechanism implementation)
-- Blocks: N/A – Blocks nothing
 
 ## Platform Considerations
 

@@ -8,12 +8,11 @@
 
 ## Links
 
-- Implemented by Tasks: N/A – Not yet implemented
-- Related Requirements: FR-02uqo, FR-gbsz6
-- Related ADRs: ADR-8mnaz
-- Tests: N/A – Not yet tested
-- Issue: N/A – No tracking issue created yet
-- PR: N/A – Not yet implemented
+- Analysis: AN-m9efc
+- ADRs: ADR-8mnaz
+- Depends on: FR-02uqo (shared locking implementation)
+- Blocks: N/A – Blocks nothing
+- Tasks: N/A – Not yet implemented
 
 ## Requirement Statement
 
@@ -47,33 +46,6 @@ As a kopi user, I want uninstallation to guard against concurrent modifications,
 ### Non-Functional Requirement Details
 
 N/A – Not applicable.
-
-## Verification Method
-
-### Test Strategy
-
-- Test Type: Integration
-- Test Location: `tests/locking_tests.rs` (planned)
-- Test Names: `test_fr_ui8x2_concurrent_uninstall`, `test_fr_ui8x2_install_uninstall_conflict`
-
-### Verification Commands
-
-```bash
-# Specific commands to verify this requirement
-cargo test test_fr_ui8x2_concurrent_uninstall
-cargo test test_fr_ui8x2_install_uninstall_conflict
-```
-
-### Success Metrics
-
-- Metric 1: Zero partial directory removals observed in stress runs combining install and uninstall operations.
-- Metric 2: Lock acquisition latency for uncontended uninstalls remains under 100 ms.
-- Metric 3: Cleanup of metadata and shims completes within 500 ms after filesystem removal in 95% of tests.
-
-## Dependencies
-
-- Depends on: FR-02uqo (shared locking implementation)
-- Blocks: N/A – Blocks nothing
 
 ## Platform Considerations
 

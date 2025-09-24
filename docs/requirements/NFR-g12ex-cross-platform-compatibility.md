@@ -8,12 +8,11 @@
 
 ## Links
 
-- Implemented by Tasks: N/A – Not yet implemented
-- Related Requirements: FR-02uqo, FR-ui8x2, FR-v7ql4
-- Related ADRs: ADR-8mnaz
-- Tests: N/A – Not yet tested
-- Issue: N/A – No tracking issue created yet
-- PR: N/A – Not yet implemented
+- Analysis: AN-m9efc
+- ADRs: ADR-8mnaz
+- Depends on: N/A – No dependencies
+- Blocks: FR-02uqo, FR-ui8x2, FR-v7ql4 (all require cross-platform guarantees)
+- Tasks: N/A – Not yet implemented
 
 ## Requirement Statement
 
@@ -60,34 +59,6 @@ N/A – Not applicable.
 | All      | All                 | FAT32            | Degraded     |
 | All      | All                 | Network FS       | Fallback     |
 
-## Verification Method
-
-### Test Strategy
-
-- Test Type: Integration
-- Test Location: `tests/cross_platform_tests.rs` (planned)
-- Test Names: `test_nfr_g12ex_platform_behavior`, `test_nfr_g12ex_filesystem_support`
-
-### Verification Commands
-
-```bash
-# Specific commands to verify this requirement
-cargo test test_nfr_g12ex_platform_behavior
-cargo test test_nfr_g12ex_filesystem_support
-# CI workflows execute on Linux, macOS, Windows, and WSL runners
-```
-
-### Success Metrics
-
-- Metric 1: 100% pass rate for lock integration tests across all supported platforms in CI.
-- Metric 2: Identical log outputs for equivalent operations across platforms (line-by-line comparison allowance ± timestamps).
-- Metric 3: Zero platform-specific lock regressions reported across two release cycles.
-
-## Dependencies
-
-- Depends on: Rust `std::fs::File` locking API (1.89.0+)
-- Blocks: FR-02uqo, FR-ui8x2, FR-v7ql4 (all require cross-platform guarantees)
-
 ## Platform Considerations
 
 ### Unix
@@ -120,7 +91,7 @@ cargo test test_nfr_g12ex_filesystem_support
 
 ## External References
 
-N/A – No external references
+- [`std::fs::File`](https://doc.rust-lang.org/std/fs/struct.File.html) - Rust standard library documentation for file locking behavior across platforms
 
 ---
 
