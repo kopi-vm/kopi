@@ -8,13 +8,23 @@
 
 ## Links
 
-<!-- Internal project artifacts only. For external resources, see External References section -->
+<!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-- Analysis: AN-<id> | N/A – <reason>
-- Depends on: FR-<id>, NFR-<id> | N/A – No dependencies
-- Blocks: FR-<id>, NFR-<id> | N/A – Blocks nothing
-- ADRs: ADR-<id> | N/A – No ADRs
-- Tasks: T-<id> | N/A – Not yet implemented
+<!--lint disable remark-validate-links-->
+
+- Analysis:
+  - [AN-<id>-<topic>](../analysis/AN-<id>-<topic>.md)
+- Depends on:
+  - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
+  - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
+- Blocks:
+  - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
+- ADRs:
+  - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
+- Tasks:
+  - [T-<id>-<task>](../tasks/T-<id>-<task>/README.md)
+
+<!--lint enable remark-validate-links-->
 
 ## Requirement Statement
 
@@ -102,3 +112,8 @@ The system shall `[constraint/quality attribute]` to ensure `[benefit/goal]`.
 ## Template Usage
 
 For detailed instructions, see [Template Usage Instructions](README.md#individual-requirement-template-requirementsmd) in the templates README.
+
+- Tasks:
+  - [T-<id>-<task>](../tasks/T-<id>-<task>/README.md)
+
+<!--lint enable remark-validate-links -->

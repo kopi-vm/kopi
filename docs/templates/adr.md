@@ -8,12 +8,21 @@
 
 ## Links
 
-<!-- Internal project artifacts only. The Links section is mandatory for traceability. If a link does not apply, use "N/A – <reason>". -->
+<!-- Internal project artifacts only. The Links section is mandatory for traceability. Replace or remove bullets as appropriate. -->
 
-- Analysis: AN-<id> | N/A – <reason>
-- Requirements: FR-<id>, NFR-<id> | N/A – <reason>
-- ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
-- Tasks: T-<id> | N/A – Not yet implemented
+<!--lint disable remark-validate-links-->
+
+- Analysis:
+  - [AN-<id>-<topic>](../analysis/AN-<id>-<topic>.md)
+- Requirements:
+  - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
+  - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
+- ADRs:
+  - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
+- Tasks:
+  - [T-<id>-<task>](../tasks/T-<id>-<task>/README.md)
+
+<!--lint enable remark-validate-links-->
 
 ## Context
 
@@ -121,3 +130,8 @@ kopi <command> `[args]`
 ## Template Usage
 
 For detailed instructions on using this template, see [Template Usage Instructions](README.md#adr-templates-adrmd-and-adr-litemd) in the templates README.
+
+- Tasks:
+  - [T-<id>-<task>](../tasks/T-<id>-<task>/README.md)
+
+<!--lint enable remark-validate-links -->

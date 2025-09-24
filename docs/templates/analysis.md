@@ -8,11 +8,19 @@
 
 ## Links
 
-<!-- Internal project artifacts only -->
+<!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-- Analysis: AN-<id> | N/A – <reason>
-- Requirements: FR-<id>, NFR-<id> | N/A – New area
-- ADRs: ADR-<id> | N/A – No related decisions yet
+<!--lint disable remark-validate-links-->
+
+- Analysis:
+  - [AN-<id>-<topic>](../analysis/AN-<id>-<topic>.md)
+- Requirements:
+  - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
+  - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
+- ADRs:
+  - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
+
+<!--lint enable remark-validate-links-->
 
 ## Executive Summary
 
@@ -150,3 +158,8 @@
 ## Template Usage
 
 For detailed instructions and key principles, see [Template Usage Instructions](README.md#analysis-template-analysismd) in the templates README.
+
+- ADRs:
+  - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
+
+<!--lint enable remark-validate-links -->

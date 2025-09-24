@@ -8,10 +8,17 @@
 
 ## Links
 
-<!-- Internal project artifacts only. For external resources, see External References section -->
+<!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-- Requirements: FR-<id>, NFR-<id> | N/A – <reason>
-- ADRs: ADR-<id>, ADR-<id> | N/A – No related ADRs
+<!--lint disable remark-validate-links-->
+
+- Requirements:
+  - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
+  - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
+- ADRs:
+  - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
+
+<!--lint enable remark-validate-links-->
 
 ## Overview
 

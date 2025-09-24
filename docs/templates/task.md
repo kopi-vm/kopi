@@ -8,11 +8,21 @@
 
 ## Links
 
-- Analysis: AN-<id> | N/A – <reason>
-- Requirements: FR-<id>, NFR-<id> | N/A – <reason>
-- ADRs: ADR-<id> | N/A – No related decisions yet
-- Plan: docs/tasks/T-<id>-<task>/plan.md | N/A – <reason>
-- Design: docs/tasks/T-<id>-<task>/design.md | N/A – <reason>
+<!--lint disable remark-validate-links-->
+
+- Analysis:
+  - [AN-<id>-<topic>](../analysis/AN-<id>-<topic>.md)
+- Requirements:
+  - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
+  - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
+- ADRs:
+  - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
+- Plan:
+  - [T-<id>-<task>-plan](../tasks/T-<id>-<task>/plan.md)
+- Design:
+  - [T-<id>-<task>-design](../tasks/T-<id>-<task>/design.md)
+
+<!--lint enable remark-validate-links-->
 
 ## Summary
 
