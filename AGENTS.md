@@ -29,6 +29,29 @@ Key features:
 
 The user-facing documentation for Kopi is maintained in a separate repository at `../kopi-vm.github.io/`. This repository uses MkDocs to generate and publish documentation for end users.
 
+## Agent Operating Environment
+
+- We operate as **Codex (GPT-5)** inside the Codex CLI on the host machine.
+- Current context (updated September 24, 2025):
+  - `sandbox_mode`: `danger-full-access`
+  - `network_access`: `enabled`
+  - `approval_policy`: `on-request`
+  - Working directory: `/workspaces/kopi-workspace/first`
+- Always set the `workdir` parameter when running shell commands and prefer `"bash", "-lc"` invocations. Do not rely on `cd`; pass the directory via the tool instead.
+- Favor `rg`/`rg --files` for searches; fall back to other tools only if ripgrep is unavailable.
+- Maintain ASCII-only files unless an existing file already uses non-ASCII characters.
+- Avoid modifying or reverting unrelated user changes detected in the repository.
+
+### Planning and Tooling Discipline
+- Use the planning tool for any task that is not trivially simple; plans must include at least two steps and be updated as work progresses. Skip planning only for the simplest ~25% of tasks.
+- Before insert/replace/delete edits, invoke `serena__think_about_task_adherence`; after gathering significant context, call `serena__think_about_collected_information` to confirm understanding.
+- Follow the Traceable Development Lifecycle (TDL) for non-trivial work and ensure traceability artifacts stay in sync.
+
+### Approvals and Safety
+- With `approval_policy=on-request`, escalate commands only when sandbox restrictions block essential work. Provide concise justifications when requesting elevated permissions.
+- Exercise caution with destructive operations (`rm`, `git reset`, etc.); seek explicit user direction before proceeding.
+- If unexpected repository changes appear, pause and confirm next steps with the user.
+
 ## Developer Principles
 
 ### Memory Safety Over Micro-optimization
@@ -184,6 +207,10 @@ When editing any TypeScript files, run each of the following commands and resolv
 
 All three commands must complete without errors to finish TypeScript-related work.
 
+### Documentation Updates
+- Ensure documentation, comments, and messages remain in English.
+- For Markdown changes, run `bun format` followed by `bun lint` and resolve any reported issues before finalizing.
+
 ## Essential Commands
 
 - **Format**: `cargo fmt` - Format code using rustfmt
@@ -195,3 +222,13 @@ All three commands must complete without errors to finish TypeScript-related wor
 
 - **Architecture & Structure**: [`docs/architecture.md`](docs/architecture.md) - Project structure, components, and storage locations
 - **Error Handling**: [`docs/error_handling.md`](docs/error_handling.md) - Error types, exit codes, and context system
+
+## Communication Guidelines
+
+- Default to concise, friendly teammate tone; structure responses for quick scanning without over-formatting.
+- Lead code-change summaries with the key outcome, then reference affected paths with `path:line` format (no ranges).
+- Use bullets (`-`) for lists, avoid nested bullets, and reserve headings for major sections only when helpful.
+- Include suggested next steps (tests, commits, verification) when they naturally follow from the work performed.
+- Do not paste entire file contents; reference file paths instead.
+- When the user requests command output, summarize relevant lines rather than dumping full logs.
+- Execute simple user requests via shell commands when appropriate (e.g., `date`), respecting the environment rules above.
