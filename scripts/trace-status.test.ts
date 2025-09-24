@@ -25,6 +25,7 @@ import {
   main,
   parseArgs,
   parseDocumentLinks,
+  checkIntegrity,
   resolveLinkType,
   resolveOutputPath,
   renderTraceabilityMarkdown,
@@ -212,12 +213,12 @@ describe("walkFiles", () => {
 
 describe("resolveLinkType", () => {
   it("normalizes labels", () => {
-    expect(resolveLinkType("requirements")).toBe("requirements");
-    expect(resolveLinkType("analysis details")).toBe("analyses");
+    expect(resolveLinkType("Related Requirements")).toBe("requirements");
+    expect(resolveLinkType("Related Analyses")).toBe("analyses");
     expect(resolveLinkType("adr references")).toBe("adrs");
     expect(resolveLinkType("task items")).toBe("tasks");
-    expect(resolveLinkType("design outline")).toBe("design");
-    expect(resolveLinkType("plan summary")).toBe("plan");
+    expect(resolveLinkType("Prerequisite Requirements")).toBe("depends_on");
+    expect(resolveLinkType("Dependent Requirements")).toBe("blocks");
     expect(resolveLinkType("other")).toBeNull();
   });
 });
@@ -346,6 +347,10 @@ describe("traceability helpers", () => {
     expect(markdown).toContain(
       "- FR-0002: No implementing task (Status: Backlog)",
     );
+    expect(markdown).toContain("### Dependency Consistency");
+    expect(markdown).toContain(
+      "All prerequisites and dependents are documented on both sides.",
+    );
   });
 
   it("merges links from task artifacts sharing the same ID", () => {
@@ -379,6 +384,50 @@ describe("traceability helpers", () => {
     expect(taskDoc?.path.endsWith("README.md")).toBe(true);
 
     expect(findImplementingTasks(documents, "FR-5000")).toEqual(["T-5000"]);
+  });
+
+  it("marks inferred dependencies and reports missing reciprocal links", () => {
+    const repoRoot = createTempDir();
+
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-100-alpha.md",
+      "# FR-100 Alpha Requirement\n\n" +
+        "## Metadata\n\n" +
+        "- Type: Functional Requirement\n" +
+        "- Status: Draft\n\n" +
+        "## Links\n\n" +
+        "- Prerequisite Requirements: N/A – None documented\n" +
+        "- Dependent Requirements:\n" +
+        "  - FR-200-beta\n" +
+        "- Related Analyses: N/A – None\n" +
+        "- Related ADRs: N/A – None\n" +
+        "- Related Tasks: N/A – None\n",
+    );
+
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-200-beta.md",
+      "# FR-200 Beta Requirement\n\n" +
+        "## Metadata\n\n" +
+        "- Type: Functional Requirement\n" +
+        "- Status: Draft\n\n" +
+        "## Links\n\n" +
+        "- Prerequisite Requirements: N/A – Pending documentation\n" +
+        "- Dependent Requirements: N/A – None\n" +
+        "- Related Analyses: N/A – None\n" +
+        "- Related ADRs: N/A – None\n" +
+        "- Related Tasks: N/A – None\n",
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const outputPath = join(repoRoot, "docs", "traceability.md");
+    const markdown = renderTraceabilityMarkdown(documents, outputPath);
+
+    expect(markdown).toContain("(requirements/FR-100-alpha.md) (inferred)");
+    expect(markdown).toContain(
+      "add Prerequisite Requirements entry for [FR-100](requirements/FR-100-alpha.md) (inferred)",
+    );
   });
 });
 
@@ -427,6 +476,7 @@ describe("printStatus", () => {
     expect(output).toContain("Status by Document Type:");
     expect(output).toContain("  Requirements:");
     expect(output).toContain("  Tasks:");
+    expect(output).toContain("Dependency links consistent");
   });
 
   it("suppresses summary when gapsOnly=true but still lists gaps", () => {
@@ -444,6 +494,70 @@ describe("printStatus", () => {
     expect(output).not.toContain("=== Kopi TDL Status ===");
     expect(output).toContain("Gaps:");
     expect(output).toContain("FR-3000");
+  });
+
+  it("reports dependency consistency issues when reciprocal links are missing", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-400-alpha.md",
+      "# FR-400 Alpha\n\n## Metadata\n\n- Type: Functional Requirement\n- Status: Draft\n\n## Links\n\n- Prerequisite Requirements: N/A – None\n- Dependent Requirements:\n  - FR-401-beta\n- Related Analyses: N/A – None\n- Related ADRs: N/A – None\n- Related Tasks: N/A – None\n",
+    );
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-401-beta.md",
+      "# FR-401 Beta\n\n## Metadata\n\n- Type: Functional Requirement\n- Status: Draft\n\n## Links\n\n- Prerequisite Requirements: N/A – Pending\n- Dependent Requirements: N/A – None\n- Related Analyses: N/A – None\n- Related ADRs: N/A – None\n- Related Tasks: N/A – None\n",
+    );
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-400-sync/plan.md",
+      "# T-400 Sync\n\n## Metadata\n\n- Type: Implementation Plan\n- Status: Draft\n\n## Links\n\n- Related Requirements:\n  - FR-400-alpha\n  - FR-401-beta\n",
+    );
+
+    const documents = loadDocuments(repoRoot);
+    printStatus(documents, false);
+
+    const output = logCalls.join("\n");
+    expect(output).toContain("Dependency consistency issues:");
+    expect(output).toContain("Missing prerequisite link(s) for FR-400");
+  });
+});
+
+describe("checkIntegrity", () => {
+  const originalError = console.error;
+
+  afterEach(() => {
+    console.error = originalError;
+  });
+
+  it("returns false when prerequisite links are missing", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-600-alpha.md",
+      "# FR-600 Alpha\n\n## Metadata\n\n- Type: Functional Requirement\n- Status: Draft\n\n## Links\n\n- Prerequisite Requirements: N/A – None\n- Dependent Requirements:\n  - FR-601-beta\n- Related Analyses: N/A – None\n- Related ADRs: N/A – None\n- Related Tasks: N/A – None\n",
+    );
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-601-beta.md",
+      "# FR-601 Beta\n\n## Metadata\n\n- Type: Functional Requirement\n- Status: Draft\n\n## Links\n\n- Prerequisite Requirements: N/A – Pending\n- Dependent Requirements: N/A – None\n- Related Analyses: N/A – None\n- Related ADRs: N/A – None\n- Related Tasks: N/A – None\n",
+    );
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-600-plan/plan.md",
+      "# T-600 Plan\n\n## Metadata\n\n- Type: Implementation Plan\n- Status: Draft\n\n## Links\n\n- Related Requirements:\n  - FR-600-alpha\n  - FR-601-beta\n",
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const errors: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      errors.push(args);
+    };
+
+    const result = checkIntegrity(documents);
+    expect(result).toBe(false);
+    const flattened = errors.map((entry) => entry.join(" ")).join("\n");
+    expect(flattened).toContain("Missing prerequisite link(s) for FR-600");
   });
 });
 

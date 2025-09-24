@@ -39,6 +39,39 @@ type DocSource = {
   match: (relativePath: string) => boolean;
 };
 
+function ensureSet(map: Map<string, Set<string>>, key: string): Set<string> {
+  let bucket = map.get(key);
+  if (!bucket) {
+    bucket = new Set<string>();
+    map.set(key, bucket);
+  }
+  return bucket;
+}
+
+type RequirementDependencyInfo = {
+  directPrereqs: Set<string>;
+  inferredPrereqs: Set<string>;
+  directDependents: Set<string>;
+  inferredDependents: Set<string>;
+};
+
+function ensureDependencyInfo(
+  map: Map<string, RequirementDependencyInfo>,
+  docId: string,
+): RequirementDependencyInfo {
+  let info = map.get(docId);
+  if (!info) {
+    info = {
+      directPrereqs: new Set<string>(),
+      inferredPrereqs: new Set<string>(),
+      directDependents: new Set<string>(),
+      inferredDependents: new Set<string>(),
+    };
+    map.set(docId, info);
+  }
+  return info;
+}
+
 export type TDLDocument = {
   readonly path: string;
   readonly filename: string;
@@ -359,6 +392,77 @@ export function taskDocsFrom(
   return [...documents.values()].filter((doc) => doc.docType === "task");
 }
 
+function buildRequirementDependencyInfo(documents: Map<string, TDLDocument>): {
+  infoByRequirement: Map<string, RequirementDependencyInfo>;
+  missingPrereqs: Map<string, Set<string>>;
+  missingDependents: Map<string, Set<string>>;
+} {
+  const infoByRequirement = new Map<string, RequirementDependencyInfo>();
+
+  for (const requirement of requirementDocsFrom(documents)) {
+    const info = ensureDependencyInfo(infoByRequirement, requirement.docId);
+
+    const addPrereq = (rawId: string) => {
+      const id = rawId.trim();
+      if (!id || id === requirement.docId) return;
+      info.directPrereqs.add(id);
+    };
+
+    const addDependent = (rawId: string) => {
+      const id = rawId.trim();
+      if (!id || id === requirement.docId) return;
+      info.directDependents.add(id);
+    };
+
+    for (const id of requirement.links.depends_on ?? []) {
+      addPrereq(id);
+    }
+    for (const id of requirement.links.blocked_by ?? []) {
+      addPrereq(id);
+    }
+    for (const id of requirement.links.requirements ?? []) {
+      addPrereq(id);
+    }
+    for (const id of requirement.links.blocks ?? []) {
+      addDependent(id);
+    }
+  }
+
+  // Derive reciprocal relationships.
+  for (const [docId, info] of infoByRequirement) {
+    for (const prereq of info.directPrereqs) {
+      const prereqInfo = ensureDependencyInfo(infoByRequirement, prereq);
+      if (prereq !== docId) {
+        prereqInfo.inferredDependents.add(docId);
+      }
+    }
+    for (const dependent of info.directDependents) {
+      const dependentInfo = ensureDependencyInfo(infoByRequirement, dependent);
+      if (dependent !== docId) {
+        dependentInfo.inferredPrereqs.add(docId);
+      }
+    }
+  }
+
+  const missingPrereqs = new Map<string, Set<string>>();
+  const missingDependents = new Map<string, Set<string>>();
+
+  for (const [docId, info] of infoByRequirement) {
+    for (const inferred of info.inferredPrereqs) {
+      if (!info.directPrereqs.has(inferred)) {
+        ensureSet(missingPrereqs, docId).add(inferred);
+      }
+    }
+    for (const inferred of info.inferredDependents) {
+      if (!info.directDependents.has(inferred)) {
+        ensureSet(missingDependents, docId).add(inferred);
+      }
+    }
+  }
+
+  return { infoByRequirement, missingPrereqs, missingDependents };
+}
+
 export function documentsByLinkingRequirement(
   documents: Map<string, TDLDocument>,
   docType: DocumentType,
@@ -448,6 +552,21 @@ function formatPrimaryDoc(doc: TDLDocument, outputDir: string): string {
   return `${link} - ${doc.title}`;
 }
 
+function formatSingleLink(
+  documents: Map<string, TDLDocument>,
+  id: string,
+  outputDir: string,
+  options: { includeStatus?: boolean } = {},
+): string {
+  const includeStatus = options.includeStatus ?? false;
+  const doc = documents.get(id);
+  if (!doc) return id;
+  const link = formatDocLink(doc, outputDir);
+  if (!includeStatus) return link;
+  const status = doc.status !== "Unknown" ? doc.status : "Unknown";
+  return `${link} (${status})`;
+}
+
 function formatLinkedDocs(
   documents: Map<string, TDLDocument>,
   ids: Iterable<string>,
@@ -460,15 +579,49 @@ function formatLinkedDocs(
   ];
   if (uniqueIds.length === 0) return "—";
 
-  const parts = uniqueIds.map((id) => {
-    const doc = documents.get(id);
-    if (!doc) return id;
-    const link = formatDocLink(doc, outputDir);
-    if (includeStatus && doc.status !== "Unknown") {
-      return `${link} (${doc.status})`;
+  const parts = uniqueIds.map((id) =>
+    formatSingleLink(documents, id, outputDir, { includeStatus }),
+  );
+
+  return parts.join("<br>");
+}
+
+function formatDependencyCell(
+  documents: Map<string, TDLDocument>,
+  direct: Iterable<string>,
+  inferred: Iterable<string>,
+  outputDir: string,
+): string {
+  const originById = new Map<string, "direct" | "inferred">();
+
+  const record = (rawId: string, origin: "direct" | "inferred") => {
+    const id = rawId.trim();
+    if (!id) return;
+    if (originById.has(id)) {
+      if (originById.get(id) === "direct") return;
     }
-    return includeStatus ? `${link} (Unknown)` : link;
-  });
+    originById.set(id, origin);
+  };
+
+  for (const id of direct) {
+    record(id, "direct");
+  }
+  for (const id of inferred) {
+    record(id, "inferred");
+  }
+
+  if (originById.size === 0) return "—";
+
+  const parts = [...originById.keys()]
+    .sort((a, b) => a.localeCompare(b))
+    .map((id) => {
+      const origin = originById.get(id);
+      const link = formatSingleLink(documents, id, outputDir);
+      if (origin === "inferred") {
+        return `${link} (inferred)`;
+      }
+      return link;
+    });
 
   return parts.join("<br>");
 }
@@ -487,51 +640,8 @@ export function renderTraceabilityMarkdown(
     "analysis",
   );
   const adrsByRequirement = documentsByLinkingRequirement(documents, "adr");
-  const dependenciesByRequirement = new Map<string, Set<string>>();
-  const blocksByRequirement = new Map<string, Set<string>>();
-  const blockedByRequirement = new Map<string, Set<string>>();
-
-  const ensureSet = (
-    map: Map<string, Set<string>>,
-    key: string,
-  ): Set<string> => {
-    let bucket = map.get(key);
-    if (!bucket) {
-      bucket = new Set<string>();
-      map.set(key, bucket);
-    }
-    return bucket;
-  };
-
-  for (const requirement of requirementDocuments) {
-    const dependencyIds = new Set<string>([
-      ...(requirement.links.depends_on ?? []),
-      ...(requirement.links.blocked_by ?? []),
-      ...(requirement.links.requirements ?? []),
-    ]);
-
-    const dependencySet = ensureSet(
-      dependenciesByRequirement,
-      requirement.docId,
-    );
-    const blocksSet = ensureSet(blocksByRequirement, requirement.docId);
-    const blockedBySet = ensureSet(blockedByRequirement, requirement.docId);
-
-    for (const id of dependencyIds) {
-      dependencySet.add(id);
-      blockedBySet.add(id);
-      const parentBlocks = ensureSet(blocksByRequirement, id);
-      parentBlocks.add(requirement.docId);
-    }
-
-    for (const blockedId of requirement.links.blocks ?? []) {
-      blocksSet.add(blockedId);
-      const childBlockedBy = ensureSet(blockedByRequirement, blockedId);
-      childBlockedBy.add(requirement.docId);
-      const childDependencies = ensureSet(dependenciesByRequirement, blockedId);
-      childDependencies.add(requirement.docId);
-    }
-  }
+  const { infoByRequirement, missingPrereqs, missingDependents } =
+    buildRequirementDependencyInfo(documents);
 
   const lines: string[] = [];
   lines.push("# Kopi Traceability Overview");
@@ -592,7 +702,6 @@ export function renderTraceabilityMarkdown(
       const tasksCell = formatLinkedDocs(documents, taskIds, outputDir, {
         includeStatus: true,
       });
-
       lines.push(
         `| ${analysesCell} | ${adrsCell} | ${requirementLink} | ${statusCell} | ${tasksCell} |`,
       );
@@ -610,24 +719,80 @@ export function renderTraceabilityMarkdown(
     lines.push("| --- | --- | --- | --- |");
     for (const requirement of requirementDocuments) {
       const requirementLink = formatPrimaryDoc(requirement, outputDir);
-      const dependsCell = formatLinkedDocs(
+      const info = infoByRequirement.get(requirement.docId) ?? {
+        directPrereqs: new Set<string>(),
+        inferredPrereqs: new Set<string>(),
+        directDependents: new Set<string>(),
+        inferredDependents: new Set<string>(),
+      };
+      const dependsCell = formatDependencyCell(
         documents,
-        dependenciesByRequirement.get(requirement.docId) ?? [],
+        info.directPrereqs,
+        info.inferredPrereqs,
         outputDir,
       );
-      const blocksCell = formatLinkedDocs(
+      const blocksCell = formatDependencyCell(
         documents,
-        blocksByRequirement.get(requirement.docId) ?? [],
+        info.directDependents,
+        info.inferredDependents,
         outputDir,
       );
-      const blockedByCell = formatLinkedDocs(
+      const blockedByCell = formatDependencyCell(
         documents,
-        blockedByRequirement.get(requirement.docId) ?? [],
+        info.directPrereqs,
+        info.inferredPrereqs,
         outputDir,
       );
 
       lines.push(
         `| ${requirementLink} | ${dependsCell} | ${blocksCell} | ${blockedByCell} |`,
+      );
+    }
+  }
+
+  lines.push("");
+  lines.push("### Dependency Consistency");
+  lines.push("");
+
+  const hasMissingPrereqs = missingPrereqs.size > 0;
+  const hasMissingDependents = missingDependents.size > 0;
+
+  if (!hasMissingPrereqs && !hasMissingDependents) {
+    lines.push(
+      "All prerequisites and dependents are documented on both sides.",
+    );
+  } else {
+    const missingPrereqEntries = [...missingPrereqs.entries()].sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    );
+    for (const [reqId, missing] of missingPrereqEntries) {
+      const doc = documents.get(reqId);
+      const requirementLink = doc ? formatPrimaryDoc(doc, outputDir) : reqId;
+      const missingCell = formatDependencyCell(
+        documents,
+        new Set<string>(),
+        missing,
+        outputDir,
+      );
+      lines.push(
+        `- ${requirementLink}: add Prerequisite Requirements entry for ${missingCell}`,
+      );
+    }
+
+    const missingDependentEntries = [...missingDependents.entries()].sort(
+      (a, b) => a[0].localeCompare(b[0]),
+    );
+    for (const [reqId, missing] of missingDependentEntries) {
+      const doc = documents.get(reqId);
+      const requirementLink = doc ? formatPrimaryDoc(doc, outputDir) : reqId;
+      const missingCell = formatDependencyCell(
+        documents,
+        new Set<string>(),
+        missing,
+        outputDir,
+      );
+      lines.push(
+        `- ${requirementLink}: add Dependent Requirements entry for ${missingCell}`,
       );
     }
   }
@@ -674,6 +839,8 @@ export function printStatus(
   documents: Map<string, TDLDocument>,
   gapsOnly: boolean,
 ): void {
+  const { missingPrereqs, missingDependents } =
+    buildRequirementDependencyInfo(documents);
   if (!gapsOnly) {
     console.log("=== Kopi TDL Status ===\n");
     const coverage = calculateCoverage(documents);
@@ -705,6 +872,31 @@ export function printStatus(
     console.log();
   } else if (!gapsOnly) {
     console.log("✓ No gaps detected\n");
+  }
+
+  if (missingPrereqs.size || missingDependents.size) {
+    console.log("Dependency consistency issues:");
+    const prereqEntries = [...missingPrereqs.entries()].sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    );
+    for (const [reqId, missing] of prereqEntries) {
+      const missingList = [...missing].sort((a, b) => a.localeCompare(b));
+      console.log(
+        `  ⚠ ${reqId}: Missing prerequisite link(s) for ${missingList.join(", ")}`,
+      );
+    }
+    const dependentEntries = [...missingDependents.entries()].sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    );
+    for (const [reqId, missing] of dependentEntries) {
+      const missingList = [...missing].sort((a, b) => a.localeCompare(b));
+      console.log(
+        `  ⚠ ${reqId}: Missing dependent link(s) for ${missingList.join(", ")}`,
+      );
+    }
+    console.log();
+  } else if (!gapsOnly) {
+    console.log("Dependency links consistent\n");
   }
 
   if (!gapsOnly) {
@@ -741,6 +933,10 @@ export function printStatus(
 export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
   const orphanRequirements = findOrphanRequirements(documents);
   const orphanTasks = findOrphanTasks(documents);
+  const { missingPrereqs, missingDependents } =
+    buildRequirementDependencyInfo(documents);
+
+  let ok = true;
 
   if (orphanRequirements.length || orphanTasks.length) {
     console.error("Traceability gaps detected:");
@@ -750,10 +946,33 @@ export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
     for (const taskId of orphanTasks) {
       console.error(`  - ${taskId}: No linked requirements`);
     }
-    return false;
+    ok = false;
   }
 
-  return true;
+  if (missingPrereqs.size || missingDependents.size) {
+    console.error("Dependency consistency issues detected:");
+    const prereqEntries = [...missingPrereqs.entries()].sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    );
+    for (const [reqId, missing] of prereqEntries) {
+      const missingList = [...missing].sort((a, b) => a.localeCompare(b));
+      console.error(
+        `  - ${reqId}: Missing prerequisite link(s) for ${missingList.join(", ")}`,
+      );
+    }
+    const dependentEntries = [...missingDependents.entries()].sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    );
+    for (const [reqId, missing] of dependentEntries) {
+      const missingList = [...missing].sort((a, b) => a.localeCompare(b));
+      console.error(
+        `  - ${reqId}: Missing dependent link(s) for ${missingList.join(", ")}`,
+      );
+    }
+    ok = false;
+  }
+
+  return ok;
 }
 
 export function safeReadFile(path: string): string | null {
@@ -793,17 +1012,14 @@ export function* walkFiles(
 }
 
 export function resolveLinkType(label: string): string | null {
-  if (label.includes("prerequisite")) return "depends_on";
-  if (label.includes("dependent")) return "blocks";
-  if (label.includes("blocked by")) return "blocked_by";
-  if (label.includes("depend")) return "depends_on";
-  if (label.includes("block")) return "blocks";
-  if (label.includes("requirement")) return "requirements";
-  if (label.includes("analysis")) return "analyses";
-  if (label.includes("adr")) return "adrs";
-  if (label.includes("task")) return "tasks";
-  if (label.includes("design")) return "design";
-  if (label.includes("plan")) return "plan";
+  const normalized = label.toLowerCase();
+  if (normalized.includes("prerequisite")) return "depends_on";
+  if (normalized.includes("dependent")) return "blocks";
+  if (normalized.includes("depend")) return "depends_on";
+  if (normalized.includes("analys")) return "analyses";
+  if (normalized.includes("adr")) return "adrs";
+  if (normalized.includes("task")) return "tasks";
+  if (normalized.includes("requirement")) return "requirements";
   return null;
 }
 
