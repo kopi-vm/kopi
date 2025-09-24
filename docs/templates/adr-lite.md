@@ -10,8 +10,6 @@
 
 <!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-<!--lint disable remark-validate-links-->
-
 - Analysis:
   - [AN-<id>-<topic>](../analysis/AN-<id>-<topic>.md)
 - Requirements:
@@ -21,8 +19,6 @@
   - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
 - Tasks:
   - [T-<id>-<task>](../tasks/T-<id>-<task>/README.md)
-
-<!--lint enable remark-validate-links-->
 
 ## Context
 

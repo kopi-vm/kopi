@@ -8,8 +8,6 @@
 
 ## Links
 
-<!--lint disable remark-validate-links-->
-
 - Analysis:
   - [AN-<id>-<topic>](../analysis/AN-<id>-<topic>.md)
 - Requirements:
@@ -21,8 +19,6 @@
   - [T-<id>-<task>-plan](../tasks/T-<id>-<task>/plan.md)
 - Design:
   - [T-<id>-<task>-design](../tasks/T-<id>-<task>/design.md)
-
-<!--lint enable remark-validate-links-->
 
 ## Summary
 

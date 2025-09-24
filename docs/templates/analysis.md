@@ -10,8 +10,6 @@
 
 <!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-<!--lint disable remark-validate-links-->
-
 - Analysis:
   - [AN-<id>-<topic>](../analysis/AN-<id>-<topic>.md)
 - Requirements:
@@ -19,8 +17,6 @@
   - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
 - ADRs:
   - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
-
-<!--lint enable remark-validate-links-->
 
 ## Executive Summary
 
