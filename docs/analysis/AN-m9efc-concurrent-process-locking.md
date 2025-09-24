@@ -3,24 +3,25 @@
 ## Metadata
 
 - Type: Analysis
-- Status: In Progress
+- Status: Active
 
 ## Links
 
-<!-- Internal project artifacts only -->
+<!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-- Related Analyses: N/A – Standalone analysis
-- Formal Requirements:
-  - [`FR-02uqo-installation-locking.md`](../requirements/FR-02uqo-installation-locking.md)
-  - [`FR-ui8x2-uninstallation-locking.md`](../requirements/FR-ui8x2-uninstallation-locking.md)
-  - [`FR-v7ql4-cache-locking.md`](../requirements/FR-v7ql4-cache-locking.md)
-  - [`FR-gbsz6-lock-timeout-recovery.md`](../requirements/FR-gbsz6-lock-timeout-recovery.md)
-  - [`FR-c04js-lock-contention-feedback.md`](../requirements/FR-c04js-lock-contention-feedback.md)
-  - [`NFR-z6kan-lock-timeout-performance.md`](../requirements/NFR-z6kan-lock-timeout-performance.md)
-  - [`NFR-vcxp8-lock-cleanup-reliability.md`](../requirements/NFR-vcxp8-lock-cleanup-reliability.md)
-  - [`NFR-g12ex-cross-platform-compatibility.md`](../requirements/NFR-g12ex-cross-platform-compatibility.md)
-- Related ADRs: [`ADR-8mnaz-concurrent-process-locking-strategy.md`](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
-- Issue/Discussion: N/A – No tracking issue
+- Related Analyses:
+  - N/A – Standalone analysis
+- Related Requirements:
+  - [FR-02uqo-installation-locking](../requirements/FR-02uqo-installation-locking.md)
+  - [FR-ui8x2-uninstallation-locking](../requirements/FR-ui8x2-uninstallation-locking.md)
+  - [FR-v7ql4-cache-locking](../requirements/FR-v7ql4-cache-locking.md)
+  - [FR-gbsz6-lock-timeout-recovery](../requirements/FR-gbsz6-lock-timeout-recovery.md)
+  - [FR-c04js-lock-contention-feedback](../requirements/FR-c04js-lock-contention-feedback.md)
+  - [NFR-z6kan-lock-timeout-performance](../requirements/NFR-z6kan-lock-timeout-performance.md)
+  - [NFR-vcxp8-lock-cleanup-reliability](../requirements/NFR-vcxp8-lock-cleanup-reliability.md)
+  - [NFR-g12ex-cross-platform-compatibility](../requirements/NFR-g12ex-cross-platform-compatibility.md)
+- Related ADRs:
+  - [ADR-8mnaz-concurrent-process-locking-strategy](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 
 ## Executive Summary
 
@@ -336,36 +337,11 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 3. Add NFS detection with skip strategy (atomic operations only)
 4. Remove fs2 dependency from existing code (migrate to std)
 
-### Implementation Strategy
-
-**Note**: After further analysis and discussion, the ADR-8mnaz chose a simpler approach than the hybrid strategy initially considered here.
-
-**Chosen Approach (per ADR-8mnaz): Native std::fs::File locks + Skip on NFS**
-
-- **Local filesystems**: std::fs::File advisory locks (native in Rust 1.89.0+)
-- **Network filesystems**: Skip locking, rely on atomic operations
-- **Detection**: Check filesystem type, warn user when on NFS
-- **Rationale**:
-  - No external dependencies needed
-  - YAGNI principle for NFS support
-  - cargo's proven pattern
-  - Atomic operations provide sufficient safety
-
-**Alternative Considered: Hybrid std + PID-based fallback**
-
-- Would provide explicit locking on NFS
-- Adds complexity: stale detection, cleanup logic
-- Can be added later if real users report NFS issues
-- Example PID-based approach (not chosen):
-  ```rust
-  // Check if lock holder is still alive
-  if !is_process_alive(lock_info.pid) {
-      // Safe to override stale lock
-      force_acquire_lock();
-  }
-  ```
-
 ### Next Steps
+
+**Chosen approach (ADR-8mnaz)**: Use native `std::fs::File` advisory locks on local filesystems and skip locking on detected network filesystems, relying on atomic operations with user warnings. This keeps dependencies minimal while matching cargo's proven behavior.
+
+**Alternative considered**: A hybrid model layering PID-based lock files on top of advisory locks to support NFS explicitly; deferred due to added complexity (stale detection, cleanup logic) and lack of user demand, but documented for future reconsideration.
 
 1. [x] Create formal requirements: FR-02uqo through FR-c04js → Completed 2025-09-02
 2. [x] Create formal requirements: NFR-z6kan through NFR-g12ex → Completed 2025-09-02
