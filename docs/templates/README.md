@@ -35,6 +35,44 @@ Templates use the following placeholder conventions:
 - **`[Link text]`** in markdown links - Standard markdown link syntax (not a placeholder)
   - Example: `[External resource title](https://example.com)` → `[AWS S3 Documentation](https://docs.aws.amazon.com/s3/)`
 
+`scripts/trace-status.ts` treats any untouched placeholder (text wrapped in backticks, angle brackets, or pipes) as missing metadata. Always replace, delete, or mark placeholders `N/A – <reason>` before you commit.
+
+### Generating Document IDs
+
+- Use `./scripts/tdl-new-id.ts` to create 5-character base36 IDs before copying a template.
+- Keep historical sequential IDs intact; the trace tooling accepts both formats.
+- Embed the ID in the filename exactly as generated (for example `FR-a3bf2-feature-name.md`).
+
+### Metadata Requirements
+
+Every template starts with a Metadata block that feeds the traceability tooling:
+
+- `- Type:` must contain the final document type (for example `Functional Requirement`, `Design`, `Implementation Plan`).
+- `- Status:` must match one of the allowed values in the template comments (`Proposed`, `Accepted`, `Implemented`, `Verified`, `Deprecated`, etc.).
+- Remove unused metadata fields or mark them explicitly as `N/A – <reason>`.
+
+Leaving placeholders in Metadata causes `scripts/trace-status.ts` to report `Unknown` status or type for the document.
+
+### Links Section Expectations
+
+All templates include a `## Links` section. Maintain the label structure below so the status script can classify relationships correctly:
+
+| Template label                          | Parsed category |
+| --------------------------------------- | --------------- |
+| `Related Analyses`                      | `analyses`      |
+| `Prerequisite Requirements`             | `depends_on`    |
+| `Dependent Requirements`                | `blocks`        |
+| `Related Requirements` / `Requirements` | `requirements`  |
+| `Related ADRs`                          | `adrs`          |
+| `Related Tasks`                         | `tasks`         |
+
+Guidelines:
+
+- Keep the top-level bullet as `- Label:` and indent linked IDs beneath it with `- `.
+- Use repository-relative links for existing artifacts. For planned items, list the ID until the file is created.
+- Remove unused labels or mark them `N/A – Not applicable`; do not leave template text untouched.
+- Tasks often have multiple files (`README.md`, `plan.md`, `design.md`). Keep Links and Status consistent across them—`scripts/trace-status.ts` prioritizes `README.md`, then `plan.md`, then `design.md` when merging.
+
 ### Analysis Template (`analysis.md`)
 
 1. Use for exploring problem spaces and discovering requirements
