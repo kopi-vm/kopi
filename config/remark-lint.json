@@ -12,7 +12,8 @@
     [
       "remark-validate-links",
       {
-        "repository": false
+        "repository": false,
+        "skipPathPatterns": [".*\\-<id>\\-.*"]
       }
     ],
     [
