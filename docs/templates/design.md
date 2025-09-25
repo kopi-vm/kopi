@@ -153,11 +153,6 @@ Decision Rationale
 
 - `cargo perf` (feature `perf_tests`) and `cargo bench`; define thresholds and compare trends.
 
-## Implementation Plan
-
-- Milestones/Phases: `[Link to docs/tasks/T-<id>-<task>/plan.md or task plan]`
-- Risks & Mitigations: `[Top risks with mitigation/validation/fallback]`
-
 ## Documentation Impact
 
 - Update `docs/reference.md` for CLI/behavior changes.
