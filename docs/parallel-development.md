@@ -69,7 +69,7 @@ Guidelines:
 - Use repository-relative markdown links when the artifact already exists. For future work, you can list the ID alone until the file is created.
 - If there are no links for a label, remove that bullet or mark it `N/A – Not applicable`.
 
-The script merges information from multiple files that share an ID. For tasks, it prioritizes `README.md`, then `plan.md`, then `design.md`. Keep Links and Status synchronized across those files to avoid confusing merges.
+The script merges information from multiple files that share an ID. For tasks, it prioritizes `README.md`, then `plan.md`, then `design.md`. Keep Links and Status synchronized across those files to avoid confusing merges. This ordering exists only for merge conflict resolution—teams must still author `design.md` before `plan.md` for every task.
 
 ## Using `scripts/trace-status.ts`
 

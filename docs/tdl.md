@@ -160,14 +160,14 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Location**: `docs/tasks/T-<id>-<task>/design.md` (task-scoped)
 - **Naming**: Task directory + fixed name (e.g., `docs/tasks/T-e7fa1-cache-refresh/design.md`)
 - **ID Generation**: Run `./scripts/tdl-new-id.ts` for the task directory (see [`parallel-development.md`](parallel-development.md))
-- **Transition**: With design complete, create execution plan
+- **Transition**: With design complete, create the execution plan. This transition is mandatory for every task—`design.md` must exist (even if brief) before `plan.md` is started.
 - **Traceability Update**:
   - Add the task to the Traceability Matrix and ensure requirement coverage is reflected
   - Maintain `Related Requirements` and `Related ADRs` within the design's Links section using the template wording
 
 ### Step 5: Plan & Execution (phases/tasks)
 
-- **Purpose**: Break down implementation into manageable phases with clear verification
+- **Purpose**: Break down implementation into manageable phases with clear verification. Begin this step only after the corresponding `design.md` has been finalized.
 - **Template**: [`templates/plan.md`](templates/plan.md) - Task-specific implementation plan. Breaks down work into phases with verification steps
 - **Output**: Phased execution plan with tasks, verification steps, and DoD
 - **References**: FR/NFR IDs being implemented, link to design.md
@@ -309,14 +309,15 @@ Update the Links section in documents when:
 
 ## Small Changes Variant
 
-- For trivial fixes, you may skip the full workflow if **ALL** these criteria apply:
+- For trivial fixes, you may streamline (but not skip) the workflow if **ALL** these criteria apply:
   - Code changes < 50 lines
   - No new dependencies
   - No API changes
   - No architectural impact
   - Single file modification
   - Estimated execution time < 30 minutes
-- Create minimal `docs/tasks/T-<id>-<task>/plan.md` with a short Phase and DoD
+- Even under this variant, always draft `design.md` before producing `plan.md`. The design can be concise, but it must reference requirements and capture the implementation approach.
+- After completing the minimal design, create the corresponding `plan.md` that references the design and enumerates verification steps.
 - Ensure all verification commands pass
 - **Traceability**: Run `./scripts/trace-status.ts --check` to verify no gaps
 

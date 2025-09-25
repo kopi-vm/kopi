@@ -149,18 +149,20 @@ Both AI collaborators follow the same TDL conventions. Use this checklist whenev
 4. Call out platform differences explicitly when touching shell, shims, filesystem, or paths
 5. Specify testing strategy early, including external API parsing tests if applicable
 6. Prefer clarity and safety over micro-optimizations; avoid `unsafe`, avoid vague names like "manager"/"util", and prefer functions for stateless behavior
+7. Mark the design as complete and circulate for review before authoring `plan.md`; implementation work may only start after both documents exist.
 
 ### Plan Template (`plan.md`)
 
-1. Reference requirement IDs (FR-<id>/NFR-<id>) being implemented
-2. Adjust the number of phases based on complexity
-3. Break down work into specific, testable items
-4. Define verification commands and phase acceptance criteria
-5. Identify risks early, with mitigation and fallback
-6. Keep status updated as work progresses
-7. Phase independence: Ensure each phase is self-contained; reset context at phase boundaries using `/clear` (Claude) or `/new` (Codex)
-8. Update or add ADRs when design decisions change
-9. Error Recovery Patterns:
+1. Finalize the corresponding `design.md` before populating the plan, regardless of task size. Reference the design directly in the Metadata and Links sections.
+2. Reference requirement IDs (FR-<id>/NFR-<id>) being implemented
+3. Adjust the number of phases based on complexity
+4. Break down work into specific, testable items
+5. Define verification commands and phase acceptance criteria
+6. Identify risks early, with mitigation and fallback
+7. Keep status updated as work progresses
+8. Phase independence: Ensure each phase is self-contained; reset context at phase boundaries using `/clear` (Claude) or `/new` (Codex)
+9. Update or add ADRs when design decisions change
+10. Error Recovery Patterns:
    - When blocked during implementation:
      a. Document blocker in current phase status
      b. Create new analysis document for the blocker if needed
@@ -172,7 +174,7 @@ Both AI collaborators follow the same TDL conventions. Use this checklist whenev
 1. Create as soon as the TDL uncovers actionable work (during Analysis, ADR, or review).
 2. Populate Metadata, Links, Summary, and Scope before opening related work items.
 3. Define Success Metrics tied to FR/NFR IDs where applicable to support later verification.
-4. Use the Detailed Plan section for milestone breakdowns when a full `plan.md` is not yet warranted.
+4. Use the Detailed Plan section for early milestone brainstorming, but promote the content into `design.md` followed by `plan.md` before any implementation begins.
 5. Keep Notes for risks, follow-up decisions, or coordination details.
 
 ## Common Documentation Requirements
