@@ -163,11 +163,12 @@ Both AI collaborators follow the same TDL conventions. Use this checklist whenev
 8. Phase independence: Ensure each phase is self-contained; reset context at phase boundaries using `/clear` (Claude) or `/new` (Codex)
 9. Update or add ADRs when design decisions change
 10. Error Recovery Patterns:
-   - When blocked during implementation:
-     a. Document blocker in current phase status
-     b. Create new analysis document for the blocker if needed
-     c. Generate new requirements if applicable (e.g., NFR for error handling)
-     d. Update plan with mitigation steps
+
+- When blocked during implementation:
+  a. Document blocker in current phase status
+  b. Create new analysis document for the blocker if needed
+  c. Generate new requirements if applicable (e.g., NFR for error handling)
+  d. Update plan with mitigation steps
 
 ### Task Template (`task.md`)
 
