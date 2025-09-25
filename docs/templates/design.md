@@ -114,16 +114,6 @@ Implementation Notes
 
 - `[Case sensitivity; long paths; temp files]`
 
-## ADR References
-
-<!-- Map key design decisions to ADRs -->
-
-| Design Decision             | ADR      | Status       |
-| --------------------------- | -------- | ------------ |
-| `[Error handling approach]` | ADR-004  | Accepted     |
-| `[Caching strategy]`        | ADR-<id> | Proposed     |
-| `[New decision needed]`     | TBD      | Draft needed |
-
 ## Alternatives Considered
 
 1. Alternative A
@@ -167,16 +157,6 @@ Decision Rationale
 
 - Milestones/Phases: `[Link to docs/tasks/T-<id>-<task>/plan.md or task plan]`
 - Risks & Mitigations: `[Top risks with mitigation/validation/fallback]`
-
-## Requirements Mapping
-
-- Map requirements to design sections and tests for traceability.
-
-| Requirement | Design Section             | Test(s) / Benchmark(s)      |
-| ----------- | -------------------------- | --------------------------- |
-| FR-001      | `[Section name]`           | `tests/[...], unit #[...]`  |
-| FR-002      | `[Section name]`           | `tests/[...], it #[...]`    |
-| NFR-010     | Performance Considerations | `bench: [...], perf #[...]` |
 
 ## Documentation Impact
 
