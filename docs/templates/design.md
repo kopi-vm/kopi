@@ -34,19 +34,6 @@
 - Constraints: `[Time/tech/platform/compliance]`
 - Related ADRs: `[/docs/adr/0xx-...md]`
 
-## Requirements Summary (from requirements.md)
-
-- Refer to `docs/templates/requirements.md` (or task-specific requirements document).
-- List referenced requirement IDs only; avoid duplicating full text.
-
-Referenced Functional Requirements
-
-- FR-<id>, FR-<id>, FR-<id>
-
-Referenced Non-Functional Requirements
-
-- NFR-<id> (performance), NFR-<id> (security), NFR-<id> (compatibility), etc.
-
 ## Proposed Design
 
 ### High-Level Architecture
