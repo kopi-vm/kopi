@@ -3,6 +3,7 @@
 ## Documentation Language Policy
 
 All documentation output in this project must be written in English, including:
+
 - Code comments
 - Commit messages
 - Architecture Decision Records (ADRs)
@@ -19,6 +20,7 @@ All documentation output in this project must be written in English, including:
 Kopi is a JDK version management tool written in Rust that integrates with your shell to seamlessly switch between different Java Development Kit versions. It fetches JDK metadata from foojay.io and provides a simple, fast interface similar to tools like volta, nvm, and pyenv.
 
 Key features:
+
 - Automatic JDK version switching based on project configuration
 - Multiple JDK vendor support (AdoptOpenJDK, Amazon Corretto, Azul Zulu, etc.)
 - Shell integration via shims for transparent version management
@@ -43,11 +45,13 @@ The user-facing documentation for Kopi is maintained in a separate repository at
 - Avoid modifying or reverting unrelated user changes detected in the repository.
 
 ### Planning and Tooling Discipline
-- Use the planning tool for any task that is not trivially simple; plans must include at least two steps and be updated as work progresses. Skip planning only for the simplest ~25% of tasks.
+
+- Use the planning tool for any task that is not trivially simple; plans must include at least two steps and be updated as work progresses. Skip planning only for the simplest \~25% of tasks.
 - Before insert/replace/delete edits, invoke `serena__think_about_task_adherence`; after gathering significant context, call `serena__think_about_collected_information` to confirm understanding.
 - Follow the Traceable Development Lifecycle (TDL) for non-trivial work and ensure traceability artifacts stay in sync.
 
 ### Approvals and Safety
+
 - With `approval_policy=on-request`, escalate commands only when sandbox restrictions block essential work. Provide concise justifications when requesting elevated permissions.
 - Exercise caution with destructive operations (`rm`, `git reset`, etc.); seek explicit user direction before proceeding.
 - If unexpected repository changes appear, pause and confirm next steps with the user.
@@ -55,6 +59,7 @@ The user-facing documentation for Kopi is maintained in a separate repository at
 ## Developer Principles
 
 ### Memory Safety Over Micro-optimization
+
 - Prioritize memory safety and correctness over micro-optimizations
 - Accept reasonable overhead (e.g., cloning small strings) to avoid memory leaks
 - Follow Rust's ownership model strictly - avoid `unsafe` code and memory leaks from techniques like `Box::leak()`
@@ -62,12 +67,14 @@ The user-facing documentation for Kopi is maintained in a separate repository at
 - Example: Clone strings for HTTP headers instead of using `Box::leak()` to create static references
 
 ### Code Clarity
+
 - Write clear, readable code that is easy to understand and maintain
 - Use descriptive variable and function names
 - Add comments for complex logic, but prefer self-documenting code
 - Structure code to minimize cognitive load for future developers
 
 ### Clean Code Maintenance
+
 - Remove unused variables, parameters, and struct members promptly
 - When refactoring, trace through all callers to eliminate unnecessary parameters
 - Keep structs lean by removing fields that are no longer used
@@ -75,16 +82,19 @@ The user-facing documentation for Kopi is maintained in a separate repository at
 - Example: If a function parameter like `arch` is no longer used in the implementation, remove it from the function signature and update all callers
 
 ### Prefer Functions Over Structs Without State
+
 - When there's no state to manage, prefer implementing functionality as standalone functions rather than defining structs
 - Only create structs when you need to maintain state, implement traits, or group related data
 - This keeps the code simpler and more straightforward
 - Example: For utility operations like file validation or string parsing, use functions directly instead of creating a struct with methods
 
 ### External API Testing
+
 - When writing code that calls external Web APIs, implement at least one unit test that includes the actual JSON response obtained from calling the API with curl
 - Store the JSON response as a string within the test code
 - This ensures that the parsing logic is tested against real API responses
 - Example:
+
 ```rust
 #[test]
 fn test_parse_foojay_api_response() {
@@ -99,13 +109,14 @@ fn test_parse_foojay_api_response() {
             }
         ]
     }"#;
-    
+
     let packages: Vec<Package> = serde_json::from_str(json_response).unwrap();
     assert_eq!(packages[0].distribution, "temurin");
 }
 ```
 
 ### Avoid Generic "Manager" Naming
+
 - When the name "manager" appears in file names, structs, traits, or similar constructs, consider more specific and descriptive alternatives
 - "Manager" is often too abstract and doesn't clearly communicate the responsibility
 - Choose names that describe what the component actually does
@@ -117,6 +128,7 @@ fn test_parse_foojay_api_response() {
 - This principle helps maintain code clarity and makes the codebase more intuitive
 
 ### Avoid Vague "Util" or "Utils" Naming
+
 - Never use "util" or "utils" in directory names, file names, class names, or variable names
 - These terms are too generic and don't clearly convey the purpose or responsibility
 - Always choose specific names that describe the actual functionality
@@ -128,18 +140,25 @@ fn test_parse_foojay_api_response() {
   - `util_function()` → Name based on what it does: `validate_input()`, `format_output()`
 - This principle ensures code is self-documenting and responsibilities are clear
 
+### Module Placement Consistency
+
+- Consult `docs/architecture.md` before creating or moving modules so directory structure stays aligned with the documented layout.
+- Keep platform-dependent code under `src/platform/` (and its submodules) and expose only cross-platform interfaces from higher layers.
+- When introducing new components, document their location rationale in the relevant design or plan to aid future maintainers.
+
 ## Traceable Development Lifecycle (TDL)
 
-*Structured phases, linked artifacts, verifiable outcomes*
+_Structured phases, linked artifacts, verifiable outcomes_
 
 This project follows the Traceable Development Lifecycle (TDL), a structured development process with full traceability from requirements to implementation. The complete TDL documentation and supporting templates are maintained in:
 
-**[`docs/tdl.md`](docs/tdl.md)** - Full TDL documentation and workflow  
+**[`docs/tdl.md`](docs/tdl.md)** - Full TDL documentation and workflow\
 **[`docs/templates/README.md`](docs/templates/README.md)** - Template descriptions and usage instructions
 
 ## Quick Reference
 
 ### TDL Process Overview
+
 ```mermaid
 graph LR
     A[Analysis] --> R[Requirements]
@@ -152,6 +171,7 @@ graph LR
 ```
 
 ### Key Locations
+
 - **Templates**: `docs/templates/` - All document templates
 - **Analysis**: `docs/analysis/AN-<id>-<topic>.md` - Problem exploration
 - **Requirements**: `docs/requirements/FR-<id>-<capability>.md` and `NFR-<id>-<quality>.md` - Formal requirements
@@ -162,7 +182,7 @@ graph LR
 - **Reviews (Archive)**: `docs/archive/reviews/` - Legacy review records
 - **Traceability**: `docs/traceability.md` - Central mapping matrix
 
-For detailed TDL phases, pull request checklists, and archive policies, refer to [`docs/tdl.md`](docs/tdl.md).  
+For detailed TDL phases, pull request checklists, and archive policies, refer to [`docs/tdl.md`](docs/tdl.md).\
 For template usage instructions, refer to [`docs/templates/README.md`](docs/templates/README.md).
 
 ## Development Workflow
@@ -170,6 +190,7 @@ For template usage instructions, refer to [`docs/templates/README.md`](docs/temp
 ### Completing Work
 
 #### Rust Code
+
 When finishing any Rust coding task, always run the following commands in order and fix any issues:
 
 1. `cargo fmt` - Auto-format code
@@ -179,6 +200,7 @@ When finishing any Rust coding task, always run the following commands in order 
 Address any errors from each command before proceeding to the next. All must pass successfully before considering the work complete.
 
 #### Markdown Documentation
+
 When working on Markdown documentation (`.md` files), run the following commands:
 
 1. `bun format` - Auto-format markdown files
@@ -193,6 +215,7 @@ When working on Markdown documentation (`.md` files), run the following commands
 Both commands must pass successfully before considering the documentation work complete.
 
 #### TypeScript Code
+
 When editing any TypeScript files, run each of the following commands and resolve any reported errors before moving on:
 
 1. `bun format:ts` - Format TypeScript sources
@@ -202,6 +225,7 @@ When editing any TypeScript files, run each of the following commands and resolv
 All three commands must complete without errors to finish TypeScript-related work.
 
 ### Documentation Updates
+
 - Ensure documentation, comments, and messages remain in English.
 - For Markdown changes, run `bun format` followed by `bun lint` and resolve any reported issues before finalizing.
 - If `docs/traceability.md` is missing or you add or remove any files under `docs/`, run `bun scripts/trace-status.ts --write` to regenerate the traceability matrix before completing the work.
