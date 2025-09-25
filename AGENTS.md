@@ -155,18 +155,12 @@ graph LR
 - **Templates**: `docs/templates/` - All document templates
 - **Analysis**: `docs/analysis/AN-<id>-<topic>.md` - Problem exploration
 - **Requirements**: `docs/requirements/FR-<id>-<capability>.md` and `NFR-<id>-<quality>.md` - Formal requirements
-- **ADRs**: `docs/adr/ADR-<id>-<title>.md` - Architecture decisions (new format)
-- **ADRs (Archive)**: `docs/adr/archive/###-<title>.md` - Historical ADRs (pre-2025)
-- **Tasks**: `docs/tasks/T-<id>-<task>/` - Design and plan documents (new format)
-- **Tasks (Archive)**: `docs/tasks/archive/<task>/` - Historical tasks (pre-2025)
+- **ADRs**: `docs/adr/ADR-<id>-<title>.md` - Architecture decisions (current format)
+- **ADRs (Archive)**: `docs/archive/adr/###-<title>.md` - Historical ADRs (pre-2025)
+- **Tasks**: `docs/tasks/T-<id>-<task>/` - Design and plan documents (current format)
+- **Tasks (Archive)**: `docs/archive/tasks/<task>/` - Historical tasks (pre-2025)
+- **Reviews (Archive)**: `docs/archive/reviews/` - Legacy review records
 - **Traceability**: `docs/traceability.md` - Central mapping matrix
-
-### Essential Guidelines
-- All documentation must be in English (per `CLAUDE.md`)
-- For repository conventions (commands, architecture, error handling), see `CLAUDE.md`
-- Follow the Traceable Development Lifecycle (TDL) for all non-trivial changes
-- Maintain traceability through requirement IDs (FR-<id>/NFR-<id>) and ADR references
-- Small changes can use simplified workflow (see templates README)
 
 For detailed TDL phases, pull request checklists, and archive policies, refer to [`docs/tdl.md`](docs/tdl.md).  
 For template usage instructions, refer to [`docs/templates/README.md`](docs/templates/README.md).
