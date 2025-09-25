@@ -3,21 +3,26 @@
 ## Metadata
 
 - Type: Task
-- Status: Proposed
+- Status: In Progress (started 2025-09-25)
 
 ## Links
 
 - Related Analyses:
   - [AN-m9efc-concurrent-process-locking](../../analysis/AN-m9efc-concurrent-process-locking.md)
 - Related Requirements:
+  - [FR-02uqo-installation-locking](../../requirements/FR-02uqo-installation-locking.md)
+  - [FR-ui8x2-uninstallation-locking](../../requirements/FR-ui8x2-uninstallation-locking.md)
+  - [FR-v7ql4-cache-locking](../../requirements/FR-v7ql4-cache-locking.md)
+  - [FR-gbsz6-lock-timeout-recovery](../../requirements/FR-gbsz6-lock-timeout-recovery.md)
+  - [FR-c04js-lock-contention-feedback](../../requirements/FR-c04js-lock-contention-feedback.md)
   - [NFR-g12ex-cross-platform-compatibility](../../requirements/NFR-g12ex-cross-platform-compatibility.md)
   - [NFR-vcxp8-lock-cleanup-reliability](../../requirements/NFR-vcxp8-lock-cleanup-reliability.md)
 - Related ADRs:
   - [ADR-8mnaz-concurrent-process-locking-strategy](../../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Associated Plan Document:
-  - N/A – Not started
+  - [docs/tasks/T-ec5ew-locking-foundation/plan.md](./plan.md)
 - Associated Design Document:
-  - N/A – Not started
+  - [docs/tasks/T-ec5ew-locking-foundation/design.md](./design.md)
 
 ## Summary
 
