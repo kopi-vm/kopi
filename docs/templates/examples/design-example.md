@@ -231,7 +231,9 @@ SQLite provides transactional safety, cross-platform support, and performant que
 
 ## Open Questions
 
-- Do we need configurable per-namespace TTLs? → Platform Team → Q2 roadmap review.
+- [ ] Do we need configurable per-namespace TTLs? → Next step: Update rollout sequencing in docs/tasks/T-df1ny-cache-implementation/plan.md during Q2 planning.
+
+<!-- Complex investigations should spin out into their own ADR or analysis document -->
 
 ## Appendix
 

@@ -117,10 +117,10 @@ cache.put(key, &v, Ttl::hours(1))?;
 
 ## Open Questions
 
-<!-- Questions that arose during decision-making but don't block the decision -->
+- [ ] Should we implement cache pre-warming on startup? → Next step: Refine requirements in docs/requirements/FR-0cv9r-cache-management.md before scheduling work.
+- [ ] What is the optimal default TTL for different cache types? → Method: SRE Team to run performance testing.
 
-- Should we implement cache pre-warming on startup? → Platform Team → Q2 planning
-- What is the optimal default TTL for different cache types? → SRE Team → Performance testing
+<!-- Complex investigations should spin out into their own ADR or analysis document -->
 
 ## External References (optional)
 

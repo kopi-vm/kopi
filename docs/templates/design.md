@@ -167,7 +167,11 @@ Decision Rationale
 
 ## Open Questions
 
-- `[Question]` → `[Owner]` → `[Due/next step]`
+- [ ] `[Question that needs investigation]`
+- [ ] `[Decision that needs to be made]` → Next step: `[Where to resolve (e.g., update plan docs/tasks/T-<id>-<task>/plan.md per TDL)]`
+- [ ] `[Information that needs gathering]` → Method: `[How to obtain insight]`
+
+<!-- Complex investigations should spin out into their own ADR or analysis document -->
 
 ## Appendix
 

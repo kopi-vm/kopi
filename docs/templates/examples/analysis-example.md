@@ -162,9 +162,9 @@ API call patterns from logs (1000 users, 30 days):
 
 ## Open Questions
 
-- [x] Should cache be shared between users? → No, security concerns.
-- [ ] Support for ETag validation? → Investigate in Phase 2.
-- [ ] Cache pre-warming on install? → Consider for v2.
+- [x] Should cache be shared between users? → Next step: Document security stance in docs/requirements/FR-7y2x8-offline-mode.md; no further action required.
+- [ ] Support for ETag validation? → Next step: Draft ADR via docs/adr/ADR-0ab12-cache-etag-strategy.md per TDL.
+- [ ] Cache pre-warming on install? → Method: Prototype during v2 discovery.
 
 <!-- Complex investigations should spin out into their own ADR or analysis document -->
 

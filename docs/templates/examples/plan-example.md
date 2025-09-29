@@ -302,8 +302,10 @@ cargo test --lib --quiet telemetry
 
 ## Open Questions
 
-- Should cache warming run at startup? → Team → Sprint planning.
-- Do we need configurable TTL per namespace? → SRE → Capacity planning.
+- [ ] Should cache warming run at startup? → Next step: Coordinate downstream task docs/tasks/T-kopi-cache-warm/README.md before sprint planning.
+- [ ] Do we need configurable TTL per namespace? → Method: SRE to evaluate during capacity planning.
+
+<!-- Complex investigations should spin out into their own ADR or analysis document -->
 
 ---
 

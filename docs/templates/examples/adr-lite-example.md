@@ -48,9 +48,9 @@ We will set the default log level to `INFO` and rely on `--verbose`/`-v` or `KOP
 
 ## Open Questions (optional)
 
-<!-- Questions that arose during decision-making -->
+- [ ] Should we add multiple verbosity levels (`-v`, `-vv`, `-vvv`)? → Next step: Capture requirement in docs/requirements/FR-h9q7d-logging-verbosity.md before prioritization.
 
-- Should we add multiple verbosity levels (`-v`, `-vv`, `-vvv`)? → Core Team → Future enhancement backlog
+<!-- Complex investigations should spin out into their own ADR or analysis document -->
 
 ## External References (optional)
 

@@ -112,7 +112,7 @@
 ## Open Questions
 
 - [ ] `[Question that needs investigation]`
-- [ ] `[Decision that needs to be made]` → Next step: `[Where to resolve (e.g., schedule review, draft ADR)]`
+- [ ] `[Decision that needs to be made]` → Next step: `[Where to resolve (e.g., draft ADR via docs/adr/ADR-<id>-<title>.md, create requirements docs/requirements/FR-<id>-<capability>.md per TDL)]`
 - [ ] `[Information that needs gathering]` → Method: `[How to obtain insight]`
 
 <!-- Complex investigations should spin out into their own ADR or analysis document -->

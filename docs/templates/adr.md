@@ -109,9 +109,11 @@ kopi <command> `[args]`
 
 ## Open Questions
 
-<!-- Questions that arose during decision-making but don't block the decision -->
+- [ ] `[Question that needs investigation]`
+- [ ] `[Decision that needs to be made]` → Next step: `[Where to resolve (e.g., refine requirements docs/requirements/FR-<id>-<capability>.md, develop design docs/tasks/T-<id>-<task>/design.md per TDL)]`
+- [ ] `[Information that needs gathering]` → Method: `[How to obtain insight]`
 
-- `[Question]` → `[Owner]` → `[Due/next step]`
+<!-- Complex investigations should spin out into their own ADR or analysis document -->
 
 ## External References (optional)
 
