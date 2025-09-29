@@ -62,7 +62,7 @@ We will introduce a dedicated locking subsystem that wraps Rust's `std::fs::File
 
 ### Components
 
-- `LockController`: Entry point that resolves lock scopes, caches filesystem capability decisions, and orchestrates acquisition and release.
+- `LockController`: Entry point that resolves lock scopes, queries filesystem capability details on demand, and orchestrates acquisition and release.
 - `FilesystemInspector`: Thin, platform-specific component that classifies the target mount (ext4, APFS, NTFS, CIFS, etc.) using `statfs` on Unix and `GetVolumeInformationW` on Windows.
 - `AdvisoryBackend`: RAII wrapper around `std::fs::File` locking primitives, returning a `LockHandle` that unlocks on drop.
 - `AtomicFallback`: Provides atomic staging and rename sequences plus structured warning logs when advisory locks are unavailable or fail repeatedly.
@@ -72,7 +72,7 @@ We will introduce a dedicated locking subsystem that wraps Rust's `std::fs::File
 ### Data Flow
 
 1. Caller requests a lock via `LockController::acquire(scope, options)`.
-2. `LockController` resolves the on-disk path and consults (or populates) cached filesystem capability data via `FilesystemInspector`.
+2. `LockController` resolves the on-disk path and asks the `FilesystemInspector` for capability data when needed.
 3. If advisory locks are supported, `AdvisoryBackend` creates/open the lock file, calls `lock_exclusive` or `lock_shared`, and returns a `LockHandle` capturing timing metrics.
 4. If advisory locks are unsupported or fail after configurable retries, `LockController` switches to `AtomicFallback`, emitting a single INFO-level warning and returning a `FallbackHandle` that coordinates rename-based exclusivity.
 5. On drop or explicit `release`, the handle performs unlock/cleanup and records duration in debug logs.
