@@ -171,6 +171,7 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Template**: [`templates/plan.md`](templates/plan.md) - Task-specific implementation plan. Breaks down work into phases with verification steps
 - **Output**: Phased execution plan with tasks, verification steps, and DoD
 - **References**: FR/NFR IDs being implemented, link to design.md
+- **Status Tracking**: Mark each completed task or subtask checkbox as `[x]` immediately. If you intentionally skip or defer work, annotate the checklist entry (e.g., strike-through with a note) instead of leaving it unchecked.
 - **Verification**: Use commands from `CLAUDE.md`:
   - `cargo check`, `cargo fmt`, `cargo clippy --all-targets -- -D warnings`
   - `cargo test --lib --quiet`, `cargo it`, `cargo perf`, `cargo bench`

@@ -39,6 +39,8 @@
 - Phases: `[Short list of phases and intent]`
 - Timeline (optional): `[Milestones/estimates]`
 
+> **Status Tracking:** Mark checkboxes (`[x]`) immediately after completing each task or subtask. If an item is intentionally skipped or deferred, annotate it (e.g., strike-through with a brief note) instead of leaving it unchecked.
+
 ---
 
 ## Phase 1: `[Core Component/Foundation]`
