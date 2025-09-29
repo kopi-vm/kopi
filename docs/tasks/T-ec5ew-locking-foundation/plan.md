@@ -45,6 +45,8 @@ Deliver the locking foundation described in the design: filesystem-aware advisor
 - Phase 2 – Advisory locking core (controller, handles, error surface, logging)
 - Phase 3 – Fallback + hygiene hardening (atomic flows, cleanup runner, CI coverage, stress tests)
 
+> **Status Tracking:** Mark checkboxes (`[x]`) immediately after completing each task or subtask. If an item is intentionally skipped or deferred, annotate it (e.g., strike-through with a brief note) instead of leaving it unchecked.
+
 ---
 
 ## Phase 1: Filesystem & Coordinate Foundation
@@ -109,11 +111,11 @@ cargo test --lib --quiet locking::filesystem locking::package_coordinate config:
 
 ## Phase 2: Advisory Locking Core
 
-### Goal
+### Phase 2 Goal
 
 Implement the advisory locking layer: controller orchestration, RAII handles, timeout handling, and structured logging using the Phase 1 utilities.
 
-### Inputs
+### Phase 2 Inputs
 
 - Documentation: Design sections “Proposed Design” (Components/Data Flow) and “Error Handling”.
 - Source Code to Modify:
@@ -123,7 +125,7 @@ Implement the advisory locking layer: controller orchestration, RAII handles, ti
   - `src/lib.rs` – Export locking module to callers.
 - Dependencies: Phase 1 outputs, existing logging infrastructure (`log` crate).
 
-### Tasks
+### Phase 2 Tasks
 
 - [ ] **Controller API**
   - [ ] Implement `LockController::acquire`, `try_acquire`, and `release`, selecting advisory vs fallback based on filesystem classification and lock scope.
@@ -137,13 +139,13 @@ Implement the advisory locking layer: controller orchestration, RAII handles, ti
 - [ ] **Unit tests**
   - [ ] Cover happy path (shared/exclusive), contention, timeout, and downgrade flows with temporary directories.
 
-### Deliverables
+### Phase 2 Deliverables
 
 - Locking controller module with complete unit tests.
 - Updated error enumeration and `ErrorContext` integration for locking failures.
 - Logging hooks emitting structured messages aligned with design.
 
-### Verification
+### Phase 2 Verification
 
 ```bash
 cargo check
@@ -152,13 +154,13 @@ cargo clippy --all-targets -- -D warnings
 cargo test --lib --quiet locking::controller locking::handle
 ```
 
-### Acceptance Criteria
+### Phase 2 Acceptance Criteria
 
 - Shared locks allow concurrent readers; exclusive locks prevent concurrent writers in tests.
 - Timeout path returns `KopiError::LockingTimeout` including waited duration.
 - Downgrade to fallback is recorded once per mount with INFO log, no panics.
 
-### Rollback/Fallback
+### Phase 2 Rollback/Fallback
 
 - Feature-gate the controller exports and keep Phase 1 utilities available if advisory implementation needs more time.
 
@@ -166,11 +168,11 @@ cargo test --lib --quiet locking::controller locking::handle
 
 ## Phase 3: Fallback Strategy & Hygiene
 
-### Goal
+### Phase 3 Goal
 
 Complete the fallback path for unsupported filesystems, add hygiene cleanup, and validate end-to-end scenarios across platforms.
 
-### Inputs
+### Phase 3 Inputs
 
 - Documentation: Design sections “AtomicFallback”, “LockHygieneRunner”, “Platform Considerations”, and Appendix algorithms.
 - Source Code to Modify:
@@ -180,7 +182,7 @@ Complete the fallback path for unsupported filesystems, add hygiene cleanup, and
   - CI workflows – Ensure matrix jobs cover Linux/macOS/Windows/WSL scenarios.
 - Dependencies: Completed Phases 1 and 2.
 
-### Tasks
+### Phase 3 Tasks
 
 - [ ] **Fallback implementation**
   - [ ] Implement atomic staging + rename sequence, using marker files to avoid deleting active locks.
@@ -195,13 +197,13 @@ Complete the fallback path for unsupported filesystems, add hygiene cleanup, and
 - [ ] **Documentation updates**
   - [ ] Update `docs/architecture.md` and `docs/error_handling.md` per design documentation impact.
 
-### Deliverables
+### Phase 3 Deliverables
 
 - Fallback and hygiene modules with unit/integration tests.
 - CI matrix updates ensuring locking tests run on all target platforms.
 - Documentation changes reflecting new subsystem behavior.
 
-### Verification
+### Phase 3 Verification
 
 ```bash
 cargo check
@@ -213,15 +215,38 @@ bun format
 bun lint
 ```
 
-### Acceptance Criteria
+### Phase 3 Acceptance Criteria
 
 - Fallback locking guarantees exclusive access on unsupported filesystems without data loss in tests.
 - Hygiene runner removes all synthetic stale artifacts within one startup run and logs cleanup summary.
 - CI matrix executes locking lifecycle suite successfully across platforms.
 
-### Rollback/Fallback
+### Phase 3 Rollback/Fallback
 
 - Feature-gate fallback/hygiene while leaving advisory locking available; document temporary limitations if fallback must be deferred.
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+
+- Place unit tests alongside new modules (`src/locking/*.rs`) covering filesystem classification, slug generation, controller flows, and hygiene utilities.
+- Capture representative metadata fixtures (ext4, APFS, NTFS, SMB, NFS) to validate classification logic without live mounts.
+
+### Integration Tests
+
+- Implement `tests/locking_lifecycle.rs` with cross-platform scenarios for install/cache locks, contention, timeouts, fallback, and hygiene sweeps.
+- Extend CI workflows to run lifecycle tests on Linux, macOS, Windows, and WSL runners to mirror production environments.
+
+### External API Parsing (if applicable)
+
+- Not applicable for this task; no external HTTP or JSON parsing occurs within the locking foundation.
+
+### Performance & Benchmarks (if applicable)
+
+- Profile lock acquisition and hygiene durations under stress runs; target <50 ms hygiene sweeps and document regressions if thresholds slip.
+- Track contention benchmarks and log anomalies; schedule `cargo perf` spot checks once controller integration stabilizes.
 
 ---
 
@@ -319,3 +344,5 @@ bun lint
 - [Rust std::fs::File locking API](https://doc.rust-lang.org/std/fs/struct.File.html) – Advisory lock primitives.
 
 ## Open Questions
+
+- None → — → —
