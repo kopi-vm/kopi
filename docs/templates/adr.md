@@ -36,7 +36,6 @@
 - Metric 1: `[what to measure, e.g., "API response time < 200ms"]`
 - Metric 2: `[target value, e.g., "Error rate < 1%"]`
 - Metric 3: `[qualitative measure, e.g., "Developer feedback positive"]`
-- Review date: `[YYYY-MM-DD when to evaluate]`
 
 ## Decision
 
