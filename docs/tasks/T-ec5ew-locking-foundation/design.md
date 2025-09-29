@@ -111,7 +111,7 @@ No new CLI flags are introduced in this task. This task introduces configuration
 
 ### Performance Considerations
 
-- Filesystem detection results are compared against previously mapped mounts within the current process to avoid redundant syscalls whenever practical.
+- Filesystem detection runs on demand for each lock path. We keep the logic stateless so behavior stays consistent even if mounts change during runtime.
 - `LockController` supports `try_acquire` for low-latency paths, deferring to blocking acquire only when needed (enables FR-gbsz6 later).
 - Fallback rename sequences reuse existing staging directories to minimize disk churn.
 

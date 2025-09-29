@@ -73,7 +73,7 @@ Provide the shared utilities required by later phases: filesystem classification
 
 - [ ] **Filesystem inspector**
   - [ ] Implement `FilesystemInspector` trait with Unix `statfs` mapping and Windows `GetVolumeInformationW` + `GetDriveTypeW` logic.
-  - [ ] Store classification results in a thread-safe cache keyed by canonical mount path.
+  - [ ] Keep the inspector stateless so each classification reflects the current filesystem without relying on cached mount data.
 - [ ] **Package coordinate & paths**
   - [ ] Introduce `PackageCoordinate` struct covering distribution, version, package type (JDK/JRE), JavaFX flag, architecture, and variant metadata.
   - [ ] Generate deterministic install lock slugs (e.g., `temurin-21-jdk-x64-javafx`) and expose path helpers that create `~/.kopi/locks/install/<distribution>/<slug>.lock`.
