@@ -129,9 +129,11 @@ where
 
 ## Open Questions
 
-- When should Phase 2 heartbeat/lease features be introduced? → Product Team → Evaluate after six months of production telemetry (2026-03-01).
-- How should long-running NFS operations be surfaced in UX copy? → UX Review → Provide wording before Kopi v1.0 release.
-- Which telemetry sink owns detailed contention metrics? → Observability Working Group → Align during Q4 2025 planning.
+- [x] When should Phase 2 heartbeat/lease features be introduced? → Outcome: Telemetry review locked for 2026-03-01; expectation updates captured in docs/requirements/FR-gbsz6-lock-timeout-recovery.md.
+- [x] How should long-running NFS operations be surfaced in UX copy? → Outcome: UX wording recorded in docs/tasks/T-60h68-lock-feedback/README.md for v1.0 content freeze.
+- [x] Which telemetry sink owns detailed contention metrics? → Outcome: Ownership codified in docs/tasks/T-ec5ew-locking-foundation/plan.md during Q4 2025 planning.
+
+<!-- Complex investigations should spin out into their own ADR or analysis document -->
 
 ## External References (optional)
 

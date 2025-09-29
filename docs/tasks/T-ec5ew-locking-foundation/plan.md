@@ -345,4 +345,6 @@ bun lint
 
 ## Open Questions
 
-- None → — → —
+- [x] `[All prior questions resolved]` → Outcome: Documented in this plan; no open follow-ups remain.
+
+<!-- Complex investigations should spin out into their own ADR or analysis document -->
