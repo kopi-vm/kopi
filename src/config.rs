@@ -19,9 +19,11 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 const CONFIG_FILE_NAME: &str = "config.toml";
 const DEFAULT_MIN_DISK_SPACE_MB: u64 = 500;
+const DEFAULT_LOCK_TIMEOUT_SECS: u64 = 600;
 
 // Directory names
 const JDKS_DIR_NAME: &str = "jdks";
@@ -51,6 +53,9 @@ pub struct KopiConfig {
 
     #[serde(default)]
     pub metadata: MetadataConfig,
+
+    #[serde(default)]
+    pub locking: LockingConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -194,6 +199,40 @@ impl Default for ShimsConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LockingConfig {
+    #[serde(default = "default_locking_mode")]
+    pub mode: LockingMode,
+
+    #[serde(default = "default_locking_timeout_secs", rename = "timeout")]
+    pub timeout_secs: u64,
+}
+
+impl LockingConfig {
+    /// Returns the configured timeout as a `Duration` for convenience.
+    pub fn timeout(&self) -> Duration {
+        Duration::from_secs(self.timeout_secs)
+    }
+}
+
+impl Default for LockingConfig {
+    fn default() -> Self {
+        Self {
+            mode: default_locking_mode(),
+            timeout_secs: default_locking_timeout_secs(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum LockingMode {
+    #[default]
+    Auto,
+    Advisory,
+    Fallback,
+}
+
 // Default value functions
 fn default_true() -> bool {
     true
@@ -213,6 +252,14 @@ fn default_shim_install_timeout() -> u64 {
 
 fn default_min_disk_space_mb() -> u64 {
     DEFAULT_MIN_DISK_SPACE_MB
+}
+
+fn default_locking_mode() -> LockingMode {
+    LockingMode::Auto
+}
+
+fn default_locking_timeout_secs() -> u64 {
+    DEFAULT_LOCK_TIMEOUT_SECS
 }
 
 fn default_distribution() -> String {
@@ -306,6 +353,8 @@ impl KopiConfig {
             .set_default("shims.auto_install", false)?
             .set_default("shims.auto_install_prompt", true)?
             .set_default("shims.install_timeout", 600)?
+            .set_default("locking.mode", "auto")?
+            .set_default("locking.timeout", DEFAULT_LOCK_TIMEOUT_SECS)?
             .set_default("metadata.cache.max_age_hours", 720)?
             .set_default("metadata.cache.auto_refresh", true)?
             .set_default("metadata.cache.refresh_on_miss", true)?;
@@ -431,12 +480,16 @@ mod tests {
         // Clear KOPI_HOME to ensure we get the default behavior
         unsafe {
             env::remove_var("KOPI_HOME");
+            env::remove_var("KOPI_LOCKING__MODE");
+            env::remove_var("KOPI_LOCKING__TIMEOUT");
         }
 
         let kopi_home = resolve_kopi_home().unwrap();
         let config = KopiConfig::new(kopi_home).unwrap();
         assert_eq!(config.storage.min_disk_space_mb, DEFAULT_MIN_DISK_SPACE_MB);
         assert_eq!(config.default_distribution, "temurin");
+        assert_eq!(config.locking.mode, LockingMode::Auto);
+        assert_eq!(config.locking.timeout_secs, DEFAULT_LOCK_TIMEOUT_SECS);
         // The path should contain .kopi - it could be absolute or relative
         let path_str = config.kopi_home.to_string_lossy();
         assert!(
@@ -455,6 +508,8 @@ mod tests {
             env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
             env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
             env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
+            env::remove_var("KOPI_LOCKING__MODE");
+            env::remove_var("KOPI_LOCKING__TIMEOUT");
         }
 
         let temp_dir = TempDir::new().unwrap();
@@ -462,6 +517,8 @@ mod tests {
         assert_eq!(config.storage.min_disk_space_mb, DEFAULT_MIN_DISK_SPACE_MB);
         assert_eq!(config.default_distribution, "temurin");
         assert_eq!(config.kopi_home, temp_dir.path());
+        assert_eq!(config.locking.mode, LockingMode::Auto);
+        assert_eq!(config.locking.timeout_secs, DEFAULT_LOCK_TIMEOUT_SECS);
     }
 
     #[test]
@@ -474,6 +531,8 @@ mod tests {
             env::remove_var("KOPI_AUTO_INSTALL__ENABLED");
             env::remove_var("KOPI_AUTO_INSTALL__PROMPT");
             env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
+            env::remove_var("KOPI_LOCKING__MODE");
+            env::remove_var("KOPI_LOCKING__TIMEOUT");
         }
 
         let temp_dir = TempDir::new().unwrap();
@@ -485,6 +544,8 @@ mod tests {
         config.auto_install.enabled = true;
         config.auto_install.prompt = false;
         config.auto_install.timeout_secs = 600;
+        config.locking.mode = LockingMode::Fallback;
+        config.locking.timeout_secs = 900;
 
         config.save().unwrap();
 
@@ -498,6 +559,8 @@ mod tests {
         assert!(loaded.auto_install.enabled);
         assert!(!loaded.auto_install.prompt);
         assert_eq!(loaded.auto_install.timeout_secs, 600);
+        assert_eq!(loaded.locking.mode, LockingMode::Fallback);
+        assert_eq!(loaded.locking.timeout_secs, 900);
     }
 
     #[test]
@@ -507,6 +570,8 @@ mod tests {
         unsafe {
             env::remove_var("KOPI_STORAGE__MIN_DISK_SPACE_MB");
             env::remove_var("KOPI_DEFAULT_DISTRIBUTION");
+            env::remove_var("KOPI_LOCKING__MODE");
+            env::remove_var("KOPI_LOCKING__TIMEOUT");
         }
 
         let temp_dir = TempDir::new().unwrap();
@@ -518,6 +583,8 @@ mod tests {
         let loaded = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         assert_eq!(loaded.storage.min_disk_space_mb, DEFAULT_MIN_DISK_SPACE_MB);
         assert_eq!(loaded.default_distribution, "corretto");
+        assert_eq!(loaded.locking.mode, LockingMode::Auto);
+        assert_eq!(loaded.locking.timeout_secs, DEFAULT_LOCK_TIMEOUT_SECS);
         assert!(loaded.additional_distributions.is_empty());
     }
 

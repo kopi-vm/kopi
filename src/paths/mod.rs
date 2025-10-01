@@ -12,27 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod api;
-pub mod archive;
-pub mod cache;
-pub mod commands;
-pub mod config;
-pub mod doctor;
-pub mod download;
-pub mod error;
-pub mod indicator;
-pub mod installation;
 pub mod locking;
-pub mod logging;
-pub mod metadata;
-pub mod models;
-pub mod paths;
-pub mod platform;
-pub mod security;
-pub mod shim;
-pub mod storage;
-#[cfg(test)]
-pub mod test;
-pub mod uninstall;
-pub mod user_agent;
-pub mod version;
+
+pub use locking::{cache_lock_path, install_lock_directory, install_lock_path, locks_root};

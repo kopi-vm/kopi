@@ -71,16 +71,16 @@ Provide the shared utilities required by later phases: filesystem classification
 
 ### Tasks
 
-- [ ] **Filesystem inspector**
-  - [ ] Implement `FilesystemInspector` trait with Unix `statfs` mapping and Windows `GetVolumeInformationW` + `GetDriveTypeW` logic.
-  - [ ] Keep the inspector stateless so each classification reflects the current filesystem without relying on cached mount data.
-- [ ] **Package coordinate & paths**
-  - [ ] Introduce `PackageCoordinate` struct covering distribution, version, package type (JDK/JRE), JavaFX flag, architecture, and variant metadata.
-  - [ ] Generate deterministic install lock slugs (e.g., `temurin-21-jdk-x64-javafx`) and expose path helpers that create `~/.kopi/locks/install/<distribution>/<slug>.lock`.
-  - [ ] Expose cache lock path helper for `~/.kopi/locks/cache.lock`.
-- [ ] **Configuration defaults**
-  - [ ] Add `locking.mode` and `locking.timeout` to configuration structs, CLI/env plumbing, and documentation comments.
-  - [ ] Persist defaults (`auto`, `600s`) and ensure serde (or equivalent) deserialization works.
+- [x] **Filesystem inspector**
+  - [x] Implement `FilesystemInspector` trait with Unix `statfs` mapping and Windows `GetVolumeInformationW` + `GetDriveTypeW` logic.
+  - [x] Keep the inspector stateless so each classification reflects the current filesystem without relying on cached mount data.
+- [x] **Package coordinate & paths**
+  - [x] Introduce `PackageCoordinate` struct covering distribution, version, package type (JDK/JRE), JavaFX flag, architecture, and variant metadata.
+  - [x] Generate deterministic install lock slugs (e.g., `temurin-21-jdk-x64-javafx`) and expose path helpers that create `~/.kopi/locks/install/<distribution>/<slug>.lock`.
+  - [x] Expose cache lock path helper for `~/.kopi/locks/cache.lock`.
+- [x] **Configuration defaults**
+  - [x] Add `locking.mode` and `locking.timeout` to configuration structs, CLI/env plumbing, and documentation comments.
+  - [x] Persist defaults (`auto`, `600s`) and ensure serde (or equivalent) deserialization works.
 
 ### Deliverables
 
