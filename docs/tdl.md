@@ -168,6 +168,7 @@ This project supports parallel development using git-worktree with unique IDs to
 ### Step 5: Plan & Execution (phases/tasks)
 
 - **Purpose**: Break down implementation into manageable phases with clear verification. Begin this step only after the corresponding `design.md` has been finalized.
+- **Architecture Alignment**: Before drafting tasks, reconcile the plan with the most recent ADRs/Design decisions. If existing code or dependencies conflict with the approved approach, note the discrepancy in the plan and add an explicit subtask to retire or migrate the legacy pattern.
 - **Template**: [`templates/plan.md`](templates/plan.md) - Task-specific implementation plan. Breaks down work into phases with verification steps
 - **Output**: Phased execution plan with tasks, verification steps, and DoD
 - **References**: FR/NFR IDs being implemented, link to design.md
@@ -233,6 +234,7 @@ Use `N/A – <reason>` when a link grouping does not apply.
 
 - **Verification**: Use canonical cargo commands from `CLAUDE.md` in Verification blocks and Definition of Done
 - **PR Integration**: Link Requirements/Design/Plan and relevant ADRs in PRs; verify DoD items from `AGENTS.md`
+- **Legacy Alignment**: Treat detected mismatches between current code and approved ADR/design decisions as risks—record them in the task plan (with follow-up subtasks) instead of inheriting the legacy behavior by default.
 
 ## Traceability System
 

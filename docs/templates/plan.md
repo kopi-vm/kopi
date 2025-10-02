@@ -34,6 +34,11 @@
 - Assumptions: `[Operational/technical assumptions]`
 - Constraints: `[Time/tech/platform/compliance]`
 
+## ADR & Legacy Alignment
+
+- [ ] Confirm the latest ADRs/design documents that govern this work are referenced above (update `Related ADRs` if needed).
+- [ ] Note any known gaps between existing code/dependencies and the approved approach; add explicit subtasks in the phase checklists to retire or migrate those legacy patterns.
+
 ## Plan Summary
 
 - Phases: `[Short list of phases and intent]`
