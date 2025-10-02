@@ -15,7 +15,8 @@
 use crate::error::{KopiError, Result};
 use crate::locking::scope::LockScope;
 use log::{debug, warn};
-use std::fs::File;
+use std::fs::{self, File};
+use std::io;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -123,21 +124,30 @@ impl Drop for LockHandle {
     }
 }
 
-/// Handle representing a fallback lock acquisition. The concrete implementation
-/// is introduced in Phase 3; for now we simply track scope metadata.
+/// Handle representing a fallback lock acquisition backed by atomic file creation.
 #[derive(Debug)]
 pub struct FallbackHandle {
     scope: LockScope,
     backend_path: PathBuf,
+    marker_path: PathBuf,
+    lease_id: String,
     acquired_at: Instant,
     released: bool,
 }
 
 impl FallbackHandle {
-    pub(crate) fn new(scope: LockScope, backend_path: PathBuf, acquired_at: Instant) -> Self {
+    pub(crate) fn new(
+        scope: LockScope,
+        backend_path: PathBuf,
+        marker_path: PathBuf,
+        lease_id: String,
+        acquired_at: Instant,
+    ) -> Self {
         Self {
             scope,
             backend_path,
+            marker_path,
+            lease_id,
             acquired_at,
             released: false,
         }
@@ -164,12 +174,54 @@ impl FallbackHandle {
             return Ok(());
         }
 
-        debug!(
-            "Released fallback lock for {} after {:.3}s",
-            self.scope,
-            duration_to_secs(self.acquired_at.elapsed())
-        );
+        let elapsed = self.acquired_at.elapsed();
+        let mut first_err: Option<io::Error> = None;
+
+        match fs::remove_file(&self.backend_path) {
+            Ok(()) => {}
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+            Err(err) => {
+                warn!(
+                    "Failed to remove fallback lock file {} for {} (lease {}): {err}",
+                    self.backend_path.display(),
+                    self.scope,
+                    self.lease_id
+                );
+                first_err = Some(err);
+            }
+        }
+
+        match fs::remove_file(&self.marker_path) {
+            Ok(()) => {}
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+            Err(err) => {
+                warn!(
+                    "Failed to remove fallback marker {} for {} (lease {}): {err}",
+                    self.marker_path.display(),
+                    self.scope,
+                    self.lease_id
+                );
+                if first_err.is_none() {
+                    first_err = Some(err);
+                }
+            }
+        }
+
         self.released = true;
+
+        if let Some(err) = first_err {
+            return Err(KopiError::LockingRelease {
+                scope: self.scope.to_string(),
+                details: err.to_string(),
+            });
+        }
+
+        debug!(
+            "Released fallback lock for {} after {:.3}s (lease {})",
+            self.scope,
+            duration_to_secs(elapsed),
+            self.lease_id
+        );
         Ok(())
     }
 }
@@ -179,12 +231,12 @@ impl Drop for FallbackHandle {
         if self.released {
             return;
         }
-        debug!(
-            "Released fallback lock for {} on drop after {:.3}s",
-            self.scope,
-            duration_to_secs(self.acquired_at.elapsed())
-        );
-        self.released = true;
+        if let Err(err) = self.release_inner() {
+            warn!(
+                "Failed to release fallback lock for {} on drop: {err}",
+                self.scope
+            );
+        }
     }
 }
 

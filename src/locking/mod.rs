@@ -13,11 +13,14 @@
 // limitations under the License.
 
 pub mod controller;
+pub mod fallback;
 pub mod handle;
+pub mod hygiene;
 pub mod package_coordinate;
 pub mod scope;
 
 pub use controller::{LockAcquisition, LockController};
 pub use handle::{FallbackHandle, LockBackend, LockHandle};
+pub use hygiene::{LockHygieneReport, LockHygieneRunner, run_startup_hygiene};
 pub use package_coordinate::{PackageCoordinate, PackageKind};
 pub use scope::{LockKind, LockScope};

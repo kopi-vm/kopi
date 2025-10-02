@@ -29,6 +29,7 @@ use kopi::commands::which::WhichCommand;
 use kopi::config::new_kopi_config;
 use kopi::error::{Result, format_error_chain, get_exit_code};
 use kopi::logging;
+use log::warn;
 
 #[derive(Parser)]
 #[command(name = "kopi")]
@@ -246,6 +247,10 @@ fn main() {
             std::process::exit(get_exit_code(&e));
         }
     };
+
+    if let Err(err) = kopi::locking::run_startup_hygiene(config.kopi_home(), &config.locking) {
+        warn!("Lock hygiene sweep failed: {err}");
+    }
 
     let result: Result<()> = (|| {
         match cli.command {

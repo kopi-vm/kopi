@@ -14,6 +14,7 @@
 
 use crate::config::{LockingConfig, LockingMode};
 use crate::error::{KopiError, Result};
+use crate::locking::fallback::{self, FallbackAcquire};
 use crate::locking::handle::{FallbackHandle, LockBackend, LockHandle};
 use crate::locking::scope::{LockKind, LockScope};
 use crate::platform::{AdvisorySupport, DefaultFilesystemInspector, FilesystemInspector};
@@ -36,7 +37,7 @@ pub enum AcquireMode {
 #[derive(Debug)]
 pub enum LockAcquisition {
     Advisory(LockHandle),
-    Fallback(FallbackHandle),
+    Fallback(Box<FallbackHandle>),
 }
 
 impl LockAcquisition {
@@ -57,7 +58,7 @@ impl LockAcquisition {
     pub fn release(self) -> Result<()> {
         match self {
             LockAcquisition::Advisory(handle) => handle.release(),
-            LockAcquisition::Fallback(handle) => handle.release(),
+            LockAcquisition::Fallback(handle) => (*handle).release(),
         }
     }
 }
@@ -134,7 +135,7 @@ impl LockController {
         let support = self.determine_support(&lock_path, &scope)?;
 
         match support {
-            LockBackend::Fallback => self.acquire_fallback(scope, lock_path),
+            LockBackend::Fallback => self.acquire_fallback(scope, lock_path, mode),
             LockBackend::Advisory => self.acquire_advisory(scope, lock_path, mode),
         }
     }
@@ -236,7 +237,7 @@ impl LockController {
                         lock_path.display()
                     );
                     drop(file);
-                    return self.acquire_fallback(scope, lock_path);
+                    return self.acquire_fallback(scope, lock_path, mode);
                 }
                 Err(err) if err.kind() == io::ErrorKind::Interrupted => {
                     last_detail = Some(err.to_string());
@@ -252,17 +253,24 @@ impl LockController {
         }
     }
 
-    fn acquire_fallback(&self, scope: LockScope, lock_path: PathBuf) -> Result<AcquireDisposition> {
+    fn acquire_fallback(
+        &self,
+        scope: LockScope,
+        lock_path: PathBuf,
+        mode: AcquireMode,
+    ) -> Result<AcquireDisposition> {
         info!(
             "Acquiring fallback lock for {} at {}",
             scope,
             lock_path.display()
         );
-        let acquired_at = Instant::now();
-        let handle = FallbackHandle::new(scope, lock_path, acquired_at);
-        Ok(AcquireDisposition::Acquired(LockAcquisition::Fallback(
-            handle,
-        )))
+
+        match fallback::acquire(scope, lock_path, self.timeout, self.retry_delay, mode)? {
+            FallbackAcquire::Acquired(handle) => Ok(AcquireDisposition::Acquired(
+                LockAcquisition::Fallback(handle),
+            )),
+            FallbackAcquire::NotAcquired => Ok(AcquireDisposition::NotAcquired),
+        }
     }
 
     fn prepare_lock_file(&self, lock_path: &Path) -> io::Result<File> {

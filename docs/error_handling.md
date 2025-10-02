@@ -28,6 +28,15 @@ Permission issues, disk space, missing dependencies
 - Provide platform-specific guidance
 - Exit codes: 13 (permission denied), 28 (disk space), 127 (command not found)
 
+### 4. Locking Errors
+
+Failure to coordinate cross-process access (advisory or fallback locking)
+
+- Use dedicated `KopiError::LockingAcquire`, `KopiError::LockingTimeout`, and `KopiError::LockingRelease` variants
+- Include scope labels (`installation temurin-21`, `cache writer`, etc.) and original IO details
+- Let the controller downgrade to fallback automatically; surface INFO logs for downgrade decisions
+- Hygiene failures should log WARN but not abort the CLI; acquisition failures bubble up to commands with actionable text
+
 ## Error Message Format
 
 ```rust
@@ -107,3 +116,4 @@ The `ErrorContext` system automatically provides:
 4. **Be platform-aware** - Provide platform-specific guidance when relevant
 5. **Fail fast** - Check preconditions early to avoid partial operations
 6. **Log appropriately** - Use debug logging for diagnostic information
+7. **Record scope metadata** - Include lock scope, backend (advisory/fallback), and lease identifiers in logs for contention analysis

@@ -15,6 +15,7 @@ kopi/
 │   ├── download/        # Download management and progress reporting
 │   ├── error/           # Error handling and formatting
 │   ├── indicator/       # Progress indicator and user feedback
+│   ├── locking/         # Lock controller, fallback strategy, hygiene runner
 │   ├── installation/    # JDK installation management
 │   ├── metadata/        # Metadata management and parsing
 │   │   └── generator/   # Metadata generation utilities
@@ -174,6 +175,14 @@ kopi/
 - **Recovery Suggestions**: Actionable error messages with fix hints
 - **Graceful Degradation**: Fallback strategies for network failures
 - **Structured Exit Codes**: Consistent exit codes for scripting
+
+### Locking Subsystem
+
+- **LockController**: Central API that coordinates advisory locks, filesystem detection, and fallback selection per \[`src/locking/controller.rs`]
+- **Advisory Backend**: Uses `std::fs::File` locks for supported filesystems with RAII release semantics (`src/locking/handle.rs`)
+- **Atomic Fallback**: `create_new`-based locking for network filesystems with JSON metadata and marker files (`src/locking/fallback.rs`)
+- **Lock Hygiene Runner**: Startup sweep that removes stale fallback artifacts and staging files (`src/locking/hygiene.rs`, invoked from `src/main.rs`)
+- **Configuration**: `locking.mode` (`auto`, `advisory`, `fallback`) and `locking.timeout` control acquisition strategy and hygiene thresholds (`src/config.rs`)
 
 ## Storage Locations
 
