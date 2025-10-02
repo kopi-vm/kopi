@@ -93,7 +93,7 @@ impl FilesystemInfo {
 /// Abstract interface for filesystem inspectors.
 pub trait FilesystemInspector: Send + Sync {
     /// Classifies the filesystem backing `path`.
-    fn classify<P: AsRef<Path>>(&self, path: P) -> Result<FilesystemInfo>;
+    fn classify(&self, path: &Path) -> Result<FilesystemInfo>;
 }
 
 /// Default filesystem inspector that performs live OS queries.
@@ -108,8 +108,8 @@ impl DefaultFilesystemInspector {
 }
 
 impl FilesystemInspector for DefaultFilesystemInspector {
-    fn classify<P: AsRef<Path>>(&self, path: P) -> Result<FilesystemInfo> {
-        let probe_target = resolve_probe_target(path.as_ref())?;
+    fn classify(&self, path: &Path) -> Result<FilesystemInfo> {
+        let probe_target = resolve_probe_target(path)?;
 
         #[cfg(unix)]
         {

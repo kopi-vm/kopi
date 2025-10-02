@@ -151,6 +151,37 @@ impl<'a> ErrorContext<'a> {
                 let details = Some(format!("Disk space issue: {msg}"));
                 (suggestion, details)
             }
+            KopiError::LockingAcquire { scope, details } => {
+                let suggestion = Some(
+                    "Ensure no other Kopi process is operating on the same scope or adjust \
+                     locking.mode/locking.timeout in the configuration."
+                        .to_string(),
+                );
+                let details = Some(format!("Lock acquisition failed for {scope}: {details}"));
+                (suggestion, details)
+            }
+            KopiError::LockingTimeout {
+                scope,
+                waited_secs,
+                details,
+            } => {
+                let suggestion = Some(
+                    "Wait for the other process to finish or increase locking.timeout in `config.toml`."
+                        .to_string(),
+                );
+                let detail_message = format!(
+                    "Timed out after {waited_secs:.2}s when acquiring {scope} lock: {details}"
+                );
+                (suggestion, Some(detail_message))
+            }
+            KopiError::LockingRelease { scope, details } => {
+                let suggestion = Some(
+                    "Verify filesystem permissions and that the lock directory is accessible."
+                        .to_string(),
+                );
+                let details = Some(format!("Lock release failed for {scope}: {details}"));
+                (suggestion, details)
+            }
             KopiError::NetworkError(msg) => {
                 let suggestion = Some(
                     "Check your internet connection and proxy settings. Try 'kopi cache refresh' \

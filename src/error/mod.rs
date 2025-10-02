@@ -119,6 +119,19 @@ pub enum KopiError {
     #[error("Insufficient disk space: {0}")]
     DiskSpaceError(String),
 
+    #[error("Failed to acquire {scope} lock: {details}")]
+    LockingAcquire { scope: String, details: String },
+
+    #[error("Failed to acquire {scope} lock within {waited_secs:.2}s (last error: {details})")]
+    LockingTimeout {
+        scope: String,
+        waited_secs: f64,
+        details: String,
+    },
+
+    #[error("Failed to release {scope} lock: {details}")]
+    LockingRelease { scope: String, details: String },
+
     #[error("System error: {0}")]
     SystemError(String),
 

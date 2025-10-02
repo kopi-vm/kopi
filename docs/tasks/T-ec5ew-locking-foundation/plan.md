@@ -127,17 +127,17 @@ Implement the advisory locking layer: controller orchestration, RAII handles, ti
 
 ### Phase 2 Tasks
 
-- [ ] **Controller API**
-  - [ ] Implement `LockController::acquire`, `try_acquire`, and `release`, selecting advisory vs fallback based on filesystem classification and lock scope.
-  - [ ] Track acquisition timing, enforce timeout budgets, and return informative `KopiError::LockingTimeout` on expiry.
-- [ ] **Handles & RAII**
-  - [ ] Implement `LockHandle` and `FallbackHandle` with `Drop`-based cleanup, storing scope metadata for logging/debug.
-  - [ ] Surface acquisition/release events at DEBUG level with duration and scope.
-- [ ] **Error surface**
-  - [ ] Define `KopiError::Locking*` variants with actionable English messages.
-  - [ ] Map lower-level IO errors into context-rich results for callers.
-- [ ] **Unit tests**
-  - [ ] Cover happy path (shared/exclusive), contention, timeout, and downgrade flows with temporary directories.
+- [x] **Controller API**
+  - [x] Implement `LockController::acquire`, `try_acquire`, and `release`, selecting advisory vs fallback based on filesystem classification and lock scope.
+  - [x] Track acquisition timing, enforce timeout budgets, and return informative `KopiError::LockingTimeout` on expiry.
+- [x] **Handles & RAII**
+  - [x] Implement `LockHandle` and `FallbackHandle` with `Drop`-based cleanup, storing scope metadata for logging/debug.
+  - [x] Surface acquisition/release events at DEBUG level with duration and scope.
+- [x] **Error surface**
+  - [x] Define `KopiError::Locking*` variants with actionable English messages.
+  - [x] Map lower-level IO errors into context-rich results for callers.
+- [x] **Unit tests**
+  - [x] Cover happy path (shared/exclusive), contention, timeout, and downgrade flows with temporary directories.
 
 ### Phase 2 Deliverables
 

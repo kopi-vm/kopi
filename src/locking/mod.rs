@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod controller;
+pub mod handle;
 pub mod package_coordinate;
+pub mod scope;
 
+pub use controller::{LockAcquisition, LockController};
+pub use handle::{FallbackHandle, LockBackend, LockHandle};
 pub use package_coordinate::{PackageCoordinate, PackageKind};
+pub use scope::{LockKind, LockScope};
