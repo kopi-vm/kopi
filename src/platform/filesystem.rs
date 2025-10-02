@@ -309,9 +309,11 @@ const EXFAT_SUPER_MAGIC: libc::c_long = 0x2011_BAB0;
 
 #[cfg(windows)]
 fn classify_windows(path: &Path) -> Result<FilesystemInfo> {
+    use std::convert::TryInto;
     use std::iter;
     use std::os::windows::ffi::OsStrExt;
     use winapi::shared::minwindef::{DWORD, MAX_PATH};
+    use winapi::um::errhandlingapi::GetLastError;
     use winapi::um::fileapi::{GetDriveTypeW, GetVolumeInformationW, GetVolumePathNameW};
     use winapi::um::winbase::{DRIVE_REMOTE, DRIVE_UNKNOWN};
 
@@ -321,20 +323,30 @@ fn classify_windows(path: &Path) -> Result<FilesystemInfo> {
         .chain(iter::once(0))
         .collect();
 
-    let mut volume_path = [0u16; MAX_PATH as usize];
-    let ok = unsafe { GetVolumePathNameW(wide_path.as_ptr(), volume_path.as_mut_ptr(), MAX_PATH) };
+    const MAX_PATH_LEN: usize = MAX_PATH;
+    let mut volume_path = [0u16; MAX_PATH_LEN];
+    let buffer_capacity: DWORD = MAX_PATH_LEN
+        .try_into()
+        .expect("MAX_PATH exceeds DWORD range");
+    let ok = unsafe {
+        GetVolumePathNameW(
+            wide_path.as_ptr(),
+            volume_path.as_mut_ptr(),
+            buffer_capacity,
+        )
+    };
     if ok == 0 {
         return Err(KopiError::SystemError(format!(
             "Failed to resolve volume for '{}': Win32 error {}",
             path.display(),
-            unsafe { winapi::um::errhandlingapi::GetLastError() }
+            unsafe { GetLastError() }
         )));
     }
 
     let drive_type = unsafe { GetDriveTypeW(volume_path.as_ptr()) };
     let is_network_share = drive_type == DRIVE_REMOTE;
 
-    let mut fs_name_buffer = [0u16; MAX_PATH as usize];
+    let mut fs_name_buffer = [0u16; MAX_PATH_LEN];
     let mut serial: DWORD = 0;
     let mut max_component_len: DWORD = 0;
     let mut fs_flags: DWORD = 0;
@@ -348,7 +360,7 @@ fn classify_windows(path: &Path) -> Result<FilesystemInfo> {
             &mut max_component_len,
             &mut fs_flags,
             fs_name_buffer.as_mut_ptr(),
-            MAX_PATH,
+            buffer_capacity,
         )
     };
 
@@ -356,7 +368,7 @@ fn classify_windows(path: &Path) -> Result<FilesystemInfo> {
         return Err(KopiError::SystemError(format!(
             "Failed to query filesystem for '{}': Win32 error {}",
             path.display(),
-            unsafe { winapi::um::errhandlingapi::GetLastError() }
+            unsafe { GetLastError() }
         )));
     }
 
@@ -374,10 +386,10 @@ fn ensure_leading_root(path: &Path) -> PathBuf {
         return path.to_path_buf();
     }
 
-    if let Some(parent) = path.parent() {
-        if parent.exists() {
-            return parent.to_path_buf();
-        }
+    if let Some(parent) = path.parent()
+        && parent.exists()
+    {
+        return parent.to_path_buf();
     }
 
     path.to_path_buf()

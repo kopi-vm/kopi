@@ -82,6 +82,7 @@ impl StatusReporter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::sync::Mutex;
 
     // Helper to temporarily set environment variables
@@ -191,6 +192,7 @@ mod tests {
         }
     }
 
+    #[serial]
     #[test]
     fn test_message_formatting() {
         TestReporter::clear_output();
@@ -207,6 +209,7 @@ mod tests {
         assert!(output[2].contains("Installation complete"));
     }
 
+    #[serial]
     #[test]
     fn test_silent_mode() {
         TestReporter::clear_output();
@@ -226,6 +229,7 @@ mod tests {
         assert!(error_output[0].contains("Something went wrong"));
     }
 
+    #[serial]
     #[test]
     fn test_error_always_shown() {
         // Test silent mode error reporting
@@ -356,6 +360,7 @@ mod tests {
         // Just verify it doesn't panic - the result depends on test environment
     }
 
+    #[serial]
     #[test]
     fn test_message_consistency() {
         TestReporter::clear_output();

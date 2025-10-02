@@ -74,7 +74,7 @@ libc = "0.2"
 nix = { version = "0.29", default-features = false, features = ["fs"] }
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["fileapi", "winnt", "securitybaseapi", "accctrl", "processthreadsapi", "handleapi", "winbase"] }
+winapi = { version = "0.3", features = ["fileapi", "winnt", "securitybaseapi", "accctrl", "processthreadsapi", "handleapi", "winbase", "errhandlingapi"] }
 
 [features]
 integration_tests = []
