@@ -162,36 +162,28 @@ fn classify_unix(path: &Path) -> Result<FilesystemInfo> {
     Ok(describe_unix_filesystem(&stats))
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 fn describe_unix_filesystem(stats: &nix::sys::statfs::Statfs) -> FilesystemInfo {
     use nix::sys::statfs::FsType;
 
     let fs_type: FsType = stats.filesystem_type();
     let raw = fs_type.0 as libc::c_long;
-    if let Some(info) = classify_unix_magic(raw) {
-        return info;
-    }
 
-    #[cfg(any(
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "freebsd",
-        target_os = "dragonfly",
-        target_os = "openbsd",
-        target_os = "netbsd"
-    ))]
-    {
-        if let Some(name) = stats.fstypename() {
-            if let Ok(name_str) = name.to_str() {
-                return classify_by_name(name_str, raw);
-            }
-        }
-    }
-
-    FilesystemInfo::unknown(format!("0x{raw:x}"))
+    classify_unix_magic(raw).unwrap_or_else(|| FilesystemInfo::unknown(format!("0x{raw:x}")))
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "macos")]
+fn describe_unix_filesystem(stats: &nix::sys::statfs::Statfs) -> FilesystemInfo {
+    let name = stats.filesystem_type_name();
+    classify_by_name(name, 0)
+}
+
+#[cfg(all(unix, not(any(target_os = "linux", target_os = "macos"))))]
+fn describe_unix_filesystem(_stats: &nix::sys::statfs::Statfs) -> FilesystemInfo {
+    FilesystemInfo::unknown("unsupported-unix".to_string())
+}
+
+#[cfg(target_os = "linux")]
 fn classify_unix_magic(raw: libc::c_long) -> Option<FilesystemInfo> {
     match raw {
         EXT4_SUPER_MAGIC => Some(FilesystemInfo::new(
@@ -253,14 +245,7 @@ fn classify_unix_magic(raw: libc::c_long) -> Option<FilesystemInfo> {
     }
 }
 
-#[cfg(any(
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "freebsd",
-    target_os = "dragonfly",
-    target_os = "openbsd",
-    target_os = "netbsd"
-))]
+#[cfg(target_os = "macos")]
 fn classify_by_name(name: &str, fallback_raw: libc::c_long) -> FilesystemInfo {
     let normalized = name.to_ascii_lowercase();
     match normalized.as_str() {
@@ -282,29 +267,29 @@ fn classify_by_name(name: &str, fallback_raw: libc::c_long) -> FilesystemInfo {
     }
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const EXT4_SUPER_MAGIC: libc::c_long = 0xEF53;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const XFS_SUPER_MAGIC: libc::c_long = 0x5846_5342;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const BTRFS_SUPER_MAGIC: libc::c_long = 0x9123_683E;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const TMPFS_MAGIC: libc::c_long = 0x0102_1994;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const OVERLAYFS_SUPER_MAGIC: libc::c_long = 0x794C_7630;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const ZFS_SUPER_MAGIC: libc::c_long = 0x2FC1_2FC1;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const CIFS_MAGIC_NUMBER: libc::c_long = 0xFF53_4D42;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const SMB2_MAGIC_NUMBER: libc::c_long = 0xFE53_4D42;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const NFS_SUPER_MAGIC: libc::c_long = 0x0000_6969;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const MSDOS_SUPER_MAGIC: libc::c_long = 0x0000_4D44;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const VFAT_SUPER_MAGIC: libc::c_long = 0x0000_5646;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 const EXFAT_SUPER_MAGIC: libc::c_long = 0x2011_BAB0;
 
 #[cfg(windows)]
