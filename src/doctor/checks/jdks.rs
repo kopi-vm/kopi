@@ -15,6 +15,7 @@
 use crate::config::KopiConfig;
 use crate::doctor::{CheckCategory, CheckResult, CheckStatus, DiagnosticCheck};
 use crate::platform::with_executable_extension;
+use crate::storage::disk_probe;
 use crate::storage::formatting::format_size;
 use crate::storage::{InstalledJdk, JdkLister};
 use std::time::Instant;
@@ -337,7 +338,7 @@ impl<'a> DiagnosticCheck for JdkDiskSpaceCheck<'a> {
         }
 
         // Check available disk space
-        let available_space = match fs2::available_space(&jdks_dir) {
+        let available_space = match disk_probe::available_bytes(&jdks_dir) {
             Ok(space) => space,
             Err(e) => {
                 return CheckResult::new(

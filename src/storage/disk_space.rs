@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::error::{KopiError, Result};
+use crate::storage::disk_probe;
 use std::path::Path;
 
 pub struct DiskSpaceChecker {
@@ -37,13 +38,12 @@ impl DiskSpaceChecker {
 
         log::debug!("Checking disk space for path {path:?} (using {target_dir:?})");
 
-        // Use fs2 for platform-independent disk space checking
-        let space_info = fs2::available_space(&target_dir).map_err(|e| {
-            log::error!("Failed to check disk space at {target_dir:?}: {e}");
-            KopiError::SystemError(format!("Failed to check disk space at {target_dir:?}: {e}"))
+        let available_bytes = disk_probe::available_bytes(&target_dir).map_err(|err| {
+            log::error!("Failed to check disk space at {target_dir:?}: {err}");
+            err
         })?;
 
-        let available_mb = space_info / (1024 * 1024);
+        let available_mb = available_bytes / (1024 * 1024);
         log::debug!(
             "Disk space check: available={available_mb}MB, required={}MB",
             self.min_disk_space_mb

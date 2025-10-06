@@ -16,7 +16,8 @@
 
 use crate::error::Result;
 use log::debug;
-use std::fs;
+use std::fs::{self, OpenOptions, TryLockError};
+use std::io::{self, ErrorKind};
 use std::path::Path;
 
 #[cfg(unix)]
@@ -33,6 +34,36 @@ use winapi::um::fileapi::{GetFileAttributesW, INVALID_FILE_ATTRIBUTES, SetFileAt
 
 #[cfg(target_os = "windows")]
 use winapi::um::winnt::FILE_ATTRIBUTE_READONLY;
+
+/// Outcome of attempting to acquire an exclusive lock on a file.
+#[derive(Debug, PartialEq, Eq)]
+pub enum LockStatus {
+    /// Lock acquired successfully, indicating the file is not in use.
+    Available,
+    /// Lock could not be acquired because another process holds it.
+    InUse,
+}
+
+/// Try to lock a file exclusively and report whether it was available.
+pub fn try_lock_exclusive(path: &Path) -> io::Result<LockStatus> {
+    let file = OpenOptions::new().read(true).write(true).open(path)?;
+
+    match file.try_lock() {
+        Ok(()) => {
+            if let Err(err) = file.unlock() {
+                debug!(
+                    "Failed to unlock {} after availability probe: {}",
+                    path.display(),
+                    err
+                );
+            }
+
+            Ok(LockStatus::Available)
+        }
+        Err(TryLockError::WouldBlock) => Ok(LockStatus::InUse),
+        Err(TryLockError::Error(err)) => Err(err),
+    }
+}
 
 /// Make a file executable (Unix only)
 #[cfg(unix)]
@@ -133,10 +164,7 @@ pub fn atomic_rename(from: &Path, to: &Path) -> std::io::Result<()> {
 }
 
 /// Check if any files in the given path are currently in use
-#[cfg(target_os = "windows")]
 pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
-    use fs2::FileExt;
-
     debug!(
         "Checking if critical JDK files are in use at {}",
         path.display()
@@ -144,42 +172,27 @@ pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
 
     let mut files_in_use = Vec::new();
 
-    // Check only critical JDK executables
-    let critical_files = [
-        "bin/java.exe",
-        "bin/javac.exe",
-        "bin/javaw.exe",
-        "bin/jar.exe",
-    ];
-
-    for file_name in &critical_files {
+    for file_name in critical_jdk_files() {
         let file_path = path.join(file_name);
-        if file_path.exists() {
-            match fs::File::open(&file_path) {
-                Ok(file) => {
-                    // Try to acquire an exclusive lock (non-blocking)
-                    match file.try_lock_exclusive() {
-                        Ok(_) => {
-                            // File is not in use, unlock it
-                            let _ = FileExt::unlock(&file);
-                        }
-                        Err(_) => {
-                            files_in_use.push(format!(
-                                "Critical file may be in use: {}",
-                                file_path.display()
-                            ));
-                        }
-                    }
-                }
-                Err(e) => {
-                    // If we can't even open the file, it might be in use
-                    debug!("Cannot open {}: {}", file_path.display(), e);
-                    if e.kind() == std::io::ErrorKind::PermissionDenied {
-                        files_in_use.push(format!(
-                            "Critical file may be in use (access denied): {}",
-                            file_path.display()
-                        ));
-                    }
+        if !file_path.exists() {
+            continue;
+        }
+
+        match try_lock_exclusive(&file_path) {
+            Ok(LockStatus::Available) => {}
+            Ok(LockStatus::InUse) => {
+                files_in_use.push(format!(
+                    "Critical file may be in use: {}",
+                    file_path.display()
+                ));
+            }
+            Err(e) => {
+                debug!("Cannot open {}: {}", file_path.display(), e);
+                if e.kind() == ErrorKind::PermissionDenied {
+                    files_in_use.push(format!(
+                        "Critical file may be in use (access denied): {}",
+                        file_path.display()
+                    ));
                 }
             }
         }
@@ -188,55 +201,19 @@ pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
     Ok(files_in_use)
 }
 
-/// Check if any files in the given path are currently in use
+#[cfg(target_os = "windows")]
+fn critical_jdk_files() -> &'static [&'static str] {
+    &[
+        "bin/java.exe",
+        "bin/javac.exe",
+        "bin/javaw.exe",
+        "bin/jar.exe",
+    ]
+}
+
 #[cfg(not(target_os = "windows"))]
-pub fn check_files_in_use(path: &Path) -> Result<Vec<String>> {
-    use fs2::FileExt;
-
-    debug!(
-        "Checking if critical JDK files are in use at {}",
-        path.display()
-    );
-
-    let mut files_in_use = Vec::new();
-
-    // Check only critical JDK executables
-    let critical_files = ["bin/java", "bin/javac", "bin/javaw", "bin/jar"];
-
-    for file_name in &critical_files {
-        let file_path = path.join(file_name);
-        if file_path.exists() {
-            match fs::File::open(&file_path) {
-                Ok(file) => {
-                    // Try to acquire an exclusive lock (non-blocking)
-                    match file.try_lock_exclusive() {
-                        Ok(_) => {
-                            // File is not in use, unlock it
-                            let _ = FileExt::unlock(&file);
-                        }
-                        Err(_) => {
-                            files_in_use.push(format!(
-                                "Critical file may be in use: {}",
-                                file_path.display()
-                            ));
-                        }
-                    }
-                }
-                Err(e) => {
-                    // If we can't even open the file, it might be in use
-                    debug!("Cannot open {}: {}", file_path.display(), e);
-                    if e.kind() == std::io::ErrorKind::PermissionDenied {
-                        files_in_use.push(format!(
-                            "Critical file may be in use (access denied): {}",
-                            file_path.display()
-                        ));
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(files_in_use)
+fn critical_jdk_files() -> &'static [&'static str] {
+    &["bin/java", "bin/javac", "bin/javaw", "bin/jar"]
 }
 
 /// Prepare path for removal with platform-specific handling
@@ -553,8 +530,93 @@ pub fn get_file_permissions_string(path: &Path) -> std::io::Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::platform::with_executable_extension;
     use std::fs;
+    use std::sync::{Arc, Barrier, mpsc};
+    use std::thread;
     use tempfile::TempDir;
+
+    #[test]
+    fn std_lock_adapter_allows_relocking() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("lock.txt");
+        fs::write(&file_path, "probe").unwrap();
+
+        let first = try_lock_exclusive(&file_path).unwrap();
+        assert_eq!(first, LockStatus::Available);
+
+        let second = try_lock_exclusive(&file_path).unwrap();
+        assert_eq!(second, LockStatus::Available);
+    }
+
+    #[test]
+    fn std_lock_adapter_detects_locked_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("locked.bin");
+        fs::write(&file_path, "data").unwrap();
+
+        let (release_tx, release_rx) = mpsc::channel();
+        let barrier = Arc::new(Barrier::new(2));
+        let barrier_clone = barrier.clone();
+        let locked_path = file_path.clone();
+
+        let handle = thread::spawn(move || {
+            let file = std::fs::File::options()
+                .read(true)
+                .write(true)
+                .open(&locked_path)
+                .unwrap();
+            file.lock().unwrap();
+            barrier_clone.wait();
+            release_rx.recv().unwrap();
+            file.unlock().unwrap();
+        });
+
+        barrier.wait();
+        let status = try_lock_exclusive(&file_path).unwrap();
+        assert_eq!(status, LockStatus::InUse);
+
+        release_tx.send(()).unwrap();
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn check_files_in_use_reports_locked_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let bin_dir = temp_dir.path().join("bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+        let java_name = with_executable_extension("java");
+        let java_path = bin_dir.join(&java_name);
+        fs::write(&java_path, "binary").unwrap();
+
+        let (release_tx, release_rx) = mpsc::channel();
+        let barrier = Arc::new(Barrier::new(2));
+        let barrier_clone = barrier.clone();
+        let locked_path = java_path.clone();
+
+        let handle = thread::spawn(move || {
+            let file = std::fs::File::options()
+                .read(true)
+                .write(true)
+                .open(&locked_path)
+                .unwrap();
+            file.lock().unwrap();
+            barrier_clone.wait();
+            release_rx.recv().unwrap();
+            file.unlock().unwrap();
+        });
+
+        barrier.wait();
+        let files_in_use = check_files_in_use(temp_dir.path()).unwrap();
+        assert!(
+            files_in_use
+                .iter()
+                .any(|entry| entry.contains("Critical file may be in use"))
+        );
+
+        release_tx.send(()).unwrap();
+        handle.join().unwrap();
+    }
 
     #[test]
     fn test_check_files_in_use_empty_dir() {

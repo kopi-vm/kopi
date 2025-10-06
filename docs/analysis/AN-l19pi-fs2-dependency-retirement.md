@@ -22,6 +22,8 @@
 
 This analysis catalogues all remaining usages of the `fs2` crate inside Kopi, evaluates replacement options aligned with ADR-8mnaz, and recommends a migration plan that preserves existing functionality while improving supply-chain posture. Disk space checks and file-in-use detection currently rely on `fs2`; both responsibilities can be fulfilled via already-adopted dependencies (`sysinfo`) and the Rust 1.89.0 standard library. The proposed approach removes a maintenance liability without reducing platform coverage.
 
+> Status update (2025-10-06): Task T-9r1su implemented the recommended migration. References to `fs2` in this document now describe the pre-migration state for historical context.
+
 ## Problem Space
 
 ### Current State

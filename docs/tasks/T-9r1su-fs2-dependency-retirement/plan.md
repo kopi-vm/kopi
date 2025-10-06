@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Not Started
+- Status: In Progress (updated 2025-10-06)
 
 ## Links
 
@@ -19,7 +19,7 @@ Retire the `fs2` dependency by replacing disk space and file lock helpers with `
 
 ## Success Metrics
 
-- [ ] `fs2` removed from `Cargo.toml` and `Cargo.lock`.
+- [x] `fs2` removed from `Cargo.toml` and `Cargo.lock`.
 - [ ] Disk space checks complete within 50ms p95 on supported desktop platforms.
 - [ ] File-in-use detection reports the same warnings as current implementation across Windows and Unix.
 - [ ] All existing tests pass; no regressions in doctor or uninstall flows.
@@ -34,7 +34,7 @@ Retire the `fs2` dependency by replacing disk space and file lock helpers with `
 ## ADR & Legacy Alignment
 
 - [x] Confirmed ADR-8mnaz guides locking decisions.
-- [ ] Track legacy references to `fs2` in archived docs and mark them as historical in Phase 3 documentation tasks.
+- [x] Track legacy references to `fs2` in archived docs and mark them as historical in Phase 3 documentation tasks.
 
 ## Plan Summary
 
@@ -64,12 +64,12 @@ Refactor disk space checks to use a reusable helper backed by `sysinfo`, meeting
 
 ### Tasks
 
-- [ ] **`Helper creation`**
-  - [ ] Implement `SysinfoDiskProbe` (or equivalent) to expose available bytes for a path.
-  - [ ] Add targeted unit tests using captured `sysinfo` snapshots per platform.
-- [ ] **`Integration updates`**
-  - [ ] Wire `DiskSpaceChecker` to use the probe and remove direct `fs2` calls.
-  - [ ] Update doctor `jdks` check to reuse the helper and refresh disks efficiently.
+- [x] **`Helper creation`**
+  - [x] Implement `disk_probe::available_bytes()` (or equivalent) to expose available bytes for a path.
+  - [x] Add targeted unit tests using captured `sysinfo` snapshots per platform.
+- [x] **`Integration updates`**
+  - [x] Wire `DiskSpaceChecker` to use the probe and remove direct `fs2` calls.
+  - [x] Update doctor `jdks` check to reuse the helper and refresh disks efficiently.
 
 ### Deliverables
 
@@ -112,12 +112,12 @@ Replace `fs2::FileExt` usage with standard library locking while keeping warning
 
 ### Phase 2 Tasks
 
-- [ ] **`Adapter implementation`**
-  - [ ] Introduce `StdFileLockAdapter` (or equivalent) encapsulating `try_lock_exclusive` and `unlock`.
-  - [ ] Add RAII guard/tests ensuring locks release automatically on drop.
-- [ ] **`Function migration`**
-  - [ ] Update both platform variants of `check_files_in_use` to use the adapter.
-  - [ ] Expand tests to simulate locked files via spawned threads/processes.
+- [x] **`Lock helper implementation`**
+  - [x] Introduce a standalone `try_lock_exclusive()` helper encapsulating locking and unlock handling.
+  - [x] Add RAII guard/tests ensuring locks release automatically on drop.
+- [x] **`Function migration`**
+  - [x] Update both platform variants of `check_files_in_use` to use the adapter.
+  - [x] Expand tests to simulate locked files via spawned threads/processes.
 
 ### Phase 2 Deliverables
 
@@ -159,14 +159,14 @@ Remove dependency artifacts, update documentation, and confirm regressions are a
 
 ### Phase 3 Tasks
 
-- [ ] **`Dependency cleanup`**
-  - [ ] Remove `fs2` entries from manifests and regenerate lockfile.
-  - [ ] Run `cargo metadata` to verify dependency graph.
-- [ ] **`Documentation & traceability`**
-  - [ ] Update docs mentioning `fs2`, including archived references with historical context notes.
-  - [ ] Regenerate trace matrix with `bun scripts/trace-status.ts --write` if documentation files change.
+- [x] **`Dependency cleanup`**
+  - [x] Remove `fs2` entries from manifests and regenerate lockfile.
+  - [x] Run `cargo metadata` to verify dependency graph.
+- [x] **`Documentation & traceability`**
+  - [x] Update docs mentioning `fs2`, including archived references with historical context notes.
+  - [x] Regenerate trace matrix with `bun scripts/trace-status.ts --write` if documentation files change.
 - [ ] **`Verification sweep`**
-  - [ ] Execute required Rust workflows (`cargo fmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test --lib --quiet`).
+  - [x] Execute required Rust workflows (`cargo fmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test --lib --quiet`).
   - [ ] Capture manual verification checklist results for macOS, Linux, and Windows.
 
 ### Phase 3 Deliverables
@@ -263,7 +263,7 @@ bun scripts/trace-status.ts --check
 
 ### Naming & Structure
 
-- Use descriptive helper names (`SysinfoDiskProbe`, `StdFileLockAdapter`); avoid "manager" or "util" suffixes.
+- Use descriptive helper names (`disk_probe::available_bytes()`, `try_lock_exclusive()`); avoid "manager" or "util" suffixes.
 - Prefer small functions over stateful structs unless trait implementations are needed.
 
 ### Safety & Clarity

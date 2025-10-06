@@ -107,7 +107,7 @@ This analysis explores the need for a locking mechanism in kopi to handle concur
 
 #### volta (JavaScript Tool Manager - Rust)
 
-- **Implementation**: Originally used `fs2` crate for cross-platform file locking
+- **Implementation**: Originally used `fs2` crate for cross-platform file locking (retired in task T-9r1su on 2025-10-06)
 - **Historical Note**: fs2 was the standard solution before Rust 1.89.0 added native file locking
 - **Lock File**: `volta.lock` in the Volta directory
 - **Architecture**: RAII pattern with reference counting for nested locks
@@ -335,7 +335,7 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 1. Use std::fs::File for advisory locking (native in Rust 1.89.0+, automatic cleanup on crash)
 2. Implement acquisition timeout (600 seconds default, configurable) to prevent indefinite waiting
 3. Add NFS detection with skip strategy (atomic operations only)
-4. Remove fs2 dependency from existing code (migrate to std)
+4. Remove fs2 dependency from existing code (migrate to std) — completed via T-9r1su on 2025-10-06
 
 ### Next Steps
 
@@ -347,7 +347,7 @@ fs::write("kopi.lock", serde_json::to_string(&lock_data)?)?;
 2. [x] Create formal requirements: NFR-z6kan through NFR-g12ex → Completed 2025-09-02
 3. [x] Draft ADR for: Lock file strategy using native std::fs::File → Completed as ADR-8mnaz
 4. [ ] Create task for: Implementing core locking module with std::fs::File
-5. [ ] Create task for: Migrating existing fs2 usage to std::fs::File
+5. [x] Create task for: Migrating existing fs2 usage to std::fs::File (see T-9r1su)
 6. [ ] Monitor production: Collect NFS usage data to validate YAGNI approach
 
 ### Out of Scope

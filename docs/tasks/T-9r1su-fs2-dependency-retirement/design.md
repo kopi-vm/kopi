@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Design
-- Status: Draft
+- Status: In Review (updated 2025-10-06)
 
 ## Links
 
@@ -19,7 +19,7 @@ This design replaces all remaining `fs2` usage with first-party alternatives. Di
 
 ## Success Metrics
 
-- [ ] `fs2` crate removed from `Cargo.toml` and `cargo metadata` dependency graph.
+- [x] `fs2` crate removed from `Cargo.toml` and `cargo metadata` dependency graph.
 - [ ] Disk space checks return within 50ms (p95) on local SSDs across macOS, Linux, and Windows.
 - [ ] No regressions in doctor `jdks` check output compared with current snapshots.
 
@@ -43,24 +43,24 @@ This design replaces all remaining `fs2` usage with first-party alternatives. Di
            |                              |
            v                              v
 +---------------------+      +---------------------+
-| SysinfoDiskProbe    |      | StdFileLockAdapter  |
+| disk_probe::available_bytes() |      | try_lock_exclusive()|
 | (new helper)        |      | (new helper)        |
 +---------------------+      +---------------------+
 ```
 
 ### Components
 
-- **SysinfoDiskProbe**: Internal helper providing `available_bytes(path: &Path) -> Result<u64>` using `sysinfo::Disks` snapshots filtered by mount point.
-- **StdFileLockAdapter**: Wrapper exposing `try_lock_exclusive(path: &Path) -> Result<LockOutcome>` that uses `std::fs::File` methods and returns structured results for messaging.
-- Updated `DiskSpaceChecker` and doctor `jdks` check to depend on `SysinfoDiskProbe` instead of calling `fs2` directly.
-- Updated `check_files_in_use` functions to call `StdFileLockAdapter` and avoid conditional traits on `fs2`.
+- **`disk_probe::available_bytes()` helper**: Internal function returning `Result<u64>` using `sysinfo::Disks` snapshots filtered by mount point.
+- **try_lock_exclusive() helper**: Standalone function returning `Result<LockStatus>` using `std::fs::File` methods to keep messaging consistent.
+- Updated `DiskSpaceChecker` and doctor `jdks` check to depend on `disk_probe::available_bytes()` instead of calling `fs2` directly.
+- Updated `check_files_in_use` functions to call the `try_lock_exclusive()` helper and avoid conditional traits on `fs2`.
 
 ### Data Flow
 
 1. Caller requests disk space check.
-2. `SysinfoDiskProbe` refreshes disks, finds the mount for the target path, and returns available bytes.
+2. `disk_probe::available_bytes()` refreshes disks, finds the mount for the target path, and returns available bytes.
 3. `DiskSpaceChecker` converts bytes to MB/GB and applies thresholds.
-4. For file-in-use detection, `StdFileLockAdapter` opens each critical binary, attempts `try_lock_exclusive`, and returns success/failure.
+4. For file-in-use detection, the `try_lock_exclusive()` helper opens each critical binary, attempts `try_lock`, and returns success/failure.
 5. Doctor or uninstall flows translate outcomes into warnings or suggestions.
 
 ### Storage Layout and Paths (if applicable)
@@ -74,8 +74,8 @@ No CLI changes: doctor and uninstall commands retain existing flags and output f
 
 ### Data Models and Types
 
-- Introduce `enum LockOutcome { Acquired, InUse(String) }` (exact signature TBD) to encapsulate results.
-- Potential trait `DiskProbe` to allow dependency injection during testing.
+- `disk_probe::available_bytes()` exposes `available_bytes(&Path) -> Result<u64>` backed by `sysinfo` and path normalisation helpers.
+- `LockStatus` enum reports whether a lock was acquired (`Available`) or blocked (`InUse`).
 
 ### Error Handling
 
@@ -89,7 +89,7 @@ No CLI changes: doctor and uninstall commands retain existing flags and output f
 
 ### Performance Considerations
 
-- Limit `sysinfo` refresh scope: use `System::new_with_specifics(RefreshKind::new().with_disks_list().with_disks())` to refresh only disks.
+- Limit `sysinfo` refresh scope: use `System::new()` with targeted `refresh_disks_list()` and `refresh_disks()` calls.
 - Cache probe instance within a single command invocation where practical to avoid repeated refreshes.
 
 ### Platform Considerations
@@ -132,8 +132,8 @@ Using `sysinfo` and standard library APIs provides strong portability, matches e
 
 ### Unit Tests
 
-- Add unit tests for `SysinfoDiskProbe` with captured sample data representing Linux, macOS, and Windows JSON snapshots.
-- Ensure `StdFileLockAdapter` has tests covering acquired locks, files missing, permission denied, and in-use scenarios (using temp files/threads).
+- Add unit tests for the disk probe helper with captured sample data representing Linux, macOS, and Windows snapshots.
+- Ensure the `try_lock_exclusive()` helper has tests covering acquired locks, files missing, permission denied, and in-use scenarios (using temp files/threads).
 
 ### Integration Tests
 
@@ -155,7 +155,7 @@ Using `sysinfo` and standard library APIs provides strong portability, matches e
 
 ## External References (optional)
 
-- [sysinfo crate](https://docs.rs/sysinfo/) - Disk statistics used by `SysinfoDiskProbe`
+- [sysinfo crate](https://docs.rs/sysinfo/) - Disk statistics used by the disk probe helper
 - [Rust 1.89.0 file locking announcement](https://blog.rust-lang.org/2025/08/07/Rust-1.89.0/index.html)
 
 ## Open Questions
@@ -168,8 +168,8 @@ Using `sysinfo` and standard library APIs provides strong portability, matches e
 ### Diagrams
 
 ```text
-DiskSpaceChecker --> SysinfoDiskProbe
-check_files_in_use --> StdFileLockAdapter --> std::fs::File
+DiskSpaceChecker --> disk_probe::available_bytes()
+check_files_in_use --> try_lock_exclusive() --> std::fs::File
 ```
 
 ### Examples

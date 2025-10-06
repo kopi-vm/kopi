@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Functional Requirement
-- Status: Proposed
+- Status: Implemented (updated 2025-10-06)
 
 ## Links
 
@@ -33,9 +33,9 @@ As a Kopi user uninstalling or updating a JDK, I want the CLI to warn me when ja
 
 ## Acceptance Criteria
 
-- [ ] The `check_files_in_use` function uses `std::fs::File::{try_lock_exclusive, unlock}` (or equivalent standard library APIs) without importing `fs2`.
-- [ ] Windows and Unix variants of `check_files_in_use` return the same warning messages as the current implementation when locks cannot be acquired.
-- [ ] Automated tests simulate locked and unlocked files, confirming error paths across supported platforms using platform-specific harnesses or mock helpers.
+- [x] The `check_files_in_use` function uses `std::fs::File::{try_lock_exclusive, unlock}` (or equivalent standard library APIs) without importing `fs2`.
+- [x] Windows and Unix variants of `check_files_in_use` return the same warning messages as the current implementation when locks cannot be acquired.
+- [x] Automated tests simulate locked and unlocked files, confirming error paths across supported platforms using platform-specific harnesses or mock helpers.
 - [ ] Manual verification checklist documents Windows Explorer and macOS Activity Monitor scenarios where files remain open, ensuring messages remain actionable.
 
 ## Technical Details (if applicable)
@@ -70,7 +70,7 @@ As a Kopi user uninstalling or updating a JDK, I want the CLI to warn me when ja
 
 ## Implementation Notes
 
-- Introduce a small helper to wrap lock acquisition/release per platform, enabling dependency injection in tests.
+- Introduce a small helper function (`try_lock_exclusive`) to wrap lock acquisition/release per platform, enabling dependency injection in tests.
 - Document known limitations for network filesystems in the doctor output and user docs repository.
 - Ensure telemetry or debug logging indicates when locks fail for later analysis.
 

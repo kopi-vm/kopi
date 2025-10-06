@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Task
-- Status: In Progress (started 2025-10-02)
+- Status: In Review (updated 2025-10-06)
 
 ## Links
 
@@ -43,10 +43,7 @@ Retire the `fs2` crate by migrating all remaining usages to supported platform A
 
 ## Notes
 
-- Outstanding `fs2` usage as of 2025-09-18:
-  - `src/storage/disk_space.rs:40-58`
-  - `src/doctor/checks/jdks.rs:332-356`
-  - `src/platform/file_ops.rs:138-220`
+- Outstanding `fs2` usage: none (dependencies removed and callers migrated on 2025-10-06).
 
 ---
 

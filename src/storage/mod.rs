@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod disk_probe;
 mod disk_space;
 pub mod formatting;
 mod installation;
