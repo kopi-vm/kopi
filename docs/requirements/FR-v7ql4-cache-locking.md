@@ -13,7 +13,7 @@
 - Prerequisite Requirements:
   - [FR-gbsz6-lock-timeout-recovery](../requirements/FR-gbsz6-lock-timeout-recovery.md)
 - Dependent Requirements:
-  - N/A – Blocks nothing
+  - [FR-x63pa-disk-space-telemetry](../requirements/FR-x63pa-disk-space-telemetry.md)
 - Related ADRs:
   - [ADR-8mnaz-concurrent-process-locking-strategy](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Related Tasks:

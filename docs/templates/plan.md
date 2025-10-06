@@ -41,8 +41,10 @@
 
 ## Plan Summary
 
-- Phases: `[Short list of phases and intent]`
-- Timeline (optional): `[Milestones/estimates]`
+- Phase 1 – `[Short label describing the primary focus (e.g., Foundation scaffolding, API surface, CLI polish)]`
+- Phase 2 – `[Short label describing the next major milestone]`
+- Phase 3 – `[Short label describing the final hardening/cleanup]`
+  - `[Add additional phases or remove unused lines as appropriate]`
 
 > **Status Tracking:** Mark checkboxes (`[x]`) immediately after completing each task or subtask. If an item is intentionally skipped or deferred, annotate it (e.g., strike-through with a brief note) instead of leaving it unchecked.
 

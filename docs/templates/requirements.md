@@ -108,8 +108,3 @@ The system shall `[constraint/quality attribute]` to ensure `[benefit/goal]`.
 ## Template Usage
 
 For detailed instructions, see [Template Usage Instructions](README.md#individual-requirement-template-requirementsmd) in the templates README.
-
-- Tasks:
-  - [T-<id>-<task>](../tasks/T-<id>-<task>/README.md)
-
-<!--lint enable remark-validate-links -->

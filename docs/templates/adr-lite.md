@@ -66,8 +66,3 @@
 ## Template Usage
 
 For detailed instructions on using this template, see [Template Usage Instructions](README.md#adr-templates-adrmd-and-adr-litemd) in the templates README.
-
-- Tasks:
-  - [T-<id>-<task>](../tasks/T-<id>-<task>/README.md)
-
-<!--lint enable remark-validate-links -->

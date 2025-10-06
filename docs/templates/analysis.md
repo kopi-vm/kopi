@@ -137,10 +137,6 @@
 
 ## Appendix
 
-### Meeting Notes
-
-`[Key discussions and decisions from meetings]`
-
 ### References
 
 `[External documents, standards, articles that informed this analysis]`
@@ -154,8 +150,3 @@
 ## Template Usage
 
 For detailed instructions and key principles, see [Template Usage Instructions](README.md#analysis-template-analysismd) in the templates README.
-
-- ADRs:
-  - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
-
-<!--lint enable remark-validate-links -->

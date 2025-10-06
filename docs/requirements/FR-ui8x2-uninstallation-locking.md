@@ -13,7 +13,7 @@
 - Prerequisite Requirements:
   - [FR-02uqo-installation-locking](../requirements/FR-02uqo-installation-locking.md)
 - Dependent Requirements:
-  - N/A – Blocks nothing
+  - [FR-rxelv-file-in-use-detection](../requirements/FR-rxelv-file-in-use-detection.md)
 - Related ADRs:
   - [ADR-8mnaz-concurrent-process-locking-strategy](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Related Tasks:
