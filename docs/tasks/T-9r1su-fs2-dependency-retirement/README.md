@@ -3,15 +3,21 @@
 ## Metadata
 
 - Type: Task
-- Status: Proposed
+- Status: In Progress (started 2025-10-02)
 
 ## Links
 
-- Analysis: N/A – Task derived directly from ADR discussions
-- Requirements: N/A – To be authored once replacement approach is selected
-- ADRs: [`ADR-8mnaz-concurrent-process-locking-strategy.md`](../../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
-- Design: N/A – Not started
-- Plan: N/A – Not started
+- Analysis:
+  - [AN-l19pi-fs2-dependency-retirement](../../analysis/AN-l19pi-fs2-dependency-retirement.md)
+- Requirements:
+  - [FR-x63pa-disk-space-telemetry](../../requirements/FR-x63pa-disk-space-telemetry.md)
+  - [FR-rxelv-file-in-use-detection](../../requirements/FR-rxelv-file-in-use-detection.md)
+- ADRs:
+  - [ADR-8mnaz-concurrent-process-locking-strategy.md](../../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+- Design:
+  - [docs/tasks/T-9r1su-fs2-dependency-retirement/design.md](./design.md)
+- Plan:
+  - [docs/tasks/T-9r1su-fs2-dependency-retirement/plan.md](./plan.md)
 
 ## Summary
 
@@ -32,7 +38,7 @@ Retire the `fs2` crate by migrating all remaining usages to supported platform A
 - Audit `src/storage/disk_space.rs`, `src/doctor/checks/jdks.rs`, and `src/platform/file_ops.rs` to confirm current behaviour and replacement requirements.
 - Prototype disk space retrieval using a supported crate (e.g., `sysinfo`) and capture sample outputs for regression tests.
 - Design and implement a `std::fs::File`-based alternative for `check_files_in_use()` with platform-specific verification notes.
-- Produce follow-up requirements/design/plan documents once the approach is validated and ready for implementation.
+- Produce follow-up requirements/design/plan documents once the approach is validated and ready for implementation (completed 2025-10-02; see linked design and plan).
 - Remove `fs2` from `Cargo.toml`, run the full Rust completing-work commands, and update documentation that references `fs2`.
 
 ## Notes
