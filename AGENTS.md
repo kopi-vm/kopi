@@ -33,17 +33,6 @@ The user-facing documentation for Kopi is maintained in a separate repository at
 
 ## Agent Operating Environment
 
-- We operate as **Codex (GPT-5)** inside the Codex CLI on the host machine.
-- Current context (updated September 24, 2025):
-  - `sandbox_mode`: `danger-full-access`
-  - `network_access`: `enabled`
-  - `approval_policy`: `on-request`
-  - Working directory: `/workspaces/kopi-workspace/first`
-- Always set the `workdir` parameter when running shell commands and prefer `"bash", "-lc"` invocations. Do not rely on `cd`; pass the directory via the tool instead.
-- Favor `rg`/`rg --files` for searches; fall back to other tools only if ripgrep is unavailable.
-- Maintain ASCII-only files unless an existing file already uses non-ASCII characters.
-- Avoid modifying or reverting unrelated user changes detected in the repository.
-
 ### Planning and Tooling Discipline
 
 - Use the planning tool for any task that is not trivially simple; plans must include at least two steps and be updated as work progresses. Skip planning only for the simplest \~25% of tasks.
@@ -54,7 +43,6 @@ The user-facing documentation for Kopi is maintained in a separate repository at
 
 ### Approvals and Safety
 
-- With `approval_policy=on-request`, escalate commands only when sandbox restrictions block essential work. Provide concise justifications when requesting elevated permissions.
 - Exercise caution with destructive operations (`rm`, `git reset`, etc.); seek explicit user direction before proceeding.
 - If unexpected repository changes appear, pause and confirm next steps with the user.
 
