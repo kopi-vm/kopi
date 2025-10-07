@@ -66,20 +66,18 @@
 
 - [ ] **FR-DRAFT-1**: `[Requirement description]` → Will become FR-<id>
   - Rationale: `[Why this is needed]`
-  - Priority: P0/P1/P2/P3
   - Acceptance Criteria: `[Measurable criteria]`
 
 - [ ] **FR-DRAFT-2**: `[Requirement description]` → Will become FR-<id>
   - Rationale: `[Why this is needed]`
-  - Priority: P0/P1/P2/P3
   - Acceptance Criteria: `[Measurable criteria]`
 
 ### Non-Functional Requirements (Potential)
 
 - [ ] **NFR-DRAFT-1**: `[Constraint/quality attribute]` → Will become NFR-<id>
   - Category: Performance | Security | Usability | Reliability
-  - Target: `[Specific measurable target]`
   - Rationale: `[Why this constraint matters]`
+  - Target: `[Specific measurable target]`
 
 ## Design Considerations
 
