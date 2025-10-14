@@ -10,10 +10,10 @@
 
 <!-- Internal project artifacts only. The Links section is mandatory for traceability. Replace or remove bullets as appropriate. -->
 
-- Related Requirements:
+- Impacted Requirements:
   - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
   - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
-- Related ADRs:
+- Supersedes ADRs:
   - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
 - Related Tasks:
   - [T-<id>-<task>](../tasks/T-<id>-<task>/README.md)
