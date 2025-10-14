@@ -27,14 +27,6 @@
 - `[Metric name]`: `[Definition and target]`
 - `[Metric name]`: `[Definition and target]`
 
-## Detailed Plan
-
-- `[Add structured breakdown of workstreams, milestones, or dependencies]`
-
-## Notes
-
-- `[Optional callouts, risks, or decision history]`
-
 ---
 
 ## Template Usage
