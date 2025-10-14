@@ -69,6 +69,7 @@ const HIERARCHY_REFERENCE_RULES: ReferenceRule[] = [
     linkType: "requirements",
     targetTypes: ["requirement"],
   },
+  { sourceType: "analysis", linkType: "tasks", targetTypes: ["task"] },
   { sourceType: "analysis", linkType: "adrs", targetTypes: ["adr"] },
   { sourceType: "adr", linkType: "requirements", targetTypes: ["requirement"] },
   { sourceType: "adr", linkType: "tasks", targetTypes: ["task"] },
@@ -619,9 +620,10 @@ export function findOrphanTasks(
   const orphans: string[] = [];
   for (const doc of taskDocsFrom(documents)) {
     const references = inbound.get(doc.docId);
+    const hasAnalysis = (references?.get("analysis")?.size ?? 0) > 0;
     const hasRequirement = (references?.get("requirement")?.size ?? 0) > 0;
     const hasAdr = (references?.get("adr")?.size ?? 0) > 0;
-    if (!hasRequirement && !hasAdr) {
+    if (!hasAnalysis && !hasRequirement && !hasAdr) {
       orphans.push(doc.docId);
     }
   }
@@ -947,7 +949,7 @@ export function renderTraceabilityMarkdown(
       const doc = documents.get(taskId);
       const status = doc?.status ?? "Unknown";
       lines.push(
-        `- ${taskId}: No upstream requirement or ADR references (Status: ${status})`,
+        `- ${taskId}: No upstream analysis, requirement, or ADR references (Status: ${status})`,
       );
     }
   }
@@ -1018,7 +1020,7 @@ export function printStatus(
       const doc = documents.get(taskId);
       const status = doc?.status ?? "Unknown";
       console.log(
-        `  ⚠ ${taskId}: No upstream requirement or ADR references (Status: ${status})`,
+        `  ⚠ ${taskId}: No upstream analysis, requirement, or ADR references (Status: ${status})`,
       );
     }
     console.log();
@@ -1104,7 +1106,9 @@ export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
       console.error(`  - ${adrId}: No upstream analysis references`);
     }
     for (const taskId of orphanTasks) {
-      console.error(`  - ${taskId}: No upstream requirement or ADR references`);
+      console.error(
+        `  - ${taskId}: No upstream analysis, requirement, or ADR references`,
+      );
     }
     ok = false;
   }

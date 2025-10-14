@@ -762,7 +762,7 @@ describe("traceability helpers", () => {
       "- FR-0002: No upstream analysis or ADR references (Status: Proposed)",
     );
     expect(markdown).toContain(
-      "- T-0002: No upstream requirement or ADR references (Status: Not Started)",
+      "- T-0002: No upstream analysis, requirement, or ADR references (Status: Not Started)",
     );
     expect(markdown).toContain("### Dependency Consistency");
     expect(markdown).toContain(
