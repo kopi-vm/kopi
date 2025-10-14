@@ -40,6 +40,7 @@ The user-facing documentation for Kopi is maintained in a separate repository at
 - After activation, run `serena__check_onboarding_performed`; if it indicates onboarding is incomplete, execute `serena__onboarding` before proceeding.
 - Before insert/replace/delete edits, invoke `serena__think_about_task_adherence`; after gathering significant context, call `serena__think_about_collected_information` to confirm understanding.
 - Follow the Traceable Development Lifecycle (TDL) for non-trivial work and ensure traceability artifacts stay in sync.
+- Before processing any task work, run `bun scripts/trace-status.ts` to confirm there are no traceability gaps; if upstream artifacts are missing, author the necessary higher-level documents before continuing.
 
 ### Approvals and Safety
 
