@@ -154,10 +154,13 @@ graph LR
     A[Analysis] --> R[Requirements]
     A --> ADR[ADR]
     ADR --> R
-    R --> D[Design]
-    ADR --> D
-    D --> P[Plan]
-    P --> I[Implementation]
+    R --> T
+    ADR --> T
+    subgraph T[Task]
+      direction LR
+      D[Design] <--> P[Plan]
+    end
+    T --> I[Implementation]
 ```
 
 ### Key Locations
@@ -202,7 +205,7 @@ When working on Markdown documentation (`.md` files), run the following commands
    - Common issues: trailing spaces, inconsistent indentation, missing blank lines
    - Fix any warnings or errors reported
 
-Both commands must pass successfully before considering the documentation work complete.
+Both commands must pass successfully before considering the documentation work complete. After the document is finalized, compare it against the source template (for example, `docs/templates/analysis.md`) to confirm the Metadata, Links, and status selections remain consistent with the current standards.
 
 #### TypeScript Code
 
