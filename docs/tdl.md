@@ -348,7 +348,3 @@ All TDL templates are located in the [`docs/templates/`](templates/) directory. 
 - [`adr-lite.md`](templates/adr-lite.md) - Lightweight ADR for simple decisions
 - [`design.md`](templates/design.md) - Task-specific technical design
 - [`plan.md`](templates/plan.md) - Task-specific implementation plan
-
-### Template Examples
-
-See [`docs/templates/examples/`](templates/examples/) for complete examples of each template type.

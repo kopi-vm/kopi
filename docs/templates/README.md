@@ -237,19 +237,7 @@ Use inline code (`` ` ``) for the following cases to ensure proper formatting an
 
 ## Examples
 
-### Template Examples
-
-#### Core Workflow Template Examples
-
-- Analysis: [`examples/analysis-example.md`](examples/analysis-example.md) - Problem exploration and requirement discovery
-- Individual Requirement: [`examples/requirement-example.md`](examples/requirement-example.md) - Single requirement document (e.g., FR-0001-user-authentication, NFR-0001-performance)
-- Design: [`examples/design-example.md`](examples/design-example.md) - Task-specific technical design referencing requirement IDs
-- Plan: [`examples/plan-example.md`](examples/plan-example.md) - Task-specific phased implementation with verification steps
-
-#### ADR Templates
-
-- Full ADR: [`examples/adr-full-example.md`](examples/adr-full-example.md) - Demonstrates all sections
-- Lite ADR: [`examples/adr-lite-example.md`](examples/adr-lite-example.md) - Lightweight format for simple decisions
+Template-specific example files were removed to reduce maintenance noise. Refer to active or archived project documents for canonical usage patterns.
 
 ### Real Project Examples (Archived)
 
