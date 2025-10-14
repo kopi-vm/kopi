@@ -55,23 +55,21 @@ Leaving placeholders in Metadata causes `scripts/trace-status.ts` to report `Unk
 
 ### Links Section Expectations
 
-All templates include a `## Links` section. Maintain the label structure below so the status script can classify relationships correctly:
+Every template ships with a `## Links` section. Use the exact labels found in the template files; the trace tooling depends on them for classification.
 
-| Template label                          | Parsed category |
-| --------------------------------------- | --------------- |
-| `Related Analyses`                      | `analyses`      |
-| `Prerequisite Requirements`             | `depends_on`    |
-| `Dependent Requirements`                | `blocks`        |
-| `Related Requirements` / `Requirements` | `requirements`  |
-| `Related ADRs`                          | `adrs`          |
-| `Related Tasks`                         | `tasks`         |
+- `analysis.md`: `Related Analyses`, `Related Requirements`, `Related ADRs`
+- `requirements.md`: `Prerequisite Requirements`, `Dependent Requirements`, `Related Tasks`
+- `adr.md` / `adr-lite.md`: `Impacted Requirements`, `Supersedes ADRs`, `Related Tasks`
+- `design.md`: `Associated Plan Document`
+- `plan.md`: `Associated Design Document`
+- `task.md`: `Associated Plan Document`, `Associated Design Document`
 
 Guidelines:
 
-- Keep the top-level bullet as `- Label:` and indent linked IDs beneath it with `- `.
-- Use repository-relative links for existing artifacts. For planned items, list the ID until the file is created.
-- Remove unused labels or mark them `N/A – Not applicable`; do not leave template text untouched.
-- Tasks often have multiple files (`README.md`, `plan.md`, `design.md`). Keep Links and Status consistent across them—`scripts/trace-status.ts` prioritizes `README.md`, then `plan.md`, then `design.md` when merging.
+- Keep each label as a top-level bullet (`- Label:`) with IDs or file links indented beneath it.
+- Use repository-relative links for existing artifacts; for items that do not exist yet, list the ID alone.
+- If a label does not apply, replace the placeholder with `N/A – <reason>` rather than deleting the label.
+- Tasks often include multiple documents (`README.md`, `plan.md`, `design.md`); ensure Links and Status stay in sync across them. When the trace script merges task files it prioritizes `README.md`, then `plan.md`, then `design.md`.
 
 ### Agent Usage (Claude & Codex)
 

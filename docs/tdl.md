@@ -222,14 +222,14 @@ These requirements apply to ALL documentation templates (Analysis, Requirements,
 
 **Link Label Conventions**
 
-| Template                 | Expected Link Labels                                               | Purpose                                               |
-| ------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------- |
-| `analysis.md`            | `Related Analyses`, `Related Requirements`, `Related ADRs`         | Capture downstream work discovered during exploration |
+| Template                 | Expected Link Labels                                                   | Purpose                                               |
+| ------------------------ | ---------------------------------------------------------------------- | ----------------------------------------------------- |
+| `analysis.md`            | `Related Analyses`, `Related Requirements`, `Related ADRs`             | Capture downstream work discovered during exploration |
 | `requirements.md`        | `Prerequisite Requirements`, `Dependent Requirements`, `Related Tasks` | Document requirement lineage and dependencies         |
-| `adr.md` / `adr-lite.md` | `Impacted Requirements`, `Supersedes ADRs`, `Related Tasks`        | Track architectural decisions and their impact        |
-| `task.md`                | `Associated Plan Document`, `Associated Design Document`          | Provide task entry-point context                      |
-| `design.md`              | `Associated Plan Document`                                        | Preserve implementation context                       |
-| `plan.md`                | `Associated Design Document`                                      | Preserve implementation context                       |
+| `adr.md` / `adr-lite.md` | `Impacted Requirements`, `Supersedes ADRs`, `Related Tasks`            | Track architectural decisions and their impact        |
+| `task.md`                | `Associated Plan Document`, `Associated Design Document`               | Provide task entry-point context                      |
+| `design.md`              | `Associated Plan Document`                                             | Preserve implementation context                       |
+| `plan.md`                | `Associated Design Document`                                           | Preserve implementation context                       |
 
 Use `N/A – <reason>` when a link grouping does not apply.
 
