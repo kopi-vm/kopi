@@ -8,10 +8,10 @@
 
 ## Links
 
-- Associated Plan Document:
-  - [T-<id>-<task>-plan](../tasks/T-<id>-<task>/plan.md)
 - Associated Design Document:
   - [T-<id>-<task>-design](../tasks/T-<id>-<task>/design.md)
+- Associated Plan Document:
+  - [T-<id>-<task>-plan](../tasks/T-<id>-<task>/plan.md)
 
 ## Summary
 
