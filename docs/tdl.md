@@ -60,7 +60,7 @@ graph LR
 - When Analysis or ADR work identifies concrete follow-up implementation, create a new task directory at `docs/tasks/T-<id>-<name>/` immediately.
 - Always add a `README.md` inside the task directory as the first artifact. Use [`templates/task.md`](templates/task.md) to populate the README so it captures task metadata (type, owner, reviewers, status), a concise summary, source links, and the initial checklist of outstanding work.
 - Additional task documents (`design.md`, `plan.md`, etc.) build on top of the README, but the README must ship with the directory from the moment the task is introduced.
-- Keep the task README's Links section synchronized with `Related Analyses`, `Related Requirements`, `Related ADRs`, `Associated Plan Document`, and `Associated Design Document` entries; use `N/A – <reason>` if an entry does not apply yet.
+- Keep the task README's Links section synchronized with `Associated Plan Document`, and `Associated Design Document` entries; use `N/A – <reason>` if an entry does not apply yet.
 
 ## Supporting Automation
 
