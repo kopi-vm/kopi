@@ -8,10 +8,10 @@
 
 ## Links
 
-- Associated Plan Document:
-  - N/A – Plan not started
 - Associated Design Document:
   - N/A – Design not started
+- Associated Plan Document:
+  - N/A – Plan not started
 
 ## Summary
 
@@ -19,14 +19,20 @@ Refactor Kopi’s filesystem path handling so installation, cache, shim, and loc
 
 ## Scope
 
-- In scope: Catalogue existing path construction, create shared helpers in `src/paths`, migrate call sites, and update documentation.
-- Out of scope: Introducing new directories, changing on-disk defaults, or altering user-facing configuration schema beyond using shared helpers.
+- In scope:
+  - Catalogue existing path construction across the codebase.
+  - Create shared helpers in `src/paths` and migrate call sites.
+  - Update documentation to reference the shared helpers.
+- Out of scope:
+  - Introducing new directories.
+  - Changing on-disk defaults.
+  - Altering user-facing configuration schema beyond using shared helpers.
 
 ## Success Metrics
 
-- Centralised helpers: all path-building code for Kopi home subdirectories routes through `src/paths` with unit coverage.
-- Behaviour parity: regression suite confirms no change to on-disk layout or CLI output compared with the baseline.
-- Documentation: developer docs reference the new module as the canonical source for path utilities.
+- Centralised helpers: All path-building code for Kopi home subdirectories routes through `src/paths` with unit coverage.
+- Behaviour parity: Regression suite confirms no change to on-disk layout or CLI output compared with the baseline.
+- Documentation: Developer docs reference the new module as the canonical source for path utilities.
 
 ---
 

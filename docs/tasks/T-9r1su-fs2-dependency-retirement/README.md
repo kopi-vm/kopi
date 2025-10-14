@@ -8,10 +8,10 @@
 
 ## Links
 
-- Associated Plan Document:
-  - [T-9r1su-fs2-dependency-retirement-plan](./plan.md)
 - Associated Design Document:
   - [T-9r1su-fs2-dependency-retirement-design](./design.md)
+- Associated Plan Document:
+  - [T-9r1su-fs2-dependency-retirement-plan](./plan.md)
 
 ## Summary
 
@@ -19,14 +19,20 @@ Retire the `fs2` crate by migrating disk space checks to `sysinfo` and file-in-u
 
 ## Scope
 
-- In scope: Replace `fs2` usage across disk checks and locking helpers, remove the dependency from manifests, update documentation, and validate cross-platform behaviour.
-- Out of scope: Broader refactors unrelated to disk space or locking, removal of `sysinfo`, or changes to external tooling.
+- In scope:
+  - Replace `fs2` usage across disk checks and locking helpers.
+  - Remove the dependency from manifests and update documentation.
+  - Validate cross-platform behaviour with regression coverage.
+- Out of scope:
+  - Broader refactors unrelated to disk space or locking.
+  - Removal of `sysinfo`.
+  - Changes to external tooling.
 
 ## Success Metrics
 
-- `fs2` removed: manifests and code contain no references to the crate.
-- Functional parity: disk space reporting and file-in-use detection match historical behaviour on macOS, Linux, and Windows.
-- Traceability: requirements FR-x63pa and FR-rxelv marked complete with supporting tests and documentation.
+- `fs2` removal: Manifests and code contain no references to the crate.
+- Functional parity: Disk space reporting and file-in-use detection match historical behaviour on macOS, Linux, and Windows.
+- Traceability: Requirements FR-x63pa and FR-rxelv marked complete with supporting tests and documentation.
 
 ---
 

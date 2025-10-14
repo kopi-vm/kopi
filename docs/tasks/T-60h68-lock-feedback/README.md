@@ -8,10 +8,10 @@
 
 ## Links
 
-- Associated Plan Document:
-  - N/A – Plan not started
 - Associated Design Document:
   - N/A – Design not started
+- Associated Plan Document:
+  - N/A – Plan not started
 
 ## Summary
 
@@ -19,14 +19,19 @@ Implement consistent user feedback for lock waits, including real-time progress 
 
 ## Scope
 
-- In scope: Consume observer hooks from T-lqyk8, render elapsed/remaining time, handle TTY vs non-TTY presentation, and document overrides.
-- Out of scope: Core timeout mechanics, lock acquisition logic, localization beyond English messaging.
+- In scope:
+  - Consume observer hooks from T-lqyk8 for wait-state updates.
+  - Render elapsed and remaining time with TTY and non-TTY variants.
+  - Document override options for advanced users.
+- Out of scope:
+  - Core timeout mechanics and lock acquisition logic.
+  - Localization beyond English messaging.
 
 ## Success Metrics
 
-- Feedback latency: initial wait message renders within 100 ms of entering a lock wait in automated terminal tests.
-- Update cadence: progress indicators refresh at least once per second on TTYs and every 5 seconds in log mode while preserving clean CI output.
-- Actionable guidance: manual tests confirm instructions for cancellation and timeout overrides are clear across supported scenarios.
+- Feedback latency: Initial wait message renders within 100 ms of entering a lock wait in automated terminal tests.
+- Update cadence: Progress indicators refresh ≥1 Hz on TTYs and every ≤5 seconds in log mode without polluting CI logs.
+- Actionable guidance: Manual tests confirm cancellation and override instructions are clear across supported scenarios.
 
 ---
 

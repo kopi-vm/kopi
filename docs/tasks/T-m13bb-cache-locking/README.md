@@ -8,10 +8,10 @@
 
 ## Links
 
-- Associated Plan Document:
-  - N/A – Plan not started
 - Associated Design Document:
   - N/A – Design not started
+- Associated Plan Document:
+  - N/A – Plan not started
 
 ## Summary
 
@@ -19,14 +19,20 @@ Serialise cache mutations via exclusive writer locks while preserving lock-free 
 
 ## Scope
 
-- In scope: Implement writer lock coordination for cache refresh operations, atomic temp-file swap, timeout-aware retries, and telemetry hooks for contention observability.
-- Out of scope: Installation and uninstallation locking, cache schema redesign, external metadata fetch changes.
+- In scope:
+  - Implement writer lock coordination for cache refresh operations.
+  - Deliver atomic temp-file swaps and timeout-aware retries.
+  - Add telemetry hooks for contention observability.
+- Out of scope:
+  - Installation and uninstallation locking.
+  - Cache schema redesign.
+  - External metadata fetch changes.
 
 ## Success Metrics
 
-- Single writer: stress tests verify only one cache refresh runs at a time while additional writers block or time out per configuration.
-- Reader safety: concurrent reader tests confirm cache consumers never observe partially written data across 100 iterative refresh cycles.
-- Atomic swap: integrity checks ensure temp-to-final renames leave no stale temporary files after forced termination scenarios.
+- Single writer: Stress tests verify only one cache refresh runs at a time while additional writers block or time out per configuration.
+- Reader safety: Concurrent reader tests confirm cache consumers never observe partially written data across 100 iterative refresh cycles.
+- Atomic swap: Integrity checks ensure temp-to-final renames leave no stale temporary files after forced termination scenarios.
 
 ---
 

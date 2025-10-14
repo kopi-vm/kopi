@@ -8,10 +8,10 @@
 
 ## Links
 
-- Associated Plan Document:
-  - N/A – Plan not started
 - Associated Design Document:
   - N/A – Design not started
+- Associated Plan Document:
+  - N/A – Plan not started
 
 ## Summary
 
@@ -19,14 +19,20 @@ Deliver configurable lock acquisition timeouts, graceful cancellation, and share
 
 ## Scope
 
-- In scope: Implement timeout configuration precedence, polling backoff, cancellation handling, and shared telemetry APIs for wait state reporting; integrate with the locking foundation from T-ec5ew.
-- Out of scope: Operation-specific wiring of timeouts, user-facing message formatting beyond reusable hooks, filesystem fallback logic already covered elsewhere.
+- In scope:
+  - Implement timeout configuration precedence and polling backoff.
+  - Handle cancellation pathways and shared telemetry APIs for wait-state reporting.
+  - Integrate with the locking foundation delivered in T-ec5ew.
+- Out of scope:
+  - Operation-specific wiring of timeouts.
+  - User-facing message formatting beyond reusable hooks.
+  - Filesystem fallback logic covered in other tasks.
 
 ## Success Metrics
 
-- Timeout accuracy within ±1 second across 99% of runs for representative durations (0, 30, 60, 600 seconds).
-- CPU overhead below 0.1% single-core utilisation during 5-minute wait simulations.
-- Cancellation pathway produces deterministic exit codes and zero leaked resources across 100 forced interrupt tests.
+- Timeout accuracy: Maintain ±1 second accuracy across 99% of runs for representative durations (0, 30, 60, 600 seconds).
+- CPU overhead: Keep lock wait polling below 0.1% single-core utilisation during 5-minute simulations.
+- Cancellation robustness: Produce deterministic exit codes and zero leaked resources across 100 forced interrupt tests.
 
 ---
 

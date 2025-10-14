@@ -8,10 +8,10 @@
 
 ## Links
 
-- Associated Plan Document:
-  - N/A – Plan not started
 - Associated Design Document:
   - N/A – Design not started
+- Associated Plan Document:
+  - N/A – Plan not started
 
 ## Summary
 
@@ -19,14 +19,20 @@ Wire the locking foundation and timeout controls into the installation pipeline 
 
 ## Scope
 
-- In scope: Canonicalise coordinates, acquire/release locks around installation phases, integrate timeout and feedback hooks, and ensure crash-safe cleanup.
-- Out of scope: Uninstallation and cache operations, UI copy changes beyond shared observers, unrelated installation refactors.
+- In scope:
+  - Canonicalise installation coordinates and wrap install phases with locks.
+  - Integrate timeout and feedback hooks for contention scenarios.
+  - Ensure crash-safe cleanup for partial installs.
+- Out of scope:
+  - Uninstallation and cache operations.
+  - UI copy changes beyond shared observers.
+  - Installation refactors unrelated to locking.
 
 ## Success Metrics
 
-- Exclusive coordination: contention tests confirm no two installations of the same coordinate proceed concurrently.
-- Parallel installs: distinct coordinates maintain baseline throughput with <5% regression from pre-locking benchmarks.
-- Crash recovery: forced termination during install leaves no stale locks or partial directories.
+- Exclusive coordination: Contention tests confirm no two installations of the same coordinate proceed concurrently.
+- Parallel throughput: Distinct coordinates maintain baseline install throughput with <5% regression from pre-lock benchmarks.
+- Crash recovery: Forced termination leaves no stale locks or partial directories in post-run inspections.
 
 ---
 

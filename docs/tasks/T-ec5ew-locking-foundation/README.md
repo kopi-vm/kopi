@@ -8,10 +8,10 @@
 
 ## Links
 
-- Associated Plan Document:
-  - [T-ec5ew-locking-foundation-plan](./plan.md)
 - Associated Design Document:
   - [T-ec5ew-locking-foundation-design](./design.md)
+- Associated Plan Document:
+  - [T-ec5ew-locking-foundation-plan](./plan.md)
 
 ## Summary
 
@@ -19,15 +19,20 @@ Establish a reusable lock abstraction that delivers identical behaviour on Linux
 
 ## Scope
 
-- In scope: Implement core lock acquisition/release APIs, detect filesystem capabilities and fall back to atomic operations, create startup hygiene for orphaned artefacts, and document debug logging expectations.
-- Out of scope: Operation-specific lock wiring (installation, cache, uninstallation), UI feedback, timeout controls beyond verifying integration points.
+- In scope:
+  - Implement core lock acquisition and release APIs.
+  - Detect filesystem capabilities, falling back to atomic operations when required.
+  - Add startup hygiene to clear orphaned artefacts.
+  - Document debug logging expectations for maintainers.
+- Out of scope:
+  - Operation-specific lock wiring for installation, cache, or uninstallation.
+  - UI feedback and timeout control features beyond verifying integration points.
 
 ## Success Metrics
 
-- Parity matrix: automated tests demonstrate identical pass/fail outcomes on Linux, macOS, Windows, and WSL for lock lifecycle scenarios.
-- Cleanup reliability: 100% automatic lock release across 1000 forced termination simulations on supported filesystems;
-  hygiene routine clears artefacts on startup.
-- Fallback safety: network filesystem detection triggers documented atomic fallback with warning logs in simulated degraded scenarios.
+- Parity matrix: Automated tests demonstrate identical pass/fail outcomes on Linux, macOS, Windows, and WSL for lock lifecycle scenarios.
+- Cleanup reliability: 100% automatic lock release across 1000 forced termination simulations on supported filesystems, with hygiene routines clearing artefacts on startup.
+- Fallback safety: Network filesystem detection triggers documented atomic fallbacks with warning logs in simulated degraded scenarios.
 
 ---
 

@@ -8,10 +8,10 @@
 
 ## Links
 
-- Associated Plan Document:
-  - N/A – Plan document not created (migration suspended)
 - Associated Design Document:
   - N/A – Design document not created (migration suspended)
+- Associated Plan Document:
+  - N/A – Plan document not created (migration suspended)
 
 ## Summary
 
@@ -19,13 +19,18 @@ Catalogue every direct `libc` invocation in Kopi, evaluate replacements with `ni
 
 ## Scope
 
-- In scope: Audit all `libc` usages, assess `nix` coverage, recommend keep vs. replace actions, and route findings to analysis AN-i9cma.
-- Out of scope: Implementing replacements, modifying `filesystem.rs`, or updating dependencies.
+- In scope:
+  - Audit all `libc` usages across the codebase.
+  - Assess `nix` coverage, recommending keep vs. replace actions.
+  - Route findings and open questions to analysis AN-i9cma.
+- Out of scope:
+  - Implement replacement code paths.
+  - Modify `filesystem.rs` or update dependencies.
 
 ## Success Metrics
 
-- Complete inventory of direct `libc` usages with recommended disposition.
-- Documented rationale for suspending migration captured in AN-i9cma and shared with maintainers.
+- Inventory coverage: Document every direct `libc` usage with a recommended disposition.
+- Decision record: Capture the suspension rationale in AN-i9cma and circulate to maintainers.
 
 ---
 

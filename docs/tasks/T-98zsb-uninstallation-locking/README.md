@@ -8,10 +8,10 @@
 
 ## Links
 
-- Associated Plan Document:
-  - N/A – Plan not started
 - Associated Design Document:
   - N/A – Design not started
+- Associated Plan Document:
+  - N/A – Plan not started
 
 ## Summary
 
@@ -19,14 +19,20 @@ Apply exclusive locking and timeout-aware coordination to the uninstallation wor
 
 ## Scope
 
-- In scope: Reuse installation lock keys, guard uninstallation phases with exclusive locks, coordinate with timeout/feedback observers, and validate rollback paths when failures occur.
-- Out of scope: Installation pipeline changes, cache refresh handling, or new UI features beyond shared feedback interfaces.
+- In scope:
+  - Reuse installation lock keys and wrap uninstallation phases with exclusive locks.
+  - Coordinate with timeout and feedback observers for shared behaviour.
+  - Validate rollback paths when failures occur.
+- Out of scope:
+  - Installation pipeline changes.
+  - Cache refresh handling.
+  - New UI features beyond shared feedback interfaces.
 
 ## Success Metrics
 
-- Atomic removal: tests verify uninstallation either completes fully or rolls back without leaving partial directories or metadata.
-- Concurrent safety: install/uninstall operations on the same coordinate respect timeout and cancellation policies with accurate feedback.
-- Active-use protection: workflow detects active defaults or running JDK processes and aborts safely with actionable guidance.
+- Atomic removal: Tests verify uninstallation either completes fully or rolls back without leaving partial directories or metadata.
+- Concurrent safety: Mixed install/uninstall operations respect timeout and cancellation policies with accurate feedback.
+- Active-use protection: Flow detects active defaults or running JDK processes and aborts safely with actionable guidance.
 
 ---
 
