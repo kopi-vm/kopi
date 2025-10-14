@@ -26,10 +26,13 @@ graph LR
     A[Analysis] --> R[Requirements]
     A --> ADR[ADR]
     ADR --> R
-    R --> D[Design]
-    ADR --> D
-    D --> P[Plan]
-    P --> I[Implementation]
+    R --> T
+    ADR --> T
+    subgraph T[Task]
+      direction LR
+      D[Design] <--> P[Plan]
+    end
+    T --> I[Implementation]
 ```
 
 **Key paths:**
