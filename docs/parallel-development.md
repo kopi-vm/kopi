@@ -6,17 +6,17 @@ This guide complements `docs/tdl.md` for contributors who keep multiple git work
 
 - **Generate unique IDs first** – Run `./scripts/tdl-new-id.ts` before copying any template. The script and its options are documented in `docs/tdl.md`.
 - **Start from the official templates** – Copy the template under `docs/templates/`, replace every placeholder, and update Metadata and Links immediately. Follow the template guidance in `docs/templates/README.md`.
-- **Document ad hoc tasks on creation** – When urgent work starts at the task layer without upstream analysis/requirements/ADRs, create the task README right away and keep it linked. `./scripts/trace-status.ts --gaps` will continue to flag the missing upstream relationship until you either add the source document or finish the task.
+- **Document ad hoc tasks on creation** – When urgent work starts at the task layer without upstream analysis/requirements/ADRs, create the task README right away and keep it linked. `bun scripts/trace-status.ts --gaps` will continue to flag the missing upstream relationship until you either add the source document or finish the task.
 
 ## Traceability Checks
 
 Run the status script regularly to avoid surprises:
 
 ```bash
-./scripts/trace-status.ts            # Full status snapshot
-./scripts/trace-status.ts --gaps     # Focus on missing upstream/downstream links
-./scripts/trace-status.ts --check    # CI/hand-off gate; exits non-zero on gaps
-./scripts/trace-status.ts --write    # Optional point-in-time report (defaults to docs/traceability.md)
+bun scripts/trace-status.ts            # Full status snapshot
+bun scripts/trace-status.ts --gaps     # Focus on missing upstream/downstream links
+bun scripts/trace-status.ts --check    # CI/hand-off gate; exits non-zero on gaps
+bun scripts/trace-status.ts --write    # Optional point-in-time report (defaults to docs/traceability.md)
 ```
 
 Use the script before handing work off, before opening a PR, and whenever you finish a task in a secondary worktree.
@@ -25,11 +25,11 @@ Use the script before handing work off, before opening a PR, and whenever you fi
 
 1. Generate an ID, copy the template, and fill Metadata + Links immediately.
 2. Keep reciprocal Links up to date as dependencies change.
-3. Run `./scripts/trace-status.ts --check` prior to pushing; resolve every reported gap.
+3. Run `bun scripts/trace-status.ts --check` prior to pushing; resolve every reported gap.
 4. If you need to share a report, run `--write` and distribute the generated file out of band (the output stays in `.gitignore`).
 
 ## Legacy Documents
 
 - Historical sequential IDs remain valid; only new documents need random IDs.
 - Retrofit Metadata and Links to the current templates before editing older files so automation keeps working.
-- Remove duplicate local copies of `docs/traceability.md`; regenerate on demand with `--write` when needed.
+- Remove duplicate local copies of `docs/traceability.md`; regenerate on demand with `bun scripts/trace-status.ts --write` when needed.

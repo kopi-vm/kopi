@@ -5,13 +5,12 @@
 ## Metadata
 
 - Type: Process Documentation
-- Owner: Kopi Maintainers
 - Status: Active
 
 ## Links
 
 - Templates Overview: [docs/templates/README.md](templates/README.md)
-- Traceability Script: [scripts/trace-status.ts](../scripts/trace-status.ts)
+- Traceability Script: [scripts/trace-status.ts](../scripts/trace-status.ts) (run via `bun scripts/trace-status.ts`)
 - ID Generator Script: [scripts/tdl-new-id.ts](../scripts/tdl-new-id.ts)
 - Traceability Report: [docs/traceability.md](traceability.md)
 
@@ -74,12 +73,12 @@ graph LR
 
 ### Traceability status (`scripts/trace-status.ts`)
 
-- `./scripts/trace-status.ts` prints the full status summary (coverage, gaps, counts).
+- `bun scripts/trace-status.ts` prints the full status summary (coverage, gaps, counts).
 - `--gaps` limits output to orphan requirements and tasks.
 - `--check` exits with status code `1` when gaps exist (suitable for CI). Combine with `--write[=path]` to emit a markdown report without committing it.
 - `--write` without a path writes `docs/traceability.md`; `--write=custom/path.md` writes to a custom location.
 
-Tasks may occasionally be introduced directly at the task phase without an upstream analysis, requirement, or ADR document. Treat these as ad hoc work: keep their scope documented in the task README and rely on `./scripts/trace-status.ts` (particularly with `--gaps`) to flag them as missing upstream links until the upstream document is authored or the task is completed.
+Tasks may occasionally be introduced directly at the task phase without an upstream analysis, requirement, or ADR document. Treat these as ad hoc work: keep their scope documented in the task README and rely on `bun scripts/trace-status.ts` (particularly with `--gaps`) to flag them as missing upstream links until the upstream document is authored or the task is completed.
 
 ## Parallel Development Support
 
@@ -167,7 +166,7 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Transition**: With the task README in place, proceed to author the corresponding `design.md` followed by `plan.md` within the same task directory
 - **Traceability Update**:
   - Link back to originating requirements and ADRs using the task template's `Links` section
-  - Add the new task to `docs/traceability.md` via `./scripts/trace-status.ts --write`
+  - Add the new task to `docs/traceability.md` via `bun scripts/trace-status.ts --write`
 
 ### Step 4: Design (how to implement)
 
@@ -274,9 +273,9 @@ Use `N/A – <reason>` when a link grouping does not apply.
 Traceability is maintained through Links sections in each document and viewed on-demand:
 
 ```bash
-./scripts/trace-status.ts        # Full status
-./scripts/trace-status.ts --gaps # Only gaps
-./scripts/trace-status.ts --check # CI mode
+bun scripts/trace-status.ts        # Full status
+bun scripts/trace-status.ts --gaps # Only gaps
+bun scripts/trace-status.ts --check # CI mode
 # Add --write (optionally with =<path>) to emit `docs/traceability.md`, including the Traceability Matrix and Requirement Dependencies tables
 ```
 
@@ -307,7 +306,7 @@ Update the Links section in documents when:
    - ✅ New relationships discovered → Update Links sections
 
 6. **Verification**
-   - ✅ Run `./scripts/trace-status.ts` to check for gaps
+   - ✅ Run `bun scripts/trace-status.ts` to check for gaps
    - ✅ Fix any orphan requirements or tasks before PR
 
 ## Pull Request Checklist
@@ -327,7 +326,7 @@ Update the Links section in documents when:
   - [ ] Error messages clear and in English (per `CLAUDE.md`)
   - [ ] Documentation updated (`docs/reference.md`, user docs if needed)
   - [ ] Platform behavior validated when relevant
-  - [ ] **Traceability verified**: Run `./scripts/trace-status.ts --check`
+  - [ ] **Traceability verified**: Run `bun scripts/trace-status.ts --check`
   - [ ] **Links sections updated**: All document relationships current
   - [ ] **No orphan documents**: All requirements have tasks (or are marked as future work)
 
@@ -343,7 +342,7 @@ Update the Links section in documents when:
 - Even under this variant, always draft `design.md` before producing `plan.md`. The design can be concise, but it must reference requirements and capture the implementation approach.
 - After completing the minimal design, create the corresponding `plan.md` that references the design and enumerates verification steps.
 - Ensure all verification commands pass
-- **Traceability**: Run `./scripts/trace-status.ts --check` to verify no gaps
+- **Traceability**: Run `bun scripts/trace-status.ts --check` to verify no gaps
 
 ## Archive Policy
 
