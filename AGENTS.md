@@ -145,6 +145,8 @@ This project follows the Traceable Development Lifecycle (TDL), a structured dev
 **[`docs/tdl.md`](docs/tdl.md)** - Full TDL documentation and workflow\
 **[`docs/templates/README.md`](docs/templates/README.md)** - Template descriptions and usage instructions
 
+Tasks sometimes need to be spun up directly at the task layer (for example, urgent fixes) before an upstream analysis, requirement, or ADR exists. Document these ad hoc efforts in the task README immediately and rely on `./scripts/trace-status.ts`—especially the `--gaps` mode—to keep them flagged as missing upstream links until the upstream artifact is authored or the work is complete.
+
 ## Quick Reference
 
 ### TDL Process Overview

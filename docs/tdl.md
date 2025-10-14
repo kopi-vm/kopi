@@ -79,6 +79,8 @@ graph LR
 - `--check` exits with status code `1` when gaps exist (suitable for CI). Combine with `--write[=path]` to emit a markdown report without committing it.
 - `--write` without a path writes `docs/traceability.md`; `--write=custom/path.md` writes to a custom location.
 
+Tasks may occasionally be introduced directly at the task phase without an upstream analysis, requirement, or ADR document. Treat these as ad hoc work: keep their scope documented in the task README and rely on `./scripts/trace-status.ts` (particularly with `--gaps`) to flag them as missing upstream links until the upstream document is authored or the task is completed.
+
 ## Parallel Development Support
 
 This project supports parallel development using git-worktree with unique IDs to prevent conflicts.

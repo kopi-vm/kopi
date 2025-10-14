@@ -85,6 +85,7 @@ Both AI collaborators follow the same TDL conventions. Use this checklist whenev
 - Copy the appropriate template, replace every placeholder, and update Metadata and Links immediately.
 - When documentation changes accompany code, queue the required verification commands from this README (`bun format`, `bun lint`) plus language-specific toolchains noted in `CLAUDE.md` (Claude) or `AGENTS.md` (Codex).
 - Before handing off between agents, run `./scripts/trace-status.ts --check` to confirm there are no orphan links or placeholder leftovers.
+- If a task is created ahead of its upstream analysis, requirement, or ADR, capture the scope in the task README immediately and rely on `./scripts/trace-status.ts --gaps` to highlight the missing upstream relationship until the source document exists or the task closes.
 - Note any template sections intentionally removed or marked `N/A – <reason>` so the next agent retains context without reopening the template.
 
 ### Analysis Template (`analysis.md`)
