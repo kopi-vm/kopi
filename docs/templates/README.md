@@ -93,7 +93,7 @@ Both AI collaborators follow the same TDL conventions. Use this checklist whenev
 1. One requirement per file for clear ownership and traceability
 2. Define measurable acceptance criteria; keep brief and testable
 3. Requirements are long-lived and can be referenced by multiple tasks over time
-4. Task design/plan documents reference these requirement IDs rather than duplicating content
+4. Task documents reference these requirement IDs rather than duplicating content
 5. Prefer clarity and safety: English-only messaging, avoid "manager"/"util" naming, do not use `unsafe`
 
 ### ADR Templates (`adr.md` and `adr-lite.md`)
@@ -139,42 +139,38 @@ Both AI collaborators follow the same TDL conventions. Use this checklist whenev
   - Low risk and aligned with established conventions
   - Straightforward with a clear best practice
 
+### Task Template (`task.md`)
+
+1. Create as soon as a requirement or ADR produces actionable work; this is the mandatory bridge into implementation.
+2. Populate Metadata, Links, Summary, Scope, and Success Metrics before opening downstream work items.
+3. Capture upstream references in the Links section (`Related Analyses`, `Related Requirements`, `Related ADRs`) and keep `Associated Plan Document` / `Associated Design Document` current.
+4. Use the Detailed Plan section for preliminary milestone notes, but migrate decisions into `design.md`, then `plan.md` within the same task directory before coding starts.
+5. Keep Notes for risks, follow-up decisions, coordination details, and blockers discovered later in the workflow.
+
 ### Design Template (`design.md`)
 
-1. Reference requirement IDs (FR-<id>/NFR-<id>) in the Requirements Summary section
-2. Link to relevant ADRs and create new ones when this design introduces material decisions
-3. Capture concrete acceptance/success metrics to enable verification
-4. Call out platform differences explicitly when touching shell, shims, filesystem, or paths
-5. Specify testing strategy early, including external API parsing tests if applicable
-6. Prefer clarity and safety over micro-optimizations; avoid `unsafe`, avoid vague names like "manager"/"util", and prefer functions for stateless behavior
-7. Mark the design as complete and circulate for review before authoring `plan.md`; implementation work may only start after both documents exist.
+1. Author only after the task README exists; reference the same `T-<id>-<name>` directory.
+2. Reference requirement IDs (FR-<id>/NFR-<id>) in the Requirements Summary and link to the task README and relevant ADRs.
+3. Capture measurable success metrics to guide verification.
+4. Call out platform differences explicitly when touching shell, shims, filesystem, or paths.
+5. Specify testing strategy early, including external API parsing tests when applicable.
+6. Prefer clarity and safety over micro-optimizations; avoid `unsafe`, avoid vague names like "manager"/"util", and prefer functions for stateless behavior.
+7. Mark the design as complete and circulate for review before drafting `plan.md`; implementation work may only start after both documents exist.
 
 ### Plan Template (`plan.md`)
 
-1. Finalize the corresponding `design.md` before populating the plan, regardless of task size. Reference the design directly in the Metadata and Links sections.
-2. Reference requirement IDs (FR-<id>/NFR-<id>) being implemented
-3. Adjust the number of phases based on complexity
-4. Break down work into specific, testable items
-5. Define verification commands and phase acceptance criteria
-6. Identify risks early, with mitigation and fallback
-7. Keep status updated as work progresses
-8. Phase independence: Ensure each phase is self-contained; reset context at phase boundaries using `/clear` (Claude) or `/new` (Codex)
-9. Update or add ADRs when design decisions change
-10. Error Recovery Patterns:
-
-- When blocked during implementation:
-  a. Document blocker in current phase status
-  b. Create new analysis document for the blocker if needed
-  c. Generate new requirements if applicable (e.g., NFR for error handling)
-  d. Update plan with mitigation steps
-
-### Task Template (`task.md`)
-
-1. Create as soon as the TDL uncovers actionable work (during Analysis, ADR, or review).
-2. Populate Metadata, Links, Summary, and Scope before opening related work items.
-3. Define Success Metrics tied to FR/NFR IDs where applicable to support later verification.
-4. Use the Detailed Plan section for early milestone brainstorming, but promote the content into `design.md` followed by `plan.md` before any implementation begins.
-5. Keep Notes for risks, follow-up decisions, or coordination details.
+1. Draft only after the corresponding `design.md` is approved; link back to the task README and design in Metadata and Links.
+2. Reference requirement IDs (FR-<id>/NFR-<id>) being implemented and align subtasks with the design decisions.
+3. Adjust the number of phases based on complexity; each phase must be independently verifiable.
+4. Break down work into observable, testable items with explicit verification commands.
+5. Identify risks early, with mitigation, validation, and fallback noted inline.
+6. Keep status updated as work progresses; annotate deferred items instead of leaving checkboxes blank.
+7. Update or add ADRs if implementation deviates from approved design; reflect changes back in the task README and design.
+8. Follow documented error recovery patterns:
+   - Document blockers in the current phase status.
+   - Create analysis docs for new investigations.
+   - Publish new requirements if new constraints emerge.
+   - Update plan milestones with mitigation steps.
 
 ## Common Documentation Requirements
 

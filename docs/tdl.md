@@ -121,7 +121,7 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Sources**: Can come from:
   - Analysis documents (discovered requirements)
   - ADR decisions (derived requirements/constraints)
-- **Transition**: Requirements feed into design
+- **Transition**: When a requirement is ready for implementation, create a task container (`docs/tasks/T-<id>-<name>/README.md`) using [`templates/task.md`](templates/task.md) before drafting design work
 - **Relationships**: One analysis can discover multiple requirements; requirements can span multiple tasks (N:M)
 - **Traceability Update**:
   - Populate the `Links` section using the template labels: `Prerequisite Requirements`, `Dependent Requirements`, `Related Tasks`
@@ -147,9 +147,25 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Transition**: ADRs can:
   - Generate new requirements (constraints/standards)
   - Feed directly into design for architectural constraints
+  - Initiate implementation work by creating a task container (`docs/tasks/T-<id>-<name>/README.md`) with [`templates/task.md`](templates/task.md) when action is required
 - **Traceability Update**:
   - Use the template link labels `Impacted Requirements`, `Supersedes ADRs` and `Related Tasks`
   - Update the affected requirements' `Supersedes ADRs` entries and add derived requirements where needed
+
+### Task Kickoff (execution container)
+
+- **Purpose**: Establish the execution container that ties requirements and ADR decisions to downstream design and plan work
+- **Template**: [`templates/task.md`](templates/task.md) - Task README capturing scope, links, status, and success metrics
+- **Output**: `docs/tasks/T-<id>-<name>/README.md` seeded with metadata, Links, and initial context
+- **Sources**:
+  - Requirements marked ready for implementation
+  - ADR decisions that mandate follow-up work
+- **Location**: `docs/tasks/T-<id>-<name>/README.md`
+- **Naming**: `T-<id>-<name>` directory created via `./scripts/tdl-new-id.ts`
+- **Transition**: With the task README in place, proceed to author the corresponding `design.md` followed by `plan.md` within the same task directory
+- **Traceability Update**:
+  - Link back to originating requirements and ADRs using the task template's `Links` section
+  - Add the new task to `docs/traceability.md` via `./scripts/trace-status.ts --write`
 
 ### Step 4: Design (how to implement)
 
@@ -163,7 +179,7 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Location**: `docs/tasks/T-<id>-<task>/design.md` (task-scoped)
 - **Naming**: Task directory + fixed name (e.g., `docs/tasks/T-e7fa1-cache-refresh/design.md`)
 - **ID Generation**: Run `./scripts/tdl-new-id.ts` for the task directory (see [`parallel-development.md`](parallel-development.md))
-- **Transition**: With design complete, create the execution plan. This transition is mandatory for every task—`design.md` must exist (even if brief) before `plan.md` is started.
+- **Transition**: With the task README and design complete, create the execution plan. This transition is mandatory for every task—`design.md` must exist (even if brief) before `plan.md` is started.
 - **Traceability Update**:
   - Add the task to the Traceability Matrix and ensure requirement coverage is reflected
   - Maintain `Associated Plan Document` within the design's Links section using the template wording
