@@ -203,7 +203,7 @@ This project supports parallel development using git-worktree with unique IDs to
   - Critical information must be documented in phase deliverables
   - Dependencies between phases must be explicitly stated
 - **Traceability Update**:
-  - Update requirement status (Proposed → In Progress → Implemented → Verified) as work progresses
+  - Update requirement status as decisions land (`Draft` until validated, `Approved` when implementation is authorized, `Rejected` if we decline to proceed)
   - Keep the plan's `Links` section aligned with `Associated Design Document`
 
 ## Common Documentation Requirements

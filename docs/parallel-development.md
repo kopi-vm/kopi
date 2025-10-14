@@ -46,7 +46,7 @@ Replace every placeholder:
 Every template begins with a Metadata block. `scripts/trace-status.ts` reads:
 
 - `- Type:` — must contain the final value (for example `Functional Requirement`, `Design`, `Implementation Plan`).
-- `- Status:` — pick the documented status options from the template you used. Common requirement statuses: `Proposed`, `Accepted`, `Implemented`, `Verified`, `Deprecated`.
+- `- Status:` — pick the documented status options from the template you used. For example: requirements use `Draft`, `Approved`, or `Rejected`; analyses use `Draft`, `Complete`, `Cancelled`, or `Archived`; task READMEs use `Draft`, `In Progress`, `Complete`, or `Cancelled`; implementation plans use `Draft`, `Phase X In Progress`, `Cancelled`, or `Complete`.
 
 Status values feed the "Status by Document Type" section in the trace-status output, so keep them current when work progresses.
 

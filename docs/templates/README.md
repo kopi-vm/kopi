@@ -48,7 +48,13 @@ Templates use the following placeholder conventions:
 Every template starts with a Metadata block that feeds the traceability tooling:
 
 - `- Type:` must contain the final document type (for example `Functional Requirement`, `Design`, `Implementation Plan`).
-- `- Status:` must match one of the allowed values in the template comments (`Proposed`, `Accepted`, `Implemented`, `Verified`, `Deprecated`, etc.).
+- `- Status:` must match one of the allowed values in the template comments. Current status sets:
+  - `analysis.md`: `Draft`, `Complete`, `Cancelled`, `Archived`
+  - `requirements.md`: `Draft`, `Approved`, `Rejected`
+  - `design.md`: `Draft`, `Approved`, `Rejected`
+  - `plan.md`: `Draft`, `Phase X In Progress`, `Cancelled`, `Complete`
+  - `task.md`: `Draft`, `In Progress`, `Complete`, `Cancelled`
+  - `adr.md` / `adr-lite.md`: `Draft`, `Approved`, `Rejected`, `Deprecated`, `Superseded`
 - Remove unused metadata fields or mark them explicitly as `N/A – <reason>`.
 
 Leaving placeholders in Metadata causes `scripts/trace-status.ts` to report `Unknown` status or type for the document.
