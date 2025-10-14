@@ -1,4 +1,4 @@
-# T-<id> `[Task Name]` Task
+# T-<id> Task Name
 
 ## Metadata
 

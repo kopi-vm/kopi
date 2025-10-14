@@ -1,4 +1,4 @@
-# AN-<id> `[Topic/Feature]` Analysis
+# AN-<id> Topic | Feature Title
 
 ## Metadata
 

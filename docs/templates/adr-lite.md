@@ -1,4 +1,4 @@
-# ADR-<id> `[Short Title]`
+# ADR-<id> Short Title
 
 ## Metadata
 

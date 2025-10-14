@@ -1,4 +1,4 @@
-# T-<id> `[Component/Feature]` Design
+# T-<id> Component | Feature Title
 
 ## Metadata
 
