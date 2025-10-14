@@ -784,7 +784,7 @@ describe("traceability helpers", () => {
     );
     expect(markdown).toContain("### Dependency Consistency");
     expect(markdown).toContain(
-      "All prerequisites and dependents are documented on both sides.",
+      "All prerequisite and dependent relationships are reciprocal with no contradictions or cycles detected.",
     );
   });
 
@@ -1040,6 +1040,97 @@ describe("printStatus", () => {
     expect(output).toContain("Missing prerequisite link(s) for FR-400");
   });
 
+  it("reports mutual prerequisite and dependent contradictions", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-900-loop-a.md",
+      requirementDoc({
+        id: "FR-900",
+        title: "Loop A",
+        status: "Accepted",
+        prerequisites: ["[FR-901](../requirements/FR-901-loop-b.md)"],
+        dependents: ["[FR-901](../requirements/FR-901-loop-b.md)"],
+        tasks: "N/A – None",
+      }),
+    );
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-901-loop-b.md",
+      requirementDoc({
+        id: "FR-901",
+        title: "Loop B",
+        status: "Accepted",
+        prerequisites: ["[FR-900](../requirements/FR-900-loop-a.md)"],
+        dependents: ["[FR-900](../requirements/FR-900-loop-a.md)"],
+        tasks: "N/A – None",
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    printStatus(documents, false);
+
+    const output = logCalls.join("\n");
+    expect(output).toContain("Dependency consistency issues:");
+    expect(output).toContain(
+      "FR-900 and FR-901 list each other as prerequisites; remove the contradiction.",
+    );
+    expect(output).toContain(
+      "FR-900 and FR-901 list each other as dependents; remove the contradiction.",
+    );
+  });
+
+  it("reports prerequisite cycles spanning three requirements", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-910-cycle-a.md",
+      requirementDoc({
+        id: "FR-910",
+        title: "Cycle A",
+        status: "Accepted",
+        prerequisites: ["[FR-920](../requirements/FR-920-cycle-b.md)"],
+        dependents: ["[FR-930](../requirements/FR-930-cycle-c.md)"],
+        tasks: "N/A – None",
+      }),
+    );
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-920-cycle-b.md",
+      requirementDoc({
+        id: "FR-920",
+        title: "Cycle B",
+        status: "Accepted",
+        prerequisites: ["[FR-930](../requirements/FR-930-cycle-c.md)"],
+        dependents: ["[FR-910](../requirements/FR-910-cycle-a.md)"],
+        tasks: "N/A – None",
+      }),
+    );
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-930-cycle-c.md",
+      requirementDoc({
+        id: "FR-930",
+        title: "Cycle C",
+        status: "Accepted",
+        prerequisites: ["[FR-910](../requirements/FR-910-cycle-a.md)"],
+        dependents: ["[FR-920](../requirements/FR-920-cycle-b.md)"],
+        tasks: "N/A – None",
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    printStatus(documents, false);
+
+    const output = logCalls.join("\n");
+    expect(output).toContain("Dependency consistency issues:");
+    expect(output).toContain(
+      "Prerequisite cycle detected among: FR-910 -> FR-920 -> FR-930",
+    );
+    expect(output).not.toContain("Missing prerequisite link(s)");
+    expect(output).not.toContain("Missing dependent link(s)");
+  });
+
   it("reports heading mismatches in status output", () => {
     const repoRoot = createTempDir();
     writeDoc(
@@ -1165,6 +1256,105 @@ describe("checkIntegrity", () => {
     expect(result).toBe(false);
     const flattened = errors.map((entry) => entry.join(" ")).join("\n");
     expect(flattened).toContain("Missing prerequisite link(s) for FR-600");
+  });
+
+  it("returns false when requirements list each other as prerequisites", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-9010-loop-a.md",
+      requirementDoc({
+        id: "FR-9010",
+        title: "Loop A",
+        status: "Accepted",
+        prerequisites: ["[FR-9011](../requirements/FR-9011-loop-b.md)"],
+        dependents: ["[FR-9011](../requirements/FR-9011-loop-b.md)"],
+        tasks: "N/A – None",
+      }),
+    );
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-9011-loop-b.md",
+      requirementDoc({
+        id: "FR-9011",
+        title: "Loop B",
+        status: "Accepted",
+        prerequisites: ["[FR-9010](../requirements/FR-9010-loop-a.md)"],
+        dependents: ["[FR-9010](../requirements/FR-9010-loop-a.md)"],
+        tasks: "N/A – None",
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const errors: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      errors.push(args);
+    };
+
+    const result = checkIntegrity(documents);
+    expect(result).toBe(false);
+    const flattened = errors.map((entry) => entry.join(" ")).join("\n");
+    expect(flattened).toContain(
+      "FR-9010 and FR-9011 list each other as prerequisites; remove the contradiction.",
+    );
+    expect(flattened).toContain(
+      "FR-9010 and FR-9011 list each other as dependents; remove the contradiction.",
+    );
+  });
+
+  it("returns false when prerequisite cycles are present", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-9020-cycle-a.md",
+      requirementDoc({
+        id: "FR-9020",
+        title: "Cycle A",
+        status: "Accepted",
+        prerequisites: ["[FR-9021](../requirements/FR-9021-cycle-b.md)"],
+        dependents: ["[FR-9022](../requirements/FR-9022-cycle-c.md)"],
+        tasks: "N/A – None",
+      }),
+    );
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-9021-cycle-b.md",
+      requirementDoc({
+        id: "FR-9021",
+        title: "Cycle B",
+        status: "Accepted",
+        prerequisites: ["[FR-9022](../requirements/FR-9022-cycle-c.md)"],
+        dependents: ["[FR-9020](../requirements/FR-9020-cycle-a.md)"],
+        tasks: "N/A – None",
+      }),
+    );
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-9022-cycle-c.md",
+      requirementDoc({
+        id: "FR-9022",
+        title: "Cycle C",
+        status: "Accepted",
+        prerequisites: ["[FR-9020](../requirements/FR-9020-cycle-a.md)"],
+        dependents: ["[FR-9021](../requirements/FR-9021-cycle-b.md)"],
+        tasks: "N/A – None",
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const errors: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      errors.push(args);
+    };
+
+    const result = checkIntegrity(documents);
+    expect(result).toBe(false);
+    const flattened = errors.map((entry) => entry.join(" ")).join("\n");
+    expect(flattened).toContain(
+      "Prerequisite cycle detected among: FR-9020 -> FR-9021 -> FR-9022",
+    );
+    expect(flattened).not.toContain("Missing prerequisite link(s)");
+    expect(flattened).not.toContain("Missing dependent link(s)");
   });
 
   it("reports heading mismatches as integrity failures", () => {

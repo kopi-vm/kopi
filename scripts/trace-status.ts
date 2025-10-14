@@ -55,6 +55,106 @@ type RequirementDependencyInfo = {
   inferredDependents: Set<string>;
 };
 
+type RequirementDependencyCheckResult = {
+  infoByRequirement: Map<string, RequirementDependencyInfo>;
+  missingPrereqs: Map<string, Set<string>>;
+  missingDependents: Map<string, Set<string>>;
+  contradictoryPrereqs: Array<[string, string]>;
+  contradictoryDependents: Array<[string, string]>;
+  prerequisiteCycles: string[][];
+};
+
+function pairKey(a: string, b: string): string {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+function buildPrerequisiteGraph(
+  infoByRequirement: Map<string, RequirementDependencyInfo>,
+): Map<string, Set<string>> {
+  const graph = new Map<string, Set<string>>();
+  for (const [docId, info] of infoByRequirement.entries()) {
+    const neighbors = new Set<string>(info.directPrereqs);
+    graph.set(docId, neighbors);
+    for (const target of info.directPrereqs) {
+      if (!graph.has(target)) {
+        graph.set(target, new Set<string>());
+      }
+    }
+  }
+  return graph;
+}
+
+function findStronglyConnectedComponents(
+  graph: Map<string, Set<string>>,
+): string[][] {
+  let index = 0;
+  const indexByNode = new Map<string, number>();
+  const lowLinkByNode = new Map<string, number>();
+  const stack: string[] = [];
+  const onStack = new Set<string>();
+  const components: string[][] = [];
+
+  const strongConnect = (node: string) => {
+    indexByNode.set(node, index);
+    lowLinkByNode.set(node, index);
+    index += 1;
+    stack.push(node);
+    onStack.add(node);
+
+    const neighbors = graph.get(node);
+    if (neighbors) {
+      for (const neighbor of neighbors) {
+        if (!indexByNode.has(neighbor)) {
+          strongConnect(neighbor);
+          const neighborLowLink = lowLinkByNode.get(neighbor);
+          const currentLowLink = lowLinkByNode.get(node);
+          if (
+            neighborLowLink !== undefined &&
+            currentLowLink !== undefined &&
+            neighborLowLink < currentLowLink
+          ) {
+            lowLinkByNode.set(node, neighborLowLink);
+          }
+        } else if (onStack.has(neighbor)) {
+          const neighborIndex = indexByNode.get(neighbor);
+          const currentLowLink = lowLinkByNode.get(node);
+          if (
+            neighborIndex !== undefined &&
+            currentLowLink !== undefined &&
+            neighborIndex < currentLowLink
+          ) {
+            lowLinkByNode.set(node, neighborIndex);
+          }
+        }
+      }
+    }
+
+    const nodeIndex = indexByNode.get(node);
+    const nodeLowLink = lowLinkByNode.get(node);
+    if (nodeIndex !== undefined && nodeLowLink === nodeIndex) {
+      const component: string[] = [];
+      while (stack.length) {
+        const candidate = stack.pop();
+        if (!candidate) break;
+        onStack.delete(candidate);
+        component.push(candidate);
+        if (candidate === node) {
+          break;
+        }
+      }
+      components.push(component);
+    }
+  };
+
+  for (const node of [...graph.keys()]) {
+    if (!indexByNode.has(node)) {
+      strongConnect(node);
+    }
+  }
+
+  return components;
+}
+
 type InboundReferenceIndex = Map<string, Map<DocumentType, Set<string>>>;
 
 type ReferenceRule = {
@@ -523,11 +623,9 @@ export function taskDocsFrom(
   return [...documents.values()].filter((doc) => doc.docType === "task");
 }
 
-function buildRequirementDependencyInfo(documents: Map<string, TDLDocument>): {
-  infoByRequirement: Map<string, RequirementDependencyInfo>;
-  missingPrereqs: Map<string, Set<string>>;
-  missingDependents: Map<string, Set<string>>;
-} {
+function buildRequirementDependencyInfo(
+  documents: Map<string, TDLDocument>,
+): RequirementDependencyCheckResult {
   const infoByRequirement = new Map<string, RequirementDependencyInfo>();
 
   for (const requirement of requirementDocsFrom(documents)) {
@@ -578,6 +676,11 @@ function buildRequirementDependencyInfo(documents: Map<string, TDLDocument>): {
   const missingPrereqs = new Map<string, Set<string>>();
   const missingDependents = new Map<string, Set<string>>();
 
+  const contradictoryPrereqKeys = new Set<string>();
+  const contradictoryPrereqs: Array<[string, string]> = [];
+  const contradictoryDependentKeys = new Set<string>();
+  const contradictoryDependents: Array<[string, string]> = [];
+
   for (const [docId, info] of infoByRequirement) {
     for (const inferred of info.inferredPrereqs) {
       if (!info.directPrereqs.has(inferred)) {
@@ -589,9 +692,60 @@ function buildRequirementDependencyInfo(documents: Map<string, TDLDocument>): {
         ensureSet(missingDependents, docId).add(inferred);
       }
     }
+    for (const prereq of info.directPrereqs) {
+      const prereqInfo = infoByRequirement.get(prereq);
+      if (prereqInfo?.directPrereqs.has(docId)) {
+        const key = pairKey(docId, prereq);
+        if (!contradictoryPrereqKeys.has(key)) {
+          contradictoryPrereqKeys.add(key);
+          const pair: [string, string] =
+            docId < prereq ? [docId, prereq] : [prereq, docId];
+          contradictoryPrereqs.push(pair);
+        }
+      }
+    }
+    for (const dependent of info.directDependents) {
+      const dependentInfo = infoByRequirement.get(dependent);
+      if (dependentInfo?.directDependents.has(docId)) {
+        const key = pairKey(docId, dependent);
+        if (!contradictoryDependentKeys.has(key)) {
+          contradictoryDependentKeys.add(key);
+          const pair: [string, string] =
+            docId < dependent ? [docId, dependent] : [dependent, docId];
+          contradictoryDependents.push(pair);
+        }
+      }
+    }
   }
 
-  return { infoByRequirement, missingPrereqs, missingDependents };
+  contradictoryPrereqs.sort((a, b) => {
+    if (a[0] === b[0]) return a[1].localeCompare(b[1]);
+    return a[0].localeCompare(b[0]);
+  });
+  contradictoryDependents.sort((a, b) => {
+    if (a[0] === b[0]) return a[1].localeCompare(b[1]);
+    return a[0].localeCompare(b[0]);
+  });
+
+  const prereqGraph = buildPrerequisiteGraph(infoByRequirement);
+  const prerequisiteCycles = findStronglyConnectedComponents(prereqGraph)
+    .filter((component) => component.length >= 3)
+    .map((component) => component.sort((a, b) => a.localeCompare(b)))
+    .sort((a, b) => {
+      const left = a[0] ?? "";
+      const right = b[0] ?? "";
+      if (left === right) return a.length - b.length;
+      return left.localeCompare(right);
+    });
+
+  return {
+    infoByRequirement,
+    missingPrereqs,
+    missingDependents,
+    contradictoryPrereqs,
+    contradictoryDependents,
+    prerequisiteCycles,
+  };
 }
 
 export function documentsByLinkingRequirement(
@@ -820,8 +974,14 @@ export function renderTraceabilityMarkdown(
     "analysis",
   );
   const adrsByRequirement = documentsByLinkingRequirement(documents, "adr");
-  const { infoByRequirement, missingPrereqs, missingDependents } =
-    buildRequirementDependencyInfo(documents);
+  const {
+    infoByRequirement,
+    missingPrereqs,
+    missingDependents,
+    contradictoryPrereqs,
+    contradictoryDependents,
+    prerequisiteCycles,
+  } = buildRequirementDependencyInfo(documents);
 
   const lines: string[] = [];
   lines.push("# Kopi Traceability Overview");
@@ -936,12 +1096,44 @@ export function renderTraceabilityMarkdown(
 
   const hasMissingPrereqs = missingPrereqs.size > 0;
   const hasMissingDependents = missingDependents.size > 0;
+  const hasContradictoryPrereqs = contradictoryPrereqs.length > 0;
+  const hasContradictoryDependents = contradictoryDependents.length > 0;
+  const hasPrereqCycles = prerequisiteCycles.length > 0;
 
-  if (!hasMissingPrereqs && !hasMissingDependents) {
+  if (
+    !hasMissingPrereqs &&
+    !hasMissingDependents &&
+    !hasContradictoryPrereqs &&
+    !hasContradictoryDependents &&
+    !hasPrereqCycles
+  ) {
     lines.push(
-      "All prerequisites and dependents are documented on both sides.",
+      "All prerequisite and dependent relationships are reciprocal with no contradictions or cycles detected.",
     );
   } else {
+    for (const [a, b] of contradictoryPrereqs) {
+      const left = formatSingleLink(documents, a, outputDir);
+      const right = formatSingleLink(documents, b, outputDir);
+      lines.push(
+        `- ${left} and ${right} list each other as prerequisites; remove the contradiction.`,
+      );
+    }
+
+    for (const [a, b] of contradictoryDependents) {
+      const left = formatSingleLink(documents, a, outputDir);
+      const right = formatSingleLink(documents, b, outputDir);
+      lines.push(
+        `- ${left} and ${right} list each other as dependents; remove the contradiction.`,
+      );
+    }
+
+    for (const cycle of prerequisiteCycles) {
+      const sequence = cycle
+        .map((id) => formatSingleLink(documents, id, outputDir))
+        .join(" -> ");
+      lines.push(`- Prerequisite cycle detected among: ${sequence}`);
+    }
+
     const missingPrereqEntries = [...missingPrereqs.entries()].sort((a, b) =>
       a[0].localeCompare(b[0]),
     );
@@ -1038,8 +1230,13 @@ export function printStatus(
   documents: Map<string, TDLDocument>,
   gapsOnly: boolean,
 ): void {
-  const { missingPrereqs, missingDependents } =
-    buildRequirementDependencyInfo(documents);
+  const {
+    missingPrereqs,
+    missingDependents,
+    contradictoryPrereqs,
+    contradictoryDependents,
+    prerequisiteCycles,
+  } = buildRequirementDependencyInfo(documents);
   const inboundReferences = buildInboundReferenceIndex(documents);
   const headingMismatches = findHeadingMismatches(documents);
   if (!gapsOnly) {
@@ -1092,25 +1289,49 @@ export function printStatus(
     console.log("✓ No gaps detected\n");
   }
 
-  if (missingPrereqs.size || missingDependents.size) {
+  const dependencyAlerts: string[] = [];
+
+  for (const [a, b] of contradictoryPrereqs) {
+    dependencyAlerts.push(
+      `${a} and ${b} list each other as prerequisites; remove the contradiction.`,
+    );
+  }
+
+  for (const [a, b] of contradictoryDependents) {
+    dependencyAlerts.push(
+      `${a} and ${b} list each other as dependents; remove the contradiction.`,
+    );
+  }
+
+  for (const cycle of prerequisiteCycles) {
+    const sequence = cycle.join(" -> ");
+    dependencyAlerts.push(`Prerequisite cycle detected among: ${sequence}`);
+  }
+
+  const prereqEntries = [...missingPrereqs.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
+  for (const [reqId, missing] of prereqEntries) {
+    const missingList = [...missing].sort((a, b) => a.localeCompare(b));
+    dependencyAlerts.push(
+      `${reqId}: Missing prerequisite link(s) for ${missingList.join(", ")}`,
+    );
+  }
+
+  const dependentEntries = [...missingDependents.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
+  for (const [reqId, missing] of dependentEntries) {
+    const missingList = [...missing].sort((a, b) => a.localeCompare(b));
+    dependencyAlerts.push(
+      `${reqId}: Missing dependent link(s) for ${missingList.join(", ")}`,
+    );
+  }
+
+  if (dependencyAlerts.length) {
     console.log("Dependency consistency issues:");
-    const prereqEntries = [...missingPrereqs.entries()].sort((a, b) =>
-      a[0].localeCompare(b[0]),
-    );
-    for (const [reqId, missing] of prereqEntries) {
-      const missingList = [...missing].sort((a, b) => a.localeCompare(b));
-      console.log(
-        `  ⚠ ${reqId}: Missing prerequisite link(s) for ${missingList.join(", ")}`,
-      );
-    }
-    const dependentEntries = [...missingDependents.entries()].sort((a, b) =>
-      a[0].localeCompare(b[0]),
-    );
-    for (const [reqId, missing] of dependentEntries) {
-      const missingList = [...missing].sort((a, b) => a.localeCompare(b));
-      console.log(
-        `  ⚠ ${reqId}: Missing dependent link(s) for ${missingList.join(", ")}`,
-      );
+    for (const alert of dependencyAlerts) {
+      console.log(`  ⚠ ${alert}`);
     }
     console.log();
   } else if (!gapsOnly) {
@@ -1199,8 +1420,13 @@ export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
   );
   const orphanAdrs = findOrphanAdrs(documents, inboundReferences);
   const orphanTasks = findOrphanTasks(documents, inboundReferences);
-  const { missingPrereqs, missingDependents } =
-    buildRequirementDependencyInfo(documents);
+  const {
+    missingPrereqs,
+    missingDependents,
+    contradictoryPrereqs,
+    contradictoryDependents,
+    prerequisiteCycles,
+  } = buildRequirementDependencyInfo(documents);
 
   let ok = true;
 
@@ -1220,25 +1446,49 @@ export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
     ok = false;
   }
 
-  if (missingPrereqs.size || missingDependents.size) {
+  const dependencyErrors: string[] = [];
+
+  for (const [a, b] of contradictoryPrereqs) {
+    dependencyErrors.push(
+      `${a} and ${b} list each other as prerequisites; remove the contradiction.`,
+    );
+  }
+
+  for (const [a, b] of contradictoryDependents) {
+    dependencyErrors.push(
+      `${a} and ${b} list each other as dependents; remove the contradiction.`,
+    );
+  }
+
+  for (const cycle of prerequisiteCycles) {
+    const sequence = cycle.join(" -> ");
+    dependencyErrors.push(`Prerequisite cycle detected among: ${sequence}`);
+  }
+
+  const prereqEntries = [...missingPrereqs.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
+  for (const [reqId, missing] of prereqEntries) {
+    const missingList = [...missing].sort((a, b) => a.localeCompare(b));
+    dependencyErrors.push(
+      `${reqId}: Missing prerequisite link(s) for ${missingList.join(", ")}`,
+    );
+  }
+
+  const dependentEntries = [...missingDependents.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  );
+  for (const [reqId, missing] of dependentEntries) {
+    const missingList = [...missing].sort((a, b) => a.localeCompare(b));
+    dependencyErrors.push(
+      `${reqId}: Missing dependent link(s) for ${missingList.join(", ")}`,
+    );
+  }
+
+  if (dependencyErrors.length) {
     console.error("Dependency consistency issues detected:");
-    const prereqEntries = [...missingPrereqs.entries()].sort((a, b) =>
-      a[0].localeCompare(b[0]),
-    );
-    for (const [reqId, missing] of prereqEntries) {
-      const missingList = [...missing].sort((a, b) => a.localeCompare(b));
-      console.error(
-        `  - ${reqId}: Missing prerequisite link(s) for ${missingList.join(", ")}`,
-      );
-    }
-    const dependentEntries = [...missingDependents.entries()].sort((a, b) =>
-      a[0].localeCompare(b[0]),
-    );
-    for (const [reqId, missing] of dependentEntries) {
-      const missingList = [...missing].sort((a, b) => a.localeCompare(b));
-      console.error(
-        `  - ${reqId}: Missing dependent link(s) for ${missingList.join(", ")}`,
-      );
+    for (const error of dependencyErrors) {
+      console.error(`  - ${error}`);
     }
     ok = false;
   }
