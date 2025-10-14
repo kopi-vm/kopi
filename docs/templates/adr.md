@@ -10,8 +10,6 @@
 
 <!-- Internal project artifacts only. The Links section is mandatory for traceability. Replace or remove bullets as appropriate. -->
 
-- Related Analyses:
-  - [AN-<id>-<topic>](../analysis/AN-<id>-<topic>.md)
 - Related Requirements:
   - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
   - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)

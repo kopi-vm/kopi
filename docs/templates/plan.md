@@ -10,11 +10,8 @@
 
 <!-- Internal project artifacts only. Replace or remove bullets as appropriate. -->
 
-- Related Requirements:
-  - [FR-<id>-<name>](../requirements/FR-<id>-<name>.md)
-  - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
-- Related ADRs:
-  - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
+- Associated Design Document:
+  - [T-<id>-<task>-design](../tasks/T-<id>-<task>/design.md)
 
 ## Overview
 
