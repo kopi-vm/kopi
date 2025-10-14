@@ -140,6 +140,12 @@ export function buildInboundReferenceIndex(
   return inbound;
 }
 
+export type DocumentSourceInfo = {
+  readonly path: string;
+  readonly filename: string;
+  readonly headingId: string | null;
+};
+
 export type TDLDocument = {
   readonly path: string;
   readonly filename: string;
@@ -149,20 +155,30 @@ export type TDLDocument = {
   readonly status: string;
   readonly metadataType: string;
   readonly title: string;
+  readonly sources: readonly DocumentSourceInfo[];
 };
 
 export function makeTDLDocument(filePath: string): TDLDocument {
   const filename = filePath.split(/[/\\]/).pop() ?? filePath;
   const content = safeReadFile(filePath);
+  const docId = extractDocumentId(filename, filePath, content);
+  const headingId = extractFirstLineId(content);
   return {
     path: filePath,
     filename,
-    docId: extractDocumentId(filename, filePath, content),
+    docId,
     docType: inferDocumentType(filename, filePath),
     links: parseDocumentLinks(content),
     status: extractDocumentStatus(content),
     metadataType: extractDocumentMetadataType(content),
     title: extractDocumentTitle(content),
+    sources: [
+      {
+        path: filePath,
+        filename,
+        headingId,
+      },
+    ],
   };
 }
 
@@ -189,6 +205,10 @@ function mergeTDLDocuments(
       : existing.docType;
 
   const mergedMetadataType = selectMetadataType(existing, incoming);
+  const mergedSources = mergeDocumentSources(
+    existing.sources,
+    incoming.sources,
+  );
 
   return {
     path: preferredForPath.path,
@@ -199,6 +219,7 @@ function mergeTDLDocuments(
     status: preferredForStatus.status,
     metadataType: mergedMetadataType,
     title: preferredForTitle.title,
+    sources: mergedSources,
   };
 }
 
@@ -215,6 +236,33 @@ function mergeLinkMaps(first: LinkMap, second: LinkMap): LinkMap {
     }
   }
   return merged;
+}
+
+function mergeDocumentSources(
+  first: readonly DocumentSourceInfo[],
+  second: readonly DocumentSourceInfo[],
+): DocumentSourceInfo[] {
+  const byPath = new Map<string, DocumentSourceInfo>();
+
+  const record = (source: DocumentSourceInfo) => {
+    const existing = byPath.get(source.path);
+    if (!existing) {
+      byPath.set(source.path, source);
+      return;
+    }
+    if (!existing.headingId && source.headingId) {
+      byPath.set(source.path, source);
+    }
+  };
+
+  for (const source of first) {
+    record(source);
+  }
+  for (const source of second) {
+    record(source);
+  }
+
+  return [...byPath.values()];
 }
 
 type PrioritySelector = (doc: TDLDocument) => number;
@@ -367,6 +415,21 @@ export function extractDocumentTitle(content: string | null): string {
   if (content === null) return "";
   const match = content.match(/^#\s+(.+)$/m);
   return match ? match[1].trim() : "";
+}
+
+export function extractFirstLineId(content: string | null): string | null {
+  if (content === null) return null;
+  const [firstLineRaw] = content.split(/\r?\n/, 1);
+  if (firstLineRaw === undefined) return null;
+  const firstLine = firstLineRaw.replace(/^\uFEFF/, "").trim();
+  if (!firstLine) return null;
+
+  const headingMatch = firstLine.match(/^#\s+([A-Z]+-[0-9A-Za-z]+)/);
+  if (headingMatch) return headingMatch[1];
+
+  const idMatch = firstLine.match(/^([A-Z]+-[0-9A-Za-z]+)/);
+  if (idMatch) return idMatch[1];
+  return null;
 }
 
 export function extractDocumentMetadataType(content: string | null): string {
@@ -978,6 +1041,7 @@ export function printStatus(
   const { missingPrereqs, missingDependents } =
     buildRequirementDependencyInfo(documents);
   const inboundReferences = buildInboundReferenceIndex(documents);
+  const headingMismatches = findHeadingMismatches(documents);
   if (!gapsOnly) {
     console.log("=== Kopi TDL Status ===\n");
     const coverage = calculateCoverage(documents);
@@ -1053,6 +1117,23 @@ export function printStatus(
     console.log("Dependency links consistent\n");
   }
 
+  if (headingMismatches.length) {
+    console.log("Document ID heading mismatches detected:");
+    for (const mismatch of headingMismatches) {
+      const location = relative(process.cwd(), mismatch.path);
+      const displayPath = location.startsWith("..")
+        ? mismatch.path
+        : location || mismatch.path;
+      const actual = mismatch.actualId ?? "<missing>";
+      console.log(
+        `  ⚠ ${displayPath}: expected ${mismatch.expectedId} on first line, found ${actual}`,
+      );
+    }
+    console.log();
+  } else if (!gapsOnly) {
+    console.log("Document ID headings consistent\n");
+  }
+
   if (!gapsOnly) {
     console.log("Status by Document Type:");
     const byType = new Map<DocumentType, TDLDocument[]>();
@@ -1082,6 +1163,32 @@ export function printStatus(
       }
     }
   }
+}
+
+export type HeadingMismatch = {
+  readonly path: string;
+  readonly expectedId: string;
+  readonly actualId: string | null;
+};
+
+export function findHeadingMismatches(
+  documents: Map<string, TDLDocument>,
+): HeadingMismatch[] {
+  const idPattern = /^[A-Z]+-[0-9A-Za-z]+$/;
+  const mismatches: HeadingMismatch[] = [];
+  for (const doc of documents.values()) {
+    if (!idPattern.test(doc.docId)) continue;
+    if (doc.docType === "unknown") continue;
+    for (const source of doc.sources) {
+      if (source.headingId === doc.docId) continue;
+      mismatches.push({
+        path: source.path,
+        expectedId: doc.docId,
+        actualId: source.headingId,
+      });
+    }
+  }
+  return mismatches.sort((a, b) => a.path.localeCompare(b.path));
 }
 
 export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
@@ -1131,6 +1238,22 @@ export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
       const missingList = [...missing].sort((a, b) => a.localeCompare(b));
       console.error(
         `  - ${reqId}: Missing dependent link(s) for ${missingList.join(", ")}`,
+      );
+    }
+    ok = false;
+  }
+
+  const headingMismatches = findHeadingMismatches(documents);
+  if (headingMismatches.length) {
+    console.error("Document ID heading mismatches detected:");
+    for (const mismatch of headingMismatches) {
+      const location = relative(process.cwd(), mismatch.path);
+      const displayPath = location.startsWith("..")
+        ? mismatch.path
+        : location || mismatch.path;
+      const actual = mismatch.actualId ?? "<missing>";
+      console.error(
+        `  - ${displayPath}: expected ${mismatch.expectedId} on first line, found ${actual}`,
       );
     }
     ok = false;

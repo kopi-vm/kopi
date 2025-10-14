@@ -15,12 +15,14 @@ import {
   extractDocumentId,
   extractDocumentStatus,
   extractDocumentTitle,
+  extractFirstLineId,
   extractIds,
   findRepoRoot,
   findImplementingTasks,
   findOrphanAdrs,
   findOrphanRequirements,
   findOrphanTasks,
+  findHeadingMismatches,
   inferDocumentType,
   loadDocuments,
   main,
@@ -540,6 +542,22 @@ describe("extractDocumentTitle", () => {
   });
 });
 
+describe("extractFirstLineId", () => {
+  it("returns identifier from markdown heading", () => {
+    const id = extractFirstLineId("# FR-200 Sample Requirement\nBody");
+    expect(id).toBe("FR-200");
+  });
+
+  it("strips byte order mark and whitespace", () => {
+    const id = extractFirstLineId("\uFEFFT-123 Example Task\nDetails");
+    expect(id).toBe("T-123");
+  });
+
+  it("returns null when identifier is absent", () => {
+    expect(extractFirstLineId("# Heading Only")).toBeNull();
+  });
+});
+
 describe("safeReadFile", () => {
   it("returns file contents when readable", () => {
     const repo = createTempDir();
@@ -948,6 +966,7 @@ describe("printStatus", () => {
     expect(output).toContain("  Requirements:");
     expect(output).toContain("  Tasks:");
     expect(output).toContain("Dependency links consistent");
+    expect(output).toContain("Document ID headings consistent");
   });
 
   it("suppresses summary when gapsOnly=true but still lists gaps", () => {
@@ -1020,6 +1039,72 @@ describe("printStatus", () => {
     expect(output).toContain("Dependency consistency issues:");
     expect(output).toContain("Missing prerequisite link(s) for FR-400");
   });
+
+  it("reports heading mismatches in status output", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-500-heading-mismatch.md",
+      requirementDoc({
+        id: "FR-501",
+        title: "Heading Mismatch",
+        status: "Proposed",
+        tasks: "N/A – Not yet planned",
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    printStatus(documents, false);
+
+    const output = logCalls.join("\n");
+    expect(output).toContain("Document ID heading mismatches detected:");
+    expect(output).toContain("expected FR-500 on first line, found FR-501");
+  });
+});
+
+describe("findHeadingMismatches", () => {
+  it("detects mismatched heading identifiers", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-700-mismatch.md",
+      requirementDoc({
+        id: "FR-701",
+        title: "Mismatch",
+        status: "Proposed",
+        prerequisites: "N/A – None",
+        dependents: "N/A – None",
+        tasks: "N/A – Not yet planned",
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const mismatches = findHeadingMismatches(documents);
+
+    expect(mismatches).toHaveLength(1);
+    const mismatch = mismatches[0];
+    expect(mismatch.expectedId).toBe("FR-700");
+    expect(mismatch.actualId).toBe("FR-701");
+    expect(mismatch.path).toBe(
+      join(repoRoot, "docs/requirements/FR-700-mismatch.md"),
+    );
+  });
+
+  it("returns empty array when headings match document identifiers", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-710-aligned.md",
+      requirementDoc({
+        id: "FR-710",
+        title: "Aligned",
+        status: "Proposed",
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    expect(findHeadingMismatches(documents)).toEqual([]);
+  });
 });
 
 describe("checkIntegrity", () => {
@@ -1080,6 +1165,44 @@ describe("checkIntegrity", () => {
     expect(result).toBe(false);
     const flattened = errors.map((entry) => entry.join(" ")).join("\n");
     expect(flattened).toContain("Missing prerequisite link(s) for FR-600");
+  });
+
+  it("reports heading mismatches as integrity failures", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-800-mismatch.md",
+      requirementDoc({
+        id: "FR-801",
+        title: "Mismatch",
+        status: "Proposed",
+        prerequisites: "N/A – None",
+        dependents: "N/A – None",
+        tasks: "N/A – Not yet planned",
+      }),
+    );
+    writeDoc(
+      repoRoot,
+      "docs/analysis/AN-900-alignment.md",
+      analysisDoc({
+        id: "AN-900",
+        title: "Alignment",
+        status: "Complete",
+        relatedRequirements: ["[FR-800](../requirements/FR-800-mismatch.md)"],
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const errors: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      errors.push(args);
+    };
+
+    const result = checkIntegrity(documents);
+    expect(result).toBe(false);
+    const output = errors.map((entry) => entry.join(" ")).join("\n");
+    expect(output).toContain("Document ID heading mismatches detected");
+    expect(output).toContain("expected FR-800 on first line, found FR-801");
   });
 });
 
