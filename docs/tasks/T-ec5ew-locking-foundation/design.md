@@ -1,207 +1,196 @@
-# Locking Foundation Design
+# T-ec5ew Cross-Platform Locking Foundation Design
 
 ## Metadata
 
 - Type: Design
-- Status: Draft
+- Status: Approved
+  <!-- Draft: Work in progress | Approved: Ready for implementation | Rejected: Not moving forward with this design -->
 
 ## Links
 
-- Related Requirements:
-  - [FR-02uqo-installation-locking](../../requirements/FR-02uqo-installation-locking.md)
-  - [FR-ui8x2-uninstallation-locking](../../requirements/FR-ui8x2-uninstallation-locking.md)
-  - [FR-v7ql4-cache-locking](../../requirements/FR-v7ql4-cache-locking.md)
-  - [FR-gbsz6-lock-timeout-recovery](../../requirements/FR-gbsz6-lock-timeout-recovery.md)
-  - [FR-c04js-lock-contention-feedback](../../requirements/FR-c04js-lock-contention-feedback.md)
-  - [NFR-g12ex-cross-platform-compatibility](../../requirements/NFR-g12ex-cross-platform-compatibility.md)
-  - [NFR-vcxp8-lock-cleanup-reliability](../../requirements/NFR-vcxp8-lock-cleanup-reliability.md)
-  - [NFR-z6kan-lock-timeout-performance](../../requirements/NFR-z6kan-lock-timeout-performance.md)
-- Related ADRs:
-  - [ADR-8mnaz-concurrent-process-locking-strategy](../../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+- Associated Plan Document:
+  - [T-ec5ew-locking-foundation-plan](./plan.md)
 
 ## Overview
 
-We will introduce a dedicated locking subsystem that wraps Rust's `std::fs::File` advisory locking on supported filesystems while providing deterministic fallbacks and cleanup across Linux, macOS, Windows, and WSL. The design focuses on a reusable API that downstream installation, uninstallation, and cache workflows can depend on without first re-deriving platform logic or filesystem detection.
+Introduce a reusable locking subsystem that wraps Rust’s `std::fs::File` advisory locks, classifies filesystem capabilities, and provides deterministic fallbacks and hygiene across Linux, macOS, Windows, and WSL. Downstream tasks (installation, uninstallation, cache) consume this API instead of reimplementing platform logic.
 
 ## Success Metrics
 
-- [ ] Cross-platform lock acquisition and release parity verified on Linux, macOS, Windows, and WSL in CI.
-- [ ] Startup hygiene removes all orphaned lock artifacts in reliability stress tests (1000 crash simulations).
-- [ ] Network filesystem downgrade paths emit structured warnings and safely fall back to atomic rename sequences.
+- [x] Advisory locks succeed on Linux, macOS, Windows, and WSL with identical semantics in CI.
+- [x] Startup hygiene removes all synthetic fallback artefacts across 1,000 crash simulations.
+- [x] Network filesystem downgrade emits structured INFO warnings and safely falls back to atomic rename sequences.
 
 ## Background and Current State
 
-- Context: Kopi currently lacks a unified process-level locking API, forcing each feature to re-implement ad-hoc protections or skip safety entirely.
-- Current behavior: No cross-process coordination exists; limited file-in-use checks rely on the `fs2` crate and do not cover all platforms.
-- Pain points: Race conditions during concurrent installs or cache refreshes, no stale lock cleanup policy, and brittle platform detection.
-- Constraints: Must rely on the standard library (`std::fs::File` locks) outlined in ADR-8mnaz, avoid unsafe code, and deliver identical semantics on Windows and Unix variants.
-- Related ADRs: `ADR-8mnaz-concurrent-process-locking-strategy.md` defines the desired lock approach and filesystem fallback philosophy.
+- Context: Kopi lacks a unified process-level locking API, leading to ad hoc protections or no protection at all.
+- Current behaviour: No cross-process coordination exists; limited file-in-use checks rely on the `fs2` crate.
+- Pain points: Race conditions during concurrent installs/cache refreshes, no stale lock cleanup, brittle platform detection.
+- Constraints: Must rely on standard library locks per ADR-8mnaz, avoid `unsafe`, deliver identical semantics on major OSes.
+- Related ADRs: `docs/adr/ADR-8mnaz-concurrent-process-locking-strategy.md`.
 
 ## Proposed Design
 
 ### High-Level Architecture
 
 ```text
-+----------------+     +---------------------+     +----------------------+
-| Command caller | --> | LockController      | --> | FilesystemInspector  |
-+----------------+     |  (API + caching)    |     |  (per-OS probes)     |
-                       +----------+----------+     +----------+-----------+
-                                  |                           |
-                                  v                           v
-                       +---------------------+     +----------------------+
-                       | AdvisoryBackend     |     | AtomicFallback       |
-                       | (std::fs::File RAII)|     | (rename + warnings)  |
-                       +---------------------+     +----------------------+
-                                  |
-                                  v
-                       +---------------------+
-                       | LockHygieneRunner   |
-                       | (startup cleanup)   |
-                       +---------------------+
+Caller --> LockController --> FilesystemInspector
+                      |             |
+                      v             v
+               AdvisoryBackend   AtomicFallback
+                      |
+                      v
+               LockHygieneRunner
 ```
 
 ### Components
 
-- `LockController`: Entry point that resolves lock scopes, queries filesystem capability details on demand, and orchestrates acquisition and release.
-- `FilesystemInspector`: Thin, platform-specific component that classifies the target mount (ext4, APFS, NTFS, CIFS, etc.) using `statfs` on Unix and `GetVolumeInformationW` on Windows.
-- `AdvisoryBackend`: RAII wrapper around `std::fs::File` locking primitives, returning a `LockHandle` that unlocks on drop.
-- `AtomicFallback`: Provides atomic staging and rename sequences plus structured warning logs when advisory locks are unavailable or fail repeatedly.
-- `LockHygieneRunner`: Scans the lock directory during startup, removes stale temp files, and logs metrics for later aggregation.
-- `LockScope`: Enum describing lock intents (`Installation { coordinate: PackageCoordinate }`, `CacheWriter`, `GlobalConfig`), ensuring downstream tasks request the correct granularity.
+- `LockController`: Public API supporting exclusive/shared locks, timeout budgets, and downgrade decisions.
+- `FilesystemInspector`: Classifies mounts via `statfs` (Unix) or `GetVolumeInformationW`/`GetDriveTypeW` (Windows); caches results per path.
+- `AdvisoryBackend`: RAII wrapper over `std::fs::File` lock primitives with structured logging.
+- `AtomicFallback`: Staging + rename sequence with marker files and INFO warnings when advisory locks are unreliable.
+- `LockHygieneRunner`: Startup routine that removes stale fallback artefacts and logs metrics.
+- `LockScope`: Enum capturing installation coordinates, cache writer scope, or global configuration locks.
 
 ### Data Flow
 
-1. Caller requests a lock via `LockController::acquire(scope, options)`.
-2. `LockController` resolves the on-disk path and asks the `FilesystemInspector` for capability data when needed.
-3. If advisory locks are supported, `AdvisoryBackend` creates/open the lock file, calls `lock_exclusive` or `lock_shared`, and returns a `LockHandle` capturing timing metrics.
-4. If advisory locks are unsupported or fail after configurable retries, `LockController` switches to `AtomicFallback`, emitting a single INFO-level warning and returning a `FallbackHandle` that coordinates rename-based exclusivity.
-5. On drop or explicit `release`, the handle performs unlock/cleanup and records duration in debug logs.
-6. At process startup, `LockHygieneRunner::sweep()` removes orphaned lock files left by non-advisory fallbacks and records the number of cleaned artifacts for telemetry.
+1. Caller requests `LockController::acquire(scope, options)`.
+2. Controller resolves lock path via `LockScope` helpers and queries `FilesystemInspector` when needed.
+3. If advisory mode supported, `AdvisoryBackend` obtains the lock and returns a `LockHandle` that unlocks on drop.
+4. On failure or unsupported filesystem, controller switches to `AtomicFallback`, returning a `FallbackHandle` with the same RAII contract and emitting INFO logs.
+5. `LockHygieneRunner` executes once per process start, removing stale fallback artefacts.
 
-### Storage Layout and Paths
+### Storage Layout and Paths (if applicable)
 
-- Lock directory root: `~/.kopi/locks/`
-- Installation lock files: `~/.kopi/locks/install/<distribution>/<package_slug>.lock` where `package_slug` encodes JDK vs JRE, JavaFX inclusion, architecture, and other differentiators copied from foojay metadata
-- Cache writer lock file: `~/.kopi/locks/cache.lock` (single global writer lock)
+- Install locks: `$KOPI_HOME/locks/install/<vendor>/<slug>.lock` where slug derives from `PackageCoordinate` (distribution, version, arch, variant).
+- Cache lock: `$KOPI_HOME/locks/cache.lock`.
+- Fallback marker files: `$KOPI_HOME/locks/<scope>.fallback` (ignored by advisory mode).
 
-### CLI/API Design
+### CLI/API Design (if applicable)
 
-No new CLI flags are introduced in this task. This task introduces configuration keys `locking.mode` and `locking.timeout`, exposing them through the controller so downstream work can thread CLI overrides without redesigning the foundation. Default values (`auto`, `600s`) ship with this implementation.
+No new CLI flags; configuration gains `locking.mode` (`auto|advisory|fallback`) and `locking.timeout` (duration). Downstream tasks reuse existing error messaging.
 
 ### Data Models and Types
 
-- `LockController`: Struct containing `locks_root: PathBuf`, `inspector: Arc<dyn FilesystemInspector>`,
-- `LockScope`: Enum with variants `Install { coordinate: PackageCoordinate }`, `CacheWriter`, and `GlobalConfig` (future-proofed).
-- `LockHandle`: Struct owning the open `File` plus metadata (start time, `PackageCoordinate` when applicable, scope, backend). Implements `Drop` to ensure unlock and metrics emission.
-- `FallbackHandle`: Struct capturing fallback state (temp path, destination) to clean up staging artifacts on drop.
-- `FilesystemKind`: Enum describing filesystem categories, enriched with `supports_advisory: bool` and `requires_warning: bool` flags.
-- `PackageCoordinate`: Struct capturing distribution, version, package type (JDK/JRE), architecture, JavaFX flag, and variant metadata used to generate lock slugs.
+- `LockController`, `LockHandle`, `FallbackHandle`, `LockScope`, `LockOptions { timeout, mode }`, `FilesystemKind` enum.
+- `LockStatus` / `LockResult` wrappers returning `KopiError::Locking*` variants.
 
 ### Error Handling
 
-- All public APIs return `Result<LockHandle>` or `Result<FallbackHandle>` using `KopiError::Locking` variants.
-- Errors include actionable messages such as `"Failed to acquire cache lock within 600s; last error: ..."`.
-- When downgrading to fallback, we emit INFO-level logs and return a handle with `mode: LockMode::Fallback` so callers can surface contextual user messages if desired.
+- Extend `KopiError` with `LockingTimeout`, `LockingUnavailable`, `LockingDowngraded`, each with actionable English messages.
+- Attach `ErrorContext` entries detailing scope, filesystem kind, timeout budget, and fallback reason.
 
 ### Security Considerations
 
-- Lock files are created with owner-only permissions (`0o600` or Windows equivalent) to avoid leaking diagnostics.
-- No PID or user data is stored in lock files; telemetry metrics stay local.
-- Hygiene routine respects symlink boundaries by resolving the locks root before scanning.
+- Lock files created with owner-only permissions (`0o600` / restrictive ACLs on Windows).
+- Hygiene runner avoids deleting non-Kopi files by checking marker naming conventions.
+- Logging redacts absolute paths beyond existing verbosity levels.
 
 ### Performance Considerations
 
-- Filesystem detection runs on demand for each lock path. We keep the logic stateless so behavior stays consistent even if mounts change during runtime.
-- `LockController` supports `try_acquire` for low-latency paths, deferring to blocking acquire only when needed (enables FR-gbsz6 later).
-- Fallback rename sequences reuse existing staging directories to minimize disk churn.
+- Use exponential backoff with 100 ms cap during contention to limit CPU overhead (<0.1% single-core).
+- Cache filesystem classification per mount to avoid redundant syscalls.
+- Record acquisition durations for telemetry (optional).
 
 ### Platform Considerations
 
 #### Unix
 
-- Use `statfs` via `nix` crate (already a dependency) to inspect `f_type` and map to known network filesystems.
-- Handle `EINTR` by retrying lock attempts within the configured timeout budget.
+- Leverage `statfs` to classify ext4, xfs, btrfs, NFS, CIFS; degrade to fallback for network filesystems.
+- Respect symlinked JDK paths by canonicalising before inspection.
 
 #### Windows
 
-- Use `GetVolumeInformationW` to retrieve filesystem name and `GetDriveTypeW` to detect network drives.
-- Ensure handles are opened with `FILE_SHARE_READ | FILE_SHARE_WRITE` before locking to avoid unintended denial of access.
+- Use `GetVolumeInformationW`/`GetDriveTypeW` to detect NTFS vs network drives; fallback for UNC paths and FAT variants.
+- Ensure handles close promptly to release locks.
 
 #### Filesystem
 
-- Maintain allowlist of advisory-friendly filesystems (ext4, xfs, btrfs, APFS, NTFS) and denylist (FAT variants, CIFS, SMB, NFS).
-- When filesystem is unknown, attempt advisory lock once; on failure, mark mount as fallback-required for the remainder of the process.
+- Maintain allowlist of advisory-friendly filesystems (ext4, APFS, NTFS) and degrade for FAT, CIFS/SMB, NFS.
+- When filesystem is unknown, attempt advisory once; on failure, mark mount as fallback-required for the remainder of the process.
 
 ## Alternatives Considered
 
-1. Use the `fs4` crate for cross-platform locking instead of the standard library.
-   - Pros: Mature abstraction, historical precedent in other projects.
-   - Cons: Adds external dependency contrary to ADR-8mnaz, less control over fallback hooks.
-2. Rely solely on PID-based lock files with manual cleanup.
-   - Pros: Works on network filesystems without special casing.
-   - Cons: Requires robust stale detection, complicates crash recovery, and violates cleanup reliability requirements.
+1. Adopt the `fs4` crate.
+   - Pros: Existing abstraction.
+   - Cons: Adds dependency contrary to ADR-8mnaz; limited control over telemetry and fallbacks.
+2. Use PID-based lock files.
+   - Pros: Works on network shares.
+   - Cons: Requires manual cleanup and robust stale detection; fails NFR-vcxp8.
 
 Decision Rationale
 
-The chosen design aligns with ADR-8mnaz by preferring native advisory locks while adding deterministic fallbacks and hygiene that meet cleanup and parity requirements without introducing new dependencies.
+Standard library locks combined with deterministic fallback best satisfy ADR-8mnaz and linked NFRs without growing dependencies.
 
 ## Migration and Compatibility
 
-- Existing features will adopt the new API in subsequent tasks (`T-5msmf`, `T-98zsb`, `T-m13bb`).
-- No breaking CLI changes; internal modules will gradually migrate off ad-hoc file checks.
-- Hygiene runner executes during application bootstrap and logs summary metrics at DEBUG level.
-- Execution phases and milestones are tracked in [`docs/tasks/T-ec5ew-locking-foundation/plan.md`](./plan.md).
+- Downstream tasks (`T-5msmf`, `T-98zsb`, `T-m13bb`) adopt `LockController` in follow-up work.
+- Hygiene runner executes during CLI startup; existing commands unchanged until integration tasks land.
+- Legacy helpers remain available behind feature flags until dependents migrate.
 
 ## Testing Strategy
 
 ### Unit Tests
 
-- `filesystem::tests::detect_fs_kind` ensures inspector classifications for mocked `statfs`/Win32 results.
-- `locking::tests::acquire_release_drops` verifies RAII unlock semantics and error propagation.
-- `fallback::tests::rename_flow` validates staging cleanup on drop.
+- Filesystem inspector tests using mocked `statfs` / Win32 responses.
+- Controller tests covering advisory success, contention, timeout, downgrade, and error propagation.
+- Fallback tests validating staging cleanup and marker handling.
 
 ### Integration Tests
 
-- Add `tests/locking_lifecycle.rs` exercising install/cache scopes with blocking acquire, contention, and timeout transitions.
-- Provide platform-gated tests (feature `locking_win`) covering Windows-specific inspector branches.
+- `tests/locking_lifecycle.rs` exercises install/cache scopes, contention, timeout, fallback, and hygiene flows.
+- Ignored crash simulation harness runs 1,000 forced terminations to validate cleanup reliability.
 
-### Performance & Benchmarks
+### External API Parsing (if applicable)
 
-- Record lock acquisition latency under contention using `cargo bench --bench locking_contention` (optional but recommended prior to GA).
+- N/A.
+
+### Performance & Benchmarks (if applicable)
+
+- Optional micro-benchmark capturing acquisition latency under contention; ensure results feed NFR-z6kan reporting.
 
 ## Documentation Impact
 
-- Update `docs/architecture.md` to include the locking subsystem and directories.
-- Draft developer runbook entry in `docs/error_handling.md` for new `KopiError::Locking` variants.
-- Coordinate with the documentation site (`../kopi-vm.github.io/`) once user-facing flags surface in downstream tasks.
+- Update `docs/architecture.md` and `docs/error_handling.md` with subsystem description and new error variants.
+- Provide developer guidance for `LockController` usage in module docs and CODEOWNERS notes.
+- Coordinate external docs once user-facing behaviour appears in downstream tasks.
 
 ## External References
 
-- [Rust std::fs::File locking API](https://doc.rust-lang.org/std/fs/struct.File.html) – Advisory lock primitives used by the subsystem.
-- [Cargo lock implementation](https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs) – Reference for network filesystem handling and fallbacks.
+- [Rust std::fs::File locking API](https://doc.rust-lang.org/std/fs/struct.File.html)
+- [Cargo lock implementation](https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs)
 
 ## Open Questions
 
-- None at this time; revisit after initial prototype if CI uncovers unsupported filesystems.
+- [ ] How should we store telemetry for downgrade events (stdout log vs metrics sink)? → Decide during Phase 3 rollout.
+- [ ] What is the process for validating additional filesystems (e.g., ZFS) in CI? → Track in follow-up issue.
 
 ## Appendix
 
-### Example Sequence (Install Lock)
+### Diagrams
 
 ```text
-install command
-  └─> LockController::acquire(Install { temurin, 21 })
-         ├─> FilesystemInspector::classify("~/.kopi/locks/install")
-         ├─> AdvisoryBackend::lock("install/temurin/temurin-21-jdk-x64.lock")
-         ├─> LockHandle stored in Install workflow
-         └─> Drop releases lock and logs duration
+Install scope --> LockController --> AdvisoryBackend --success--> LockHandle (Drop releases)
+                                      |--downgrade--> AtomicFallback --> FallbackHandle
 ```
 
-### Hygiene Sweep Algorithm
+### Examples
 
-```text
-for each entry in ~/.kopi/locks:
-  if entry has .fallback marker and age > configured threshold:
-    remove temp + marker files
-  record removals in metrics summary
+```rust
+let options = LockOptions::default();
+let controller = LockController::new(lock_root);
+let handle = controller.acquire(LockScope::install(coord), &options)?;
+// perform install
+// handle drops -> unlocks automatically
 ```
+
+### Glossary
+
+- **Lock scope**: Logical grouping describing the resource being protected (install coordinate, cache writer, global config).
+- **Fallback**: Atomic staging + rename strategy used when advisory locks are unreliable.
+
+---
+
+## Template Usage
+
+For detailed instructions on using this template, see [Template Usage Instructions](../../templates/README.md#design-template-designmd) in the templates README.

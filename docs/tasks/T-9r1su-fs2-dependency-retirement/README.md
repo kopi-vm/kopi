@@ -1,49 +1,32 @@
-# FS2 Dependency Retirement Task
+# T-9r1su FS2 Dependency Retirement Task
 
 ## Metadata
 
 - Type: Task
-- Status: In Review (updated 2025-10-06)
+- Status: Complete
+  <!-- Draft: Under discussion | In Progress: Actively working | Complete: Code complete | Cancelled: Work intentionally halted -->
 
 ## Links
 
-- Analysis:
-  - [AN-l19pi-fs2-dependency-retirement](../../analysis/AN-l19pi-fs2-dependency-retirement.md)
-- Requirements:
-  - [FR-x63pa-disk-space-telemetry](../../requirements/FR-x63pa-disk-space-telemetry.md)
-  - [FR-rxelv-file-in-use-detection](../../requirements/FR-rxelv-file-in-use-detection.md)
-- ADRs:
-  - [ADR-8mnaz-concurrent-process-locking-strategy.md](../../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
-- Design:
-  - [docs/tasks/T-9r1su-fs2-dependency-retirement/design.md](./design.md)
-- Plan:
-  - [docs/tasks/T-9r1su-fs2-dependency-retirement/plan.md](./plan.md)
+- Associated Plan Document:
+  - [T-9r1su-fs2-dependency-retirement-plan](./plan.md)
+- Associated Design Document:
+  - [T-9r1su-fs2-dependency-retirement-design](./design.md)
 
 ## Summary
 
-Retire the `fs2` crate by migrating all remaining usages to supported platform APIs (for example `std::fs::File` locking and `sysinfo` disk queries) without coupling to ADR-8mnaz implementation scope.
+Retire the `fs2` crate by migrating disk space checks to `sysinfo` and file-in-use detection to standard library locks, eliminating the dependency while preserving user-facing diagnostics and aligning with ADR-8mnaz.
 
 ## Scope
 
-- In scope: Identify and replace every `fs2` usage in the repository; document the new locking/disk APIs; remove the dependency from `Cargo.toml`.
-- Out of scope: Broader refactors unrelated to file locking or disk space checks; updates to external tooling that still depends on `fs2`.
+- In scope: Replace `fs2` usage across disk checks and locking helpers, remove the dependency from manifests, update documentation, and validate cross-platform behaviour.
+- Out of scope: Broader refactors unrelated to disk space or locking, removal of `sysinfo`, or changes to external tooling.
 
 ## Success Metrics
 
-- `fs2 dependency removed`: No references to the crate in source files or manifests.
-- `Functional parity`: Disk space checks and file-in-use detection validated on macOS, Linux, and Windows with automated or documented manual tests.
-
-## Detailed Plan
-
-- Audit `src/storage/disk_space.rs`, `src/doctor/checks/jdks.rs`, and `src/platform/file_ops.rs` to confirm current behaviour and replacement requirements.
-- Prototype disk space retrieval using a supported crate (e.g., `sysinfo`) and capture sample outputs for regression tests.
-- Design and implement a `std::fs::File`-based alternative for `check_files_in_use()` with platform-specific verification notes.
-- Produce follow-up requirements/design/plan documents once the approach is validated and ready for implementation (completed 2025-10-02; see linked design and plan).
-- Remove `fs2` from `Cargo.toml`, run the full Rust completing-work commands, and update documentation that references `fs2`.
-
-## Notes
-
-- Outstanding `fs2` usage: none (dependencies removed and callers migrated on 2025-10-06).
+- `fs2` removed: manifests and code contain no references to the crate.
+- Functional parity: disk space reporting and file-in-use detection match historical behaviour on macOS, Linux, and Windows.
+- Traceability: requirements FR-x63pa and FR-rxelv marked complete with supporting tests and documentation.
 
 ---
 

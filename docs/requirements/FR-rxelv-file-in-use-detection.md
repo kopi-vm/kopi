@@ -1,31 +1,28 @@
-# File-In-Use Detection Without fs2
+# FR-rxelv File-In-Use Detection Without fs2
 
 ## Metadata
 
 - Type: Functional Requirement
-- Status: Implemented (updated 2025-10-06)
+- Status: Approved
+  <!-- Draft: Under discussion | Approved: Ready for implementation | Rejected: Decision made not to pursue this requirement -->
 
 ## Links
 
-- Related Analyses:
-  - [AN-l19pi-fs2-dependency-retirement](../analysis/AN-l19pi-fs2-dependency-retirement.md)
 - Prerequisite Requirements:
   - [FR-02uqo-installation-locking](../requirements/FR-02uqo-installation-locking.md)
   - [FR-ui8x2-uninstallation-locking](../requirements/FR-ui8x2-uninstallation-locking.md)
 - Dependent Requirements:
-  - N/A – Not yet assigned
-- Related ADRs:
-  - [ADR-8mnaz-concurrent-process-locking-strategy](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+  - N/A – No dependent requirements recorded
 - Related Tasks:
   - [T-9r1su-fs2-dependency-retirement](../tasks/T-9r1su-fs2-dependency-retirement/README.md)
 
 ## Requirement Statement
 
-Kopi shall detect critical JDK binaries that remain in use by attempting non-blocking exclusive locks using only standard library primitives, removing any dependency on the `fs2` crate while preserving existing diagnostics.
+Kopi SHALL detect critical JDK binaries that remain in use by attempting non-blocking exclusive locks using only standard library primitives, eliminating the `fs2` crate while preserving existing diagnostics.
 
 ## Rationale
 
-Adopting `std::fs::File` locking aligns file-in-use detection with Kopi's broader locking strategy, eliminates an unmaintained dependency, and improves reliability through kernel-managed locks.
+Adopting `std::fs::File` locking aligns the file-in-use check with Kopi's broader locking strategy, removes an unmaintained dependency, and improves reliability by relying on kernel-managed locks.
 
 ## User Story (if applicable)
 
@@ -33,46 +30,51 @@ As a Kopi user uninstalling or updating a JDK, I want the CLI to warn me when ja
 
 ## Acceptance Criteria
 
-- [x] The `check_files_in_use` function uses `std::fs::File::{try_lock_exclusive, unlock}` (or equivalent standard library APIs) without importing `fs2`.
-- [x] Windows and Unix variants of `check_files_in_use` return the same warning messages as the current implementation when locks cannot be acquired.
-- [x] Automated tests simulate locked and unlocked files, confirming error paths across supported platforms using platform-specific harnesses or mock helpers.
-- [ ] Manual verification checklist documents Windows Explorer and macOS Activity Monitor scenarios where files remain open, ensuring messages remain actionable.
+- [ ] `check_files_in_use` uses standard library locking (`std::fs::File::{try_lock_exclusive, unlock}`) without importing `fs2`.
+- [ ] Windows and Unix variants return the same warning messages as the prior implementation when locks cannot be acquired.
+- [ ] Automated tests simulate locked and unlocked files across supported platforms, covering missing file and permission-denied scenarios.
+- [ ] Manual verification checklist documents Windows Explorer and macOS Activity Monitor scenarios for in-use binaries with actionable guidance.
 
 ## Technical Details (if applicable)
 
 ### Functional Requirement Details
 
-- Attempt to open critical binaries with shared read access before acquiring an exclusive lock to avoid permission errors.
-- Release file handles explicitly after successful lock acquisition using the standard library API.
-- Capture lock acquisition failures and surface them as `KopiError` variants consistent with existing error handling.
+- Attempt to open critical binaries with shared read access before exclusive locking to avoid permission errors.
+- Release file handles explicitly after successful lock acquisition; prefer RAII wrappers to guarantee unlock on drop.
+- Surface lock acquisition failures via existing `KopiError` variants with clear, English messaging.
+
+### Non-Functional Requirement Details
+
+N/A – Behavioural constraints captured by related NFRs.
 
 ## Platform Considerations
 
 ### Unix
 
-- Use `try_lock_exclusive` on descriptors; ensure behaviour on APFS and ext4 is validated through integration tests.
+- Use `try_lock_exclusive` on descriptors; validate behaviour on ext4, APFS, and other common filesystems via integration tests.
 
 ### Windows
 
-- Leverage `try_lock_exclusive` to wrap `LockFileEx`; confirm compatibility with NTFS semantics and ensure handles close before returning.
+- Ensure `try_lock_exclusive` correctly wraps `LockFileEx`; confirm compatibility with NTFS semantics and that handles close before returning.
 
 ### Cross-Platform
 
-- Maintain the list of critical binaries (`java`, `javac`, `javaw`, `jar`) and ensure messages use consistent phrasing and formatting.
+- Maintain the critical binary list (`java`, `javac`, `javaw`, `jar`) and keep warning text identical across platforms.
+- Document known limitations for network filesystems where locks may succeed without guaranteeing exclusivity.
 
 ## Risks & Mitigation
 
-| Risk                                             | Impact | Likelihood | Mitigation                                                       | Validation                                      |
-| ------------------------------------------------ | ------ | ---------- | ---------------------------------------------------------------- | ----------------------------------------------- |
-| Standard library lock semantics differ subtly    | High   | Medium     | Prototype cross-platform behaviour and capture findings in tests | Platform smoke tests in CI (planned in design). |
-| Lock attempts crash when files missing or unread | Medium | Medium     | Gracefully handle `NotFound` and `PermissionDenied` errors       | Unit tests covering missing file scenarios.     |
-| Unlocking omitted causing lingering locks        | Low    | Low        | Use RAII wrappers or drop handles immediately after unlocking    | Code review checklist plus unit assertions.     |
+| Risk                                             | Impact | Likelihood | Mitigation                                                       | Validation                      |
+| ------------------------------------------------ | ------ | ---------- | ---------------------------------------------------------------- | ------------------------------- |
+| Standard library lock semantics differ subtly    | High   | Medium     | Prototype cross-platform behaviour and capture findings in tests | Platform smoke tests in CI      |
+| Lock attempts crash when files missing or unread | Medium | Medium     | Gracefully handle `NotFound` and `PermissionDenied` errors       | Unit tests covering edge cases  |
+| Unlock omitted causing lingering locks           | Low    | Low        | Use RAII helpers or immediately drop handles after unlocking     | Code review checklist and tests |
 
 ## Implementation Notes
 
-- Introduce a small helper function (`try_lock_exclusive`) to wrap lock acquisition/release per platform, enabling dependency injection in tests.
-- Document known limitations for network filesystems in the doctor output and user docs repository.
-- Ensure telemetry or debug logging indicates when locks fail for later analysis.
+- Introduce a helper (`try_lock_exclusive`) to wrap platform differences and aid testing.
+- Emit debug logs indicating when locks fail for follow-up analysis.
+- Update user documentation (external repo) to explain how to resolve in-use warnings.
 
 ## External References
 

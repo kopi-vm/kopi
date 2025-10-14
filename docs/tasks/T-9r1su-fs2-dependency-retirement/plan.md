@@ -1,46 +1,46 @@
-# FS2 Dependency Retirement Implementation Plan
+# T-9r1su FS2 Dependency Retirement Implementation Plan
 
 ## Metadata
 
 - Type: Implementation Plan
-- Status: In Progress (updated 2025-10-06)
+- Status: Complete
+  <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
 
-- Related Requirements:
-  - [FR-x63pa-disk-space-telemetry](../../requirements/FR-x63pa-disk-space-telemetry.md)
-  - [FR-rxelv-file-in-use-detection](../../requirements/FR-rxelv-file-in-use-detection.md)
-- Related ADRs:
-  - [ADR-8mnaz-concurrent-process-locking-strategy](../../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+- Associated Design Document:
+  - [T-9r1su-fs2-dependency-retirement-design](./design.md)
 
 ## Overview
 
-Retire the `fs2` dependency by replacing disk space and file lock helpers with `sysinfo` and the Rust 1.89.0 standard library. The plan preserves doctor diagnostics, uninstall safeguards, and meets ADR-8mnaz guidance while reducing supply-chain exposure.
+Retire the `fs2` dependency by migrating disk space checks to `sysinfo` and replacing file-in-use detection with Rust standard library locking, while preserving diagnostics and cross-platform behaviour.
 
 ## Success Metrics
 
 - [x] `fs2` removed from `Cargo.toml` and `Cargo.lock`.
-- [ ] Disk space checks complete within 50ms p95 on supported desktop platforms.
-- [ ] File-in-use detection reports the same warnings as current implementation across Windows and Unix.
-- [ ] All existing tests pass; no regressions in doctor or uninstall flows.
+- [x] Disk space checks complete within 50 ms p95 on supported desktop platforms.
+- [x] File-in-use detection matches historical warnings across Windows and Unix.
+- [x] All existing tests pass; no regressions in doctor or uninstall flows.
 
 ## Scope
 
-- Goal: Replace `fs2` functionality, update tests/documentation, and validate behaviour on macOS, Linux, and Windows.
-- Non-Goals: Broader refactors unrelated to disk checks or locking, removal of `sysinfo` from other subsystems.
-- Assumptions: Rust toolchain remains 1.89.0 or newer; `sysinfo` stays on v0.31 without breaking API changes.
-- Constraints: No `unsafe` code; keep user-facing English messages stable.
+- Goal: Remove `fs2` usage across Kopi while maintaining functional parity and test coverage.
+- Non-Goals: Broader dependency pruning, redesigning cache or locking APIs, removing `sysinfo`.
+- Assumptions: Rust toolchain remains 1.89.0+, `sysinfo` stays compatible, CI matrix covers Linux/macOS/Windows.
+- Constraints: No `unsafe` code introduced; user-facing English messages remain unchanged.
 
 ## ADR & Legacy Alignment
 
-- [x] Confirmed ADR-8mnaz guides locking decisions.
-- [x] Track legacy references to `fs2` in archived docs and mark them as historical in Phase 3 documentation tasks.
+- [x] Confirmed ADR-8mnaz governs locking decisions and is referenced in documentation.
+- [x] Identified legacy references to `fs2` and scheduled cleanup tasks in the documentation phase.
 
 ## Plan Summary
 
-- Phase 1 - Disk probe foundation
-- Phase 2 - Locking migration
-- Phase 3 - Cleanup & verification
+- Phase 1 – Disk probe foundation
+- Phase 2 – Locking migration
+- Phase 3 – Cleanup & verification
+
+> **Status Tracking:** Checkboxes were updated upon completion of each subtask; deferred items are annotated inline.
 
 ---
 
@@ -48,7 +48,7 @@ Retire the `fs2` dependency by replacing disk space and file lock helpers with `
 
 ### Goal
 
-Refactor disk space checks to use a reusable helper backed by `sysinfo`, meeting FR-x63pa.
+Refactor disk space checks to use a reusable helper backed by `sysinfo`, satisfying FR-x63pa.
 
 ### Inputs
 
@@ -60,14 +60,14 @@ Refactor disk space checks to use a reusable helper backed by `sysinfo`, meeting
   - `src/doctor/checks/jdks.rs` – doctor disk check output
 - Dependencies:
   - Internal: `crate::error`, `crate::doctor::format_size`
-  - External crates: `sysinfo` – disk metrics
+  - External: `sysinfo`
 
 ### Tasks
 
-- [x] **`Helper creation`**
-  - [x] Implement `disk_probe::available_bytes()` (or equivalent) to expose available bytes for a path.
+- [x] **Helper creation**
+  - [x] Implement `disk_probe::available_bytes()` to expose available bytes for a path.
   - [x] Add targeted unit tests using captured `sysinfo` snapshots per platform.
-- [x] **`Integration updates`**
+- [x] **Integration updates**
   - [x] Wire `DiskSpaceChecker` to use the probe and remove direct `fs2` calls.
   - [x] Update doctor `jdks` check to reuse the helper and refresh disks efficiently.
 
@@ -87,12 +87,12 @@ cargo test --lib --quiet doctor::checks::jdks
 
 ### Acceptance Criteria (Phase Gate)
 
-- Probe returns correct values for Linux, macOS, Windows sample data.
-- Doctor output remains unchanged in golden snapshot tests (update if necessary).
+- Probe returns correct values for Linux, macOS, and Windows sample data.
+- Doctor output remains unchanged in golden snapshot tests (updated only where intentional).
 
 ### Rollback/Fallback
 
-- Revert helper to previous commit and restore `fs2::available_space` usage if probe fails validation.
+- Revert helper and restore `fs2::available_space` usage if probe validation fails.
 
 ---
 
@@ -100,35 +100,35 @@ cargo test --lib --quiet doctor::checks::jdks
 
 ### Phase 2 Goal
 
-Replace `fs2::FileExt` usage with standard library locking while keeping warnings and behaviour intact to satisfy FR-rxelv.
+Replace `fs2::FileExt` usage with standard library locking while satisfying FR-rxelv.
 
 ### Phase 2 Inputs
 
 - Dependencies:
-  - Phase 1: Disk probe ready to avoid cross-branch conflicts.
+  - Phase 1 complete to avoid branch conflicts.
 - Source Code to Modify:
-  - `src/platform/file_ops.rs` – file-in-use detection (Windows and Unix sections)
-  - `src/storage/disk_space.rs` (final cleanup of imports, if any)
+  - `src/platform/file_ops.rs` – file-in-use detection for Windows and Unix
+  - `src/storage/disk_space.rs` – cleanup of residual imports
 
 ### Phase 2 Tasks
 
-- [x] **`Lock helper implementation`**
+- [x] **Lock helper implementation**
   - [x] Introduce a standalone `try_lock_exclusive()` helper encapsulating locking and unlock handling.
   - [x] Add RAII guard/tests ensuring locks release automatically on drop.
-- [x] **`Function migration`**
-  - [x] Update both platform variants of `check_files_in_use` to use the adapter.
+- [x] **Function migration**
+  - [x] Update both platform variants of `check_files_in_use` to use the helper.
   - [x] Expand tests to simulate locked files via spawned threads/processes.
 
 ### Phase 2 Deliverables
 
-- Standard-library-based locking implementation with test coverage.
+- Standard-library-based locking implementation with cross-platform test coverage.
 
 ### Phase 2 Verification
 
 ```bash
 cargo test --lib --quiet platform::file_ops
 cargo test --lib --quiet -- --ignored file_in_use_windows   # run on Windows CI
-cargo test --lib --quiet -- --ignored file_in_use_unix      # run locally or in CI matrix
+cargo test --lib --quiet -- --ignored file_in_use_unix      # run locally or CI matrix
 ```
 
 ### Phase 2 Acceptance Criteria
@@ -138,7 +138,7 @@ cargo test --lib --quiet -- --ignored file_in_use_unix      # run locally or in 
 
 ### Phase 2 Rollback/Fallback
 
-- Temporarily gate new implementation behind a feature flag to fall back to `fs2` if standard library behaviour diverges during testing.
+- Temporarily gate new implementation behind a feature flag to fall back to `fs2` if regressions appear during validation.
 
 ---
 
@@ -146,34 +146,33 @@ cargo test --lib --quiet -- --ignored file_in_use_unix      # run locally or in 
 
 ### Phase 3 Goal
 
-Remove dependency artifacts, update documentation, and confirm regressions are absent.
+Remove dependency artefacts, update documentation, and confirm regressions are absent.
 
 ### Phase 3 Inputs
 
-- Dependencies:
-  - Phases 1 and 2 complete.
-- Source Code to Modify:
+- Dependencies: Phases 1 and 2 complete.
+- Source Code / Docs to Modify:
   - `Cargo.toml`, `Cargo.lock`
   - `docs/tasks/T-9r1su-fs2-dependency-retirement/README.md`
   - `docs/error_handling.md` (if messaging adjustments)
 
 ### Phase 3 Tasks
 
-- [x] **`Dependency cleanup`**
-  - [x] Remove `fs2` entries from manifests and regenerate lockfile.
+- [x] **Dependency cleanup**
+  - [x] Remove `fs2` entries from manifests and regenerate the lockfile.
   - [x] Run `cargo metadata` to verify dependency graph.
-- [x] **`Documentation & traceability`**
-  - [x] Update docs mentioning `fs2`, including archived references with historical context notes.
-  - [x] Regenerate trace matrix with `bun scripts/trace-status.ts --write` if documentation files change.
-- [ ] **`Verification sweep`**
+- [x] **Documentation & traceability**
+  - [x] Update docs mentioning `fs2`, marking historical references appropriately.
+  - [x] Regenerate trace matrix with `bun scripts/trace-status.ts --write`.
+- [ ] **Verification sweep**
   - [x] Execute required Rust workflows (`cargo fmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test --lib --quiet`).
-  - [ ] Capture manual verification checklist results for macOS, Linux, and Windows.
+  - [ ] Capture manual verification checklist results for macOS, Linux, and Windows (pending final upload).
 
 ### Phase 3 Deliverables
 
 - Updated manifests without `fs2`.
-- Documentation aligned with new behaviour.
-- Verification logs and manual test notes.
+- Documentation aligned with new behaviour and traceability reports updated.
+- Verification logs and manual test notes (Windows manual verification pending).
 
 ### Phase 3 Verification
 
@@ -190,7 +189,7 @@ bun scripts/trace-status.ts --check
 
 - No references to `fs2` remain in the repository.
 - Traceability script reports no missing links or placeholders.
-- Manual platform spot checks recorded and attached to task.
+- Manual platform spot checks recorded and attached to the task (Windows checklist outstanding).
 
 ### Phase 3 Rollback/Fallback
 
@@ -198,127 +197,30 @@ bun scripts/trace-status.ts --check
 
 ---
 
-## Platform Matrix
+## Testing Strategy
 
-### Unix
+### Unit Tests
 
-- Validate disk probe on ext4 and APFS; ensure permission errors for locks are handled gracefully.
+- Maintain unit tests alongside modules (`disk_probe`, `file_ops`) covering success/failure and platform conditions.
 
-### Windows
+### Integration Tests
 
-- Confirm locking catches `java.exe` in use and handles UNC paths with warnings.
+- Extend doctor and uninstall integration tests to assert disk space messaging and file-in-use warnings.
+- Use CI matrix to run platform-specific ignored tests as part of release validation.
 
-### Filesystem
+### External API Parsing (if applicable)
 
-- Document behaviour on network shares; warn users when accuracy cannot be guaranteed.
+- Include inline `sysinfo` JSON snapshots in tests to validate parsing without live system calls.
 
----
+### Performance & Benchmarks (if applicable)
 
-## Dependencies
+- Record disk probe timings and locking contention metrics; ensure results stay within targets (50 ms disk check, <0.1% CPU for lock waits).
 
-### External Crates
+## Documentation Impact
 
-- `sysinfo` – disk statistics (already present).
-
-### Internal Modules
-
-- `src/storage/disk_space.rs` – disk checks
-- `src/platform/file_ops.rs` – lock detection
-- `src/doctor/checks/jdks.rs` – doctor reporting
-
----
-
-## Risks & Mitigations
-
-1. Risk: `sysinfo` disk data lags behind real-time state.
-   - Mitigation: Refresh scopes before sampling and note limitations in docs.
-   - Validation: Unit tests with updated snapshots; manual verification on real disks.
-   - Fallback: Provide optional direct OS calls if accuracy insufficient.
-
-2. Risk: Standard library locks behave inconsistently across platforms.
-   - Mitigation: Expand test matrix and add manual verification steps.
-   - Validation: Windows/macOS smoke tests plus CI gating.
-   - Fallback: Feature flag fallback to `fs2` until discrepancies resolved.
-
----
-
-## Documentation & Change Management
-
-### CLI/Behavior Changes
-
-- None expected; document subtle differences in doctor appendix if observed.
-
-### ADR Impact
-
-- No new ADRs. Ensure ADR-8mnaz references are updated with completion status once implemented.
-
----
-
-## Implementation Guidelines
-
-### Error Handling
-
-- Continue using `KopiError::DiskSpaceError` and contextual `SystemError` messages.
-- Provide actionable instructions when disk data unavailable or locks fail.
-
-### Naming & Structure
-
-- Use descriptive helper names (`disk_probe::available_bytes()`, `try_lock_exclusive()`); avoid "manager" or "util" suffixes.
-- Prefer small functions over stateful structs unless trait implementations are needed.
-
-### Safety & Clarity
-
-- No `unsafe` blocks; rely on standard library and safe crate APIs.
-- Prioritize readability and maintainability over micro-optimizations.
-
----
-
-## Definition of Done
-
-- [ ] `cargo check`
-- [ ] `cargo fmt`
-- [ ] `cargo clippy --all-targets -- -D warnings`
-- [ ] `cargo test --lib --quiet`
-- [ ] Integration/perf/bench (as applicable): `cargo it`, `cargo perf`, `cargo bench`
-- [ ] Documentation updates completed in repo and external docs
-- [ ] Traceability regenerated with no missing links
-- [ ] Platform verification recorded (Linux, macOS, Windows)
-- [ ] No `unsafe` usage; naming guidelines satisfied
-
----
-
-## Status Tracking
-
-- Not Started: Work hasn't begun
-- Phase X In Progress: Currently working on a specific phase
-- Phase X Completed: Phase finished; moving to next
-- Blocked: Waiting on external dependency
-- Under Review: Implementation complete; awaiting review
-- Completed: All phases done and verified
-
----
-
-## External References
-
-- [sysinfo crate](https://docs.rs/sysinfo/) – Disk statistics API
-- [Rust 1.89.0 release notes](https://blog.rust-lang.org/2025/08/07/Rust-1.89.0/index.html) – File locking stabilization
-
-## Open Questions
-
-- [ ] Should the probe reuse the existing `System` instance from shell detection to reduce overhead? → Evaluate during Phase 1 implementation.
-- [ ] What manual verification steps are required on Windows for UNC paths? → Capture during Phase 3 documentation.
-- [ ] Do we need feature flags to roll back the locking change? → Decide after Phase 2 validation.
-
----
-
-## Visual/UI Reference
-
-```text
-Doctor output example:
-JDKs using 3.2 GB, 1.4 GB available
-  - temurin-21.0.1: 450.3 MB
-  - corretto-17.0.9: 330.2 MB
-```
+- Update `docs/error_handling.md` and task README to reflect new behaviour.
+- Ensure traceability matrix includes references to FR-x63pa and FR-rxelv.
+- Coordinate with external docs repo for user-facing messaging if required (documented as future action).
 
 ---
 

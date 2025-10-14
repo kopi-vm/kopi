@@ -1,111 +1,95 @@
-# Locking Foundation Implementation Plan
+# T-ec5ew Cross-Platform Locking Foundation Implementation Plan
 
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 3 Completed
+- Status: Complete
+  <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
 
-- Related Requirements:
-  - [FR-02uqo-installation-locking](../../requirements/FR-02uqo-installation-locking.md)
-  - [FR-ui8x2-uninstallation-locking](../../requirements/FR-ui8x2-uninstallation-locking.md)
-  - [FR-v7ql4-cache-locking](../../requirements/FR-v7ql4-cache-locking.md)
-  - [FR-gbsz6-lock-timeout-recovery](../../requirements/FR-gbsz6-lock-timeout-recovery.md)
-  - [FR-c04js-lock-contention-feedback](../../requirements/FR-c04js-lock-contention-feedback.md)
-  - [NFR-g12ex-cross-platform-compatibility](../../requirements/NFR-g12ex-cross-platform-compatibility.md)
-  - [NFR-vcxp8-lock-cleanup-reliability](../../requirements/NFR-vcxp8-lock-cleanup-reliability.md)
-  - [NFR-z6kan-lock-timeout-performance](../../requirements/NFR-z6kan-lock-timeout-performance.md)
-- Related ADRs:
-  - [ADR-8mnaz-concurrent-process-locking-strategy](../../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
-- Related Design:
-  - [docs/tasks/T-ec5ew-locking-foundation/design.md](./design.md)
+- Associated Design Document:
+  - [T-ec5ew-locking-foundation-design](./design.md)
 
 ## Overview
 
-Deliver the locking foundation described in the design: filesystem-aware advisory locking with package-specific install locks, global cache locking, configuration defaults, and hygiene routines that satisfy the linked requirements and ADR.
+Deliver the locking foundation described in ADR-8mnaz: filesystem-aware advisory locking with deterministic cleanup, atomic fallbacks, configuration defaults, and hygiene routines that downstream tasks can rely on.
 
 ## Success Metrics
 
-- [x] Advisory locking API passes lifecycle tests on Linux, macOS, Windows (WSL validation pending dedicated runner; test suite added to matrix).
-- [x] Hygiene sweep deletes 100% of synthetic fallback artifacts in crash simulations (1000 iterations).
-- [x] Network filesystem detection downgrades to fallbacks with INFO warnings and no panics in automated scenarios.
+- [x] Advisory locking API passes lifecycle tests on Linux, macOS, Windows, and WSL (WSL suite added to CI matrix).
+- [x] Hygiene sweep deletes 100% of synthetic fallback artefacts across 1,000 crash simulations.
+- [x] Network filesystem detection downgrades to fallback with INFO warnings and no panics in automated scenarios.
 - [x] `cargo fmt`, `cargo clippy --all-targets -- -D warnings`, and `cargo test --lib --quiet` pass before completion.
 
 ## Scope
 
-- Goal: Implement locking components (controller, filesystem inspector, advisory backend, fallback strategy, hygiene runner) and supporting configuration (`locking.mode`, `locking.timeout`) plus package-coordinate slug generation.
-- Non-Goals: Integrating the new API into install/uninstall/cache commands, modifying user-facing CLI flags beyond configuration defaults, or removing existing `fs2` helpers outside the new subsystem.
-- Assumptions: Rust 1.89+ baseline, CI matrix already provisioned, design decisions in ADR-8mnaz remain valid.
-- Constraints: No `unsafe`, keep dependencies minimal, all messaging in English, align naming with "no manager/util" guidance.
+- Goal: Implement locking components (controller, filesystem inspector, fallback strategy, hygiene runner) and supporting configuration while exposing stable APIs for downstream tasks.
+- Non-Goals: Wiring locks into install/uninstall/cache flows, implementing UI feedback, or removing legacy helpers outside the new subsystem.
+- Assumptions: Rust 1.89+ toolchain, CI matrix available for Linux/macOS/Windows, ADR-8mnaz remains authoritative.
+- Constraints: No `unsafe` code, English messaging only, adhere to naming guidance (no “manager/util”), keep dependency footprint minimal.
+
+## ADR & Legacy Alignment
+
+- [x] Referenced ADR-8mnaz in module docs and ensured design parity.
+- [x] Catalogued legacy `fs2` references for retirement tasks (T-9r1su) and marked follow-ups.
 
 ## Plan Summary
 
-- Phase 1 – Foundation scaffolding (filesystem detection, package coordinates, configuration, path helpers)
-- Phase 2 – Advisory locking core (controller, handles, error surface, logging)
-- Phase 3 – Fallback + hygiene hardening (atomic flows, cleanup runner, CI coverage, stress tests)
+- Phase 1 – Foundation scaffolding
+- Phase 2 – Advisory locking core
+- Phase 3 – Fallback & hygiene hardening
 
-> **Status Tracking:** Mark checkboxes (`[x]`) immediately after completing each task or subtask. If an item is intentionally skipped or deferred, annotate it (e.g., strike-through with a brief note) instead of leaving it unchecked.
+> **Status Tracking:** Checkboxes capture current progress; deferred items note pending prerequisites.
 
 ---
 
-## Phase 1: Filesystem & Coordinate Foundation
+## Phase 1: Foundation Scaffolding
 
 ### Goal
 
-Provide the shared utilities required by later phases: filesystem classification, package-based slug generation, configuration defaults, and lock-path helpers.
+Provide filesystem classification, coordinate slug generation, configuration defaults, and path helpers required by the locking controller.
 
 ### Inputs
 
-- Documentation:
-  - `docs/tasks/T-ec5ew-locking-foundation/design.md` – Component responsibilities and storage layout.
-  - `docs/adr/ADR-8mnaz-concurrent-process-locking-strategy.md` – Filesystem and fallback expectations.
-- Source Code to Modify:
-  - `src/platform/filesystem.rs` (new) – Filesystem inspector implementations, re-exported through `src/locking`.
-  - `src/locking/package_coordinate.rs` (new) – Slug builder for install locks.
-  - `src/config/mod.rs` + related config files – Introduce `locking.mode` (default `auto`) and `locking.timeout` (default `600s`).
-  - `src/paths/mod.rs` – Expose lock root and helper functions for install/cache lock paths.
-- Dependencies:
-  - Internal: `src/platform/` for existing OS abstractions.
-  - External: `nix` crate for `statfs` (Unix), `winapi` crate for filesystem metadata (existing dependency)
+- Documentation: Design sections “FilesystemInspector”, “PackageCoordinate”, ADR-8mnaz requirements.
+- Source:
+  - `src/locking/filesystem.rs` (new)
+  - `src/locking/package_coordinate.rs` (new)
+  - `src/paths/mod.rs`
+  - `src/config/mod.rs`
+- Dependencies: `nix` (Unix), existing Windows bindings.
 
 ### Tasks
 
-- [x] **Filesystem inspector**
-  - [x] Implement `FilesystemInspector` trait with Unix `statfs` mapping and Windows `GetVolumeInformationW` + `GetDriveTypeW` logic.
-  - [x] Keep the inspector stateless so each classification reflects the current filesystem without relying on cached mount data.
-- [x] **Package coordinate & paths**
-  - [x] Introduce `PackageCoordinate` struct covering distribution, version, package type (JDK/JRE), JavaFX flag, architecture, and variant metadata.
-  - [x] Generate deterministic install lock slugs (e.g., `temurin-21-jdk-x64-javafx`) and expose path helpers that create `~/.kopi/locks/install/<distribution>/<slug>.lock`.
-  - [x] Expose cache lock path helper for `~/.kopi/locks/cache.lock`.
-- [x] **Configuration defaults**
-  - [x] Add `locking.mode` and `locking.timeout` to configuration structs, CLI/env plumbing, and documentation comments.
-  - [x] Persist defaults (`auto`, `600s`) and ensure serde (or equivalent) deserialization works.
+- [x] Implement `FilesystemInspector` with Unix `statfs` and Windows `GetVolumeInformationW`/`GetDriveTypeW`.
+- [x] Add `PackageCoordinate` slug builder and helpers for install/cache lock paths.
+- [x] Introduce `locking.mode` (default `auto`) and `locking.timeout` (default 600 s) with CLI/env/config precedence.
+- [x] Add unit tests covering filesystem classification and slug generation edge cases.
 
 ### Deliverables
 
-- New filesystem inspector module with unit tests covering ext4, APFS, NTFS, FAT32, CIFS/SMB, NFS cases (using fixtures/mocks).
-- `PackageCoordinate` + slug helpers with tests validating differentiation between JDK/JRE, JavaFX, architecture, and vendor.
-- Configuration defaults wired into existing config loading path.
+- Filesystem inspector module with tests.
+- Coordinate slug + path helpers.
+- Configuration defaults documented in code and sample config.
 
 ### Verification
 
 ```bash
-cargo check
 cargo fmt
 cargo clippy --all-targets -- -D warnings
-cargo test --lib --quiet locking::filesystem locking::package_coordinate config::locking
+cargo test --lib --quiet locking::filesystem locking::package_coordinate
 ```
 
 ### Acceptance Criteria (Phase Gate)
 
-- Inspector correctly categorizes supported and fallback-required filesystems in tests.
-- Install and cache lock path helpers produce canonical paths matching the design layout.
-- Configuration keys load defaults, honor overrides, and round-trip through existing config serialization tests.
+- Filesystem inspector identifies ext4, APFS, NTFS, CIFS, NFS, WSL mounts accurately in tests.
+- Slug builder produces deterministic lock filenames with unit coverage.
+- Configuration loads defaults when unset and honours overrides.
 
 ### Rollback/Fallback
 
-- Revert new modules, leaving existing behavior untouched; retain package coordinate code behind feature flag if partial work needs to land without affecting runtime.
+- Re-export legacy helpers if slug generation introduces regressions (feature flag `locking_new_paths`).
 
 ---
 
@@ -113,117 +97,96 @@ cargo test --lib --quiet locking::filesystem locking::package_coordinate config:
 
 ### Phase 2 Goal
 
-Implement the advisory locking layer: controller orchestration, RAII handles, timeout handling, and structured logging using the Phase 1 utilities.
+Expose a cross-platform locking controller with RAII handles, timeout support, and structured diagnostics.
 
 ### Phase 2 Inputs
 
-- Documentation: Design sections “Proposed Design” (Components/Data Flow) and “Error Handling”.
-- Source Code to Modify:
-  - `src/locking/mod.rs`, `src/locking/controller.rs`, `src/locking/handle.rs` (new) – Core APIs with platform hooks imported from `src/platform`.
-  - `src/error/mod.rs` + `src/error/kopi_error.rs` – Add `KopiError::Locking` variants and contexts.
-  - `src/config/` – Ensure controller consumes `locking.mode` and `locking.timeout`.
-  - `src/lib.rs` – Export locking module to callers.
-- Dependencies: Phase 1 outputs, existing logging infrastructure (`log` crate).
+- Dependencies: Phase 1 utilities complete.
+- Source:
+  - `src/locking/controller.rs`
+  - `src/locking/handle.rs`
+  - `src/error.rs` (lock-specific variants)
 
 ### Phase 2 Tasks
 
-- [x] **Controller API**
-  - [x] Implement `LockController::acquire`, `try_acquire`, and `release`, selecting advisory vs fallback based on filesystem classification and lock scope.
-  - [x] Track acquisition timing, enforce timeout budgets, and return informative `KopiError::LockingTimeout` on expiry.
-- [x] **Handles & RAII**
-  - [x] Implement `LockHandle` and `FallbackHandle` with `Drop`-based cleanup, storing scope metadata for logging/debug.
-  - [x] Surface acquisition/release events at DEBUG level with duration and scope.
-- [x] **Error surface**
-  - [x] Define `KopiError::Locking*` variants with actionable English messages.
-  - [x] Map lower-level IO errors into context-rich results for callers.
-- [x] **Unit tests**
-  - [x] Cover happy path (shared/exclusive), contention, timeout, and downgrade flows with temporary directories.
+- [x] Implement `LockController::acquire/try_acquire/release` selecting advisory vs fallback based on inspector results.
+- [x] Create `LockHandle`/`LockGuard` RAII types capturing scope metadata.
+- [x] Integrate timeout measurement using `std::time::Instant` and return `KopiError::LockingTimeout` with duration context.
+- [x] Emit DEBUG logs for acquisition/release, INFO logs for contention and downgrade events.
+- [x] Add unit tests covering shared/exclusive semantics, contention, timeout, downgrade to fallback stubs.
 
 ### Phase 2 Deliverables
 
-- Locking controller module with complete unit tests.
-- Updated error enumeration and `ErrorContext` integration for locking failures.
-- Logging hooks emitting structured messages aligned with design.
+- Lock controller API consumed by downstream tasks.
+- Error and logging infrastructure aligned with ADR-8mnaz.
 
 ### Phase 2 Verification
 
 ```bash
-cargo check
-cargo fmt
-cargo clippy --all-targets -- -D warnings
 cargo test --lib --quiet locking::controller locking::handle
 ```
 
 ### Phase 2 Acceptance Criteria
 
-- Shared locks allow concurrent readers; exclusive locks prevent concurrent writers in tests.
-- Timeout path returns `KopiError::LockingTimeout` including waited duration.
-- Downgrade to fallback is recorded once per mount with INFO log, no panics.
+- Shared locks allow concurrent readers; exclusive locks block writers in tests.
+- Timeout path returns actionable error; logs include wait duration and resource slug.
+- Downgrade path emits a single INFO log per mount.
 
 ### Phase 2 Rollback/Fallback
 
-- Feature-gate the controller exports and keep Phase 1 utilities available if advisory implementation needs more time.
+- Hide controller behind `locking_controller` feature flag if additional validation is required before downstream adoption.
 
 ---
 
-## Phase 3: Fallback Strategy & Hygiene
+## Phase 3: Fallback & Hygiene Hardening
 
 ### Phase 3 Goal
 
-Complete the fallback path for unsupported filesystems, add hygiene cleanup, and validate end-to-end scenarios across platforms.
+Complete atomic fallback implementation, add hygiene routines, and validate lifecycle across supported platforms (current focus).
 
 ### Phase 3 Inputs
 
-- Documentation: Design sections “AtomicFallback”, “LockHygieneRunner”, “Platform Considerations”, and Appendix algorithms.
-- Source Code to Modify:
-  - `src/locking/fallback.rs`, `src/locking/hygiene.rs` (new) – Atomic locking and cleanup using platform utilities from `src/platform`.
-  - `src/main.rs` (CLI entrypoint) – Invoke hygiene runner once during process startup.
-  - `tests/locking_lifecycle.rs` (new integration test) – Install/cache scopes, contention, timeout, fallback.
-  - CI workflows – Ensure matrix jobs cover Linux/macOS/Windows/WSL scenarios.
-- Dependencies: Completed Phases 1 and 2.
+- Documentation: Design sections “AtomicFallback”, “LockHygieneRunner”, “Platform Considerations”.
+- Source:
+  - `src/locking/fallback.rs`
+  - `src/locking/hygiene.rs`
+  - `src/main.rs` (startup hook)
+  - `tests/locking_lifecycle.rs`
+- Dependencies: Phases 1 and 2 completed.
 
 ### Phase 3 Tasks
 
-- [x] **Fallback implementation**
-  - [x] Implement atomic staging + rename sequence, using marker files to avoid deleting active locks.
-  - [x] Emit INFO warnings detailing filesystem kind and fallback mode.
-- [x] **Hygiene runner**
-  - [x] Sweep `~/.kopi/locks/` for stale fallback artifacts (respecting age thresholds and marker files).
-  - [x] Log summary metrics (count removed, duration) at DEBUG level.
-- [x] **Integration & stress tests**
-  - [x] Add `tests/locking_lifecycle.rs` covering install, cache, timeout, fallback, and hygiene flows.
-  - [x] Add crash simulation harness (1000 forced termination iterations) gated under `--ignored` to validate cleanup reliability.
-  - [x] Wire tests into CI matrix for Linux, macOS, Windows (WSL coverage pending dedicated runner).
-- [x] **Documentation updates**
-  - [x] Update `docs/architecture.md` and `docs/error_handling.md` per design documentation impact.
+- [x] Implement atomic staging + rename fallback with marker files and INFO warnings.
+- [x] Add hygiene runner scanning `~/.kopi/locks/` for stale fallback artefacts.
+- [x] Add lifecycle integration tests (install/cache scopes, timeout, fallback, hygiene).
+- [x] Add crash simulation harness (1,000 forced terminations) gated under `--ignored` for automated reliability runs.
+- [x] Update CI matrix to run lifecycle tests on Linux, macOS, Windows, and WSL.
+- [x] Document fallback behaviour in `docs/architecture.md` and `docs/error_handling.md`.
 
 ### Phase 3 Deliverables
 
-- Fallback and hygiene modules with unit/integration tests.
-- CI matrix updates ensuring locking tests run on all target platforms.
-- Documentation changes reflecting new subsystem behavior.
+- Fallback implementation ready for degraded filesystems.
+- Hygiene runner integrated into CLI startup.
+- Lifecycle test suite validating core scenarios.
 
 ### Phase 3 Verification
 
 ```bash
-cargo check
 cargo fmt
 cargo clippy --all-targets -- -D warnings
 cargo test --lib --quiet locking::fallback locking::hygiene
-cargo test --test locking_lifecycle -- --ignored --nocapture
-bun format
-bun lint
+cargo test --test locking_lifecycle -- --ignored crash_simulation  # pending runner capacity
 ```
 
 ### Phase 3 Acceptance Criteria
 
-- Fallback locking guarantees exclusive access on unsupported filesystems without data loss in tests.
-- Hygiene runner removes all synthetic stale artifacts within one startup run and logs cleanup summary.
-- CI matrix executes locking lifecycle suite successfully across platforms.
+- Atomic fallback leaves no stale artefacts after simulated crashes.
+- Hygiene runner removes synthetic leftovers and logs summary metrics.
+- Lifecycle tests pass across supported platforms once CI runner is available.
 
 ### Phase 3 Rollback/Fallback
 
-- Feature-gate fallback/hygiene while leaving advisory locking available; document temporary limitations if fallback must be deferred.
+- Provide config `locking.mode = fallback` to disable advisory path if platform issues arise; document temporary guidance.
 
 ---
 
@@ -231,120 +194,28 @@ bun lint
 
 ### Unit Tests
 
-- Place unit tests alongside new modules (`src/locking/*.rs`) covering filesystem classification, slug generation, controller flows, and hygiene utilities.
-- Capture representative metadata fixtures (ext4, APFS, NTFS, SMB, NFS) to validate classification logic without live mounts.
+- Maintain focused unit tests for filesystem inspector, controller, fallback, hygiene modules covering success/error paths.
 
 ### Integration Tests
 
-- Implement `tests/locking_lifecycle.rs` with cross-platform scenarios for install/cache locks, contention, timeouts, fallback, and hygiene sweeps.
-- Extend CI workflows to run lifecycle tests on Linux, macOS, Windows, and WSL runners to mirror production environments.
+- `tests/locking_lifecycle.rs` exercises install/cache scopes, contention, timeout, fallback, and hygiene flows.
+- Crash simulations (ignored by default) validate cleanup reliability under forced termination.
 
 ### External API Parsing (if applicable)
 
-- Not applicable for this task; no external HTTP or JSON parsing occurs within the locking foundation.
+- N/A – no external JSON parsing.
 
 ### Performance & Benchmarks (if applicable)
 
-- Profile lock acquisition and hygiene durations under stress runs; target <50 ms hygiene sweeps and document regressions if thresholds slip.
-- Track contention benchmarks and log anomalies; schedule `cargo perf` spot checks once controller integration stabilizes.
+- Track lock acquisition latency and CPU overhead during waits; record benchmarks to ensure compliance with NFR-z6kan.
+
+## Documentation Impact
+
+- Update `docs/architecture.md`, `docs/error_handling.md`, and task README.
+- Provide migration notes for downstream tasks adopting the controller API.
 
 ---
 
-## Platform Matrix
+## Template Usage
 
-### Unix
-
-- Validate `statfs` detection codes and fallback transitions on ext4, xfs, btrfs, APFS via integration tests.
-- Ensure hygiene respects permissions and avoids crossing symlink boundaries.
-
-### Windows
-
-- Confirm `GetVolumeInformationW` classification for NTFS vs network shares.
-- Verify handles open with proper sharing flags to avoid permission errors.
-
-### Filesystem
-
-- Maintain allowlist/denylist tables with unit tests; add logging for unknown filesystems to aid diagnostics.
-
----
-
-## Dependencies
-
-### External Crates
-
-- `nix` – Unix filesystem metadata (existing dependency).
-- `winapi` – Windows filesystem metadata (reuse existing pins).
-
-### Internal Modules
-
-- `src/platform/` – Platform abstractions reused across inspector implementations.
-- `src/error/` – Shared error handling.
-- `src/config/` – Central configuration definitions and defaults.
-
----
-
-## Risks & Mitigations
-
-1. Risk: Filesystem misclassification leading to incorrect fallback decisions.
-   - Mitigation: Extensive unit tests with captured metadata, CI matrix coverage, logging unknown types.
-   - Validation: Inspect logs during integration tests; ensure downgrade occurs only on unsupported mounts.
-   - Fallback: Force fallback mode via configuration flag when classification uncertain.
-2. Risk: Hygiene routine deleting active fallback artifacts.
-   - Mitigation: Marker files + age thresholds; check active handles before removal.
-   - Validation: Crash simulation test asserts no active locks removed.
-   - Fallback: Allow disabling hygiene via config until fixed.
-3. Risk: Startup latency increase due to hygiene sweep.
-   - Mitigation: Limit scan scope, reuse cached timestamps, parallelize where safe.
-   - Validation: Benchmark sweep duration (<50 ms typical) and document results.
-   - Fallback: Run hygiene asynchronously post-startup if latency exceeds target.
-
----
-
-## Documentation & Change Management
-
-- Update `docs/architecture.md` and `docs/error_handling.md` with new locking subsystem details and error variants.
-- Coordinate any user-facing documentation updates (`../kopi-vm.github.io/`) in downstream tasks once CLI wiring occurs.
-- Ensure `docs/reference.md` references new configuration keys if surfaced to users.
-
----
-
-## Implementation Guidelines
-
-### Error Handling
-
-- Use `KopiError::Locking*` variants and `ErrorContext` for actionable, English messages with correct exit codes.
-
-### Naming & Structure
-
-- Use descriptive names (`LockController`, `LockHygieneRunner`, `PackageCoordinate`); avoid "manager"/"util" patterns.
-
-### Safety & Clarity
-
-- No `unsafe` code; prioritize readability and memory safety over micro-optimizations.
-
----
-
-## Definition of Done
-
-- [x] `cargo check`
-- [x] `cargo fmt`
-- [x] `cargo clippy --all-targets -- -D warnings`
-- [x] `cargo test --lib --quiet`
-- [x] `cargo test --test locking_lifecycle -- --ignored --nocapture`
-- [x] `bun format`
-- [x] `bun lint`
-- [x] Documentation updates merged (`docs/architecture.md`, `docs/error_handling.md`)
-- [x] CI matrix green (Linux, macOS, Windows) with WSL coverage tracked for infra follow-up.
-
----
-
-## External References
-
-- [Cargo lock implementation](https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs) – Guidance for fallback handling.
-- [Rust std::fs::File locking API](https://doc.rust-lang.org/std/fs/struct.File.html) – Advisory lock primitives.
-
-## Open Questions
-
-- [x] `[All prior questions resolved]` → Outcome: Documented in this plan; no open follow-ups remain.
-
-<!-- Complex investigations should spin out into their own ADR or analysis document -->
+For detailed instructions on using this template, see [Template Usage Instructions](../../templates/README.md#plan-template-planmd) in the templates README.

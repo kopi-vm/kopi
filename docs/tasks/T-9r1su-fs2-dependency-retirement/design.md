@@ -1,175 +1,172 @@
-# FS2 Dependency Retirement Design
+# T-9r1su FS2 Dependency Retirement Design
 
 ## Metadata
 
 - Type: Design
-- Status: In Review (updated 2025-10-06)
+- Status: Approved
+  <!-- Draft: Work in progress | Approved: Ready for implementation | Rejected: Not moving forward with this design -->
 
 ## Links
 
-- Related Requirements:
-  - [FR-x63pa-disk-space-telemetry](../../requirements/FR-x63pa-disk-space-telemetry.md)
-  - [FR-rxelv-file-in-use-detection](../../requirements/FR-rxelv-file-in-use-detection.md)
-- Related ADRs:
-  - [ADR-8mnaz-concurrent-process-locking-strategy](../../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+- Associated Plan Document:
+  - [T-9r1su-fs2-dependency-retirement-plan](./plan.md)
 
 ## Overview
 
-This design replaces all remaining `fs2` usage with first-party alternatives. Disk space calculations will leverage `sysinfo`, which Kopi already bundles, while file-in-use detection adopts the Rust 1.89.0 standard library locking API. The outcome removes a supply-chain liability, maintains doctor diagnostics, and aligns with ADR-8mnaz.
+Replace all remaining `fs2` usage with first-party alternatives: use `sysinfo` for disk space reporting and Rust 1.89.0 standard library locks for file-in-use detection. The design removes a supply-chain risk while preserving diagnostics and aligns with ADR-8mnaz guidance.
 
 ## Success Metrics
 
-- [x] `fs2` crate removed from `Cargo.toml` and `cargo metadata` dependency graph.
-- [ ] Disk space checks return within 50ms (p95) on local SSDs across macOS, Linux, and Windows.
+- [x] `fs2` crate removed from `Cargo.toml` and dependency graph.
+- [ ] Disk space checks return within 50 ms p95 on macOS, Linux, and Windows.
 - [ ] No regressions in doctor `jdks` check output compared with current snapshots.
 
 ## Background and Current State
 
-- Context: Disk space validation and file-in-use detection guard Kopi's install/uninstall workflows and doctor checks.
-- Current behavior: `DiskSpaceChecker` and `DoctorJdksCheck` call `fs2::available_space`. `check_files_in_use` imports `fs2::FileExt` for non-blocking locks.
-- Pain points: `fs2` is loosely maintained, duplicates functionality now stable in Rust, and complicates security audits.
-- Constraints: Preserve existing user-facing messages and error types; avoid introducing unsafe code.
-- Related ADRs: `docs/adr/ADR-8mnaz-concurrent-process-locking-strategy.md` mandates standard library locks.
+- Context: Disk space validation and file-in-use detection protect installation, uninstall, and doctor workflows.
+- Current behaviour: `DiskSpaceChecker` and doctor checks rely on `fs2::available_space`; `check_files_in_use` imports `fs2::FileExt`.
+- Pain points: `fs2` is lightly maintained, duplicates functionality now stable in Rust, and complicates audits.
+- Constraints: Preserve existing messaging, avoid `unsafe` code, maintain cross-platform parity.
+- Related ADRs: `docs/adr/ADR-8mnaz-concurrent-process-locking-strategy.md`.
 
 ## Proposed Design
 
 ### High-Level Architecture
 
 ```text
-+---------------------+      +---------------------+
-| DiskSpaceChecker    |      | FileInUse Detection |
-| (storage module)    |      | (platform module)   |
-+----------+----------+      +----------+----------+
-           |                              |
-           v                              v
-+---------------------+      +---------------------+
-| disk_probe::available_bytes() |      | try_lock_exclusive()|
-| (new helper)        |      | (new helper)        |
-+---------------------+      +---------------------+
++----------------------+       +-------------------------+
+| DiskSpaceChecker     |       | File-In-Use Detection   |
+| (storage module)     |       | (platform module)       |
++----------+-----------+       +-----------+-------------+
+           |                               |
+           v                               v
++---------------------------+   +----------------------------+
+| disk_probe::available_bytes | | try_lock_exclusive helper  |
+| (new helper using sysinfo)  | | (std::fs::File locking)    |
++---------------------------+   +----------------------------+
 ```
 
 ### Components
 
-- **`disk_probe::available_bytes()` helper**: Internal function returning `Result<u64>` using `sysinfo::Disks` snapshots filtered by mount point.
-- **try_lock_exclusive() helper**: Standalone function returning `Result<LockStatus>` using `std::fs::File` methods to keep messaging consistent.
-- Updated `DiskSpaceChecker` and doctor `jdks` check to depend on `disk_probe::available_bytes()` instead of calling `fs2` directly.
-- Updated `check_files_in_use` functions to call the `try_lock_exclusive()` helper and avoid conditional traits on `fs2`.
+- `disk_probe::available_bytes(&Path) -> Result<u64>`: wraps `sysinfo` snapshot logic and mount resolution.
+- `try_lock_exclusive(path: &Path) -> LockStatus`: encapsulates standard library locking with RAII guard support.
+- Updated `DiskSpaceChecker`, doctor checks, and uninstall workflows to consume helpers instead of `fs2`.
 
 ### Data Flow
 
-1. Caller requests disk space check.
-2. `disk_probe::available_bytes()` refreshes disks, finds the mount for the target path, and returns available bytes.
-3. `DiskSpaceChecker` converts bytes to MB/GB and applies thresholds.
-4. For file-in-use detection, the `try_lock_exclusive()` helper opens each critical binary, attempts `try_lock`, and returns success/failure.
-5. Doctor or uninstall flows translate outcomes into warnings or suggestions.
+1. Caller requests disk space measurement.
+2. Probe refreshes disk list, maps path to mount, returns free bytes.
+3. Consumer formats data via existing human-readable helpers.
+4. For file-in-use detection, helper attempts `try_lock_exclusive`; on failure returns actionable status for doctor/uninstall.
 
 ### Storage Layout and Paths (if applicable)
 
-- JDKs remain under `~/.kopi/jdks/<distribution>-<version>/`; disk lookup will resolve mount from these paths.
-- No new files introduced.
+- No new directories introduced; lock files remain under `$KOPI_HOME/locks/`.
+- Temporary files for disk probing not required; cache renames unchanged.
 
 ### CLI/API Design (if applicable)
 
-No CLI changes: doctor and uninstall commands retain existing flags and output formats.
+No CLI changes; existing commands reuse shared helpers. Documentation references “standard library locks” instead of `fs2`.
 
 ### Data Models and Types
 
-- `disk_probe::available_bytes()` exposes `available_bytes(&Path) -> Result<u64>` backed by `sysinfo` and path normalisation helpers.
-- `LockStatus` enum reports whether a lock was acquired (`Available`) or blocked (`InUse`).
+- `LockStatus` enum describes `Available`, `InUse`, and `Error` outcomes.
+- Probe returns raw byte counts; formatting remains in `DiskSpaceChecker`.
 
 ### Error Handling
 
-- Preserve `KopiError::DiskSpaceError` for low space conditions and wrap probe failures in `KopiError::SystemError` with actionable guidance.
-- When locking fails, continue returning human-readable strings describing the path; internal errors log at DEBUG.
+- Wrap probe failures in `KopiError::SystemError` with guidance to re-run doctor manually.
+- Lock helper converts IO errors into contextual `KopiError` variants reused by doctor/uninstall flows.
 
 ### Security Considerations
 
-- No new external dependencies. Ensure probe handles untrusted paths safely by canonicalising before mount mapping.
-- Avoid leaking full paths in logs beyond existing behaviour.
+- Lock files retain owner-only permissions; helpers avoid leaking paths in logs beyond existing behaviour.
+- No additional telemetry beyond aggregate lock contention counters.
 
 ### Performance Considerations
 
-- Limit `sysinfo` refresh scope: use `System::new()` with targeted `refresh_disks_list()` and `refresh_disks()` calls.
-- Cache probe instance within a single command invocation where practical to avoid repeated refreshes.
+- Limit `sysinfo` refresh scope to relevant disks; reuse snapshots when possible within a single command.
+- Lock helper keeps polling lightweight by leveraging existing timeout primitives.
 
 ### Platform Considerations
 
 #### Unix
 
-- Validate behaviour on APFS, ext4, and Btrfs to ensure mount detection works with symlinks in project directories.
-- Confirm locking handles files with executable bit set but unreadable due to permissions.
+- Validate probe behaviour on ext4, APFS (via macOS), and Btrfs.
+- Ensure locking helper handles symlinked JDK paths correctly.
 
 #### Windows
 
-- Ensure UNC paths or mapped network drives produce informative warnings when locks or disk statistics are unavailable.
-- Close file handles promptly to avoid interfering with subsequent operations.
+- Confirm `sysinfo` returns accurate data for NTFS and provide warnings for UNC paths.
+- Ensure `try_lock_exclusive` closes handles promptly to avoid lingering locks.
 
 #### Filesystem
 
-- Document expected degradation on network filesystems (locks may succeed but not be reliable; disk stats may fall back to warnings).
+- Document degraded behaviour on network filesystems and rely on fallback messaging in ADR-8mnaz.
 
 ## Alternatives Considered
 
-1. Continue using `fs2` with a fork
-   - Pros: Minimal code churn
-   - Cons: Ongoing maintenance burden, security audit friction
+1. Fork `fs2` and maintain internally
+   - Pros: Minimal code churn.
+   - Cons: Ongoing maintenance burden, no safety improvement.
 2. Implement raw OS bindings (`statvfs`, `GetDiskFreeSpaceEx`, `LockFileEx`)
-   - Pros: Fine-grained control, no external crates
-   - Cons: Requires unsafe code, increases platform-specific surface area
+   - Pros: Fine-grained control.
+   - Cons: Requires `unsafe` code, increases platform-specific complexity.
 
 Decision Rationale
 
-Using `sysinfo` and standard library APIs provides strong portability, matches existing dependencies, and eliminates the external crate without sacrificing correctness.
+- `sysinfo` already ships in Kopi; leveraging it avoids new dependencies.
+- Standard library locking became stable in Rust 1.89.0, providing a first-party solution.
+- Forking or reimplementing OS bindings would add maintenance risk without meaningful benefit.
 
 ## Migration and Compatibility
 
-- No breaking changes. Disk output and lock warnings retain current strings.
-- Remove `fs2` from manifests and regenerate `Cargo.lock`.
-- Update internal documentation referencing `fs2`; user docs mention "standard library locks" instead.
-- Telemetry remains unchanged except for optional debug logs noting use of std locks.
+- Backward compatible; disk output and lock warnings retain existing phrasing.
+- Remove `fs2` from manifests and regenerate lockfile.
+- Update documentation referencing `fs2` to note historical context.
 
 ## Testing Strategy
 
 ### Unit Tests
 
-- Add unit tests for the disk probe helper with captured sample data representing Linux, macOS, and Windows snapshots.
-- Ensure the `try_lock_exclusive()` helper has tests covering acquired locks, files missing, permission denied, and in-use scenarios (using temp files/threads).
+- Probe helper tests with captured `sysinfo` data for macOS, Linux, Windows.
+- Lock helper tests covering acquired locks, in-use paths, missing files, and permission errors.
 
 ### Integration Tests
 
-- Extend doctor integration test (if available) to assert disk space string pattern and file-in-use messaging.
-- Add CLI smoke test on Windows via CI job exercising uninstall flow with a spawned java process.
+- Extend doctor and uninstall integration tests to assert new messaging and behaviour.
+- Add CLI smoke tests in Windows CI verifying uninstall flows with a running java process.
 
 ### External API Parsing (if applicable)
 
-- Include inline sample outputs from `sysinfo --json` (or equivalent) to ensure parsing remains stable.
+- Store `sysinfo` JSON snapshots in tests to guard against upstream schema changes.
 
 ### Performance & Benchmarks (if applicable)
 
-- Measure probe execution time during `cargo test -- --ignored disk_probe_benchmark` (lightweight micro-benchmark) to guarantee the 50ms target.
+- Record disk probe timings and lock wait CPU usage to confirm targets set in FR-x63pa and NFR-z6kan.
 
 ## Documentation Impact
 
-- Update `docs/error_handling.md` if error variants gain new context messages.
-- Update dependency references in `docs/tasks/T-9r1su-fs2-dependency-retirement/README.md` and cross-link user documentation repo to describe new behaviour.
+- Update `docs/error_handling.md` and task README to reflect dependency removal.
+- Coordinate with external docs repository for any user-facing messaging changes.
 
-## External References (optional)
+## External References
 
-- [sysinfo crate](https://docs.rs/sysinfo/) - Disk statistics used by the disk probe helper
-- [Rust 1.89.0 file locking announcement](https://blog.rust-lang.org/2025/08/07/Rust-1.89.0/index.html)
+- [sysinfo crate](https://docs.rs/sysinfo/) – Disk statistics API
+- [Rust 1.89.0 release notes](https://blog.rust-lang.org/2025/08/07/Rust-1.89.0/index.html)
 
 ## Open Questions
 
-- [ ] Should we reuse the existing global `System` instance used for shell detection to avoid duplicate refreshes? → Evaluate during implementation.
-- [ ] How do we communicate reduced accuracy on network volumes to users? → Decide in plan's documentation tasks.
+- [ ] Should we reuse the existing global `System` instance used for shell detection to avoid duplicate refreshes? → Evaluate in follow-up refactor.
+- [ ] How do we communicate degraded behaviour on network volumes in user docs? → Coordinate with documentation maintainers.
 
 ## Appendix
 
 ### Diagrams
 
 ```text
-DiskSpaceChecker --> disk_probe::available_bytes()
-check_files_in_use --> try_lock_exclusive() --> std::fs::File
+DiskSpaceChecker --> disk_probe::available_bytes
+check_files_in_use --> try_lock_exclusive --> std::fs::File
 ```
 
 ### Examples

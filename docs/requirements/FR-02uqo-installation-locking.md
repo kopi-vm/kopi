@@ -1,99 +1,94 @@
-# Process-level locking for installation operations
+# FR-02uqo Process-Level Installation Locking
 
 ## Metadata
 
 - Type: Functional Requirement
-- Status: Accepted
-  <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
+- Status: Approved
+  <!-- Draft: Under discussion | Approved: Ready for implementation | Rejected: Decision made not to pursue this requirement -->
 
 ## Links
 
-- Related Analyses:
-  - [AN-m9efc-concurrent-process-locking](../analysis/AN-m9efc-concurrent-process-locking.md)
 - Prerequisite Requirements:
-  - N/A – No prerequisites
+  - [NFR-g12ex-cross-platform-compatibility](../requirements/NFR-g12ex-cross-platform-compatibility.md)
+  - [NFR-vcxp8-lock-cleanup-reliability](../requirements/NFR-vcxp8-lock-cleanup-reliability.md)
 - Dependent Requirements:
   - [FR-gbsz6-lock-timeout-recovery](../requirements/FR-gbsz6-lock-timeout-recovery.md)
   - [FR-ui8x2-uninstallation-locking](../requirements/FR-ui8x2-uninstallation-locking.md)
   - [FR-v7ql4-cache-locking](../requirements/FR-v7ql4-cache-locking.md)
   - [FR-rxelv-file-in-use-detection](../requirements/FR-rxelv-file-in-use-detection.md)
-- Related ADRs:
-  - [ADR-8mnaz-concurrent-process-locking-strategy](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Related Tasks:
-  - N/A – Not yet implemented
+  - [T-5msmf-installation-locking](../tasks/T-5msmf-installation-locking/README.md)
+  - [T-ec5ew-locking-foundation](../tasks/T-ec5ew-locking-foundation/README.md)
 
 ## Requirement Statement
 
-The system SHALL provide exclusive process-level locking for JDK installation operations so that concurrent installation attempts targeting the same vendor-version-os-arch coordinate never execute simultaneously.
+The system SHALL acquire an exclusive process-level lock before performing JDK installation work so that two Kopi processes targeting the same canonical vendor-version-os-arch coordinate never mutate the installation concurrently.
 
 ## Rationale
 
-Without process-level locking, multiple kopi processes attempting to install the same JDK version could corrupt installations, trigger race conditions during directory creation, leave metadata inconsistent, and waste bandwidth on duplicate downloads.
+Concurrent installation attempts corrupt shared directories, waste download bandwidth, and leave metadata inconsistent. Relying on process-level locks prevents these failures and improves user trust in Kopi when multiple terminals or automation pipelines run simultaneously.
 
 ## User Story (if applicable)
 
-As a kopi user, I want the tool to acquire an exclusive installation lock before modifying the filesystem, so that concurrent installation attempts cannot corrupt my JDK installs.
+As a Kopi user, I want the tool to coordinate installations with an exclusive lock so that parallel commands do not corrupt my managed JDKs.
 
 ## Acceptance Criteria
 
-- [ ] Exclusive lock acquisition prevents more than one process from installing the same canonicalized vendor-version-os-arch coordinate at a time.
-- [ ] Lock keys are derived from canonicalized coordinates after alias resolution to guarantee equivalent requests share the same lock file.
-- [ ] Lock release occurs on both successful and failed installation exits, returning the system to an unlocked state.
-- [ ] Operating-system-managed cleanup releases locks automatically when a process crashes or is killed, allowing new installers to proceed without manual intervention.
-- [ ] Installations for different coordinates run in parallel without blocking each other.
+- [ ] Exclusive lock acquisition prevents more than one process from installing the same canonical coordinate at a time.
+- [ ] Lock keys derive from canonicalised coordinates after alias resolution, ensuring equivalent inputs share the same lock file.
+- [ ] Locks release on both success and failure paths, returning the system to an unlocked state.
+- [ ] OS-managed cleanup releases locks automatically when a process crashes or is terminated.
+- [ ] Installations for different coordinates proceed in parallel without unnecessary blocking.
 
 ## Technical Details (if applicable)
 
 ### Functional Requirement Details
 
-- Use native `std::fs::File::lock_exclusive()` for blocking acquisition and `try_lock_exclusive()` for optional non-blocking modes.
-- Lock files reside at `$KOPI_HOME/locks/{vendor}-{version}-{os}-{arch}.lock` with normalized components.
-- Acquire the lock before any filesystem mutations and hold it until installation completes or aborts.
-- Support both blocking waits (default) and configurable non-blocking attempts driven by timeout settings.
-- Dropping the file handle or invoking `unlock()` releases the lock; cleanup relies on OS semantics.
+- Use `std::fs::File::lock_exclusive()` for blocking acquisition and `try_lock_exclusive()` for optional non-blocking flows.
+- Place lock files at `$KOPI_HOME/locks/{vendor}-{version}-{os}-{arch}.lock` with canonicalised components.
+- Acquire the lock before any filesystem mutations and hold it until the installation completes, rolls back, or aborts.
+- Expose telemetry describing acquisition latency, contention, and fallback behaviour.
 
 ### Non-Functional Requirement Details
 
-N/A – Not applicable.
+N/A – No additional non-functional constraints beyond related NFRs.
 
 ## Platform Considerations
 
 ### Unix
 
-- Implements advisory locking via `flock` through Rust standard library wrappers.
-- Stores lock files in `$KOPI_HOME/locks/` with owner-only permissions.
+- Implement locking via the standard library (backed by `flock(2)`); ensure lock files use owner-only permissions.
 
 ### Windows
 
-- Uses `LockFileEx` via Rust standard library.
-- Stores lock files in `%KOPI_HOME%\locks\` and relies on kernel-managed cleanup.
+- Use `LockFileEx` through the standard library; store locks in `%KOPI_HOME%\locks\` and clean up via RAII guards.
 
 ### Cross-Platform
 
-- Lock filenames must remain identical across platforms after normalization.
-- Path handling must use `std::path` to accommodate separators.
+- Lock file naming must be identical across platforms after normalisation.
+- Canonicalise coordinates using shared helper logic to avoid divergence between Windows and Unix paths.
 
 ## Risks & Mitigation
 
-| Risk                            | Impact | Likelihood | Mitigation                    | Validation                  |
-| ------------------------------- | ------ | ---------- | ----------------------------- | --------------------------- |
-| Filesystem lacks advisory locks | High   | Low        | Detect and fall back to mutex | Test on network filesystems |
-| Lock file permissions incorrect | Medium | Medium     | Create with restricted umask  | Verify permissions in tests |
-| Stale lock files accumulate     | Low    | Medium     | Cleanup on startup before use | Monitor lock directory size |
+| Risk                            | Impact | Likelihood | Mitigation                                                     | Validation                                |
+| ------------------------------- | ------ | ---------- | -------------------------------------------------------------- | ----------------------------------------- |
+| Filesystem lacks advisory locks | High   | Low        | Detect and fall back to atomic staging                         | Test on network filesystems               |
+| Lock file permissions incorrect | Medium | Medium     | Create with restricted umask and ACLs                          | Verify permissions in tests               |
+| Stale lock appears after crash  | Low    | Low        | Rely on kernel cleanup; add startup sweep for legacy artefacts | Integration tests covering crash recovery |
 
 ## Implementation Notes
 
-- Provide configurable blocking vs. timeout-driven behavior through FR-gbsz6 settings.
-- Canonicalize coordinates after resolving aliases, architecture defaults, and vendor synonyms.
-- Ensure logging captures lock acquisition, contention, and release events for diagnostics.
-- Treat lock files as zero-length placeholders; never persist metadata inside them.
+- Provide configurable blocking vs. timeout-driven behaviour via [FR-gbsz6](../requirements/FR-gbsz6-lock-timeout-recovery.md).
+- Canonicalise coordinates after resolving aliases, architecture defaults, and vendor synonyms.
+- Ensure logging captures acquisition, contention, and release events with actionable English messaging.
 
 ## External References
 
-N/A – No external references
+- [Rust std::fs::File locking API](https://doc.rust-lang.org/std/fs/struct.File.html)
+- [Cargo locking behaviour](https://github.com/rust-lang/cargo/blob/master/src/cargo/util/flock.rs)
 
 ---
 
 ## Template Usage
 
-For detailed instructions, see [Template Usage Instructions](../templates/README.md#individual-requirement-template-requirementsmd).
+For detailed instructions, see [Template Usage Instructions](../templates/README.md#individual-requirement-template-requirementsmd) in the templates README.

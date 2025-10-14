@@ -1,62 +1,61 @@
-# Process-level locking for cache operations
+# FR-v7ql4 Process-Level Cache Locking
 
 ## Metadata
 
 - Type: Functional Requirement
-- Status: Accepted
-  <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
+- Status: Approved
+  <!-- Draft: Under discussion | Approved: Ready for implementation | Rejected: Decision made not to pursue this requirement -->
 
 ## Links
 
-- Related Analyses:
-  - [AN-m9efc-concurrent-process-locking](../analysis/AN-m9efc-concurrent-process-locking.md)
 - Prerequisite Requirements:
+  - [FR-02uqo-installation-locking](../requirements/FR-02uqo-installation-locking.md)
   - [FR-gbsz6-lock-timeout-recovery](../requirements/FR-gbsz6-lock-timeout-recovery.md)
+  - [NFR-g12ex-cross-platform-compatibility](../requirements/NFR-g12ex-cross-platform-compatibility.md)
+  - [NFR-vcxp8-lock-cleanup-reliability](../requirements/NFR-vcxp8-lock-cleanup-reliability.md)
 - Dependent Requirements:
   - [FR-x63pa-disk-space-telemetry](../requirements/FR-x63pa-disk-space-telemetry.md)
-- Related ADRs:
-  - [ADR-8mnaz-concurrent-process-locking-strategy](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Related Tasks:
-  - N/A – Not yet implemented
+  - [T-m13bb-cache-locking](../tasks/T-m13bb-cache-locking/README.md)
 
 ## Requirement Statement
 
-The system SHALL serialize cache mutation operations using exclusive writer locks while allowing concurrent lock-free reads, ensuring JDK metadata cache consistency during refreshes.
+The system SHALL serialise cache mutation operations using exclusive writer locks while allowing concurrent lock-free reads, ensuring JDK metadata cache consistency during refreshes.
 
 ## Rationale
 
-Cache files contain critical metadata fetched from foojay.io. Without writer locking, concurrent refreshes risk corrupting files, readers could observe incomplete data, and duplicate downloads would waste bandwidth.
+Cache files store metadata fetched from foojay.io; concurrent refreshes without coordination risk corrupting files, serving incomplete data, or duplicating downloads.
 
 ## User Story (if applicable)
 
-As a kopi user, I want metadata cache updates to occur safely without blocking reads, so that I always receive consistent data even when background refreshes are running.
+As a Kopi user, I want cache updates to occur safely without blocking reads so that I always receive consistent metadata even when background refreshes run.
 
 ## Acceptance Criteria
 
-- [ ] Only one writer at a time can acquire the cache lock; additional writers wait or fail according to timeout settings.
+- [ ] Only one writer at a time acquires the cache lock; additional writers wait or time out per FR-gbsz6.
 - [ ] Readers access cache files without locks and never observe partially written data.
-- [ ] Cache refresh writes to a temporary file and atomically replaces the target on success.
-- [ ] Cache corruption is prevented under concurrent reader and writer workloads across 100 stress iterations.
-- [ ] The cache lock uses a well-known path (`cache.lock`) to coordinate writers across processes.
+- [ ] Cache refresh writes to a temporary file, `fsync`s, and then atomically replaces the target on success.
+- [ ] Stress runs (100 iterations) with concurrent readers and one writer do not produce corrupted cache snapshots.
+- [ ] The cache lock path (`$KOPI_HOME/locks/cache.lock`) is consistent across platforms and processes.
 
 ## Technical Details (if applicable)
 
 ### Functional Requirement Details
 
-- Lock file path: `$KOPI_HOME/locks/cache.lock` using exclusive advisory lock semantics.
-- Refresh workflow: fetch metadata → write to temp file → `fsync` → atomic rename to destination.
-- Readers open the cache file directly without locking but verify file integrity checks (e.g., checksum or length) post-read.
-- Writer retries use exponential backoff aligned with FR-gbsz6 timeout configuration.
+- Lock file path: `$KOPI_HOME/locks/cache.lock` using exclusive advisory locks.
+- Refresh workflow: fetch metadata → write to temp file → `fsync`/`FlushFileBuffers` → atomic rename to final path.
+- Readers validate cache integrity (e.g., checksum or length) after each read and fall back to refresh on failure.
+- Writer retries align with FR-gbsz6 backoff and timeout configuration.
 
 ### Non-Functional Requirement Details
 
-N/A – Not applicable.
+N/A – No additional non-functional constraints beyond related NFRs.
 
 ## Platform Considerations
 
 ### Unix
 
-- Use POSIX rename for atomic replacement and `fsync` to ensure durability before rename.
+- Use POSIX rename for atomic replacement and `fsync` to guarantee durability before rename.
 
 ### Windows
 
@@ -64,30 +63,29 @@ N/A – Not applicable.
 
 ### Cross-Platform
 
-- Temporary file naming must avoid collisions (`cache.lock.tmpXXXX`).
-- Normalize error handling to surface consistent messages regardless of platform.
+- Temporary files must reside on the same filesystem (`cache.tmpXXXX`) to keep rename atomic.
+- Normalise error handling and messaging to keep user feedback identical across platforms.
 
 ## Risks & Mitigation
 
-| Risk                                       | Impact | Likelihood | Mitigation                     | Validation                    |
-| ------------------------------------------ | ------ | ---------- | ------------------------------ | ----------------------------- |
-| Non-atomic rename on some filesystems      | High   | Low        | Detect and warn; fallback copy | Test on varied filesystems    |
-| Temporary file left after crash            | Low    | Medium     | Cleanup orphaned temp files    | Startup hygiene routine       |
-| Reader sees empty cache during first write | Medium | Low        | Ship default cache snapshot    | Verify initial cache presence |
+| Risk                                       | Impact | Likelihood | Mitigation                                                   | Validation                          |
+| ------------------------------------------ | ------ | ---------- | ------------------------------------------------------------ | ----------------------------------- |
+| Non-atomic rename on specific filesystems  | High   | Low        | Detect and warn; fallback to copy + replace                  | Test on local + network filesystems |
+| Temporary file left after crash            | Low    | Medium     | Cleanup orphaned temp files on startup                       | Hygiene job with test coverage      |
+| Reader sees empty cache during first write | Medium | Low        | Ship default cache snapshot; guard against zero-length files | Integration tests for cold start    |
 
 ## Implementation Notes
 
-- Use `.tmp` suffix for temporary files and ensure they live on the same filesystem as the final cache to maintain atomicity.
-- Consider memory-mapped reads for performance while maintaining simple writer implementation.
-- Track cache refresh metrics to inform timeout and backoff tuning.
-- Emit debug logs for lock acquisition, contention, and refresh completion.
+- Use `.tmp` suffix for temporary files and ensure they sit beside the final cache path.
+- Track refresh metrics and contention telemetry to inform timeout tuning.
+- Emit debug logs whenever cache locks are acquired, contended, or released.
 
 ## External References
 
-N/A – No external references
+N/A – No external references.
 
 ---
 
 ## Template Usage
 
-For detailed instructions, see [Template Usage Instructions](../templates/README.md#individual-requirement-template-requirementsmd).
+For detailed instructions, see [Template Usage Instructions](../templates/README.md#individual-requirement-template-requirementsmd) in the templates README.

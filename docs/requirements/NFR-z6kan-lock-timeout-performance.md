@@ -1,27 +1,23 @@
-# Lock acquisition timeout limit
+# NFR-z6kan Lock Timeout Performance
 
 ## Metadata
 
 - Type: Non-Functional Requirement
-- Status: Accepted
-  <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
+- Status: Approved
+  <!-- Draft: Under discussion | Approved: Ready for implementation | Rejected: Decision made not to pursue this requirement -->
 
 ## Links
 
-- Related Analyses:
-  - [AN-m9efc-concurrent-process-locking](../analysis/AN-m9efc-concurrent-process-locking.md)
 - Prerequisite Requirements:
   - [FR-gbsz6-lock-timeout-recovery](../requirements/FR-gbsz6-lock-timeout-recovery.md)
 - Dependent Requirements:
-  - N/A – Blocks nothing
-- Related ADRs:
-  - [ADR-8mnaz-concurrent-process-locking-strategy](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
+  - N/A – No dependent requirements recorded
 - Related Tasks:
-  - N/A – Not yet implemented
+  - [T-lqyk8-lock-timeout-control](../tasks/T-lqyk8-lock-timeout-control/README.md)
 
 ## Requirement Statement
 
-The system SHALL ship with a default lock acquisition timeout of 600 seconds (10 minutes) while allowing configuration from 0 (no wait) to infinite, maintaining low CPU overhead and precise timeout accuracy.
+Kopi SHALL ship with a default lock acquisition timeout of 600 seconds (10 minutes) while allowing configuration from 0 (no wait) to infinite, maintaining low CPU overhead and precise timeout accuracy.
 
 ## Rationale
 
@@ -35,7 +31,7 @@ The system shall provide sensible timeout defaults and precision control so that
 
 - [ ] Default lock timeout is 600 seconds when no explicit configuration is supplied.
 - [ ] Supported timeout range includes `0` (immediate failure) through `infinite` (no timeout) with validation on user-provided values.
-- [ ] Lock acquisition polling interval remains ≤ 100 ms once steady state backoff is reached.
+- [ ] Lock acquisition polling interval remains ≤ 100 ms once steady-state backoff is reached.
 - [ ] Timeout accuracy remains within ±1 second of the configured value across 99% of measured cases.
 - [ ] Timeout enforcement adds <0.1% CPU overhead on a single core during waits measured over 5-minute intervals.
 - [ ] Progress displays (per FR-c04js) update elapsed/remaining time at least once per second when the timeout is finite.
@@ -44,25 +40,20 @@ The system shall provide sensible timeout defaults and precision control so that
 
 ### Functional Requirement Details
 
-N/A – Not applicable.
+N/A – Behavioural focus only.
 
 ### Non-Functional Requirement Details
 
 - Performance: Use exponential backoff (10 ms → 20 ms → 40 ms → … → 100 ms cap) to balance responsiveness and CPU usage.
 - Reliability: Base timing on `std::time::Instant` to avoid wall-clock adjustments.
-- Compatibility: Ensure identical timing behavior on Unix and Windows high-resolution timers.
-- Usability: Provide warning when user-specified timeout exceeds 1 hour to prompt validation of intent.
-
-#### Implementation Constraints
-
-- Provide separate defaults per operation type if required (`install`: 600 s, `cache`: 60 s, `uninstall`: 300 s) while retaining global fallback.
-- Expose timeout configuration via CLI flag, environment variable, and config file consistent with FR-gbsz6.
+- Compatibility: Ensure identical timing behaviour on Unix and Windows high-resolution timers.
+- Usability: Provide a warning when user-specified timeout exceeds 1 hour to prompt validation of intent.
 
 ## Platform Considerations
 
 ### Unix
 
-- Utilize `clock_gettime(CLOCK_MONOTONIC)` and `nanosleep` for precise timing.
+- Utilise `clock_gettime(CLOCK_MONOTONIC)` and `nanosleep` for precise timing.
 
 ### Windows
 
@@ -70,7 +61,7 @@ N/A – Not applicable.
 
 ### Cross-Platform
 
-- Normalize timer resolution differences and guard against drift from system clock adjustments.
+- Normalise timer resolution differences and guard against drift from system clock adjustments.
 
 ## Risks & Mitigation
 
@@ -82,16 +73,16 @@ N/A – Not applicable.
 
 ## Implementation Notes
 
-- Log effective timeout values and source precedence at debug level for troubleshooting.
+- Log effective timeout values and precedence at debug level for troubleshooting.
 - Consider adaptive tuning based on operation progress metrics (e.g., download completion percentage).
-- Provide documentation in external user docs about timeout implications for automation and CI.
+- Document timeout behaviour in the external user docs repository for automation guidance.
 
 ## External References
 
-N/A – No external references
+N/A – No external references.
 
 ---
 
 ## Template Usage
 
-For detailed instructions, see [Template Usage Instructions](../templates/README.md#individual-requirement-template-requirementsmd).
+For detailed instructions, see [Template Usage Instructions](../templates/README.md#individual-requirement-template-requirementsmd) in the templates README.
