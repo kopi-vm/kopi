@@ -18,6 +18,7 @@ import {
   extractIds,
   findRepoRoot,
   findImplementingTasks,
+  findOrphanAdrs,
   findOrphanRequirements,
   findOrphanTasks,
   inferDocumentType,
@@ -47,6 +48,359 @@ function writeDoc(root: string, relativePath: string, content: string): void {
   const target = join(root, relativePath);
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, content, "utf8");
+}
+
+type LinkValue = string | string[];
+
+function renderLink(label: string, value: LinkValue): string[] {
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return [`- ${label}: N/A – None`];
+    }
+    return [`- ${label}:`, ...value.map((entry) => `  - ${entry}`)];
+  }
+  return [`- ${label}: ${value}`];
+}
+
+function requirementDoc({
+  id,
+  title,
+  status,
+  type = "Functional Requirement",
+  prerequisites = "N/A – None",
+  dependents = "N/A – None",
+  tasks = "N/A – Not yet planned",
+  statement = "This requirement describes the expected behaviour for this capability.",
+  rationale = "Captures the business value and technical motivation for the requirement.",
+  acceptanceCriteria = [
+    "Happy path scenario is implemented.",
+    "Edge cases are covered with automated tests.",
+  ],
+}: {
+  id: string;
+  title: string;
+  status: string;
+  type?: string;
+  prerequisites?: LinkValue;
+  dependents?: LinkValue;
+  tasks?: LinkValue;
+  statement?: string;
+  rationale?: string;
+  acceptanceCriteria?: string[];
+}): string {
+  const lines: string[] = [
+    `# ${id} ${title}`,
+    "",
+    "## Metadata",
+    "",
+    `- Type: ${type}`,
+    `- Status: ${status}`,
+    "",
+    "## Links",
+    "",
+  ];
+  lines.push(...renderLink("Prerequisite Requirements", prerequisites));
+  lines.push(...renderLink("Dependent Requirements", dependents));
+  lines.push(...renderLink("Related Tasks", tasks));
+  lines.push("");
+  lines.push("## Requirement Statement");
+  lines.push("");
+  lines.push(statement);
+  lines.push("");
+  lines.push("## Rationale");
+  lines.push("");
+  lines.push(rationale);
+  lines.push("");
+  lines.push("## Acceptance Criteria");
+  lines.push("");
+  for (const criterion of acceptanceCriteria) {
+    lines.push(`- [ ] ${criterion}`);
+  }
+  lines.push("");
+  lines.push("## Implementation Notes");
+  lines.push("");
+  lines.push("Document implementation guidance as the requirement progresses.");
+  lines.push("");
+  lines.push("## External References");
+  lines.push("");
+  lines.push("N/A – No external references.");
+  return lines.join("\n");
+}
+
+function analysisDoc({
+  id,
+  title,
+  status,
+  relatedRequirements = "N/A – None yet identified",
+  relatedAdrs = "N/A – None yet recorded",
+  relatedAnalyses = "N/A – No prior analyses",
+}: {
+  id: string;
+  title: string;
+  status: string;
+  relatedRequirements?: LinkValue;
+  relatedAdrs?: LinkValue;
+  relatedAnalyses?: LinkValue;
+}): string {
+  const lines: string[] = [
+    `# ${id} ${title}`,
+    "",
+    "## Metadata",
+    "",
+    "- Type: Analysis",
+    `- Status: ${status}`,
+    "",
+    "## Links",
+    "",
+  ];
+  lines.push(...renderLink("Related Analyses", relatedAnalyses));
+  lines.push(...renderLink("Related Requirements", relatedRequirements));
+  lines.push(...renderLink("Related ADRs", relatedAdrs));
+  lines.push("");
+  lines.push("## Executive Summary");
+  lines.push("");
+  lines.push(
+    "Summarises the investigation outcomes and recommended follow-up actions.",
+  );
+  lines.push("");
+  lines.push("## Problem Space");
+  lines.push("");
+  lines.push("### Current State");
+  lines.push("");
+  lines.push(
+    "Current behaviour is documented to provide context for the analysis.",
+  );
+  lines.push("");
+  lines.push("### Desired State");
+  lines.push("");
+  lines.push(
+    "Desired improvements are described for comparison against the current state.",
+  );
+  lines.push("");
+  lines.push("### Gap Analysis");
+  lines.push("");
+  lines.push(
+    "Highlights the differences between current and desired outcomes.",
+  );
+  lines.push("");
+  lines.push("## Stakeholder Analysis");
+  lines.push("");
+  lines.push("| Stakeholder | Interest/Need | Impact | Priority |");
+  lines.push("| --- | --- | --- | --- |");
+  lines.push(
+    "| Engineering | Clear direction for implementation | High | P0 |",
+  );
+  lines.push("");
+  lines.push("## Recommendations");
+  lines.push("");
+  lines.push("1. Formalise requirements based on validated findings.");
+  lines.push("2. Capture architectural implications through ADRs if needed.");
+  return lines.join("\n");
+}
+
+function adrDoc({
+  id,
+  title,
+  status,
+  impactedRequirements = "N/A – Constraint only",
+  supersedes = "N/A – None",
+  relatedTasks = "N/A – No tasks linked yet",
+}: {
+  id: string;
+  title: string;
+  status: string;
+  impactedRequirements?: LinkValue;
+  supersedes?: LinkValue;
+  relatedTasks?: LinkValue;
+}): string {
+  const lines: string[] = [
+    `# ${id} ${title}`,
+    "",
+    "## Metadata",
+    "",
+    "- Type: ADR",
+    `- Status: ${status}`,
+    "",
+    "## Links",
+    "",
+  ];
+  lines.push(...renderLink("Impacted Requirements", impactedRequirements));
+  lines.push(...renderLink("Supersedes ADRs", supersedes));
+  lines.push(...renderLink("Related Tasks", relatedTasks));
+  lines.push("");
+  lines.push("## Context");
+  lines.push("");
+  lines.push("Explains the architectural forces that motivate this decision.");
+  lines.push("");
+  lines.push("## Decision");
+  lines.push("");
+  lines.push("States the chosen direction in clear, actionable language.");
+  lines.push("");
+  lines.push("## Rationale");
+  lines.push("");
+  lines.push("Describes why this option was selected over alternatives.");
+  lines.push("");
+  lines.push("## Consequences");
+  lines.push("");
+  lines.push("### Positive");
+  lines.push("");
+  lines.push("- Supports future maintenance.");
+  lines.push("");
+  lines.push("### Negative");
+  lines.push("");
+  lines.push("- Introduces migration work for existing components.");
+  lines.push("");
+  lines.push("## Open Questions");
+  lines.push("");
+  lines.push("- [ ] Track follow-up items as the implementation evolves.");
+  lines.push("");
+  lines.push("## External References");
+  lines.push("");
+  lines.push("N/A – No external references.");
+  return lines.join("\n");
+}
+
+function taskReadmeDoc({
+  id,
+  title,
+  status,
+  planPath = `../tasks/${id.toLowerCase()}-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/plan.md`,
+  designPath = `../tasks/${id.toLowerCase()}-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/design.md`,
+}: {
+  id: string;
+  title: string;
+  status: string;
+  planPath?: string;
+  designPath?: string;
+}): string {
+  const lines: string[] = [
+    `# ${title}`,
+    "",
+    "## Metadata",
+    "",
+    "- Type: Task",
+    `- Status: ${status}`,
+    "",
+    "## Links",
+    "",
+  ];
+  lines.push(
+    ...renderLink("Associated Plan Document", [`[${id}-plan](${planPath})`]),
+  );
+  lines.push(
+    ...renderLink("Associated Design Document", [
+      `[${id}-design](${designPath})`,
+    ]),
+  );
+  lines.push("");
+  lines.push("## Summary");
+  lines.push("");
+  lines.push("Outlines the objective and desired outcome for the task.");
+  lines.push("");
+  lines.push("## Scope");
+  lines.push("");
+  lines.push("- In scope: Define and implement the required changes.");
+  lines.push("- Out of scope: Unrelated refactors.");
+  lines.push("");
+  lines.push("## Success Metrics");
+  lines.push("");
+  lines.push("- Completion criteria are met.");
+  lines.push("- Verification steps pass without regressions.");
+  return lines.join("\n");
+}
+
+function taskPlanDoc({
+  id,
+  title,
+  status,
+  associatedDesign = "N/A – Awaiting design approval",
+  requirements = "N/A – Requirements pending",
+}: {
+  id: string;
+  title: string;
+  status: string;
+  associatedDesign?: LinkValue;
+  requirements?: LinkValue;
+}): string {
+  const lines: string[] = [
+    `# ${id} ${title}`,
+    "",
+    "## Metadata",
+    "",
+    "- Type: Implementation Plan",
+    `- Status: ${status}`,
+    "",
+    "## Links",
+    "",
+  ];
+  lines.push(...renderLink("Associated Design Document", associatedDesign));
+  lines.push(...renderLink("Related Requirements", requirements));
+  lines.push("");
+  lines.push("## Overview");
+  lines.push("");
+  lines.push("Summarises the planned implementation approach for this task.");
+  lines.push("");
+  lines.push("## Success Metrics");
+  lines.push("");
+  lines.push("- [ ] Implementation delivers the targeted capability.");
+  lines.push("- [ ] Tests confirm stability across supported platforms.");
+  lines.push("");
+  lines.push("## Scope");
+  lines.push("");
+  lines.push("- Goal: Complete the implementation steps.");
+  lines.push("- Non-Goals: Any unrelated cleanups.");
+  lines.push("- Assumptions: Required prerequisites are in place.");
+  lines.push("- Constraints: Follow Kopi coding standards.");
+  lines.push("");
+  lines.push("## Plan Summary");
+  lines.push("");
+  lines.push("- Phase 1 – Preparation");
+  lines.push("- Phase 2 – Implementation");
+  lines.push("- Phase 3 – Verification");
+  lines.push("");
+  lines.push("## Phase 1: Preparation");
+  lines.push("");
+  lines.push("### Tasks");
+  lines.push("");
+  lines.push("- [ ] Finalise requirements alignment.");
+  lines.push("- [ ] Confirm environment readiness.");
+  lines.push("");
+  lines.push("## Phase 2: Implementation");
+  lines.push("");
+  lines.push("### Tasks");
+  lines.push("");
+  lines.push("- [ ] Implement functionality.");
+  lines.push("- [ ] Update documentation.");
+  lines.push("");
+  lines.push("## Phase 3: Testing & Integration");
+  lines.push("");
+  lines.push("### Tasks");
+  lines.push("");
+  lines.push("- [ ] Execute automated tests.");
+  lines.push("- [ ] Validate cross-platform behaviour.");
+  lines.push("");
+  lines.push("## Testing Strategy");
+  lines.push("");
+  lines.push("- Unit tests cover new logic.");
+  lines.push("- Integration tests confirm end-to-end flows.");
+  lines.push("");
+  lines.push("## Risk Assessment");
+  lines.push("");
+  lines.push("| Risk | Mitigation | Validation |");
+  lines.push("| --- | --- | --- |");
+  lines.push("| Missed edge cases | Peer review | Automated tests |");
+  lines.push("");
+  lines.push("## Dependencies");
+  lines.push("");
+  lines.push("- Requirements:");
+  if (Array.isArray(requirements)) {
+    for (const req of requirements) {
+      lines.push(`  - ${req}`);
+    }
+  } else {
+    lines.push(`  - ${requirements}`);
+  }
+  return lines.join("\n");
 }
 
 afterEach(() => {
@@ -110,16 +464,39 @@ describe("inferDocumentType", () => {
 });
 
 describe("parseDocumentLinks", () => {
-  it("collects ids by link type", () => {
-    const content =
-      "# FR sample\n\n## Links\n- Requirements: FR-0001, FR-0002\n- Analysis: AN-0003\n- Tasks:\n  - T-0004\n  - T-0005\n- ADRs: ADR-0006\n";
-    const links = parseDocumentLinks(content);
-    expect(links).toEqual({
-      requirements: ["FR-0001", "FR-0002"],
-      analyses: ["AN-0003"],
-      tasks: ["T-0004", "T-0005"],
-      adrs: ["ADR-0006"],
+  it("collects task links from a requirement document", () => {
+    const content = requirementDoc({
+      id: "FR-0001",
+      title: "Sample Requirement",
+      status: "Accepted",
+      tasks: [
+        "[T-0004-demo](../tasks/T-0004-demo/plan.md)",
+        "[T-0005-followup](../tasks/T-0005-followup/plan.md)",
+      ],
     });
+    const links = parseDocumentLinks(content);
+    const uniqueTasks = [...new Set(links.tasks ?? [])];
+    expect(uniqueTasks).toEqual(["T-0004", "T-0005"]);
+  });
+
+  it("collects requirement and ADR links from an analysis document", () => {
+    const content = analysisDoc({
+      id: "AN-0003",
+      title: "Investigation",
+      status: "Complete",
+      relatedRequirements: [
+        "[FR-0001](../requirements/FR-0001-sample.md)",
+        "[FR-0002](../requirements/FR-0002-backlog.md)",
+      ],
+      relatedAdrs: ["[ADR-0006](../adr/ADR-0006-decision.md)"],
+      relatedAnalyses: "N/A – No previous analysis",
+    });
+    const links = parseDocumentLinks(content);
+    const uniqueRequirements = [...new Set(links.requirements ?? [])];
+    const uniqueAdrs = [...new Set(links.adrs ?? [])];
+    expect(uniqueRequirements).toEqual(["FR-0001", "FR-0002"]);
+    expect(uniqueAdrs).toEqual(["ADR-0006"]);
+    expect(links.analyses ?? []).toEqual([]);
   });
 
   it("ignores entries when label is unknown", () => {
@@ -290,37 +667,71 @@ describe("traceability helpers", () => {
     writeDoc(
       repoRoot,
       "docs/requirements/FR-0001-sample.md",
-      "# FR-0001 Sample Requirement\n- ID: FR-0001-sample\n- Status: In Progress\n\n## Links\n- Tasks: T-0001\n- Analyses: AN-0001\n- ADRs:\n  - ADR-0001\n",
+      requirementDoc({
+        id: "FR-0001",
+        title: "Sample Requirement",
+        status: "Accepted",
+        tasks: ["[T-0001-demo](../tasks/T-0001-demo/plan.md)"],
+      }),
     );
 
     writeDoc(
       repoRoot,
       "docs/requirements/FR-0002-backlog.md",
-      "# FR-0002 Backlog Item\n- Status: Backlog\n\n## Links\n- Analyses: AN-0001\n",
+      requirementDoc({
+        id: "FR-0002",
+        title: "Backlog Item",
+        status: "Proposed",
+        tasks: "N/A – Pending task definition",
+      }),
     );
 
     writeDoc(
       repoRoot,
       "docs/analysis/AN-0001-investigation.md",
-      "# AN-0001 Investigation\n- Status: Complete\n\n## Links\n- Requirements: FR-0001\n",
+      analysisDoc({
+        id: "AN-0001",
+        title: "Investigation",
+        status: "Complete",
+        relatedRequirements: ["[FR-0001](../requirements/FR-0001-sample.md)"],
+        relatedAdrs: ["[ADR-0001](../adr/ADR-0001-decision.md)"],
+      }),
     );
 
     writeDoc(
       repoRoot,
       "docs/adr/ADR-0001-decision.md",
-      "# ADR-0001 Decision\n- Status: Accepted\n\n## Links\n- Requirements: FR-0001\n",
+      adrDoc({
+        id: "ADR-0001",
+        title: "ADR-0001 Decision",
+        status: "Accepted",
+        impactedRequirements: ["[FR-0001](../requirements/FR-0001-sample.md)"],
+        relatedTasks: ["[T-0001](../tasks/T-0001-demo/plan.md)"],
+      }),
     );
 
     writeDoc(
       repoRoot,
       "docs/tasks/T-0001-demo/plan.md",
-      "# T-0001 Demo Task\n- Status: Active\n\n## Links\n- Requirements: FR-0001\n",
+      taskPlanDoc({
+        id: "T-0001",
+        title: "Demo Task Implementation Plan",
+        status: "Phase 1 In Progress",
+        associatedDesign: "N/A – Awaiting design approval",
+        requirements: ["[FR-0001](../../requirements/FR-0001-sample.md)"],
+      }),
     );
 
     writeDoc(
       repoRoot,
       "docs/tasks/T-0002-unlinked/plan.md",
-      "# T-0002 Unlinked\n- Status: Draft\n",
+      taskPlanDoc({
+        id: "T-0002",
+        title: "Unlinked Plan",
+        status: "Not Started",
+        associatedDesign: "N/A – Pending design",
+        requirements: "N/A – Requirements pending",
+      }),
     );
 
     const documents = loadDocuments(repoRoot);
@@ -334,6 +745,7 @@ describe("traceability helpers", () => {
 
     expect(findImplementingTasks(documents, "FR-0001")).toEqual(["T-0001"]);
     expect(findOrphanRequirements(documents)).toEqual(["FR-0002"]);
+    expect(findOrphanAdrs(documents)).toEqual([]);
     expect(findOrphanTasks(documents)).toEqual(["T-0002"]);
 
     const outputPath = join(repoRoot, "docs", "traceability.md");
@@ -341,11 +753,16 @@ describe("traceability helpers", () => {
     expect(markdown).toContain("| Requirements | 2 |");
     expect(markdown).toContain("| Requirements with tasks | 1 (50%) |");
     expect(markdown).toContain(
-      "| [FR-0001](requirements/FR-0001-sample.md) - FR-0001 Sample Requirement | In Progress |",
+      "| [FR-0001](requirements/FR-0001-sample.md) - FR-0001 Sample Requirement | Accepted |",
     );
-    expect(markdown).toContain("[T-0001](tasks/T-0001-demo/plan.md) (Active)");
     expect(markdown).toContain(
-      "- FR-0002: No implementing task (Status: Backlog)",
+      "[T-0001](tasks/T-0001-demo/plan.md) (Phase 1 In Progress)",
+    );
+    expect(markdown).toContain(
+      "- FR-0002: No upstream analysis or ADR references (Status: Proposed)",
+    );
+    expect(markdown).toContain(
+      "- T-0002: No upstream requirement or ADR references (Status: Not Started)",
     );
     expect(markdown).toContain("### Dependency Consistency");
     expect(markdown).toContain(
@@ -359,31 +776,79 @@ describe("traceability helpers", () => {
     writeDoc(
       repoRoot,
       "docs/requirements/FR-5000-new-feature.md",
-      "# FR-5000 New Feature\n- Status: Accepted\n",
+      requirementDoc({
+        id: "FR-5000",
+        title: "New Feature",
+        status: "Accepted",
+        tasks: ["[T-5000-example](../tasks/T-5000-example/plan.md)"],
+      }),
     );
 
     writeDoc(
       repoRoot,
       "docs/tasks/T-5000-example/README.md",
-      "# T-5000 Example Task\n\n## Metadata\n- Type: Task\n- Status: Proposed\n\n## Links\n- Requirements: N/A – Pending plan updates\n",
+      taskReadmeDoc({
+        id: "T-5000",
+        title: "T-5000 Example Task",
+        status: "Proposed",
+        planPath: "./plan.md",
+        designPath: "./design.md",
+      }),
     );
 
     writeDoc(
       repoRoot,
       "docs/tasks/T-5000-example/plan.md",
-      "# T-5000 Example Plan\n\n## Metadata\n- Type: Implementation Plan\n- Status: Phase 1 In Progress\n\n## Links\n- Related Requirements:\n  - [FR-5000-new-feature](../../requirements/FR-5000-new-feature.md)\n",
+      taskPlanDoc({
+        id: "T-5000",
+        title: "Example Plan",
+        status: "Phase 1 In Progress",
+        associatedDesign: "[T-5000-design](./design.md)",
+        requirements: ["[FR-5000](../../requirements/FR-5000-new-feature.md)"],
+      }),
     );
 
     const documents = loadDocuments(repoRoot);
     const taskDoc = documents.get("T-5000");
 
     expect(taskDoc).toBeDefined();
-    expect(taskDoc?.links.requirements).toEqual(["FR-5000"]);
+    const mergedRequirements = [...new Set(taskDoc?.links.requirements ?? [])];
+    expect(mergedRequirements).toEqual(["FR-5000"]);
     expect(taskDoc?.status).toBe("Proposed");
     expect(taskDoc?.metadataType).toBe("Task");
     expect(taskDoc?.path.endsWith("README.md")).toBe(true);
 
     expect(findImplementingTasks(documents, "FR-5000")).toEqual(["T-5000"]);
+  });
+
+  it("detects ADRs without analysis references", () => {
+    const repoRoot = createTempDir();
+
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-7000-feature.md",
+      requirementDoc({
+        id: "FR-7000",
+        title: "Feature Requirement",
+        status: "Proposed",
+        tasks: "N/A – Pending",
+      }),
+    );
+
+    writeDoc(
+      repoRoot,
+      "docs/adr/ADR-7000-decision.md",
+      adrDoc({
+        id: "ADR-7000",
+        title: "ADR-7000 Follow-up",
+        status: "Proposed",
+        impactedRequirements: ["[FR-7000](../requirements/FR-7000-feature.md)"],
+        relatedTasks: "N/A – No tasks linked yet",
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    expect(findOrphanAdrs(documents)).toEqual(["ADR-7000"]);
   });
 
   it("marks inferred dependencies and reports missing reciprocal links", () => {
@@ -392,32 +857,27 @@ describe("traceability helpers", () => {
     writeDoc(
       repoRoot,
       "docs/requirements/FR-100-alpha.md",
-      "# FR-100 Alpha Requirement\n\n" +
-        "## Metadata\n\n" +
-        "- Type: Functional Requirement\n" +
-        "- Status: Draft\n\n" +
-        "## Links\n\n" +
-        "- Prerequisite Requirements: N/A – None documented\n" +
-        "- Dependent Requirements:\n" +
-        "  - FR-200-beta\n" +
-        "- Related Analyses: N/A – None\n" +
-        "- Related ADRs: N/A – None\n" +
-        "- Related Tasks: N/A – None\n",
+      requirementDoc({
+        id: "FR-100",
+        title: "Alpha Requirement",
+        status: "Proposed",
+        prerequisites: "N/A – None documented",
+        dependents: ["FR-200-beta"],
+        tasks: "N/A – None",
+      }),
     );
 
     writeDoc(
       repoRoot,
       "docs/requirements/FR-200-beta.md",
-      "# FR-200 Beta Requirement\n\n" +
-        "## Metadata\n\n" +
-        "- Type: Functional Requirement\n" +
-        "- Status: Draft\n\n" +
-        "## Links\n\n" +
-        "- Prerequisite Requirements: N/A – Pending documentation\n" +
-        "- Dependent Requirements: N/A – None\n" +
-        "- Related Analyses: N/A – None\n" +
-        "- Related ADRs: N/A – None\n" +
-        "- Related Tasks: N/A – None\n",
+      requirementDoc({
+        id: "FR-200",
+        title: "Beta Requirement",
+        status: "Proposed",
+        prerequisites: "N/A – Pending documentation",
+        dependents: "N/A – None",
+        tasks: "N/A – None",
+      }),
     );
 
     const documents = loadDocuments(repoRoot);
@@ -456,12 +916,23 @@ describe("printStatus", () => {
     writeDoc(
       repoRoot,
       "docs/requirements/FR-1000-missing-task.md",
-      "# FR-1000 Missing Task\n- Status: Draft\n",
+      requirementDoc({
+        id: "FR-1000",
+        title: "Missing Task",
+        status: "Proposed",
+        tasks: "N/A – Not yet planned",
+      }),
     );
     writeDoc(
       repoRoot,
       "docs/tasks/T-2000-unlinked/plan.md",
-      "# T-2000 Unlinked\n- Status: Draft\n",
+      taskPlanDoc({
+        id: "T-2000",
+        title: "Unlinked Plan",
+        status: "Not Started",
+        associatedDesign: "N/A – Pending design",
+        requirements: "N/A – Requirements pending",
+      }),
     );
 
     const documents = loadDocuments(repoRoot);
@@ -484,7 +955,12 @@ describe("printStatus", () => {
     writeDoc(
       repoRoot,
       "docs/requirements/FR-3000-gap.md",
-      "# FR-3000 Gap\n- Status: Draft\n",
+      requirementDoc({
+        id: "FR-3000",
+        title: "Gap",
+        status: "Proposed",
+        tasks: "N/A – Pending",
+      }),
     );
 
     const documents = loadDocuments(repoRoot);
@@ -501,17 +977,40 @@ describe("printStatus", () => {
     writeDoc(
       repoRoot,
       "docs/requirements/FR-400-alpha.md",
-      "# FR-400 Alpha\n\n## Metadata\n\n- Type: Functional Requirement\n- Status: Draft\n\n## Links\n\n- Prerequisite Requirements: N/A – None\n- Dependent Requirements:\n  - FR-401-beta\n- Related Analyses: N/A – None\n- Related ADRs: N/A – None\n- Related Tasks: N/A – None\n",
+      requirementDoc({
+        id: "FR-400",
+        title: "Alpha",
+        status: "Proposed",
+        prerequisites: "N/A – None",
+        dependents: ["FR-401-beta"],
+        tasks: "N/A – None",
+      }),
     );
     writeDoc(
       repoRoot,
       "docs/requirements/FR-401-beta.md",
-      "# FR-401 Beta\n\n## Metadata\n\n- Type: Functional Requirement\n- Status: Draft\n\n## Links\n\n- Prerequisite Requirements: N/A – Pending\n- Dependent Requirements: N/A – None\n- Related Analyses: N/A – None\n- Related ADRs: N/A – None\n- Related Tasks: N/A – None\n",
+      requirementDoc({
+        id: "FR-401",
+        title: "Beta",
+        status: "Proposed",
+        prerequisites: "N/A – Pending",
+        dependents: "N/A – None",
+        tasks: "N/A – None",
+      }),
     );
     writeDoc(
       repoRoot,
       "docs/tasks/T-400-sync/plan.md",
-      "# T-400 Sync\n\n## Metadata\n\n- Type: Implementation Plan\n- Status: Draft\n\n## Links\n\n- Related Requirements:\n  - FR-400-alpha\n  - FR-401-beta\n",
+      taskPlanDoc({
+        id: "T-400",
+        title: "Sync Plan",
+        status: "Phase 1 In Progress",
+        associatedDesign: "N/A – Pending design",
+        requirements: [
+          "[FR-400](../../requirements/FR-400-alpha.md)",
+          "[FR-401](../../requirements/FR-401-beta.md)",
+        ],
+      }),
     );
 
     const documents = loadDocuments(repoRoot);
@@ -535,17 +1034,40 @@ describe("checkIntegrity", () => {
     writeDoc(
       repoRoot,
       "docs/requirements/FR-600-alpha.md",
-      "# FR-600 Alpha\n\n## Metadata\n\n- Type: Functional Requirement\n- Status: Draft\n\n## Links\n\n- Prerequisite Requirements: N/A – None\n- Dependent Requirements:\n  - FR-601-beta\n- Related Analyses: N/A – None\n- Related ADRs: N/A – None\n- Related Tasks: N/A – None\n",
+      requirementDoc({
+        id: "FR-600",
+        title: "Alpha",
+        status: "Proposed",
+        prerequisites: "N/A – None",
+        dependents: ["FR-601-beta"],
+        tasks: "N/A – None",
+      }),
     );
     writeDoc(
       repoRoot,
       "docs/requirements/FR-601-beta.md",
-      "# FR-601 Beta\n\n## Metadata\n\n- Type: Functional Requirement\n- Status: Draft\n\n## Links\n\n- Prerequisite Requirements: N/A – Pending\n- Dependent Requirements: N/A – None\n- Related Analyses: N/A – None\n- Related ADRs: N/A – None\n- Related Tasks: N/A – None\n",
+      requirementDoc({
+        id: "FR-601",
+        title: "Beta",
+        status: "Proposed",
+        prerequisites: "N/A – Pending",
+        dependents: "N/A – None",
+        tasks: "N/A – None",
+      }),
     );
     writeDoc(
       repoRoot,
       "docs/tasks/T-600-plan/plan.md",
-      "# T-600 Plan\n\n## Metadata\n\n- Type: Implementation Plan\n- Status: Draft\n\n## Links\n\n- Related Requirements:\n  - FR-600-alpha\n  - FR-601-beta\n",
+      taskPlanDoc({
+        id: "T-600",
+        title: "Plan",
+        status: "Phase 1 In Progress",
+        associatedDesign: "N/A – Pending design",
+        requirements: [
+          "[FR-600](../../requirements/FR-600-alpha.md)",
+          "[FR-601](../../requirements/FR-601-beta.md)",
+        ],
+      }),
     );
 
     const documents = loadDocuments(repoRoot);
@@ -618,12 +1140,35 @@ describe("main", () => {
     writeDoc(
       repo,
       "docs/requirements/FR-0001-ready.md",
-      "# FR-0001 Ready\n- Status: Done\n\n## Links\n- Tasks: T-0001\n",
+      requirementDoc({
+        id: "FR-0001",
+        title: "Ready Requirement",
+        status: "Implemented",
+        tasks: ["[T-0001-ready](../tasks/T-0001-ready/plan.md)"],
+      }),
+    );
+    writeDoc(
+      repo,
+      "docs/analysis/AN-0001-seed.md",
+      analysisDoc({
+        id: "AN-0001",
+        title: "Seed",
+        status: "Complete",
+        relatedRequirements: ["[FR-0001](../requirements/FR-0001-ready.md)"],
+        relatedAdrs: "N/A – None",
+        relatedAnalyses: "N/A – No previous analysis",
+      }),
     );
     writeDoc(
       repo,
       "docs/tasks/T-0001-ready/plan.md",
-      "# T-0001 Ready Plan\n- Status: Done\n\n## Links\n- Requirements: FR-0001\n",
+      taskPlanDoc({
+        id: "T-0001",
+        title: "Ready Plan",
+        status: "Completed",
+        associatedDesign: "N/A – Design complete",
+        requirements: ["[FR-0001](../../requirements/FR-0001-ready.md)"],
+      }),
     );
 
     const workingDir = join(repo, "subdir");
@@ -653,7 +1198,12 @@ describe("main", () => {
     writeDoc(
       repo,
       "docs/requirements/FR-0002-gap.md",
-      "# FR-0002 Gap\n- Status: Draft\n",
+      requirementDoc({
+        id: "FR-0002",
+        title: "Gap Requirement",
+        status: "Proposed",
+        tasks: "N/A – Pending",
+      }),
     );
 
     process.chdir(repo);

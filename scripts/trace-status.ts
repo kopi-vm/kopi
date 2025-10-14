@@ -55,6 +55,26 @@ type RequirementDependencyInfo = {
   inferredDependents: Set<string>;
 };
 
+type InboundReferenceIndex = Map<string, Map<DocumentType, Set<string>>>;
+
+type ReferenceRule = {
+  sourceType: DocumentType;
+  linkType: string;
+  targetTypes: DocumentType[];
+};
+
+const HIERARCHY_REFERENCE_RULES: ReferenceRule[] = [
+  {
+    sourceType: "analysis",
+    linkType: "requirements",
+    targetTypes: ["requirement"],
+  },
+  { sourceType: "analysis", linkType: "adrs", targetTypes: ["adr"] },
+  { sourceType: "adr", linkType: "requirements", targetTypes: ["requirement"] },
+  { sourceType: "adr", linkType: "tasks", targetTypes: ["task"] },
+  { sourceType: "requirement", linkType: "tasks", targetTypes: ["task"] },
+];
+
 function ensureDependencyInfo(
   map: Map<string, RequirementDependencyInfo>,
   docId: string,
@@ -70,6 +90,53 @@ function ensureDependencyInfo(
     map.set(docId, info);
   }
   return info;
+}
+
+function ensureInboundBucket(
+  index: InboundReferenceIndex,
+  targetId: string,
+): Map<DocumentType, Set<string>> {
+  let bucket = index.get(targetId);
+  if (!bucket) {
+    bucket = new Map<DocumentType, Set<string>>();
+    index.set(targetId, bucket);
+  }
+  return bucket;
+}
+
+function ensureInboundSet(
+  bucket: Map<DocumentType, Set<string>>,
+  sourceType: DocumentType,
+): Set<string> {
+  let references = bucket.get(sourceType);
+  if (!references) {
+    references = new Set<string>();
+    bucket.set(sourceType, references);
+  }
+  return references;
+}
+
+export function buildInboundReferenceIndex(
+  documents: Map<string, TDLDocument>,
+): InboundReferenceIndex {
+  const inbound: InboundReferenceIndex = new Map();
+
+  for (const doc of documents.values()) {
+    for (const rule of HIERARCHY_REFERENCE_RULES) {
+      if (doc.docType !== rule.sourceType) continue;
+      const targets = doc.links[rule.linkType];
+      if (!targets) continue;
+      for (const targetId of targets) {
+        const targetDoc = documents.get(targetId);
+        if (!targetDoc) continue;
+        if (!rule.targetTypes.includes(targetDoc.docType)) continue;
+        const bucket = ensureInboundBucket(inbound, targetDoc.docId);
+        ensureInboundSet(bucket, doc.docType).add(doc.docId);
+      }
+    }
+  }
+
+  return inbound;
 }
 
 export type TDLDocument = {
@@ -484,34 +551,81 @@ export function findImplementingTasks(
   documents: Map<string, TDLDocument>,
   reqId: string,
 ): string[] {
-  const tasks: string[] = [];
-  for (const doc of taskDocsFrom(documents)) {
-    const linked = doc.links.requirements ?? [];
-    if (linked.includes(reqId)) tasks.push(doc.docId);
+  const tasks = new Set<string>();
+  const requirementDoc = documents.get(reqId);
+  if (requirementDoc && requirementDoc.docType === "requirement") {
+    for (const taskId of requirementDoc.links.tasks ?? []) {
+      const taskDoc = documents.get(taskId);
+      if (taskDoc && taskDoc.docType === "task") {
+        tasks.add(taskDoc.docId);
+      }
+    }
   }
-  return tasks;
+
+  for (const doc of documents.values()) {
+    if (doc.docType !== "adr") continue;
+    const linkedRequirements = doc.links.requirements ?? [];
+    if (!linkedRequirements.includes(reqId)) continue;
+    for (const taskId of doc.links.tasks ?? []) {
+      const taskDoc = documents.get(taskId);
+      if (taskDoc && taskDoc.docType === "task") {
+        tasks.add(taskDoc.docId);
+      }
+    }
+  }
+
+  return [...tasks].sort((a, b) => a.localeCompare(b));
 }
 
 export function findOrphanRequirements(
   documents: Map<string, TDLDocument>,
+  inboundReferences?: InboundReferenceIndex,
 ): string[] {
+  const inbound = inboundReferences ?? buildInboundReferenceIndex(documents);
   const orphans: string[] = [];
   for (const doc of requirementDocsFrom(documents)) {
-    if (findImplementingTasks(documents, doc.docId).length === 0) {
+    const references = inbound.get(doc.docId);
+    const hasAnalysis = (references?.get("analysis")?.size ?? 0) > 0;
+    const hasAdr = (references?.get("adr")?.size ?? 0) > 0;
+    if (!hasAnalysis && !hasAdr) {
       orphans.push(doc.docId);
     }
   }
-  return orphans;
+  return orphans.sort((a, b) => a.localeCompare(b));
 }
 
-export function findOrphanTasks(documents: Map<string, TDLDocument>): string[] {
+export function findOrphanAdrs(
+  documents: Map<string, TDLDocument>,
+  inboundReferences?: InboundReferenceIndex,
+): string[] {
+  const inbound = inboundReferences ?? buildInboundReferenceIndex(documents);
   const orphans: string[] = [];
-  for (const doc of taskDocsFrom(documents)) {
-    if ((doc.links.requirements ?? []).length === 0) {
+  for (const doc of documents.values()) {
+    if (doc.docType !== "adr") continue;
+    const references = inbound.get(doc.docId);
+    const hasAnalysis = (references?.get("analysis")?.size ?? 0) > 0;
+    if (!hasAnalysis) {
       orphans.push(doc.docId);
     }
   }
-  return orphans;
+  return orphans.sort((a, b) => a.localeCompare(b));
+}
+
+export function findOrphanTasks(
+  documents: Map<string, TDLDocument>,
+  inboundReferences?: InboundReferenceIndex,
+): string[] {
+  const inbound = inboundReferences ?? buildInboundReferenceIndex(documents);
+  const orphans: string[] = [];
+  for (const doc of taskDocsFrom(documents)) {
+    const references = inbound.get(doc.docId);
+    const hasRequirement = (references?.get("requirement")?.size ?? 0) > 0;
+    const hasAdr = (references?.get("adr")?.size ?? 0) > 0;
+    if (!hasRequirement && !hasAdr) {
+      orphans.push(doc.docId);
+    }
+  }
+  return orphans.sort((a, b) => a.localeCompare(b));
 }
 
 export function calculateCoverage(
@@ -635,6 +749,7 @@ export function renderTraceabilityMarkdown(
   const requirementDocuments = requirementDocsFrom(documents).sort((a, b) =>
     a.docId.localeCompare(b.docId),
   );
+  const inboundReferences = buildInboundReferenceIndex(documents);
   const analysesByRequirement = documentsByLinkingRequirement(
     documents,
     "analysis",
@@ -800,21 +915,40 @@ export function renderTraceabilityMarkdown(
   lines.push("");
   lines.push("## Traceability Gaps");
   lines.push("");
-  const orphanRequirements = findOrphanRequirements(documents).sort();
-  const orphanTasks = findOrphanTasks(documents).sort();
+  const orphanRequirements = findOrphanRequirements(
+    documents,
+    inboundReferences,
+  );
+  const orphanAdrs = findOrphanAdrs(documents, inboundReferences);
+  const orphanTasks = findOrphanTasks(documents, inboundReferences);
 
-  if (orphanRequirements.length === 0 && orphanTasks.length === 0) {
+  if (
+    orphanRequirements.length === 0 &&
+    orphanAdrs.length === 0 &&
+    orphanTasks.length === 0
+  ) {
     lines.push("No gaps detected.");
   } else {
     for (const reqId of orphanRequirements) {
       const doc = documents.get(reqId);
       const status = doc?.status ?? "Unknown";
-      lines.push(`- ${reqId}: No implementing task (Status: ${status})`);
+      lines.push(
+        `- ${reqId}: No upstream analysis or ADR references (Status: ${status})`,
+      );
+    }
+    for (const adrId of orphanAdrs) {
+      const doc = documents.get(adrId);
+      const status = doc?.status ?? "Unknown";
+      lines.push(
+        `- ${adrId}: No upstream analysis references (Status: ${status})`,
+      );
     }
     for (const taskId of orphanTasks) {
       const doc = documents.get(taskId);
       const status = doc?.status ?? "Unknown";
-      lines.push(`- ${taskId}: No linked requirements (Status: ${status})`);
+      lines.push(
+        `- ${taskId}: No upstream requirement or ADR references (Status: ${status})`,
+      );
     }
   }
 
@@ -841,6 +975,7 @@ export function printStatus(
 ): void {
   const { missingPrereqs, missingDependents } =
     buildRequirementDependencyInfo(documents);
+  const inboundReferences = buildInboundReferenceIndex(documents);
   if (!gapsOnly) {
     console.log("=== Kopi TDL Status ===\n");
     const coverage = calculateCoverage(documents);
@@ -856,18 +991,35 @@ export function printStatus(
     console.log();
   }
 
-  const orphanRequirements = findOrphanRequirements(documents);
-  const orphanTasks = findOrphanTasks(documents);
+  const orphanRequirements = findOrphanRequirements(
+    documents,
+    inboundReferences,
+  );
+  const orphanAdrs = findOrphanAdrs(documents, inboundReferences);
+  const orphanTasks = findOrphanTasks(documents, inboundReferences);
 
-  if (orphanRequirements.length || orphanTasks.length) {
+  if (orphanRequirements.length || orphanAdrs.length || orphanTasks.length) {
     console.log("Gaps:");
-    for (const reqId of orphanRequirements.sort()) {
+    for (const reqId of orphanRequirements) {
       const doc = documents.get(reqId);
       const status = doc?.status ?? "Unknown";
-      console.log(`  ⚠ ${reqId}: No implementing task (Status: ${status})`);
+      console.log(
+        `  ⚠ ${reqId}: No upstream analysis or ADR references (Status: ${status})`,
+      );
     }
-    for (const taskId of orphanTasks.sort()) {
-      console.log(`  ⚠ ${taskId}: No linked requirements`);
+    for (const adrId of orphanAdrs) {
+      const doc = documents.get(adrId);
+      const status = doc?.status ?? "Unknown";
+      console.log(
+        `  ⚠ ${adrId}: No upstream analysis references (Status: ${status})`,
+      );
+    }
+    for (const taskId of orphanTasks) {
+      const doc = documents.get(taskId);
+      const status = doc?.status ?? "Unknown";
+      console.log(
+        `  ⚠ ${taskId}: No upstream requirement or ADR references (Status: ${status})`,
+      );
     }
     console.log();
   } else if (!gapsOnly) {
@@ -931,20 +1083,28 @@ export function printStatus(
 }
 
 export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
-  const orphanRequirements = findOrphanRequirements(documents);
-  const orphanTasks = findOrphanTasks(documents);
+  const inboundReferences = buildInboundReferenceIndex(documents);
+  const orphanRequirements = findOrphanRequirements(
+    documents,
+    inboundReferences,
+  );
+  const orphanAdrs = findOrphanAdrs(documents, inboundReferences);
+  const orphanTasks = findOrphanTasks(documents, inboundReferences);
   const { missingPrereqs, missingDependents } =
     buildRequirementDependencyInfo(documents);
 
   let ok = true;
 
-  if (orphanRequirements.length || orphanTasks.length) {
+  if (orphanRequirements.length || orphanAdrs.length || orphanTasks.length) {
     console.error("Traceability gaps detected:");
     for (const reqId of orphanRequirements) {
-      console.error(`  - ${reqId}: No implementing task`);
+      console.error(`  - ${reqId}: No upstream analysis or ADR references`);
+    }
+    for (const adrId of orphanAdrs) {
+      console.error(`  - ${adrId}: No upstream analysis references`);
     }
     for (const taskId of orphanTasks) {
-      console.error(`  - ${taskId}: No linked requirements`);
+      console.error(`  - ${taskId}: No upstream requirement or ADR references`);
     }
     ok = false;
   }
