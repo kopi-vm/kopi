@@ -222,14 +222,14 @@ These requirements apply to ALL documentation templates (Analysis, Requirements,
 
 **Link Label Conventions**
 
-| Template                 | Expected Link Labels                                                                                                 | Purpose                                               |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `analysis.md`            | `Related Analyses`, `Related Requirements`, `Related ADRs`                                                           | Capture downstream work discovered during exploration |
-| `requirements.md`        | `Related Analyses`, `Prerequisite Requirements`, `Dependent Requirements`, `Related ADRs`, `Related Tasks`           | Document requirement lineage and dependencies         |
-| `adr.md` / `adr-lite.md` | `Related Analyses`, `Impacted Requirements`, `Supersedes`, `Superseded By`, `Related Tasks`                          | Track architectural decisions and their impact        |
-| `task.md`                | `Related Analyses`, `Related Requirements`, `Related ADRs`, `Associated Plan Document`, `Associated Design Document` | Provide task entry-point context                      |
-| `design.md`              | `Related Requirements`, `Related ADRs`                                                                               | Preserve implementation context                       |
-| `plan.md`                | `Related Requirements`, `Related ADRs`                                                                               | Preserve implementation context                       |
+| Template                 | Expected Link Labels                                               | Purpose                                               |
+| ------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------- |
+| `analysis.md`            | `Related Analyses`, `Related Requirements`, `Related ADRs`         | Capture downstream work discovered during exploration |
+| `requirements.md`        | `Prerequisite Requirements`, `Dependent Requirements`, `Related Tasks` | Document requirement lineage and dependencies         |
+| `adr.md` / `adr-lite.md` | `Impacted Requirements`, `Supersedes ADRs`, `Related Tasks`        | Track architectural decisions and their impact        |
+| `task.md`                | `Associated Plan Document`, `Associated Design Document`          | Provide task entry-point context                      |
+| `design.md`              | `Associated Plan Document`                                        | Preserve implementation context                       |
+| `plan.md`                | `Associated Design Document`                                      | Preserve implementation context                       |
 
 Use `N/A – <reason>` when a link grouping does not apply.
 
