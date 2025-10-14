@@ -1,4 +1,4 @@
-# `[Concise Decision Title]`
+# ADR-<id> `[Concise Decision Title]`
 
 ## Metadata
 
