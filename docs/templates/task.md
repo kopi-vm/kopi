@@ -3,8 +3,8 @@
 ## Metadata
 
 - Type: Task
-- Status: Proposed | In Progress | Blocked | Complete | Deprecated
-  <!-- Proposed: Under discussion | In Progress: Actively working | Blocked: External dependency | Complete: Code complete | Deprecated: No longer applicable -->
+- Status: Draft | In Progress | Complete | Cancelled
+  <!-- Draft: Under discussion | In Progress: Actively working | Complete: Code complete | Cancelled: Work intentionally halted -->
 
 ## Links
 

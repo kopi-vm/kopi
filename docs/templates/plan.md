@@ -3,8 +3,8 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Not Started | Phase X In Progress | Blocked | Under Review | Completed
-  <!-- Not Started: Planning complete, awaiting start | Phase X In Progress: Actively working | Blocked: External dependency | Under Review: Implementation complete | Completed: All phases done and verified -->
+- Status: Draft | Phase X In Progress | Cancelled | Complete
+  <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
 

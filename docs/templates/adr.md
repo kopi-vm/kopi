@@ -3,8 +3,8 @@
 ## Metadata
 
 - Type: ADR
-- Status: Proposed | Accepted | Rejected | Deprecated | Superseded by ADR-<id>
-  <!-- Proposed: Under discussion | Accepted: Approved and to be implemented | Rejected: Considered but not approved | Deprecated: No longer recommended | Superseded: Replaced by another ADR -->
+- Status: Draft | Approved | Rejected | Deprecated | Superseded
+  <!-- Draft: Under discussion | Approved: Ready to be implemented | Rejected: Considered but not approved | Deprecated: No longer recommended | Superseded: Replaced by another ADR -->
 
 ## Links
 

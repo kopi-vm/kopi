@@ -3,8 +3,8 @@
 ## Metadata
 
 - Type: Functional Requirement | Non-Functional Requirement
-- Status: Proposed | Accepted | Implemented | Verified | Deprecated
-  <!-- Proposed: Under discussion | Accepted: Approved for implementation | Implemented: Code complete | Verified: Tests passing | Deprecated: No longer applicable -->
+- Status: Draft | Approved | Rejected
+  <!-- Draft: Under discussion | Approved: Ready for implementation | Rejected: Decision made not to pursue this requirement -->
 
 ## Links
 

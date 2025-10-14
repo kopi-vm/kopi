@@ -3,8 +3,8 @@
 ## Metadata
 
 - Type: Analysis
-- Status: Draft | Active | Complete | Archived
-  <!-- Draft: Initial exploration | Active: Ongoing analysis | Complete: Ready for requirements | Archived: Analysis concluded -->
+- Status: Draft | Complete | Cancelled | Archived
+  <!-- Draft: Initial exploration | Complete: Ready for requirements | Cancelled: Work intentionally halted | Archived: Analysis concluded -->
 
 ## Links
 
