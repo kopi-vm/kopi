@@ -108,7 +108,7 @@ This project supports parallel development using git-worktree with unique IDs to
 - **Transition**: Analysis can lead to:
   - Creating formal requirements from discoveries
   - Identifying architectural decisions that need to be made
-- **Traceability Update**: Fill `Related Analyses`/`Related Requirements`/`Related ADRs` in the Links section and add the analysis to `docs/traceability.md` immediately upon creation
+- **Traceability Update**: Fill `Related Analyses`/`Related Requirements`/`Related ADRs`/`Related Tasks` in the Links section and add the analysis to `docs/traceability.md` immediately upon creation
 
 ### Step 2: Requirements (what/why)
 
@@ -238,14 +238,14 @@ These requirements apply to ALL documentation templates (Analysis, Requirements,
 
 **Link Label Conventions**
 
-| Template                 | Expected Link Labels                                                   | Purpose                                               |
-| ------------------------ | ---------------------------------------------------------------------- | ----------------------------------------------------- |
-| `analysis.md`            | `Related Analyses`, `Related Requirements`, `Related ADRs`             | Capture downstream work discovered during exploration |
-| `requirements.md`        | `Prerequisite Requirements`, `Dependent Requirements`, `Related Tasks` | Document requirement lineage and dependencies         |
-| `adr.md` / `adr-lite.md` | `Impacted Requirements`, `Supersedes ADRs`, `Related Tasks`            | Track architectural decisions and their impact        |
-| `task.md`                | `Associated Plan Document`, `Associated Design Document`               | Provide task entry-point context                      |
-| `design.md`              | `Associated Plan Document`                                             | Preserve implementation context                       |
-| `plan.md`                | `Associated Design Document`                                           | Preserve implementation context                       |
+| Template                 | Expected Link Labels                                                        | Purpose                                               |
+| ------------------------ | --------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `analysis.md`            | `Related Analyses`, `Related Requirements`, `Related ADRs`, `Related Tasks` | Capture downstream work discovered during exploration |
+| `requirements.md`        | `Prerequisite Requirements`, `Dependent Requirements`, `Related Tasks`      | Document requirement lineage and dependencies         |
+| `adr.md` / `adr-lite.md` | `Impacted Requirements`, `Supersedes ADRs`, `Related Tasks`                 | Track architectural decisions and their impact        |
+| `task.md`                | `Associated Plan Document`, `Associated Design Document`                    | Provide task entry-point context                      |
+| `design.md`              | `Associated Plan Document`                                                  | Preserve implementation context                       |
+| `plan.md`                | `Associated Design Document`                                                | Preserve implementation context                       |
 
 Use `N/A – <reason>` when a link grouping does not apply.
 

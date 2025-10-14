@@ -63,7 +63,7 @@ Leaving placeholders in Metadata causes `scripts/trace-status.ts` to report `Unk
 
 Every template ships with a `## Links` section. Use the exact labels found in the template files; the trace tooling depends on them for classification.
 
-- `analysis.md`: `Related Analyses`, `Related Requirements`, `Related ADRs`
+- `analysis.md`: `Related Analyses`, `Related Requirements`, `Related ADRs`, `Related Tasks`
 - `requirements.md`: `Prerequisite Requirements`, `Dependent Requirements`, `Related Tasks`
 - `adr.md` / `adr-lite.md`: `Impacted Requirements`, `Supersedes ADRs`, `Related Tasks`
 - `design.md`: `Associated Plan Document`
@@ -93,6 +93,7 @@ Both AI collaborators follow the same TDL conventions. Use this checklist whenev
 2. Include research, user feedback, technical investigations
 3. Document discovered requirements as FR-DRAFT and NFR-DRAFT
 4. Archive after requirements are formalized
+5. Link active or resulting work items under `Related Tasks` to keep traceability intact
 
 ### Individual Requirement Template (`requirements.md`)
 

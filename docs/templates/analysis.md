@@ -17,6 +17,8 @@
   - [NFR-<id>-<name>](../requirements/NFR-<id>-<name>.md)
 - Related ADRs:
   - [ADR-<id>-<title>](../adr/ADR-<id>-<title>.md)
+- Related Tasks:
+  - [T-<id>-<task>](../tasks/T-<id>-<task>/README.md)
 
 ## Executive Summary
 
