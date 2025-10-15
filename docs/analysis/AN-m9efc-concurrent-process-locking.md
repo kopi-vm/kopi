@@ -23,6 +23,7 @@
   - [ADR-8mnaz-concurrent-process-locking-strategy](../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Related Tasks:
   - [T-5msmf-installation-locking](../tasks/T-5msmf-installation-locking/README.md)
+  - [T-ec5ew-locking-foundation](../tasks/T-ec5ew-locking-foundation/README.md)
   - [T-98zsb-uninstallation-locking](../tasks/T-98zsb-uninstallation-locking/README.md)
   - [T-m13bb-cache-locking](../tasks/T-m13bb-cache-locking/README.md)
   - [T-lqyk8-lock-timeout-control](../tasks/T-lqyk8-lock-timeout-control/README.md)
