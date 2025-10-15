@@ -1547,7 +1547,7 @@ export function printStatus(
     }
     console.log();
   } else {
-    console.log("Dependency links consistent\n");
+    console.log("✓ Dependency links consistent\n");
   }
 
   if (reciprocalLinkIssues.length) {
@@ -1559,7 +1559,7 @@ export function printStatus(
     }
     console.log();
   } else {
-    console.log("Task reciprocal links consistent\n");
+    console.log("✓ Task reciprocal links consistent\n");
   }
 
   if (designPlanIssues.length) {
@@ -1571,7 +1571,7 @@ export function printStatus(
     }
     console.log();
   } else {
-    console.log("Task design/plan links consistent\n");
+    console.log("✓ Task design/plan links consistent\n");
   }
 
   if (headingMismatches.length) {
@@ -1588,7 +1588,7 @@ export function printStatus(
     }
     console.log();
   } else {
-    console.log("Document ID headings consistent\n");
+    console.log("✓ Document ID headings consistent\n");
   }
 
   if (showStatusDetails) {

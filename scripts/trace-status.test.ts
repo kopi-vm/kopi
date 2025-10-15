@@ -1319,9 +1319,9 @@ describe("printStatus", () => {
     expect(output).toContain("FR-1000");
     expect(output).toContain("T-2000");
     expect(output).not.toContain("Status by Document Type:");
-    expect(output).toContain("Dependency links consistent");
-    expect(output).toContain("Task reciprocal links consistent");
-    expect(output).toContain("Document ID headings consistent");
+    expect(output).toContain("✓ Dependency links consistent");
+    expect(output).toContain("✓ Task reciprocal links consistent");
+    expect(output).toContain("✓ Document ID headings consistent");
   });
 
   it("includes coverage and status breakdown when showStatusDetails=true", () => {
