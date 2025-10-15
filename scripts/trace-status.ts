@@ -847,6 +847,141 @@ export function findOrphanTasks(
   return orphans.sort((a, b) => a.localeCompare(b));
 }
 
+type TaskDesignPlanIssue = {
+  readonly taskId: string;
+  readonly messages: readonly string[];
+};
+
+function normalizeFilename(name: string): string {
+  return name.toLowerCase();
+}
+
+function linksForSource(
+  cache: Map<string, LinkMap>,
+  source: DocumentSourceInfo,
+): LinkMap {
+  const cached = cache.get(source.path);
+  if (cached) return cached;
+  const content = safeReadFile(source.path);
+  const links = parseDocumentLinks(content);
+  cache.set(source.path, links);
+  return links;
+}
+
+export function collectTaskDesignPlanIssues(
+  documents: Map<string, TDLDocument>,
+): TaskDesignPlanIssue[] {
+  const cache = new Map<string, LinkMap>();
+  const issues: TaskDesignPlanIssue[] = [];
+
+  for (const taskDoc of taskDocsFrom(documents)) {
+    const referencedDesigns = new Set<string>();
+    const referencedPlans = new Set<string>();
+
+    for (const source of taskDoc.sources) {
+      if (normalizeFilename(source.filename) !== "readme.md") continue;
+      const links = linksForSource(cache, source);
+      for (const id of links.designs ?? []) {
+        const trimmed = id.trim();
+        if (trimmed) referencedDesigns.add(trimmed);
+      }
+      for (const id of links.plans ?? []) {
+        const trimmed = id.trim();
+        if (trimmed) referencedPlans.add(trimmed);
+      }
+    }
+
+    if (referencedDesigns.size === 0 && referencedPlans.size === 0) {
+      continue;
+    }
+
+    const messages: string[] = [];
+
+    const sortedDesigns = [...referencedDesigns].sort((a, b) =>
+      a.localeCompare(b),
+    );
+    for (const designId of sortedDesigns) {
+      const designDoc = documents.get(designId);
+      if (!designDoc) {
+        messages.push(
+          `Design ${designId} referenced from ${taskDoc.docId} is missing`,
+        );
+        continue;
+      }
+
+      const designSources = designDoc.sources.filter(
+        (source) => normalizeFilename(source.filename) === "design.md",
+      );
+      if (designSources.length === 0) {
+        messages.push(
+          `Design ${designId} referenced from ${taskDoc.docId} does not have a design.md document`,
+        );
+        continue;
+      }
+
+      const linkedPlans = new Set<string>();
+      for (const designSource of designSources) {
+        const links = linksForSource(cache, designSource);
+        for (const planId of links.plans ?? []) {
+          const trimmed = planId.trim();
+          if (trimmed) linkedPlans.add(trimmed);
+        }
+      }
+
+      if (linkedPlans.size === 0) {
+        messages.push(
+          `Design ${designId} referenced from ${taskDoc.docId} does not define any plan documents`,
+        );
+      }
+    }
+
+    const sortedPlans = [...referencedPlans].sort((a, b) => a.localeCompare(b));
+    for (const planId of sortedPlans) {
+      const planDoc = documents.get(planId);
+      if (!planDoc) {
+        messages.push(
+          `Plan ${planId} referenced from ${taskDoc.docId} is missing`,
+        );
+        continue;
+      }
+
+      const planSources = planDoc.sources.filter(
+        (source) => normalizeFilename(source.filename) === "plan.md",
+      );
+      if (planSources.length === 0) {
+        messages.push(
+          `Plan ${planId} referenced from ${taskDoc.docId} does not have a plan.md document`,
+        );
+        continue;
+      }
+
+      const linkedDesigns = new Set<string>();
+      for (const planSource of planSources) {
+        const links = linksForSource(cache, planSource);
+        for (const designId of links.designs ?? []) {
+          const trimmed = designId.trim();
+          if (trimmed) linkedDesigns.add(trimmed);
+        }
+      }
+
+      if (linkedDesigns.size === 0) {
+        messages.push(
+          `Plan ${planId} referenced from ${taskDoc.docId} does not define any design documents`,
+        );
+      }
+    }
+
+    if (messages.length) {
+      issues.push({
+        taskId: taskDoc.docId,
+        messages,
+      });
+    }
+  }
+
+  return issues;
+}
+
 export function calculateCoverage(
   documents: Map<string, TDLDocument>,
 ): CoverageReport {
@@ -1239,6 +1374,7 @@ export function printStatus(
   } = buildRequirementDependencyInfo(documents);
   const inboundReferences = buildInboundReferenceIndex(documents);
   const headingMismatches = findHeadingMismatches(documents);
+  const designPlanIssues = collectTaskDesignPlanIssues(documents);
   if (!gapsOnly) {
     console.log("=== Kopi TDL Status ===\n");
     const coverage = calculateCoverage(documents);
@@ -1336,6 +1472,18 @@ export function printStatus(
     console.log();
   } else if (!gapsOnly) {
     console.log("Dependency links consistent\n");
+  }
+
+  if (designPlanIssues.length) {
+    console.log("Task design/plan link issues:");
+    for (const issue of designPlanIssues) {
+      for (const message of issue.messages) {
+        console.log(`  ⚠ ${issue.taskId}: ${message}`);
+      }
+    }
+    console.log();
+  } else if (!gapsOnly) {
+    console.log("Task design/plan links consistent\n");
   }
 
   if (headingMismatches.length) {
@@ -1493,6 +1641,17 @@ export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
     ok = false;
   }
 
+  const designPlanIssues = collectTaskDesignPlanIssues(documents);
+  if (designPlanIssues.length) {
+    console.error("Task design/plan link issues detected:");
+    for (const issue of designPlanIssues) {
+      for (const message of issue.messages) {
+        console.error(`  - ${issue.taskId}: ${message}`);
+      }
+    }
+    ok = false;
+  }
+
   const headingMismatches = findHeadingMismatches(documents);
   if (headingMismatches.length) {
     console.error("Document ID heading mismatches detected:");
@@ -1555,6 +1714,8 @@ export function resolveLinkType(label: string): string | null {
   if (normalized.includes("depend")) return "depends_on";
   if (normalized.includes("analys")) return "analyses";
   if (normalized.includes("adr")) return "adrs";
+  if (normalized.includes("design")) return "designs";
+  if (normalized.includes("plan")) return "plans";
   if (normalized.includes("task")) return "tasks";
   if (normalized.includes("requirement")) return "requirements";
   return null;

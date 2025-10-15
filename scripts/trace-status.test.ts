@@ -12,6 +12,7 @@ import { dirname, join, relative, sep } from "node:path";
 import {
   capitalize,
   calculateCoverage,
+  collectTaskDesignPlanIssues,
   extractDocumentId,
   extractDocumentStatus,
   extractDocumentTitle,
@@ -405,6 +406,40 @@ function taskPlanDoc({
   return lines.join("\n");
 }
 
+function taskDesignDoc({
+  id,
+  title,
+  status,
+  associatedPlan = "N/A – Plan pending",
+}: {
+  id: string;
+  title: string;
+  status: string;
+  associatedPlan?: LinkValue;
+}): string {
+  const lines: string[] = [
+    `# ${id} ${title}`,
+    "",
+    "## Metadata",
+    "",
+    "- Type: Design",
+    `- Status: ${status}`,
+    "",
+    "## Links",
+    "",
+  ];
+  lines.push(...renderLink("Associated Plan Document", associatedPlan));
+  lines.push("\n## Overview\n");
+  lines.push(
+    "Describes the architectural approach and key design decisions for the task.",
+  );
+  lines.push("\n## Components\n");
+  lines.push("- Document the primary modules and their responsibilities.");
+  lines.push("\n## Risks\n");
+  lines.push("- [ ] Capture open questions and validation steps.");
+  return lines.join("\n");
+}
+
 afterEach(() => {
   while (tempRoots.length) {
     const dir = tempRoots.pop();
@@ -612,6 +647,8 @@ describe("resolveLinkType", () => {
     expect(resolveLinkType("Related Analyses")).toBe("analyses");
     expect(resolveLinkType("adr references")).toBe("adrs");
     expect(resolveLinkType("task items")).toBe("tasks");
+    expect(resolveLinkType("Associated Design Document")).toBe("designs");
+    expect(resolveLinkType("Associated Plan Document")).toBe("plans");
     expect(resolveLinkType("Prerequisite Requirements")).toBe("depends_on");
     expect(resolveLinkType("Dependent Requirements")).toBe("blocks");
     expect(resolveLinkType("other")).toBeNull();
@@ -905,6 +942,131 @@ describe("traceability helpers", () => {
     expect(markdown).toContain("(requirements/FR-100-alpha.md) (inferred)");
     expect(markdown).toContain(
       "add Prerequisite Requirements entry for [FR-100](requirements/FR-100-alpha.md) (inferred)",
+    );
+  });
+});
+
+describe("collectTaskDesignPlanIssues", () => {
+  it("returns empty when task links are reciprocal", () => {
+    const repoRoot = createTempDir();
+
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-1100-example/README.md",
+      taskReadmeDoc({
+        id: "T-1100",
+        title: "Example Task",
+        status: "Draft",
+        planPath: "./plan.md",
+        designPath: "./design.md",
+      }),
+    );
+
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-1100-example/plan.md",
+      taskPlanDoc({
+        id: "T-1100",
+        title: "Example Plan",
+        status: "Draft",
+        associatedDesign: "[T-1100-design](./design.md)",
+        requirements: "N/A – Pending",
+      }),
+    );
+
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-1100-example/design.md",
+      taskDesignDoc({
+        id: "T-1100",
+        title: "Example Design",
+        status: "Draft",
+        associatedPlan: "[T-1100-plan](./plan.md)",
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    expect(collectTaskDesignPlanIssues(documents)).toEqual([]);
+  });
+
+  it("flags designs referenced by a task that do not define plans", () => {
+    const repoRoot = createTempDir();
+
+    const readme = [
+      "# T-2100 Missing Plan",
+      "",
+      "## Metadata",
+      "",
+      "- Type: Task",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Associated Design Document:",
+      "  - [T-2100-design](./design.md)",
+      "",
+    ].join("\n");
+
+    writeDoc(repoRoot, "docs/tasks/T-2100-missing-plan/README.md", readme);
+
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-2100-missing-plan/design.md",
+      taskDesignDoc({
+        id: "T-2100",
+        title: "Missing Plan Design",
+        status: "Draft",
+        associatedPlan: "N/A – Plan pending",
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const issues = collectTaskDesignPlanIssues(documents);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.taskId).toBe("T-2100");
+    expect(issues[0]?.messages).toContain(
+      "Design T-2100 referenced from T-2100 does not define any plan documents",
+    );
+  });
+
+  it("flags plans referenced by a task that do not define designs", () => {
+    const repoRoot = createTempDir();
+
+    const readme = [
+      "# T-3100 Missing Design",
+      "",
+      "## Metadata",
+      "",
+      "- Type: Task",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Associated Plan Document:",
+      "  - [T-3100-plan](./plan.md)",
+      "",
+    ].join("\n");
+
+    writeDoc(repoRoot, "docs/tasks/T-3100-missing-design/README.md", readme);
+
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-3100-missing-design/plan.md",
+      taskPlanDoc({
+        id: "T-3100",
+        title: "Missing Design Plan",
+        status: "Draft",
+        associatedDesign: "N/A – Pending design",
+        requirements: "N/A – Pending",
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const issues = collectTaskDesignPlanIssues(documents);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.taskId).toBe("T-3100");
+    expect(issues[0]?.messages).toContain(
+      "Plan T-3100 referenced from T-3100 does not define any design documents",
     );
   });
 });
