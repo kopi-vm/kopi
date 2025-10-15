@@ -180,8 +180,6 @@ graph LR
 
 Always confirm that the upstream artifacts are in place before drafting a task’s design or plan. If a task uncovers a missing analysis, requirement, or ADR, pause and author the missing document(s) using the templates above, then return to the task once the dependency is satisfied.
 
-For urgent fixes that must start at the task layer, open the task immediately but clearly document the gap in the task README. Run `bun scripts/trace-status.ts --gaps` at the start of the work session and keep the task flagged until the required upstream artifact is backfilled.
-
 ## Development Workflow
 
 ### Completing Work
