@@ -1,4 +1,4 @@
-# T-wn8p3 Path Registry Refactor Task
+# T-wn8p3 Path Registry Redesign Task
 
 ## Metadata
 
@@ -21,7 +21,7 @@
 
 ## Summary
 
-Refactor Kopi’s filesystem path handling so installation, cache, shim, and locking directories are derived from a single documented module (`src/paths/`) instead of ad-hoc constructors.
+Redesign Kopi’s filesystem path handling so installation, cache, shim, and locking directories are derived from a single documented module (`src/paths/`) instead of ad-hoc constructors.
 
 ## Scope
 
@@ -29,6 +29,7 @@ Refactor Kopi’s filesystem path handling so installation, cache, shim, and loc
   - Catalogue existing path construction across the codebase.
   - Create shared helpers in `src/paths` and migrate call sites.
   - Update documentation to reference the shared helpers.
+  - Review and restructure locking workflow in `src/paths/locking.rs`.
 - Out of scope:
   - Introducing new directories.
   - Changing on-disk defaults.
