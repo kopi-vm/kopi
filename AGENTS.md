@@ -141,14 +141,10 @@ fn test_parse_foojay_api_response() {
 
 _Structured phases, linked artifacts, verifiable outcomes_
 
-This project follows the Traceable Development Lifecycle (TDL), a structured development process with full traceability from requirements to implementation. The complete TDL documentation and supporting templates are maintained in:
+This project follows the Traceable Development Lifecycle (TDL), a structured development process with full traceability from discovery through delivery. Consult the primary references when in doubt:
 
 **[`docs/tdl.md`](docs/tdl.md)** - Full TDL documentation and workflow\
 **[`docs/templates/README.md`](docs/templates/README.md)** - Template descriptions and usage instructions
-
-Tasks sometimes need to be spun up directly at the task layer (for example, urgent fixes) before an upstream analysis, requirement, or ADR exists. Document these ad hoc efforts in the task README immediately and rely on `bun scripts/trace-status.ts --gaps` to keep them flagged as missing upstream links until the upstream artifact is authored or the work is complete.
-
-## Quick Reference
 
 ### TDL Process Overview
 
@@ -172,14 +168,20 @@ graph LR
 - **Analysis**: `docs/analysis/AN-<id>-<topic>.md` - Problem exploration
 - **Requirements**: `docs/requirements/FR-<id>-<capability>.md` and `NFR-<id>-<quality>.md` - Formal requirements
 - **ADRs**: `docs/adr/ADR-<id>-<title>.md` - Architecture decisions (current format)
-- **ADRs (Archive)**: `docs/archive/adr/###-<title>.md` - Historical ADRs (pre-2025)
 - **Tasks**: `docs/tasks/T-<id>-<task>/` - Design and plan documents (current format)
-- **Tasks (Archive)**: `docs/archive/tasks/<task>/` - Historical tasks (pre-2025)
-- **Reviews (Archive)**: `docs/archive/reviews/` - Legacy review records
 - **Traceability**: `docs/traceability.md` - Central mapping matrix
 
-For detailed TDL phases, pull request checklists, and archive policies, refer to [`docs/tdl.md`](docs/tdl.md).\
-For template usage instructions, refer to [`docs/templates/README.md`](docs/templates/README.md).
+### Document Creation Order
+
+1. **Analysis (`docs/analysis/AN-…`)** – Capture the problem space, alternatives, and context. Create or update the analysis first; every downstream artifact must reference it.
+2. **Requirements (`docs/requirements/FR-…` / `NFR-…`)** – Translate the approved analysis into verifiable functional and non-functional requirements.
+3. **Architecture Decision (`docs/adr/ADR-…`)** – Record any structural decision needed to satisfy the requirements. Author the ADR before planning work that depends on it.
+4. **Task (`docs/tasks/T-…/`)** – Once the upstream analysis, requirements, and ADR (if required) exist, create the task package and write the `design.md` and `plan.md` to describe how the change will be implemented.
+5. **Implementation** – Begin code changes only after the task design and plan are committed, and ensure every pull request references the task ID.
+
+Always confirm that the upstream artifacts are in place before drafting a task’s design or plan. If a task uncovers a missing analysis, requirement, or ADR, pause and author the missing document(s) using the templates above, then return to the task once the dependency is satisfied.
+
+For urgent fixes that must start at the task layer, open the task immediately but clearly document the gap in the task README. Run `bun scripts/trace-status.ts --gaps` at the start of the work session and keep the task flagged until the required upstream artifact is backfilled.
 
 ## Development Workflow
 
