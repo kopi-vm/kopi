@@ -173,7 +173,7 @@ graph LR
 
 ### Document Creation Order
 
-1. **Analysis (`docs/analysis/AN-…`)** – Capture the problem space, alternatives, and context. Create or update the analysis first; every downstream artifact must reference it.
+1. **Analysis (`docs/analysis/AN-…`)** – Capture the problem space, alternatives, and context. Create or update the analysis first; every downstream artifact must reference it, and the analysis is considered complete only once its review has been approved.
 2. **Requirements (`docs/requirements/FR-…` / `NFR-…`)** – Translate the approved analysis into verifiable functional and non-functional requirements.
 3. **Architecture Decision (`docs/adr/ADR-…`)** – Record any structural decision needed to satisfy the requirements. Author the ADR before planning work that depends on it.
 4. **Task (`docs/tasks/T-…/`)** – Once the upstream analysis, requirements, and ADR (if required) exist and their reviews are complete, create the task package and write the `design.md` and `plan.md` to describe how the change will be implemented.
