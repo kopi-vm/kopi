@@ -8,6 +8,12 @@
 
 ## Links
 
+- Related Analyses:
+  - [AN-i9cma-libc-to-nix-migration](../../analysis/AN-i9cma-libc-to-nix-migration.md)
+- Related Requirements:
+  - N/A – None
+- Related ADRs:
+  - N/A – None
 - Associated Design Document:
   - N/A – Design document not created (migration suspended)
 - Associated Plan Document:

@@ -8,6 +8,13 @@
 
 ## Links
 
+- Related Analyses:
+  - [AN-l19pi-fs2-dependency-retirement](../../analysis/AN-l19pi-fs2-dependency-retirement.md)
+- Related Requirements:
+  - [FR-x63pa-disk-space-telemetry](../../requirements/FR-x63pa-disk-space-telemetry.md)
+  - [FR-rxelv-file-in-use-detection](../../requirements/FR-rxelv-file-in-use-detection.md)
+- Related ADRs:
+  - N/A – None
 - Associated Design Document:
   - [T-9r1su-fs2-dependency-retirement-design](./design.md)
 - Associated Plan Document:
