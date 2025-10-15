@@ -173,11 +173,11 @@ graph LR
 
 ### Document Creation Order
 
-1. **Analysis (`docs/analysis/AN-…`)** – Capture the problem space, alternatives, and context. Create or update the analysis first; every downstream artifact must reference it, and the analysis is considered complete only once its review has been approved.
+1. **Analysis (`docs/analysis/AN-…`)** – Capture the problem space, alternatives, and context. Create or update the analysis first; every downstream artifact must reference it, and the analysis is considered complete only once its approval has been granted. Do not advance to requirements work until this approval is finalized.
 2. **Requirements (`docs/requirements/FR-…` / `NFR-…`)** – Translate the approved analysis into verifiable functional and non-functional requirements.
 3. **Architecture Decision (`docs/adr/ADR-…`)** – Record any structural decision needed to satisfy the requirements. Author the ADR before planning work that depends on it.
-4. **Task (`docs/tasks/T-…/`)** – Once the upstream analysis, requirements, and ADR (if required) exist and their reviews are complete, create the task package and write the `design.md` and `plan.md` to describe how the change will be implemented.
-5. **Implementation** – Begin code changes only after the analysis, requirements, ADR (if required), and task design/plan documents are committed and have completed their reviews, and ensure every pull request references the relevant task ID.
+4. **Task (`docs/tasks/T-…/`)** – Once the upstream analysis, requirements, and ADR (if required) exist and their approvals are complete, create the task package and write the `design.md` and `plan.md` to describe how the change will be implemented. Do not begin task design or planning work until those upstream approvals have been granted.
+5. **Implementation** – Begin code changes only after the analysis, requirements, ADR (if required), and task design/plan documents are committed and have received their approvals, and ensure every pull request references the relevant task ID.
 
 Always confirm that the upstream artifacts are in place before drafting a task’s design or plan. If a task uncovers a missing analysis, requirement, or ADR, pause and author the missing document(s) using the templates above, then return to the task once the dependency is satisfied.
 
