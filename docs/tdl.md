@@ -73,12 +73,12 @@ graph LR
 
 ### Traceability status (`scripts/trace-status.ts`)
 
-- `bun scripts/trace-status.ts` prints the full status summary (coverage, gaps, counts).
-- `--gaps` limits output to orphan requirements and tasks.
+- `bun scripts/trace-status.ts` prints the gap summary and consistency checks, marking issues with `⚠` and healthy sections with `✓`.
+- `bun scripts/trace-status.ts --status` adds coverage metrics and document counts by type for dashboard-grade reporting.
 - `--check` exits with status code `1` when gaps exist (suitable for CI). Combine with `--write[=path]` to emit a markdown report without committing it.
 - `--write` without a path writes `docs/traceability.md`; `--write=custom/path.md` writes to a custom location.
 
-Tasks may occasionally be introduced directly at the task phase without an upstream analysis, requirement, or ADR document. Treat these as ad hoc work: keep their scope documented in the task README and rely on `bun scripts/trace-status.ts` (particularly with `--gaps`) to flag them as missing upstream links until the upstream document is authored or the task is completed.
+Tasks may occasionally be introduced directly at the task phase without an upstream analysis, requirement, or ADR document. Treat these as ad hoc work: keep their scope documented in the task README and rely on `bun scripts/trace-status.ts` to flag the missing upstream links until the upstream document is authored or the task is completed.
 
 ## Parallel Development Support
 
@@ -273,9 +273,9 @@ Use `N/A – <reason>` when a link grouping does not apply.
 Traceability is maintained through Links sections in each document and viewed on-demand:
 
 ```bash
-bun scripts/trace-status.ts        # Full status
-bun scripts/trace-status.ts --gaps # Only gaps
-bun scripts/trace-status.ts --check # CI mode
+bun scripts/trace-status.ts         # Gaps + consistency highlights
+bun scripts/trace-status.ts --status # Add coverage metrics and per-type counts
+bun scripts/trace-status.ts --check  # CI mode
 # Add --write (optionally with =<path>) to emit `docs/traceability.md`, including the Traceability Matrix and Requirement Dependencies tables
 ```
 

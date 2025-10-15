@@ -6,15 +6,15 @@ This guide complements `docs/tdl.md` for contributors who keep multiple git work
 
 - **Generate unique IDs first** – Run `./scripts/tdl-new-id.ts` before copying any template. The script and its options are documented in `docs/tdl.md`.
 - **Start from the official templates** – Copy the template under `docs/templates/`, replace every placeholder, and update Metadata and Links immediately. Follow the template guidance in `docs/templates/README.md`.
-- **Document ad hoc tasks on creation** – When urgent work starts at the task layer without upstream analysis/requirements/ADRs, create the task README right away and keep it linked. `bun scripts/trace-status.ts --gaps` will continue to flag the missing upstream relationship until you either add the source document or finish the task.
+- **Document ad hoc tasks on creation** – When urgent work starts at the task layer without upstream analysis/requirements/ADRs, create the task README right away and keep it linked. The default `bun scripts/trace-status.ts` output will keep flagging the missing upstream relationship until you either add the source document or finish the task.
 
 ## Traceability Checks
 
 Run the status script regularly to avoid surprises:
 
 ```bash
-bun scripts/trace-status.ts            # Full status snapshot
-bun scripts/trace-status.ts --gaps     # Focus on missing upstream/downstream links
+bun scripts/trace-status.ts            # Gaps + consistency highlights
+bun scripts/trace-status.ts --status   # Include coverage and per-type counts
 bun scripts/trace-status.ts --check    # CI/hand-off gate; exits non-zero on gaps
 bun scripts/trace-status.ts --write    # Optional point-in-time report (defaults to docs/traceability.md)
 ```
