@@ -698,9 +698,8 @@ describe("findRepoRoot", () => {
 
 describe("parseArgs", () => {
   it("parses supported flags", () => {
-    const result = parseArgs(["--gaps", "--check", "--write=output.md"]);
+    const result = parseArgs(["--check", "--write=output.md"]);
     expect(result).toEqual({
-      gapsOnly: true,
       checkMode: true,
       writePath: "output.md",
       showStatusDetails: false,
@@ -710,7 +709,6 @@ describe("parseArgs", () => {
   it("supports bare --write", () => {
     const result = parseArgs(["--write"]);
     expect(result).toEqual({
-      gapsOnly: false,
       checkMode: false,
       writePath: "",
       showStatusDetails: false,
@@ -720,7 +718,6 @@ describe("parseArgs", () => {
   it("enables status details when --status is provided", () => {
     const result = parseArgs(["--status"]);
     expect(result).toEqual({
-      gapsOnly: false,
       checkMode: false,
       writePath: null,
       showStatusDetails: true,
@@ -1288,7 +1285,7 @@ describe("printStatus", () => {
     console.error = originalError;
   });
 
-  it("prints summary and gaps when gapsOnly=false", () => {
+  it("prints summary and gaps by default", () => {
     const repoRoot = createTempDir();
     writeDoc(
       repoRoot,
@@ -1313,7 +1310,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false, false);
+    printStatus(documents, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("=== Kopi TDL Status ===");
@@ -1352,35 +1349,13 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false, true);
+    printStatus(documents, true);
 
     const output = logCalls.join("\n");
     expect(output).toContain("Coverage:");
     expect(output).toContain("Status by Document Type:");
     expect(output).toContain("  Requirements:");
     expect(output).toContain("  Tasks:");
-  });
-
-  it("suppresses summary when gapsOnly=true but still lists gaps", () => {
-    const repoRoot = createTempDir();
-    writeDoc(
-      repoRoot,
-      "docs/requirements/FR-3000-gap.md",
-      requirementDoc({
-        id: "FR-3000",
-        title: "Gap",
-        status: "Proposed",
-        tasks: "N/A – Pending",
-      }),
-    );
-
-    const documents = loadDocuments(repoRoot);
-    printStatus(documents, true, false);
-
-    const output = logCalls.join("\n");
-    expect(output).not.toContain("=== Kopi TDL Status ===");
-    expect(output).toContain("Gaps:");
-    expect(output).toContain("FR-3000");
   });
 
   it("reports dependency consistency issues when reciprocal links are missing", () => {
@@ -1425,7 +1400,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false, false);
+    printStatus(documents, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("Dependency consistency issues:");
@@ -1475,7 +1450,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false, false);
+    printStatus(documents, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("Task reciprocity issues:");
@@ -1512,7 +1487,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false, false);
+    printStatus(documents, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("Dependency consistency issues:");
@@ -1564,7 +1539,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false, false);
+    printStatus(documents, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("Dependency consistency issues:");
@@ -1589,7 +1564,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false, false);
+    printStatus(documents, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("Document ID heading mismatches detected:");
