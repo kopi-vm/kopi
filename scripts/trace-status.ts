@@ -1438,6 +1438,7 @@ export function writeTraceabilityReport(
 export function printStatus(
   documents: Map<string, TDLDocument>,
   gapsOnly: boolean,
+  showStatusDetails: boolean,
 ): void {
   const {
     missingPrereqs,
@@ -1452,17 +1453,19 @@ export function printStatus(
   const designPlanIssues = collectTaskDesignPlanIssues(documents);
   if (!gapsOnly) {
     console.log("=== Kopi TDL Status ===\n");
-    const coverage = calculateCoverage(documents);
-    console.log("Coverage:");
-    console.log(
-      `  Documents: ${coverage.total_analyses} analyses, ${coverage.total_requirements} requirements, ` +
-        `${coverage.total_adrs} ADRs, ${coverage.total_tasks} tasks`,
-    );
-    console.log(
-      `  Implementation: ${coverage.requirements_with_tasks}/${coverage.total_requirements} requirements have tasks ` +
-        `(${coverage.coverage_percentage.toFixed(0)}%)`,
-    );
-    console.log();
+    if (showStatusDetails) {
+      const coverage = calculateCoverage(documents);
+      console.log("Coverage:");
+      console.log(
+        `  Documents: ${coverage.total_analyses} analyses, ${coverage.total_requirements} requirements, ` +
+          `${coverage.total_adrs} ADRs, ${coverage.total_tasks} tasks`,
+      );
+      console.log(
+        `  Implementation: ${coverage.requirements_with_tasks}/${coverage.total_requirements} requirements have tasks ` +
+          `(${coverage.coverage_percentage.toFixed(0)}%)`,
+      );
+      console.log();
+    }
   }
 
   const orphanRequirements = findOrphanRequirements(
@@ -1590,7 +1593,7 @@ export function printStatus(
     console.log("Document ID headings consistent\n");
   }
 
-  if (!gapsOnly) {
+  if (!gapsOnly && showStatusDetails) {
     console.log("Status by Document Type:");
     const byType = new Map<DocumentType, TDLDocument[]>();
     for (const doc of documents.values()) {
@@ -1873,15 +1876,19 @@ export function parseArgs(argv: string[]): {
   gapsOnly: boolean;
   checkMode: boolean;
   writePath: string | null;
+  showStatusDetails: boolean;
 } {
   let gapsOnly = false;
   let checkMode = false;
   let writePath: string | null = null;
+  let showStatusDetails = false;
   for (const arg of argv) {
     if (arg === "--gaps") {
       gapsOnly = true;
     } else if (arg === "--check") {
       checkMode = true;
+    } else if (arg === "--status") {
+      showStatusDetails = true;
     } else if (arg === "--write") {
       writePath = "";
     } else if (arg.startsWith("--write=")) {
@@ -1895,11 +1902,13 @@ export function parseArgs(argv: string[]): {
       process.exit(2);
     }
   }
-  return { gapsOnly, checkMode, writePath };
+  return { gapsOnly, checkMode, writePath, showStatusDetails };
 }
 
 export function main(): number {
-  const { gapsOnly, checkMode, writePath } = parseArgs(process.argv.slice(2));
+  const { gapsOnly, checkMode, writePath, showStatusDetails } = parseArgs(
+    process.argv.slice(2),
+  );
   const repoRoot = findRepoRoot(process.cwd());
   if (!repoRoot) {
     console.error("Error: Could not find repository root");
@@ -1935,7 +1944,7 @@ export function main(): number {
     );
   }
 
-  printStatus(documents, gapsOnly);
+  printStatus(documents, gapsOnly, showStatusDetails);
   return 0;
 }
 

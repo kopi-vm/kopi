@@ -703,6 +703,7 @@ describe("parseArgs", () => {
       gapsOnly: true,
       checkMode: true,
       writePath: "output.md",
+      showStatusDetails: false,
     });
   });
 
@@ -712,6 +713,17 @@ describe("parseArgs", () => {
       gapsOnly: false,
       checkMode: false,
       writePath: "",
+      showStatusDetails: false,
+    });
+  });
+
+  it("enables status details when --status is provided", () => {
+    const result = parseArgs(["--status"]);
+    expect(result).toEqual({
+      gapsOnly: false,
+      checkMode: false,
+      writePath: null,
+      showStatusDetails: true,
     });
   });
 });
@@ -1301,20 +1313,52 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false);
+    printStatus(documents, false, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("=== Kopi TDL Status ===");
-    expect(output).toContain("Coverage:");
+    expect(output).not.toContain("Coverage:");
     expect(output).toContain("Gaps:");
     expect(output).toContain("FR-1000");
     expect(output).toContain("T-2000");
-    expect(output).toContain("Status by Document Type:");
-    expect(output).toContain("  Requirements:");
-    expect(output).toContain("  Tasks:");
+    expect(output).not.toContain("Status by Document Type:");
     expect(output).toContain("Dependency links consistent");
     expect(output).toContain("Task reciprocal links consistent");
     expect(output).toContain("Document ID headings consistent");
+  });
+
+  it("includes coverage and status breakdown when showStatusDetails=true", () => {
+    const repoRoot = createTempDir();
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-1100-linked.md",
+      requirementDoc({
+        id: "FR-1100",
+        title: "Linked Requirement",
+        status: "Accepted",
+        tasks: ["[T-1100](../tasks/T-1100-linked/plan.md)"],
+      }),
+    );
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-1100-linked/plan.md",
+      taskPlanDoc({
+        id: "T-1100",
+        title: "Linked Task",
+        status: "In Progress",
+        associatedDesign: "N/A – Pending design",
+        requirements: ["[FR-1100](../../requirements/FR-1100-linked.md)"],
+      }),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    printStatus(documents, false, true);
+
+    const output = logCalls.join("\n");
+    expect(output).toContain("Coverage:");
+    expect(output).toContain("Status by Document Type:");
+    expect(output).toContain("  Requirements:");
+    expect(output).toContain("  Tasks:");
   });
 
   it("suppresses summary when gapsOnly=true but still lists gaps", () => {
@@ -1331,7 +1375,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, true);
+    printStatus(documents, true, false);
 
     const output = logCalls.join("\n");
     expect(output).not.toContain("=== Kopi TDL Status ===");
@@ -1381,7 +1425,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false);
+    printStatus(documents, false, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("Dependency consistency issues:");
@@ -1431,7 +1475,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false);
+    printStatus(documents, false, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("Task reciprocity issues:");
@@ -1468,7 +1512,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false);
+    printStatus(documents, false, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("Dependency consistency issues:");
@@ -1520,7 +1564,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false);
+    printStatus(documents, false, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("Dependency consistency issues:");
@@ -1545,7 +1589,7 @@ describe("printStatus", () => {
     );
 
     const documents = loadDocuments(repoRoot);
-    printStatus(documents, false);
+    printStatus(documents, false, false);
 
     const output = logCalls.join("\n");
     expect(output).toContain("Document ID heading mismatches detected:");
