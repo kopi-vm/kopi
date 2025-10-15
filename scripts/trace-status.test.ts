@@ -13,6 +13,7 @@ import {
   capitalize,
   calculateCoverage,
   collectTaskDesignPlanIssues,
+  collectTaskReciprocalLinkIssues,
   extractDocumentId,
   extractDocumentStatus,
   extractDocumentTitle,
@@ -946,6 +947,190 @@ describe("traceability helpers", () => {
   });
 });
 
+describe("collectTaskReciprocalLinkIssues", () => {
+  it("returns empty when tasks and related documents link both ways", () => {
+    const repoRoot = createTempDir();
+
+    const taskReadme = [
+      "# T-4100 Example Task",
+      "",
+      "## Metadata",
+      "",
+      "- Type: Task",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Related Analyses:",
+      "  - [AN-4100](../../analysis/AN-4100-example.md)",
+      "- Related Requirements:",
+      "  - [FR-4100](../../requirements/FR-4100-example.md)",
+      "- Related ADRs:",
+      "  - [ADR-4100](../../adr/ADR-4100-example.md)",
+      "- Associated Design Document:",
+      "  - N/A – None",
+      "- Associated Plan Document:",
+      "  - N/A – None",
+      "",
+    ].join("\n");
+
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-4100-example/README.md",
+      `${taskReadme}\n## Summary\n\nReciprocal link validation.\n`,
+    );
+
+    const analysisDocContent = [
+      "# AN-4100 Example Analysis",
+      "",
+      "## Metadata",
+      "",
+      "- Type: Analysis",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Related Tasks:",
+      "  - [T-4100](../tasks/T-4100-example/README.md)",
+      "",
+    ].join("\n");
+
+    writeDoc(
+      repoRoot,
+      "docs/analysis/AN-4100-example.md",
+      `${analysisDocContent}\n## Summary\n\nConsistency check.\n`,
+    );
+
+    const requirementDocContent = [
+      "# FR-4100 Example Requirement",
+      "",
+      "## Metadata",
+      "",
+      "- Type: Functional Requirement",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Related Tasks:",
+      "  - [T-4100](../tasks/T-4100-example/README.md)",
+      "",
+    ].join("\n");
+
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-4100-example.md",
+      `${requirementDocContent}\n## Requirement Statement\n\nTwo-way links.\n`,
+    );
+
+    const adrDocContent = [
+      "# ADR-4100 Example Decision",
+      "",
+      "## Metadata",
+      "",
+      "- Type: ADR",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Related Tasks:",
+      "  - [T-4100](../tasks/T-4100-example/README.md)",
+      "",
+    ].join("\n");
+
+    writeDoc(
+      repoRoot,
+      "docs/adr/ADR-4100-example.md",
+      `${adrDocContent}\n## Context\n\nBidirectional traceability maintained.\n`,
+    );
+
+    const documents = loadDocuments(repoRoot);
+    expect(collectTaskReciprocalLinkIssues(documents)).toEqual([]);
+  });
+
+  it("reports missing reciprocal links and documents", () => {
+    const repoRoot = createTempDir();
+
+    const taskReadme = [
+      "# T-5100 Missing Reciprocity",
+      "",
+      "## Metadata",
+      "",
+      "- Type: Task",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Related Analyses:",
+      "  - [AN-5100](../../analysis/AN-5100-example.md)",
+      "- Related Requirements:",
+      "  - [FR-5100](../../requirements/FR-5100-example.md)",
+      "- Related ADRs:",
+      "  - [ADR-5100](../../adr/ADR-5100-example.md)",
+      "- Associated Design Document:",
+      "  - N/A – None",
+      "- Associated Plan Document:",
+      "  - N/A – None",
+      "",
+    ].join("\n");
+
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-5100-example/README.md",
+      `${taskReadme}\n## Summary\n\nMissing reciprocal entries.\n`,
+    );
+
+    const requirementDocContent = [
+      "# FR-5100 Example Requirement",
+      "",
+      "## Metadata",
+      "",
+      "- Type: Functional Requirement",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Related Tasks: N/A – None",
+      "",
+    ].join("\n");
+
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-5100-example.md",
+      `${requirementDocContent}\n## Requirement Statement\n\nPlaceholder.\n`,
+    );
+
+    const adrDocContent = [
+      "# ADR-5100 Example Decision",
+      "",
+      "## Metadata",
+      "",
+      "- Type: ADR",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Related Tasks: N/A – None linked yet",
+      "",
+    ].join("\n");
+
+    writeDoc(
+      repoRoot,
+      "docs/adr/ADR-5100-example.md",
+      `${adrDocContent}\n## Context\n\nPlaceholder.\n`,
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const issues = collectTaskReciprocalLinkIssues(documents);
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.taskId).toBe("T-5100");
+    expect(issues[0]?.messages).toEqual([
+      "ADR ADR-5100 does not list T-5100 under Related Tasks",
+      "Analysis AN-5100 is missing",
+      "Requirement FR-5100 does not list T-5100 under Related Tasks",
+    ]);
+  });
+});
+
 describe("collectTaskDesignPlanIssues", () => {
   it("returns empty when task links are reciprocal", () => {
     const repoRoot = createTempDir();
@@ -1128,6 +1313,7 @@ describe("printStatus", () => {
     expect(output).toContain("  Requirements:");
     expect(output).toContain("  Tasks:");
     expect(output).toContain("Dependency links consistent");
+    expect(output).toContain("Task reciprocal links consistent");
     expect(output).toContain("Document ID headings consistent");
   });
 
@@ -1200,6 +1386,58 @@ describe("printStatus", () => {
     const output = logCalls.join("\n");
     expect(output).toContain("Dependency consistency issues:");
     expect(output).toContain("Missing prerequisite link(s) for FR-400");
+  });
+
+  it("reports task reciprocity issues when related documents do not link back", () => {
+    const repoRoot = createTempDir();
+
+    const readme = [
+      "# T-5200 Reciprocity Regression",
+      "",
+      "## Metadata",
+      "",
+      "- Type: Task",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Related Requirements:",
+      "  - [FR-5200](../../requirements/FR-5200-reciprocity.md)",
+      "- Related Analyses: N/A – None",
+      "- Related ADRs: N/A – None",
+      "",
+    ].join("\n");
+
+    writeDoc(repoRoot, "docs/tasks/T-5200-example/README.md", readme);
+
+    const requirementContent = [
+      "# FR-5200 Reciprocity Check",
+      "",
+      "## Metadata",
+      "",
+      "- Type: Functional Requirement",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Related Tasks: N/A – Pending linkage",
+      "",
+    ].join("\n");
+
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-5200-reciprocity.md",
+      `${requirementContent}\n## Requirement Statement\n\nEnsure reciprocity is enforced.\n`,
+    );
+
+    const documents = loadDocuments(repoRoot);
+    printStatus(documents, false);
+
+    const output = logCalls.join("\n");
+    expect(output).toContain("Task reciprocity issues:");
+    expect(output).toContain(
+      "Requirement FR-5200 does not list T-5200 under Related Tasks",
+    );
   });
 
   it("reports mutual prerequisite and dependent contradictions", () => {
@@ -1418,6 +1656,63 @@ describe("checkIntegrity", () => {
     expect(result).toBe(false);
     const flattened = errors.map((entry) => entry.join(" ")).join("\n");
     expect(flattened).toContain("Missing prerequisite link(s) for FR-600");
+  });
+
+  it("returns false when tasks reference documents without reciprocal links", () => {
+    const repoRoot = createTempDir();
+
+    const taskReadme = [
+      "# T-7200 Reciprocity Failure",
+      "",
+      "## Metadata",
+      "",
+      "- Type: Task",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Related Requirements:",
+      "  - [FR-7200](../../requirements/FR-7200-example.md)",
+      "- Related Analyses: N/A – None",
+      "- Related ADRs: N/A – None",
+      "",
+    ].join("\n");
+
+    writeDoc(repoRoot, "docs/tasks/T-7200-example/README.md", taskReadme);
+
+    const requirement = [
+      "# FR-7200 Example Requirement",
+      "",
+      "## Metadata",
+      "",
+      "- Type: Functional Requirement",
+      "- Status: Draft",
+      "",
+      "## Links",
+      "",
+      "- Related Tasks: N/A – Pending linkage",
+      "",
+    ].join("\n");
+
+    writeDoc(
+      repoRoot,
+      "docs/requirements/FR-7200-example.md",
+      `${requirement}\n## Requirement Statement\n\nAwaiting reciprocity.\n`,
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const errors: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      errors.push(args);
+    };
+
+    const result = checkIntegrity(documents);
+    expect(result).toBe(false);
+    const flattened = errors.map((entry) => entry.join(" ")).join("\n");
+    expect(flattened).toContain("Task reciprocity issues detected:");
+    expect(flattened).toContain(
+      "Requirement FR-7200 does not list T-7200 under Related Tasks",
+    );
   });
 
   it("returns false when requirements list each other as prerequisites", () => {

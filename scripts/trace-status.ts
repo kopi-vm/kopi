@@ -847,6 +847,27 @@ export function findOrphanTasks(
   return orphans.sort((a, b) => a.localeCompare(b));
 }
 
+type TaskReciprocalLinkIssue = {
+  readonly taskId: string;
+  readonly messages: readonly string[];
+};
+
+type TaskReciprocityRule = {
+  readonly linkType: keyof LinkMap;
+  readonly targetType: DocumentType;
+  readonly targetLabel: string;
+};
+
+const TASK_RECIPROCITY_RULES: readonly TaskReciprocityRule[] = [
+  { linkType: "analyses", targetType: "analysis", targetLabel: "Analysis" },
+  {
+    linkType: "requirements",
+    targetType: "requirement",
+    targetLabel: "Requirement",
+  },
+  { linkType: "adrs", targetType: "adr", targetLabel: "ADR" },
+];
+
 type TaskDesignPlanIssue = {
   readonly taskId: string;
   readonly messages: readonly string[];
@@ -866,6 +887,59 @@ function linksForSource(
   const links = parseDocumentLinks(content);
   cache.set(source.path, links);
   return links;
+}
+
+export function collectTaskReciprocalLinkIssues(
+  documents: Map<string, TDLDocument>,
+): TaskReciprocalLinkIssue[] {
+  const issues: TaskReciprocalLinkIssue[] = [];
+
+  for (const taskDoc of taskDocsFrom(documents)) {
+    const messages: string[] = [];
+
+    for (const rule of TASK_RECIPROCITY_RULES) {
+      const referencedIds = [
+        ...new Set(
+          (taskDoc.links[rule.linkType] ?? [])
+            .map((id) => id.trim())
+            .filter(Boolean),
+        ),
+      ].sort((a, b) => a.localeCompare(b));
+
+      for (const targetId of referencedIds) {
+        const targetDoc = documents.get(targetId);
+        if (!targetDoc) {
+          messages.push(`${rule.targetLabel} ${targetId} is missing`);
+          continue;
+        }
+        if (targetDoc.docType !== rule.targetType) {
+          const expected = docTypeSingularName(rule.targetType);
+          const actual = docTypeSingularName(targetDoc.docType);
+          messages.push(
+            `${rule.targetLabel} ${targetDoc.docId} is a ${actual}; expected ${expected}`,
+          );
+          continue;
+        }
+        const reciprocalIds = new Set(
+          (targetDoc.links.tasks ?? []).map((id) => id.trim()).filter(Boolean),
+        );
+        if (!reciprocalIds.has(taskDoc.docId)) {
+          messages.push(
+            `${rule.targetLabel} ${targetDoc.docId} does not list ${taskDoc.docId} under Related Tasks`,
+          );
+        }
+      }
+    }
+
+    if (messages.length > 0) {
+      issues.push({
+        taskId: taskDoc.docId,
+        messages: messages.sort((a, b) => a.localeCompare(b)),
+      });
+    }
+  }
+
+  return issues.sort((a, b) => a.taskId.localeCompare(b.taskId));
 }
 
 export function collectTaskDesignPlanIssues(
@@ -1374,6 +1448,7 @@ export function printStatus(
   } = buildRequirementDependencyInfo(documents);
   const inboundReferences = buildInboundReferenceIndex(documents);
   const headingMismatches = findHeadingMismatches(documents);
+  const reciprocalLinkIssues = collectTaskReciprocalLinkIssues(documents);
   const designPlanIssues = collectTaskDesignPlanIssues(documents);
   if (!gapsOnly) {
     console.log("=== Kopi TDL Status ===\n");
@@ -1472,6 +1547,18 @@ export function printStatus(
     console.log();
   } else if (!gapsOnly) {
     console.log("Dependency links consistent\n");
+  }
+
+  if (reciprocalLinkIssues.length) {
+    console.log("Task reciprocity issues:");
+    for (const issue of reciprocalLinkIssues) {
+      for (const message of issue.messages) {
+        console.log(`  ⚠ ${issue.taskId}: ${message}`);
+      }
+    }
+    console.log();
+  } else if (!gapsOnly) {
+    console.log("Task reciprocal links consistent\n");
   }
 
   if (designPlanIssues.length) {
@@ -1641,6 +1728,17 @@ export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
     ok = false;
   }
 
+  const reciprocalLinkIssues = collectTaskReciprocalLinkIssues(documents);
+  if (reciprocalLinkIssues.length) {
+    console.error("Task reciprocity issues detected:");
+    for (const issue of reciprocalLinkIssues) {
+      for (const message of issue.messages) {
+        console.error(`  - ${issue.taskId}: ${message}`);
+      }
+    }
+    ok = false;
+  }
+
   const designPlanIssues = collectTaskDesignPlanIssues(documents);
   if (designPlanIssues.length) {
     console.error("Task design/plan link issues detected:");
@@ -1739,8 +1837,20 @@ const DOC_TYPE_DISPLAY_NAMES: Record<DocumentType, string> = {
   unknown: "Unknown Documents",
 };
 
+const DOC_TYPE_SINGULAR_NAMES: Record<DocumentType, string> = {
+  analysis: "Analysis",
+  requirement: "Requirement",
+  adr: "ADR",
+  task: "Task",
+  unknown: "Document",
+};
+
 function docTypeDisplayName(docType: DocumentType): string {
   return DOC_TYPE_DISPLAY_NAMES[docType] ?? capitalize(docType);
+}
+
+function docTypeSingularName(docType: DocumentType): string {
+  return DOC_TYPE_SINGULAR_NAMES[docType] ?? capitalize(docType);
 }
 
 export function findRepoRoot(startDir: string): string | null {
