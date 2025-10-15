@@ -177,7 +177,7 @@ graph LR
 2. **Requirements (`docs/requirements/FR-…` / `NFR-…`)** – Translate the approved analysis into verifiable functional and non-functional requirements.
 3. **Architecture Decision (`docs/adr/ADR-…`)** – Record any structural decision needed to satisfy the requirements. Author the ADR before planning work that depends on it.
 4. **Task (`docs/tasks/T-…/`)** – Once the upstream analysis, requirements, and ADR (if required) exist, create the task package and write the `design.md` and `plan.md` to describe how the change will be implemented.
-5. **Implementation** – Begin code changes only after the task design and plan are committed, and ensure every pull request references the task ID.
+5. **Implementation** – Begin code changes only after the analysis, requirements, ADR (if required), and task design/plan documents are committed and have completed their reviews, and ensure every pull request references the relevant task ID.
 
 Always confirm that the upstream artifacts are in place before drafting a task’s design or plan. If a task uncovers a missing analysis, requirement, or ADR, pause and author the missing document(s) using the templates above, then return to the task once the dependency is satisfied.
 
