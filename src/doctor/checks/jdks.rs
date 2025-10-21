@@ -532,6 +532,7 @@ impl<'a> DiagnosticCheck for JdkVersionConsistencyCheck<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::install;
     use std::fs;
     use tempfile::TempDir;
 
@@ -546,7 +547,7 @@ mod tests {
             let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
 
             // Create jdks directory
-            fs::create_dir_all(temp_dir.path().join("jdks")).unwrap();
+            install::ensure_installations_root(temp_dir.path()).unwrap();
 
             TestSetup {
                 config,

@@ -1043,6 +1043,7 @@ mod tests {
     #[test]
     fn test_finalize_with_structure_direct() {
         use crate::archive::JdkStructureType;
+        use crate::paths::install;
         use crate::storage::InstallationContext;
         use std::fs;
         use tempfile::TempDir;
@@ -1053,10 +1054,8 @@ mod tests {
         let repository = JdkRepository::new(&config);
 
         // Create a mock installation context
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
-
-        let temp_path = jdks_dir.join(".tmp/test-install");
+        let temp_root = install::ensure_temp_staging_directory(temp_dir.path()).unwrap();
+        let temp_path = temp_root.join("test-install");
         fs::create_dir_all(&temp_path).unwrap();
 
         // Create a fake JDK structure
@@ -1065,7 +1064,7 @@ mod tests {
         fs::write(jdk_root.join("bin/java"), "mock java").unwrap();
 
         let context = InstallationContext {
-            final_path: jdks_dir.join("temurin-21.0.1"),
+            final_path: install::installation_directory(temp_dir.path(), "temurin-21.0.1"),
             temp_path: temp_path.clone(),
         };
 
@@ -1089,6 +1088,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     fn test_finalize_with_structure_bundle() {
         use crate::archive::JdkStructureType;
+        use crate::paths::install;
         use crate::storage::InstallationContext;
         use std::fs;
         use tempfile::TempDir;
@@ -1099,10 +1099,8 @@ mod tests {
         let repository = JdkRepository::new(&config);
 
         // Create a mock installation context
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
-
-        let temp_path = jdks_dir.join(".tmp/test-install");
+        let temp_root = install::ensure_temp_staging_directory(temp_dir.path()).unwrap();
+        let temp_path = temp_root.join("test-install");
         fs::create_dir_all(&temp_path).unwrap();
 
         // Create a fake bundle structure
@@ -1112,7 +1110,7 @@ mod tests {
         fs::write(contents_home.join("bin/java"), "mock java").unwrap();
 
         let context = InstallationContext {
-            final_path: jdks_dir.join("temurin-21.0.1"),
+            final_path: install::installation_directory(temp_dir.path(), "temurin-21.0.1"),
             temp_path: temp_path.clone(),
         };
 
@@ -1137,6 +1135,7 @@ mod tests {
     #[test]
     fn test_finalize_with_structure_logging() {
         use crate::archive::JdkStructureType;
+        use crate::paths::install;
         use crate::storage::InstallationContext;
         use std::fs;
         use tempfile::TempDir;
@@ -1146,10 +1145,10 @@ mod tests {
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         let cmd = InstallCommand::new(&config, false).unwrap();
 
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = install::ensure_installations_root(temp_dir.path()).unwrap();
 
-        let temp_path = jdks_dir.join(".tmp/test-install");
+        let temp_root = install::ensure_temp_staging_directory(temp_dir.path()).unwrap();
+        let temp_path = temp_root.join("test-install");
         let jdk_root = temp_path.join("jdk");
         fs::create_dir_all(jdk_root.join("bin")).unwrap();
         fs::write(jdk_root.join("bin/java"), "mock").unwrap();

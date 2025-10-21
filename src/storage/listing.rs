@@ -402,16 +402,21 @@ impl JdkLister {
 mod tests {
     use super::*;
     use crate::models::api::{Links, Package};
+    use crate::paths::install;
     use crate::storage::{InstallationMetadata, JdkMetadataWithInstallation};
     use crate::version::Version;
+    use std::path::PathBuf;
     use std::time::Instant;
     use tempfile::TempDir;
+
+    fn ensure_jdks_dir(temp_dir: &TempDir) -> PathBuf {
+        install::ensure_installations_root(temp_dir.path()).unwrap()
+    }
 
     #[test]
     fn test_list_installed_jdks() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         fs::create_dir_all(jdks_dir.join("temurin-21.0.1")).unwrap();
         fs::create_dir_all(jdks_dir.join("corretto-17.0.9")).unwrap();
@@ -646,8 +651,7 @@ mod tests {
     #[test]
     fn test_metadata_lazy_loading() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("temurin-21.0.1");
         fs::create_dir_all(&jdk_path).unwrap();
@@ -712,8 +716,7 @@ mod tests {
     #[test]
     fn test_metadata_cache_miss_fallback() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("liberica-21.0.1");
         fs::create_dir_all(jdk_path.join("bin")).unwrap();
@@ -741,8 +744,7 @@ mod tests {
     #[test]
     fn test_metadata_corrupt_file_fallback() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("temurin-21.0.1");
         fs::create_dir_all(jdk_path.join("bin")).unwrap();
@@ -776,8 +778,7 @@ mod tests {
         use std::time::Instant;
 
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("temurin-21.0.1");
         fs::create_dir_all(&jdk_path).unwrap();
@@ -847,8 +848,7 @@ mod tests {
     #[test]
     fn test_metadata_sequential_access() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("temurin-21.0.1");
         fs::create_dir_all(&jdk_path).unwrap();
@@ -914,8 +914,7 @@ mod tests {
     #[test]
     fn test_metadata_incomplete_fields_fallback() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("temurin-21.0.1");
         fs::create_dir_all(jdk_path.join("bin")).unwrap();
@@ -980,8 +979,7 @@ mod tests {
     #[test]
     fn test_metadata_invalid_version_fallback() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("liberica-21.0.1");
         fs::create_dir_all(jdk_path.join("bin")).unwrap();
@@ -1041,8 +1039,7 @@ mod tests {
     #[test]
     fn test_metadata_empty_platform_fallback() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("zulu-21.0.1");
         fs::create_dir_all(jdk_path.join("bin")).unwrap();
@@ -1103,8 +1100,7 @@ mod tests {
     fn test_fallback_no_user_errors() {
         // This test verifies that all fallback scenarios work without returning errors to users
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         // Test 1: Missing metadata file - should work without errors
         let jdk_path1 = jdks_dir.join("temurin-17.0.1");
@@ -1195,8 +1191,7 @@ mod tests {
         // This is a simplified example to demonstrate the concept
 
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         // Test missing metadata logging
         let jdk_path = jdks_dir.join("test-jdk");
@@ -1472,8 +1467,7 @@ mod tests {
         use std::thread;
 
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         // Create JDK directory structure with bundle format
         let jdk_path = jdks_dir.join("temurin-21.0.0");
@@ -1569,8 +1563,7 @@ mod tests {
     #[test]
     fn test_error_recovery_missing_bin_directory() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         // Create JDK without bin directory
         let jdk_path = jdks_dir.join("temurin-21.0.0");
@@ -1611,8 +1604,7 @@ mod tests {
     #[test]
     fn test_error_recovery_invalid_json_metadata() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         // Create JDK with proper structure based on platform
         let jdk_path = jdks_dir.join("temurin-21.0.0");
@@ -1675,8 +1667,7 @@ mod tests {
     #[test]
     fn test_error_recovery_partially_missing_metadata() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         // Create JDK with direct structure
         let jdk_path = jdks_dir.join("liberica-17.0.9");

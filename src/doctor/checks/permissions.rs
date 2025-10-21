@@ -230,6 +230,7 @@ fn get_user_group() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::{cache as cache_paths, home};
     use std::env;
     use tempfile::TempDir;
 
@@ -242,9 +243,9 @@ mod tests {
         fs::create_dir(&kopi_home).unwrap();
 
         // Create subdirectories
-        fs::create_dir(kopi_home.join("jdks")).unwrap();
-        fs::create_dir(kopi_home.join("shims")).unwrap();
-        fs::create_dir(kopi_home.join("cache")).unwrap();
+        home::ensure_jdks_dir(&kopi_home).unwrap();
+        home::ensure_shims_dir(&kopi_home).unwrap();
+        cache_paths::ensure_cache_root(&kopi_home).unwrap();
 
         unsafe {
             env::set_var("KOPI_HOME", &kopi_home);

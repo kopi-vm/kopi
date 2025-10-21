@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::error::{KopiError, Result};
+use crate::paths::shims;
 use crate::platform::{self, shim_binary_name};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -27,7 +28,7 @@ impl ShimInstaller {
     /// Create a new ShimInstaller with the specified shims directory
     pub fn new(kopi_home: &Path) -> Self {
         Self {
-            shims_dir: kopi_home.join("shims"),
+            shims_dir: shims::shims_root(kopi_home),
             kopi_bin_path: std::env::current_exe().unwrap_or_else(|_| PathBuf::from("kopi")),
         }
     }
@@ -222,6 +223,7 @@ impl ShimInstaller {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::shims;
     use tempfile::TempDir;
 
     #[test]
@@ -229,7 +231,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let installer = ShimInstaller::new(temp_dir.path());
 
-        assert_eq!(installer.shims_dir(), temp_dir.path().join("shims"));
+        assert_eq!(installer.shims_dir(), shims::shims_root(temp_dir.path()));
     }
 
     #[test]
@@ -257,7 +259,10 @@ mod tests {
         } else {
             "java.exe"
         };
-        assert_eq!(java_shim, temp_dir.path().join("shims").join(expected_name));
+        assert_eq!(
+            java_shim,
+            shims::shims_root(temp_dir.path()).join(expected_name)
+        );
     }
 
     #[test]

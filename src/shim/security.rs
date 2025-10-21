@@ -145,6 +145,7 @@ impl SecurityValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::install;
     #[cfg(unix)]
     use std::fs::File;
     #[cfg(unix)]
@@ -163,7 +164,8 @@ mod tests {
     #[test]
     fn test_validate_path_within_kopi_home() {
         let (validator, temp_dir) = create_test_validator();
-        let valid_path = temp_dir.path().join("jdks").join("java-11");
+        install::ensure_installations_root(temp_dir.path()).unwrap();
+        let valid_path = install::installation_directory(temp_dir.path(), "java-11");
         std::fs::create_dir_all(&valid_path).unwrap();
 
         assert!(validator.validate_path(&valid_path).is_ok());

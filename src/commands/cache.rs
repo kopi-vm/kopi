@@ -820,6 +820,7 @@ fn list_distributions(config: &KopiConfig) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::cache as cache_paths;
     use serial_test::serial;
     use std::env;
     use tempfile::TempDir;
@@ -977,7 +978,8 @@ mod tests {
         cache.distributions.insert("sap_machine".to_string(), dist);
 
         // Save the cache
-        let cache_path = temp_dir.path().join("cache").join("metadata.json");
+        cache_paths::ensure_cache_root(temp_dir.path()).unwrap();
+        let cache_path = cache_paths::metadata_cache_file(temp_dir.path());
         cache.save(&cache_path).unwrap();
 
         // Test searching with the synonym "sapmachine"

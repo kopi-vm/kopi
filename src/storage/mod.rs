@@ -117,13 +117,18 @@ pub fn save_jdk_metadata_with_installation(
 mod metadata_tests {
     use super::*;
     use crate::models::api::Links;
+    use crate::paths::install;
+    use std::path::PathBuf;
     use tempfile::TempDir;
+
+    fn ensure_jdks_root(temp_dir: &TempDir) -> PathBuf {
+        install::ensure_installations_root(temp_dir.path()).unwrap()
+    }
 
     #[test]
     fn test_save_jdk_metadata() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = install::ensure_installations_root(temp_dir.path()).unwrap();
 
         let distribution = Distribution::Temurin;
 
@@ -235,8 +240,7 @@ mod metadata_tests {
     #[test]
     fn test_save_jdk_metadata_with_installation() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = install::ensure_installations_root(temp_dir.path()).unwrap();
 
         let distribution = Distribution::Temurin;
 
@@ -389,8 +393,7 @@ mod metadata_tests {
     fn test_save_jdk_metadata_write_failure() {
         use std::os::unix::fs::PermissionsExt;
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_root(&temp_dir);
 
         // Make the directory read-only to cause write failure
         fs::set_permissions(&jdks_dir, fs::Permissions::from_mode(0o555)).unwrap();
@@ -436,8 +439,7 @@ mod metadata_tests {
     fn test_save_jdk_metadata_with_installation_atomic() {
         // Test that metadata saving is atomic (all-or-nothing)
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_root(&temp_dir);
 
         let distribution = Distribution::Temurin;
         let package = Package {
@@ -508,8 +510,7 @@ mod metadata_tests {
         use std::os::unix::fs::PermissionsExt;
 
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
-        fs::create_dir_all(&jdks_dir).unwrap();
+        let jdks_dir = ensure_jdks_root(&temp_dir);
 
         let distribution = Distribution::Temurin;
         let package = Package {

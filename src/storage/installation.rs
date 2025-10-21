@@ -101,25 +101,27 @@ impl JdkInstaller {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::install;
     use tempfile::TempDir;
 
     #[test]
     fn test_prepare_installation_new() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
+        let jdks_dir = install::ensure_installations_root(temp_dir.path()).unwrap();
         let install_path = jdks_dir.join("temurin-21.0.1");
 
         let context = JdkInstaller::prepare_installation(&jdks_dir, &install_path).unwrap();
 
         assert!(context.temp_path.exists());
         assert!(!context.final_path.exists());
-        assert!(context.temp_path.starts_with(jdks_dir.join(".tmp")));
+        let temp_root = install::temp_staging_directory(temp_dir.path());
+        assert!(context.temp_path.starts_with(&temp_root));
     }
 
     #[test]
     fn test_prepare_installation_already_exists() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
+        let jdks_dir = install::ensure_installations_root(temp_dir.path()).unwrap();
         let install_path = jdks_dir.join("temurin-21.0.1");
         fs::create_dir_all(&install_path).unwrap();
 
@@ -131,7 +133,7 @@ mod tests {
     #[test]
     fn test_finalize_installation() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
+        let jdks_dir = install::ensure_installations_root(temp_dir.path()).unwrap();
         let install_path = jdks_dir.join("temurin-21.0.1");
 
         let context = JdkInstaller::prepare_installation(&jdks_dir, &install_path).unwrap();
@@ -148,7 +150,7 @@ mod tests {
     #[test]
     fn test_cleanup_failed_installation() {
         let temp_dir = TempDir::new().unwrap();
-        let jdks_dir = temp_dir.path().join("jdks");
+        let jdks_dir = install::ensure_installations_root(temp_dir.path()).unwrap();
         let install_path = jdks_dir.join("temurin-21.0.1");
 
         let context = JdkInstaller::prepare_installation(&jdks_dir, &install_path).unwrap();

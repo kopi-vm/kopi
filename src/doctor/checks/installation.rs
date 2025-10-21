@@ -561,8 +561,7 @@ mod tests {
     #[test]
     fn test_shims_in_path_check() {
         let temp_dir = TempDir::new().unwrap();
-        let shims_dir = temp_dir.path().join("shims");
-        fs::create_dir(&shims_dir).unwrap();
+        let shims_dir = crate::paths::shims::ensure_shims_root(temp_dir.path()).unwrap();
 
         unsafe {
             env::set_var("KOPI_HOME", temp_dir.path());

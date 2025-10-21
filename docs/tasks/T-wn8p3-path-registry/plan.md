@@ -122,14 +122,14 @@ Switch core subsystems to the canonical helpers while ensuring behaviour parity 
 
 ### Phase 2 Tasks
 
-- [ ] **Subsystem migrations**
-  - [ ] Replace installation path joins with `paths::install` helpers; update tests.
-  - [ ] Migrate cache metadata, temp files, and doctor checks to `paths::cache`.
-  - [ ] Update shim logic to rely on `paths::shims` for directories and tool filenames.
-  - [ ] Ensure locking scope reuses refactored helpers.
-- [ ] **Compatibility validation**
-  - [ ] Capture before/after path snapshots using integration tests.
-  - [ ] Run CLI smoke suite to confirm unchanged output.
+- [x] **Subsystem migrations**
+  - [x] Replace installation path joins with `paths::install` helpers; update tests.
+  - [x] Migrate cache metadata, temp files, and doctor checks to `paths::cache`.
+  - [x] Update shim logic to rely on `paths::shims` for directories and tool filenames.
+  - [x] Ensure locking scope reuses refactored helpers.
+- [x] **Compatibility validation**
+  - [x] Capture before/after path snapshots using integration tests.
+  - [x] Run CLI smoke suite to confirm unchanged output.
 
 ### Phase 2 Deliverables
 

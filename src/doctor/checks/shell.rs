@@ -14,6 +14,7 @@
 
 use crate::config::KopiConfig;
 use crate::doctor::{CheckCategory, CheckResult, CheckStatus, DiagnosticCheck};
+use crate::paths::shims;
 use crate::platform::shell::{detect_shell, is_in_path};
 use crate::platform::{path_separator, with_executable_extension};
 use std::env;
@@ -80,7 +81,7 @@ impl<'a> DiagnosticCheck for PathCheck<'a> {
     }
 
     fn run(&self, start: Instant, category: CheckCategory) -> CheckResult {
-        let shims_dir = self.config.kopi_home().join("shims");
+        let shims_dir = shims::shims_root(self.config.kopi_home());
 
         if !is_in_path(&shims_dir) {
             return CheckResult::new(
@@ -287,7 +288,7 @@ impl<'a> DiagnosticCheck for ShimFunctionalityCheck<'a> {
     }
 
     fn run(&self, start: Instant, category: CheckCategory) -> CheckResult {
-        let shims_dir = self.config.kopi_home().join("shims");
+        let shims_dir = shims::shims_root(self.config.kopi_home());
 
         // Check if shims directory exists
         if !shims_dir.exists() {
@@ -404,8 +405,7 @@ mod tests {
     #[test]
     fn test_path_check_present() {
         let (_temp, config) = create_test_config();
-        let shims_dir = config.kopi_home().join("shims");
-        fs::create_dir_all(&shims_dir).unwrap();
+        let shims_dir = shims::ensure_shims_root(config.kopi_home()).unwrap();
 
         // Temporarily modify PATH for test
         let original_path = env::var("PATH").unwrap_or_default();
@@ -452,8 +452,7 @@ mod tests {
     #[test]
     fn test_shim_functionality_empty_dir() {
         let (_temp, config) = create_test_config();
-        let shims_dir = config.kopi_home().join("shims");
-        fs::create_dir_all(&shims_dir).unwrap();
+        shims::ensure_shims_root(config.kopi_home()).unwrap();
 
         let check = ShimFunctionalityCheck::new(&config);
         let result = check.run(Instant::now(), CheckCategory::Shell);
@@ -465,8 +464,7 @@ mod tests {
     #[test]
     fn test_shim_functionality_with_shims() {
         let (_temp, config) = create_test_config();
-        let shims_dir = config.kopi_home().join("shims");
-        fs::create_dir_all(&shims_dir).unwrap();
+        let shims_dir = shims::ensure_shims_root(config.kopi_home()).unwrap();
 
         // Create mock shim files
         let java_shim = if cfg!(windows) {
@@ -494,8 +492,7 @@ mod tests {
     #[test]
     fn test_path_priority_check() {
         let (_temp, config) = create_test_config();
-        let shims_dir = config.kopi_home().join("shims");
-        fs::create_dir_all(&shims_dir).unwrap();
+        let shims_dir = shims::ensure_shims_root(config.kopi_home()).unwrap();
 
         let check = PathCheck::new(&config);
 

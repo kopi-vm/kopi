@@ -262,6 +262,7 @@ impl<'a> BatchUninstaller<'a> {
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
+    use crate::paths::install;
     use mockall::mock;
     use tempfile::TempDir;
 
@@ -285,8 +286,9 @@ mod tests {
         let batch_uninstaller = BatchUninstaller::new(&config, &repository, false);
 
         // Create some test directories
-        let jdk1_path = temp_dir.path().join("jdks").join("temurin-21.0.5+11");
-        let jdk2_path = temp_dir.path().join("jdks").join("corretto-17.0.9");
+        install::ensure_installations_root(temp_dir.path()).unwrap();
+        let jdk1_path = install::installation_directory(temp_dir.path(), "temurin-21.0.5+11");
+        let jdk2_path = install::installation_directory(temp_dir.path(), "corretto-17.0.9");
         std::fs::create_dir_all(&jdk1_path).unwrap();
         std::fs::create_dir_all(&jdk2_path).unwrap();
 

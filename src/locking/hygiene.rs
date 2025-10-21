@@ -269,13 +269,14 @@ fn remove_file_if_exists(path: &Path) -> io::Result<bool> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::locking;
     use std::fs::{self, File};
     use std::io::Write;
     use tempfile::TempDir;
 
     fn setup_root() -> (TempDir, PathBuf) {
         let temp = TempDir::new().unwrap();
-        let root = temp.path().join("locks");
+        let root = locking::locks_root(temp.path());
         fs::create_dir_all(&root).unwrap();
         (temp, root)
     }

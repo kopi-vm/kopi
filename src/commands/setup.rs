@@ -324,6 +324,7 @@ impl<'a> SetupCommand<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::{cache as cache_paths, home};
     use tempfile::TempDir;
 
     #[test]
@@ -337,10 +338,10 @@ mod tests {
 
         setup.create_directories().unwrap();
 
-        assert!(temp_dir.path().join("jdks").exists());
-        assert!(temp_dir.path().join("bin").exists());
-        assert!(temp_dir.path().join("shims").exists());
-        assert!(temp_dir.path().join("cache").exists());
+        assert!(home::jdks_dir(temp_dir.path()).exists());
+        assert!(home::bin_dir(temp_dir.path()).exists());
+        assert!(home::shims_dir(temp_dir.path()).exists());
+        assert!(cache_paths::cache_root(temp_dir.path()).exists());
     }
 
     #[test]

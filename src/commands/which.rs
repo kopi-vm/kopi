@@ -176,6 +176,7 @@ fn output_json(
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
+    use crate::paths::install;
     use crate::version::Version;
     use std::fs;
     use std::str::FromStr;
@@ -185,10 +186,9 @@ mod tests {
     use std::os::unix::fs::PermissionsExt;
 
     fn create_test_jdk(temp_dir: &TempDir, distribution: &str, version: &str) -> PathBuf {
-        let jdk_path = temp_dir
-            .path()
-            .join("jdks")
-            .join(format!("{distribution}-{version}"));
+        install::ensure_installations_root(temp_dir.path()).unwrap();
+        let slug = format!("{distribution}-{version}");
+        let jdk_path = install::installation_directory(temp_dir.path(), &slug);
 
         let bin_dir = jdk_path.join("bin");
         fs::create_dir_all(&bin_dir).unwrap();

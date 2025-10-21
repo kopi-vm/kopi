@@ -380,6 +380,7 @@ fn build_tool_path(installed_jdk: &InstalledJdk, tool_name: &str) -> Result<Path
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
+    use crate::paths::install;
     use crate::version::Version;
     use std::fs;
     use tempfile::TempDir;
@@ -450,7 +451,8 @@ mod tests {
         // Repository setup removed - not needed for this test
 
         // Create a mock installed JDK structure
-        let jdk_path = temp_dir.path().join("jdks").join("temurin-21.0.1");
+        install::ensure_installations_root(temp_dir.path()).unwrap();
+        let jdk_path = install::installation_directory(temp_dir.path(), "temurin-21.0.1");
         fs::create_dir_all(&jdk_path).unwrap();
 
         // Create version request
@@ -597,8 +599,8 @@ mod tests {
         let repository = JdkRepository::new(&config);
 
         // Create a mock JDK installation
-        let jdks_dir = temp_dir.path().join("jdks");
-        let jdk_path = jdks_dir.join("temurin-21.0.1");
+        install::ensure_installations_root(temp_dir.path()).unwrap();
+        let jdk_path = install::installation_directory(temp_dir.path(), "temurin-21.0.1");
         fs::create_dir_all(&jdk_path).unwrap();
 
         let version_request = VersionRequest::new("21".to_string())

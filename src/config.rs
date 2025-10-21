@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::error::{KopiError, Result};
+use crate::paths::{cache, home};
 use config::{Config, ConfigError, Environment, File};
 use dirs::home_dir;
 use log::warn;
@@ -24,12 +25,6 @@ use std::time::Duration;
 const CONFIG_FILE_NAME: &str = "config.toml";
 const DEFAULT_MIN_DISK_SPACE_MB: u64 = 500;
 const DEFAULT_LOCK_TIMEOUT_SECS: u64 = 600;
-
-// Directory names
-const JDKS_DIR_NAME: &str = "jdks";
-const CACHE_DIR_NAME: &str = "cache";
-const BIN_DIR_NAME: &str = "bin";
-const SHIMS_DIR_NAME: &str = "shims";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KopiConfig {
@@ -416,42 +411,38 @@ impl KopiConfig {
 
     /// Get the JDKs directory path and create it if it doesn't exist
     pub fn jdks_dir(&self) -> Result<PathBuf> {
-        let dir = self.kopi_home.join(JDKS_DIR_NAME);
-        fs::create_dir_all(&dir)
-            .map_err(|e| KopiError::ConfigError(format!("Failed to create jdks directory: {e}")))?;
-        Ok(dir)
+        home::ensure_jdks_dir(&self.kopi_home).map_err(|error| {
+            KopiError::ConfigError(format!("Failed to create jdks directory: {error}"))
+        })
     }
 
     /// Get the cache directory path and create it if it doesn't exist
     pub fn cache_dir(&self) -> Result<PathBuf> {
-        let dir = self.kopi_home.join(CACHE_DIR_NAME);
-        fs::create_dir_all(&dir).map_err(|e| {
-            KopiError::ConfigError(format!("Failed to create cache directory: {e}"))
-        })?;
-        Ok(dir)
+        home::ensure_cache_dir(&self.kopi_home).map_err(|error| {
+            KopiError::ConfigError(format!("Failed to create cache directory: {error}"))
+        })
     }
 
     /// Get the bin directory path for kopi binary and create it if it doesn't exist
     pub fn bin_dir(&self) -> Result<PathBuf> {
-        let dir = self.kopi_home.join(BIN_DIR_NAME);
-        fs::create_dir_all(&dir)
-            .map_err(|e| KopiError::ConfigError(format!("Failed to create bin directory: {e}")))?;
-        Ok(dir)
+        home::ensure_bin_dir(&self.kopi_home).map_err(|error| {
+            KopiError::ConfigError(format!("Failed to create bin directory: {error}"))
+        })
     }
 
     /// Get the shims directory path and create it if it doesn't exist
     pub fn shims_dir(&self) -> Result<PathBuf> {
-        let dir = self.kopi_home.join(SHIMS_DIR_NAME);
-        fs::create_dir_all(&dir).map_err(|e| {
-            KopiError::ConfigError(format!("Failed to create shims directory: {e}"))
-        })?;
-        Ok(dir)
+        home::ensure_shims_dir(&self.kopi_home).map_err(|error| {
+            KopiError::ConfigError(format!("Failed to create shims directory: {error}"))
+        })
     }
 
     /// Get the path to the metadata cache file (ensures cache directory exists)
     pub fn metadata_cache_path(&self) -> Result<PathBuf> {
-        let cache_dir = self.cache_dir()?;
-        Ok(cache_dir.join("metadata.json"))
+        cache::ensure_cache_root(&self.kopi_home).map_err(|error| {
+            KopiError::ConfigError(format!("Failed to create cache directory: {error}"))
+        })?;
+        Ok(cache::metadata_cache_file(&self.kopi_home))
     }
 
     /// Get the path to the config file
@@ -470,6 +461,7 @@ impl From<ConfigError> for KopiError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::{cache, home};
     use serial_test::serial;
     use std::env;
     use tempfile::TempDir;
@@ -689,22 +681,22 @@ min_disk_space_mb = 2048
 
         // Test JDKs directory
         let jdks_dir = config.jdks_dir().unwrap();
-        assert_eq!(jdks_dir, kopi_home.join("jdks"));
+        assert_eq!(jdks_dir, home::jdks_dir(kopi_home));
         assert!(jdks_dir.exists());
 
         // Test cache directory
         let cache_dir = config.cache_dir().unwrap();
-        assert_eq!(cache_dir, kopi_home.join("cache"));
+        assert_eq!(cache_dir, home::cache_dir(kopi_home));
         assert!(cache_dir.exists());
 
         // Test bin directory
         let bin_dir = config.bin_dir().unwrap();
-        assert_eq!(bin_dir, kopi_home.join("bin"));
+        assert_eq!(bin_dir, home::bin_dir(kopi_home));
         assert!(bin_dir.exists());
 
         // Test metadata cache path
         let cache_path = config.metadata_cache_path().unwrap();
-        assert_eq!(cache_path, kopi_home.join("cache").join("metadata.json"));
+        assert_eq!(cache_path, cache::metadata_cache_file(kopi_home));
 
         // Test config path
         let config_path = config.config_path();
@@ -728,19 +720,19 @@ min_disk_space_mb = 2048
         let config = KopiConfig::new(kopi_home.to_path_buf()).unwrap();
 
         // Verify directories don't exist initially
-        assert!(!kopi_home.join("jdks").exists());
-        assert!(!kopi_home.join("cache").exists());
-        assert!(!kopi_home.join("bin").exists());
+        assert!(!home::jdks_dir(kopi_home).exists());
+        assert!(!home::cache_dir(kopi_home).exists());
+        assert!(!home::bin_dir(kopi_home).exists());
 
         // Access directories - they should be created
         config.jdks_dir().unwrap();
-        assert!(kopi_home.join("jdks").exists());
+        assert!(home::jdks_dir(kopi_home).exists());
 
         config.cache_dir().unwrap();
-        assert!(kopi_home.join("cache").exists());
+        assert!(home::cache_dir(kopi_home).exists());
 
         config.bin_dir().unwrap();
-        assert!(kopi_home.join("bin").exists());
+        assert!(home::bin_dir(kopi_home).exists());
     }
 
     #[test]
