@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Non-Functional Requirement
-- Status: Draft
+- Status: Approved
   <!-- Draft: Under discussion | Approved: Ready for implementation | Rejected: Decision made not to pursue this requirement -->
 
 ## Links
@@ -15,7 +15,7 @@
 - Related Tasks:
   - [T-wn8p3-path-registry](../tasks/T-wn8p3-path-registry/README.md)
 - Related Analyses:
-  - [AN-wn8p3-path-registry-consolidation](../analysis/AN-wn8p3-path-registry-consolidation.md)
+  - [AN-uqva7-path-registry-consolidation](../analysis/AN-uqva7-path-registry-consolidation.md)
 
 ## Requirement Statement
 

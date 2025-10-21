@@ -14,7 +14,7 @@
   - [FR-hq1ns-canonical-path-registry](../../requirements/FR-hq1ns-canonical-path-registry.md)
   - [NFR-4sxdr-path-layout-compatibility](../../requirements/NFR-4sxdr-path-layout-compatibility.md)
 - Related Analysis:
-  - [AN-wn8p3-path-registry-consolidation](../../analysis/AN-wn8p3-path-registry-consolidation.md)
+  - [AN-uqva7-path-registry-consolidation](../../analysis/AN-uqva7-path-registry-consolidation.md)
 
 ## Overview
 
