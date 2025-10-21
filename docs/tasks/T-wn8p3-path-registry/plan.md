@@ -45,6 +45,8 @@ Execute the path registry redesign by introducing a consolidated `src/paths/` hi
 - Phase 2 – Consumer Migrations & Feature Parity
 - Phase 3 – Hardening, Enforcement, and Documentation
 
+> **Status Tracking:** Mark checkboxes (`[x]`) immediately after completing each task or subtask. If an item is intentionally skipped or deferred, annotate it (e.g., strike-through with a brief note) instead of leaving it unchecked.
+
 ---
 
 ## Phase 1: Foundations & Shared Utilities
