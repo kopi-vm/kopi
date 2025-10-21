@@ -12,6 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod cache;
+pub mod home;
+pub mod install;
 pub mod locking;
+pub mod shared;
+pub mod shims;
 
 pub use locking::{cache_lock_path, install_lock_directory, install_lock_path, locks_root};
+pub use shared::sanitize_segment;

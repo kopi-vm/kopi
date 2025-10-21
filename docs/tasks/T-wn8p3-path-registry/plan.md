@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Draft
+- Status: Phase 1 In Progress
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -59,7 +59,7 @@ Lay down the `src/paths/` module structure, extract shared sanitisation helpers,
 
 - Documentation:
   - `docs/tasks/T-wn8p3-path-registry/design.md` – Architectural blueprint
-  - `docs/analysis/AN-wn8p3-path-registry-consolidation.md` – Gap inventory
+  - `docs/analysis/AN-uqva7-path-registry-consolidation.md` – Gap inventory
 - Source Code to Modify:
   - `src/paths/mod.rs` – Re-export surface
   - New domain modules under `src/paths/`
@@ -69,12 +69,12 @@ Lay down the `src/paths/` module structure, extract shared sanitisation helpers,
 
 ### Tasks
 
-- [ ] **Module scaffolding**
-  - [ ] Create `src/paths/shared.rs` with slugging and directory utilities.
-  - [ ] Create domain modules (`install.rs`, `cache.rs`, `shims.rs`, `home.rs`) with placeholder functions returning existing paths.
-- [ ] **Baseline tests**
-  - [ ] Add unit tests covering slugging parity with `sanitize_segment`.
-  - [ ] Add golden-path tests for new helper functions using temp directories.
+- [x] **Module scaffolding**
+  - [x] Create `src/paths/shared.rs` with slugging and directory utilities.
+  - [x] Create domain modules (`install.rs`, `cache.rs`, `shims.rs`, `home.rs`) with placeholder functions returning existing paths.
+- [x] **Baseline tests**
+  - [x] Add unit tests covering slugging parity with `sanitize_segment`.
+  - [x] Add golden-path tests for new helper functions using temp directories.
 
 ### Deliverables
 

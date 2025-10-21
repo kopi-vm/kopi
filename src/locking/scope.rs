@@ -40,7 +40,11 @@ impl LockScope {
     /// Returns the on-disk path for this scope relative to the Kopi home directory.
     pub fn lock_path(&self, kopi_home: &Path) -> PathBuf {
         match self {
-            LockScope::Installation { coordinate } => install_lock_path(kopi_home, coordinate),
+            LockScope::Installation { coordinate } => install_lock_path(
+                kopi_home,
+                coordinate.distribution(),
+                coordinate.slug().as_ref(),
+            ),
             LockScope::CacheWriter => cache_lock_path(kopi_home),
             LockScope::GlobalConfig => locks_root(kopi_home).join("config.lock"),
         }

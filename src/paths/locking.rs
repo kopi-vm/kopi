@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::locking::{PackageCoordinate, package_coordinate::sanitize_segment};
+use crate::paths::home;
+use crate::paths::shared::sanitize_segment;
 use std::path::{Path, PathBuf};
 
-const LOCKS_DIR: &str = "locks";
 const INSTALL_DIR: &str = "install";
 const CACHE_LOCK_FILE: &str = "cache.lock";
 
 pub fn locks_root(kopi_home: &Path) -> PathBuf {
-    kopi_home.join(LOCKS_DIR)
+    home::locks_dir(kopi_home)
 }
 
 pub fn install_lock_directory(kopi_home: &Path, distribution: &str) -> PathBuf {
@@ -28,9 +28,9 @@ pub fn install_lock_directory(kopi_home: &Path, distribution: &str) -> PathBuf {
     locks_root(kopi_home).join(INSTALL_DIR).join(normalized)
 }
 
-pub fn install_lock_path(kopi_home: &Path, coordinate: &PackageCoordinate) -> PathBuf {
-    let file_name = format!("{}.lock", coordinate.slug());
-    install_lock_directory(kopi_home, coordinate.distribution()).join(file_name)
+pub fn install_lock_path(kopi_home: &Path, distribution: &str, slug: &str) -> PathBuf {
+    let file_name = format!("{slug}.lock");
+    install_lock_directory(kopi_home, distribution).join(file_name)
 }
 
 pub fn cache_lock_path(kopi_home: &Path) -> PathBuf {
@@ -40,7 +40,7 @@ pub fn cache_lock_path(kopi_home: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::locking::PackageKind;
+    use crate::locking::{PackageCoordinate, PackageKind};
 
     #[test]
     fn locks_root_joins_directory() {
@@ -62,7 +62,8 @@ mod tests {
             .with_architecture(Some("x64"))
             .with_javafx(true);
         let expected = Path::new("/tmp/kopi/locks/install/temurin/temurin-21-jdk-x64-javafx.lock");
-        assert_eq!(install_lock_path(home, &coordinate), expected);
+        let actual = install_lock_path(home, coordinate.distribution(), coordinate.slug().as_ref());
+        assert_eq!(actual, expected);
     }
 
     #[test]

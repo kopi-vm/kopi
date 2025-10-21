@@ -14,6 +14,7 @@
 
 use crate::error::{KopiError, Result};
 use crate::models::api::Package;
+use crate::paths::shared::sanitize_segment;
 use std::fmt;
 
 /// Represents the type of Java package being coordinated for locking.
@@ -224,28 +225,6 @@ fn build_variant_tags(package: &Package) -> Vec<String> {
     }
 
     tags
-}
-
-pub(crate) fn sanitize_segment(value: &str) -> Option<String> {
-    let mut output = String::with_capacity(value.len());
-    let mut last_dash = false;
-
-    for ch in value.chars() {
-        if ch.is_ascii_alphanumeric() {
-            output.push(ch.to_ascii_lowercase());
-            last_dash = false;
-        } else if !last_dash {
-            output.push('-');
-            last_dash = true;
-        }
-    }
-
-    let trimmed = output.trim_matches('-');
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed.to_string())
-    }
 }
 
 #[cfg(test)]
