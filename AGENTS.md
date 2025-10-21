@@ -137,6 +137,13 @@ fn test_parse_foojay_api_response() {
 - Keep platform-dependent code under `src/platform/` (and its submodules) and expose only cross-platform interfaces from higher layers.
 - When introducing new components, document their location rationale in the relevant design or plan to aid future maintainers.
 
+### Prevent Circular Module Dependencies
+
+- Keep the module graph acyclic so features remain testable and maintainable.
+- Favor dependency inversion (traits, interfaces) or data transfer structures instead of bidirectional imports when modules must collaborate.
+- If a new dependency would close a cycle, refactor by extracting shared functionality into a dedicated module documented in the architecture references.
+- Run dependency analysis tools or targeted `cargo check` commands when restructuring to confirm cycles are not introduced.
+
 ## Traceable Development Lifecycle (TDL)
 
 _Structured phases, linked artifacts, verifiable outcomes_
