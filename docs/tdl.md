@@ -114,6 +114,7 @@ This project supports parallel development using git-worktree with unique IDs to
 ### Step 2: Requirements (what/why)
 
 - **Purpose**: Formalize individual requirements with clear acceptance criteria
+- **Guidance**: Describe requirements as implementation-independent problems to solve, avoiding assumptions about specific solutions
 - **Template**: [`templates/requirements.md`](templates/requirements.md) - Template for individual requirement documents (FR-<id>-<capability> or NFR-<id>-<quality>). Each requirement is a standalone, long-lived document
 - **Output**: Formal requirements with IDs (`FR-<id>-<capability>`, `NFR-<id>-<quality>`), measurable criteria
 - **Location**: `docs/requirements/FR-<id>-<capability>.md` and `docs/requirements/NFR-<id>-<quality>.md`

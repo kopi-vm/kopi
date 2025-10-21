@@ -20,6 +20,8 @@
 
 ## Requirement Statement
 
+> Focus the requirement on the problem to solve and the desired outcome, remaining independent of any specific implementation approach.
+
 `[Clear, concise, unambiguous statement of what is required. One requirement per document. Be specific and measurable.]`
 
 Examples:

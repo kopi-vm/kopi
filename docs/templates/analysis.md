@@ -64,6 +64,8 @@
 
 ## Discovered Requirements
 
+> Capture potential requirements as solution-agnostic problem statements focused on the problem to solve rather than any specific implementation.
+
 ### Functional Requirements (Potential)
 
 - [ ] **FR-DRAFT-1**: `[Requirement description]` → Will become FR-<id>
