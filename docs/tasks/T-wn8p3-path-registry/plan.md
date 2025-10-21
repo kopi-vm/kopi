@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 1 In Progress
+- Status: Complete
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -22,10 +22,10 @@ Execute the path registry redesign by introducing a consolidated `src/paths/` hi
 
 ## Success Metrics
 
-- [ ] All Kopi home path joins across installation, cache, shim, locking, and configuration align with the new helpers.
-- [ ] Compatibility regression suite demonstrates identical path outputs and CLI behaviour before and after migration.
-- [ ] Documentation (internal architecture reference and task README) highlights the `paths` module as the canonical source.
-- [ ] All standard checks pass (`cargo fmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test --lib --quiet`).
+- [x] All Kopi home path joins across installation, cache, shim, locking, and configuration align with the new helpers (guarded by `tests/paths_enforcement.rs`).
+- [x] Compatibility regression suite demonstrates identical path outputs and CLI behaviour before and after migration (maintained from Phase 2; no deviations introduced in Phase 3).
+- [x] Documentation (internal architecture reference and task README) highlights the `paths` module as the canonical source.
+- [x] All standard checks pass (`cargo fmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test --lib --quiet`).
 
 ## Scope
 
@@ -37,7 +37,7 @@ Execute the path registry redesign by introducing a consolidated `src/paths/` hi
 ## ADR & Legacy Alignment
 
 - [x] Confirm alignment with ADR-8mnaz (locking paths) and reference it in design.
-- [ ] During implementation, retire remaining `PathBuf::join("locks")` patterns; track via Phase 2 checklist.
+- [x] During implementation, retire remaining `PathBuf::join("locks")` patterns; track via Phase 2 checklist. (Tests updated on 2025-10-21 to remove direct joins.)
 
 ## Plan Summary
 
@@ -172,14 +172,14 @@ Finalize documentation, enforce usage of helpers, and remove transitional code o
 
 ### Phase 3 Tasks
 
-- [ ] **Documentation updates**
-  - [ ] Document the `paths` module hierarchy and responsibilities.
-  - [ ] Update task README links to include design and plan references.
-- [ ] **Enforcement tooling**
-  - [ ] Add a CI check or Clippy lint guard (e.g., deny `join("jdks")`) or document code review checklist if lint infeasible.
-- [ ] **Cleanup**
-  - [ ] Remove temporary instrumentation or compatibility logging.
-  - [ ] Ensure traceability matrices reference FR-hq1ns and NFR-4sxdr.
+- [x] **Documentation updates**
+  - [x] Document the `paths` module hierarchy and responsibilities. (Updated `docs/architecture.md` and `docs/reference.md` on 2025-10-21.)
+  - [x] Update task README links to include design and plan references. (Links verified on 2025-10-21.)
+- [x] **Enforcement tooling**
+  - [x] Add a CI check or Clippy lint guard (e.g., deny `join("jdks")`) or document code review checklist if lint infeasible. (Added `tests/paths_enforcement.rs`.)
+- [x] **Cleanup**
+  - [x] Remove temporary instrumentation or compatibility logging. (No temporary logging remained after Phase 2; verified via repository scan on 2025-10-21.)
+  - [x] Ensure traceability matrices reference FR-hq1ns and NFR-4sxdr. (Refreshed with `bun scripts/trace-status.ts --write` on 2025-10-21.)
 
 ### Phase 3 Deliverables
 
@@ -266,13 +266,13 @@ bun scripts/trace-status.ts --write
 
 ## Definition of Done
 
-- [ ] `cargo check`
-- [ ] `cargo fmt`
-- [ ] `cargo clippy --all-targets -- -D warnings`
-- [ ] `cargo test --lib --quiet`
-- [ ] Platform verification complete (Unix + Windows regression evidence)
-- [ ] Documentation updated (`docs/architecture.md`, `docs/reference.md`, task README)
-- [ ] Traceability matrix refreshed (`bun scripts/trace-status.ts --write`)
+- [x] `cargo check`
+- [x] `cargo fmt`
+- [x] `cargo clippy --all-targets -- -D warnings`
+- [x] `cargo test --lib --quiet`
+- [x] Platform verification complete (Unix + Windows regression evidence — no new platform behaviour introduced in Phase 3.)
+- [x] Documentation updated (`docs/architecture.md`, `docs/reference.md`, task README)
+- [x] Traceability matrix refreshed (`bun scripts/trace-status.ts --write`)
 
 ---
 

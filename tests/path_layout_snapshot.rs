@@ -10,7 +10,12 @@ fn path_layout_snapshot_matches_expected_structure() {
     assert_eq!(home::cache_dir(kopi_home), kopi_home.join("cache"));
     assert_eq!(home::shims_dir(kopi_home), kopi_home.join("shims"));
     assert_eq!(home::bin_dir(kopi_home), kopi_home.join("bin"));
-    assert_eq!(home::locks_dir(kopi_home), kopi_home.join("locks"));
+    let locks_dir = home::locks_dir(kopi_home);
+    assert_eq!(locks_dir.parent(), Some(kopi_home));
+    assert_eq!(
+        locks_dir.file_name().and_then(|s| s.to_str()),
+        Some("locks")
+    );
 
     let slug = "temurin-21-jdk-x64";
     assert_eq!(
@@ -48,10 +53,12 @@ fn path_layout_snapshot_matches_expected_structure() {
             .join(kopi::platform::with_executable_extension("java"))
     );
 
-    assert_eq!(locking::locks_root(kopi_home), kopi_home.join("locks"));
+    assert_eq!(locking::locks_root(kopi_home), locks_dir);
     assert_eq!(
         locking::install_lock_directory(kopi_home, "Temurin FX"),
-        kopi_home.join("locks").join("install").join("temurin-fx")
+        locking::locks_root(kopi_home)
+            .join("install")
+            .join("temurin-fx")
     );
 
     // Ensure helper-backed directory creation mirrors expected layout.

@@ -90,7 +90,10 @@ mod tests {
     fn ensure_nested_directory_creates_full_path() {
         let temp_dir = TempDir::new().unwrap();
         let nested = ensure_nested_directory(temp_dir.path(), ["locks", "install"]).unwrap();
-        assert_eq!(nested, temp_dir.path().join("locks").join("install"));
+        let mut expected = temp_dir.path().to_path_buf();
+        expected.push("locks");
+        expected.push("install");
+        assert_eq!(nested, expected);
         assert!(nested.exists());
     }
 }

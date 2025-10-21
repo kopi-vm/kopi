@@ -4,6 +4,16 @@
 
 Kopi is a JDK version management tool that integrates with your shell to seamlessly switch between different Java Development Kit versions. It uses a flexible metadata system that fetches JDK information from multiple sources including pre-generated metadata files and the Foojay API, providing comprehensive JDK availability with optimal performance similar to tools like volta, nvm, and pyenv.
 
+## Filesystem Layout and Path Helpers
+
+All Kopi home directories (installations, cache, shims, binaries, locks) are derived through the `src/paths/` module to ensure a single canonical layout:
+
+- `paths::home` exposes base directory helpers such as `jdks_dir`, `cache_dir`, and `locks_dir`.
+- `paths::install`, `paths::cache`, `paths::shims`, and `paths::locking` build on those helpers for subsystem-specific files (metadata, shim executables, lockfiles).
+- `paths::shared` provides sanitisation and directory creation utilities consumed by the other modules.
+
+When adding new path consumers, import the relevant helper rather than calling `PathBuf::join` with hard-coded directory names; this enforcement is covered by the `paths_enforcement` test introduced in T-wn8p3.
+
 ## Global Command-Line Flags
 
 ### `--no-progress`

@@ -21,6 +21,7 @@ kopi/
 │   │   └── generator/   # Metadata generation utilities
 │   ├── models/          # Data models and structures
 │   ├── platform/        # Platform-specific functionality
+│   ├── paths/           # Canonical Kopi home path registry and helpers
 │   ├── security/        # Security validation and HTTPS verification
 │   ├── shim/            # Shim management
 │   ├── storage/         # Storage and disk space management
@@ -81,6 +82,16 @@ kopi/
   - `package.rs` - Package information
   - `platform.rs` - Platform-specific models
 
+### Filesystem Paths
+
+- `src/paths/mod.rs` - Module root re-exporting Kopi home helpers
+- `src/paths/home.rs` - Base directory constants and ensure helpers (`jdks`, `cache`, `shims`, `bin`, `locks`)
+- `src/paths/install.rs` - Installation directory utilities and metadata file helpers
+- `src/paths/cache.rs` - Cache directory helpers including metadata cache paths
+- `src/paths/shims.rs` - Shim directory helpers and executable resolution
+- `src/paths/locking.rs` - Lock directory helpers aligned with ADR-8mnaz
+- `src/paths/shared.rs` - Shared sanitisation and directory creation utilities
+
 ### Command Implementations
 
 - `src/commands/mod.rs` - Command registry and dispatch
@@ -127,10 +138,17 @@ kopi/
 ### JDK Installation & Storage
 
 - **Installation Path**: `~/.kopi/jdks/<vendor>-<version>/`
+- **Path Registry**: The `src/paths/` helpers (e.g., `paths::install`, `paths::cache`, `paths::locking`) derive every Kopi home subdirectory to guarantee consistent layout across commands (FR-hq1ns).
 - **Archive Support**: TAR and ZIP extraction with platform-specific handling
 - **Download Management**: Progress reporting with resumable downloads
 - **Storage Repository**: Centralized JDK management with disk space validation
 - **Uninstallation**: Safe batch uninstall with dependency checking
+
+### Filesystem Path Registry
+
+- **Module Layout**: `src/paths/` exposes domain modules (`home`, `install`, `cache`, `shims`, `locking`, `shared`) that are the sole source of Kopi home path construction.
+- **Responsibilities**: Helpers encapsulate directory naming, atomic directory creation, and sanitisation shared between installation, cache, shim, and locking flows.
+- **Integration Points**: Commands, storage subsystems, and doctor checks import the helpers rather than joining strings, preventing drift in directory layout and satisfying FR-hq1ns/NFR-4sxdr.
 
 ### Version Resolution
 
