@@ -232,6 +232,7 @@ All three commands must complete without errors to finish TypeScript-related wor
 - Ensure documentation, comments, and messages remain in English.
 - For Markdown changes, run `bun format` followed by `bun lint` and resolve any reported issues before finalizing.
 - If `docs/traceability.md` is missing or you add or remove any files under `docs/`, run `bun scripts/trace-status.ts --write` to regenerate the traceability matrix before completing the work.
+- During implementation, mark the completed phase checkboxes in the relevant documents at the end of each phase so progress stays transparent and auditable.
 
 ## Essential Commands
 
