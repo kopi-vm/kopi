@@ -9,15 +9,16 @@
 ## Links
 
 - Related Analyses:
-  - N/A – None
+  - [AN-wn8p3-path-registry-consolidation](../../analysis/AN-wn8p3-path-registry-consolidation.md)
 - Related Requirements:
-  - N/A – None
+  - [FR-hq1ns-canonical-path-registry](../../requirements/FR-hq1ns-canonical-path-registry.md)
+  - [NFR-4sxdr-path-layout-compatibility](../../requirements/NFR-4sxdr-path-layout-compatibility.md)
 - Related ADRs:
   - N/A – None
 - Associated Design Document:
-  - N/A – Design not started
+  - [T-wn8p3-path-registry/design.md](./design.md)
 - Associated Plan Document:
-  - N/A – Plan not started
+  - [T-wn8p3-path-registry/plan.md](./plan.md)
 
 ## Summary
 
