@@ -11,7 +11,8 @@
 - Related Analyses:
   - N/A – Standalone analysis
 - Related Requirements:
-  - N/A – None yet
+  - [FR-hq1ns-canonical-path-registry](../requirements/FR-hq1ns-canonical-path-registry.md)
+  - [NFR-4sxdr-path-layout-compatibility](../requirements/NFR-4sxdr-path-layout-compatibility.md)
 - Related ADRs:
   - N/A – None yet
 - Related Tasks:
