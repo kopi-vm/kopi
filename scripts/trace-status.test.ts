@@ -731,12 +731,12 @@ describe("traceability helpers", () => {
 
     writeDoc(
       repoRoot,
-      "docs/requirements/FR-0001-sample.md",
+      "docs/requirements/FR-1001-sample.md",
       requirementDoc({
-        id: "FR-0001",
+        id: "FR-1001",
         title: "Sample Requirement",
         status: "Accepted",
-        tasks: ["[T-0001-demo](../tasks/T-0001-demo/plan.md)"],
+        tasks: ["[T-4001-demo](../tasks/T-4001-demo/plan.md)"],
       }),
     );
 
@@ -753,45 +753,45 @@ describe("traceability helpers", () => {
 
     writeDoc(
       repoRoot,
-      "docs/analysis/AN-0001-investigation.md",
+      "docs/analysis/AN-2001-investigation.md",
       analysisDoc({
-        id: "AN-0001",
+        id: "AN-2001",
         title: "Investigation",
         status: "Complete",
-        relatedRequirements: ["[FR-0001](../requirements/FR-0001-sample.md)"],
-        relatedAdrs: ["[ADR-0001](../adr/ADR-0001-decision.md)"],
+        relatedRequirements: ["[FR-1001](../requirements/FR-1001-sample.md)"],
+        relatedAdrs: ["[ADR-3001](../adr/ADR-3001-decision.md)"],
       }),
     );
 
     writeDoc(
       repoRoot,
-      "docs/adr/ADR-0001-decision.md",
+      "docs/adr/ADR-3001-decision.md",
       adrDoc({
-        id: "ADR-0001",
-        title: "ADR-0001 Decision",
+        id: "ADR-3001",
+        title: "ADR-3001 Decision",
         status: "Accepted",
-        impactedRequirements: ["[FR-0001](../requirements/FR-0001-sample.md)"],
-        relatedTasks: ["[T-0001](../tasks/T-0001-demo/plan.md)"],
+        impactedRequirements: ["[FR-1001](../requirements/FR-1001-sample.md)"],
+        relatedTasks: ["[T-4001](../tasks/T-4001-demo/plan.md)"],
       }),
     );
 
     writeDoc(
       repoRoot,
-      "docs/tasks/T-0001-demo/plan.md",
+      "docs/tasks/T-4001-demo/plan.md",
       taskPlanDoc({
-        id: "T-0001",
+        id: "T-4001",
         title: "Demo Task Implementation Plan",
         status: "Phase 1 In Progress",
         associatedDesign: "N/A – Awaiting design approval",
-        requirements: ["[FR-0001](../../requirements/FR-0001-sample.md)"],
+        requirements: ["[FR-1001](../../requirements/FR-1001-sample.md)"],
       }),
     );
 
     writeDoc(
       repoRoot,
-      "docs/tasks/T-0002-unlinked/plan.md",
+      "docs/tasks/T-4002-unlinked/plan.md",
       taskPlanDoc({
-        id: "T-0002",
+        id: "T-4002",
         title: "Unlinked Plan",
         status: "Not Started",
         associatedDesign: "N/A – Pending design",
@@ -808,26 +808,26 @@ describe("traceability helpers", () => {
     expect(coverage.total_analyses).toBe(1);
     expect(coverage.total_adrs).toBe(1);
 
-    expect(findImplementingTasks(documents, "FR-0001")).toEqual(["T-0001"]);
+    expect(findImplementingTasks(documents, "FR-1001")).toEqual(["T-4001"]);
     expect(findOrphanRequirements(documents)).toEqual(["FR-0002"]);
     expect(findOrphanAdrs(documents)).toEqual([]);
-    expect(findOrphanTasks(documents)).toEqual(["T-0002"]);
+    expect(findOrphanTasks(documents)).toEqual(["T-4002"]);
 
     const outputPath = join(repoRoot, "docs", "traceability.md");
     const markdown = renderTraceabilityMarkdown(documents, outputPath);
     expect(markdown).toContain("| Requirements | 2 |");
     expect(markdown).toContain("| Requirements with tasks | 1 (50%) |");
     expect(markdown).toContain(
-      "| [FR-0001](requirements/FR-0001-sample.md) - FR-0001 Sample Requirement | Accepted |",
+      "| [FR-1001](requirements/FR-1001-sample.md) - FR-1001 Sample Requirement | Accepted |",
     );
     expect(markdown).toContain(
-      "[T-0001](tasks/T-0001-demo/plan.md) (Phase 1 In Progress)",
+      "[T-4001](tasks/T-4001-demo/plan.md) (Phase 1 In Progress)",
     );
     expect(markdown).toContain(
       "- FR-0002: No upstream analysis or ADR references (Status: Proposed)",
     );
     expect(markdown).toContain(
-      "- T-0002: No upstream analysis, requirement, or ADR references (Status: Not Started)",
+      "- T-4002: No upstream analysis, requirement, or ADR references (Status: Not Started)",
     );
     expect(markdown).toContain("### Dependency Consistency");
     expect(markdown).toContain(
@@ -1624,6 +1624,75 @@ describe("checkIntegrity", () => {
     console.error = originalError;
   });
 
+  it("returns false when document ID suffixes collide across prefixes", () => {
+    const repoRoot = createTempDir();
+    const baseAnalysis = analysisDoc({
+      id: "AN-j1k2m",
+      title: "Collision Analysis",
+      status: "Draft",
+      relatedRequirements: "N/A – None",
+      relatedAdrs: "N/A – None",
+      relatedAnalyses: "N/A – None",
+    });
+    const analysisWithTaskLink = baseAnalysis.replace(
+      "\n## Executive Summary",
+      "\n- Related Tasks:\n  - [T-j1k2m](../tasks/T-j1k2m-collision/README.md)\n\n## Executive Summary",
+    );
+    writeDoc(
+      repoRoot,
+      "docs/analysis/AN-j1k2m-collision.md",
+      analysisWithTaskLink,
+    );
+    writeDoc(
+      repoRoot,
+      "docs/tasks/T-j1k2m-collision/README.md",
+      [
+        "# T-j1k2m Collision Task",
+        "",
+        "## Metadata",
+        "",
+        "- Type: Task",
+        "- Status: Draft",
+        "",
+        "## Links",
+        "",
+        "- Associated Plan Document: N/A – Not yet created",
+        "- Associated Design Document: N/A – Not yet created",
+        "- Related Analyses:",
+        "  - [AN-j1k2m](../../analysis/AN-j1k2m-collision.md)",
+        "- Related Requirements: N/A – None",
+        "- Related ADRs: N/A – None",
+        "",
+        "## Summary",
+        "",
+        "Placeholder summary for duplicate ID detection.",
+        "",
+        "## Scope",
+        "",
+        "- In scope: Placeholder work.",
+        "- Out of scope: None.",
+        "",
+        "## Success Metrics",
+        "",
+        "- Placeholder metric.",
+      ].join("\n"),
+    );
+
+    const documents = loadDocuments(repoRoot);
+    const errors: unknown[][] = [];
+    console.error = (...args: unknown[]) => {
+      errors.push(args);
+    };
+
+    const result = checkIntegrity(documents);
+    expect(result).toBe(false);
+    const flattened = errors.map((entry) => entry.join(" ")).join("\n");
+    expect(flattened).toContain("Duplicate document IDs detected:");
+    expect(flattened).toContain("Suffix j1k2m reused by");
+    expect(flattened).toContain("AN-j1k2m");
+    expect(flattened).toContain("T-j1k2m");
+  });
+
   it("returns false when prerequisite links are missing", () => {
     const repoRoot = createTempDir();
     writeDoc(
@@ -1928,35 +1997,35 @@ describe("main", () => {
 
     writeDoc(
       repo,
-      "docs/requirements/FR-0001-ready.md",
+      "docs/requirements/FR-1101-ready.md",
       requirementDoc({
-        id: "FR-0001",
+        id: "FR-1101",
         title: "Ready Requirement",
         status: "Implemented",
-        tasks: ["[T-0001-ready](../tasks/T-0001-ready/plan.md)"],
+        tasks: ["[T-4101-ready](../tasks/T-4101-ready/plan.md)"],
       }),
     );
     writeDoc(
       repo,
-      "docs/analysis/AN-0001-seed.md",
+      "docs/analysis/AN-2101-seed.md",
       analysisDoc({
-        id: "AN-0001",
+        id: "AN-2101",
         title: "Seed",
         status: "Complete",
-        relatedRequirements: ["[FR-0001](../requirements/FR-0001-ready.md)"],
+        relatedRequirements: ["[FR-1101](../requirements/FR-1101-ready.md)"],
         relatedAdrs: "N/A – None",
         relatedAnalyses: "N/A – No previous analysis",
       }),
     );
     writeDoc(
       repo,
-      "docs/tasks/T-0001-ready/plan.md",
+      "docs/tasks/T-4101-ready/plan.md",
       taskPlanDoc({
-        id: "T-0001",
+        id: "T-4101",
         title: "Ready Plan",
         status: "Completed",
         associatedDesign: "N/A – Design complete",
-        requirements: ["[FR-0001](../../requirements/FR-0001-ready.md)"],
+        requirements: ["[FR-1101](../../requirements/FR-1101-ready.md)"],
       }),
     );
 

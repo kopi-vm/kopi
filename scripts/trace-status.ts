@@ -1648,6 +1648,46 @@ export function findHeadingMismatches(
   return mismatches.sort((a, b) => a.path.localeCompare(b.path));
 }
 
+type DuplicateIdIssue = {
+  readonly suffix: string;
+  readonly documents: readonly TDLDocument[];
+};
+
+function extractIdSuffix(docId: string): string | null {
+  const match = docId.match(/^(AN|FR|NFR|ADR|T)-([0-9A-Za-z]+)/);
+  if (!match) return null;
+  return match[2].toLowerCase();
+}
+
+function findDuplicateIdIssues(
+  documents: Map<string, TDLDocument>,
+): DuplicateIdIssue[] {
+  const bySuffix = new Map<string, TDLDocument[]>();
+
+  for (const doc of documents.values()) {
+    const suffix = extractIdSuffix(doc.docId);
+    if (!suffix) continue;
+    let bucket = bySuffix.get(suffix);
+    if (!bucket) {
+      bucket = [];
+      bySuffix.set(suffix, bucket);
+    }
+    bucket.push(doc);
+  }
+
+  const issues: DuplicateIdIssue[] = [];
+  for (const [suffix, docsForSuffix] of bySuffix.entries()) {
+    const uniqueIds = new Set(docsForSuffix.map((doc) => doc.docId));
+    if (uniqueIds.size <= 1) continue;
+    const sortedDocs = [...docsForSuffix].sort((a, b) =>
+      a.docId.localeCompare(b.docId),
+    );
+    issues.push({ suffix, documents: sortedDocs });
+  }
+
+  return issues.sort((a, b) => a.suffix.localeCompare(b.suffix));
+}
+
 export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
   const inboundReferences = buildInboundReferenceIndex(documents);
   const orphanRequirements = findOrphanRequirements(
@@ -1665,6 +1705,24 @@ export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
   } = buildRequirementDependencyInfo(documents);
 
   let ok = true;
+
+  const duplicateIdIssues = findDuplicateIdIssues(documents);
+  if (duplicateIdIssues.length) {
+    console.error("Duplicate document IDs detected:");
+    for (const issue of duplicateIdIssues) {
+      const displayEntries = issue.documents
+        .map((doc) => {
+          const location = relative(process.cwd(), doc.path);
+          const displayPath = location.startsWith("..")
+            ? doc.path
+            : location || doc.path;
+          return `${doc.docId} (${displayPath})`;
+        })
+        .join(", ");
+      console.error(`  - Suffix ${issue.suffix} reused by ${displayEntries}`);
+    }
+    ok = false;
+  }
 
   if (orphanRequirements.length || orphanAdrs.length || orphanTasks.length) {
     console.error("Traceability gaps detected:");
