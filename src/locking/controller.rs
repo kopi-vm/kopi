@@ -319,7 +319,7 @@ enum AcquireDisposition {
 mod tests {
     use super::*;
     use crate::locking::package_coordinate::PackageCoordinate;
-    use crate::locking::{LockKind, LockScope, PackageKind};
+    use crate::locking::{LockKind, LockScope, LockTimeoutValue, PackageKind};
     use crate::platform::{FilesystemInfo, FilesystemInspector, FilesystemKind};
     use std::sync::Mutex;
     use tempfile::TempDir;
@@ -404,10 +404,8 @@ mod tests {
     #[test]
     fn blocking_acquire_times_out() {
         let temp = TempDir::new().unwrap();
-        let config = LockingConfig {
-            timeout_secs: 1,
-            ..LockingConfig::default()
-        };
+        let mut config = LockingConfig::default();
+        config.set_timeout_value(LockTimeoutValue::from_secs(1));
         let controller = LockController::new(
             temp.path().to_path_buf(),
             &config,
@@ -447,10 +445,8 @@ mod tests {
     #[test]
     fn forced_fallback_mode_bypasses_inspector() {
         let temp = TempDir::new().unwrap();
-        let config = LockingConfig {
-            mode: LockingMode::Fallback,
-            ..LockingConfig::default()
-        };
+        let mut config = LockingConfig::default();
+        config.mode = LockingMode::Fallback;
         let controller = LockController::with_default_inspector(temp.path().to_path_buf(), &config);
         let scope = LockScope::CacheWriter;
 
@@ -462,10 +458,8 @@ mod tests {
     #[test]
     fn forced_advisory_mode_attempts_lock() {
         let temp = TempDir::new().unwrap();
-        let config = LockingConfig {
-            mode: LockingMode::Advisory,
-            ..LockingConfig::default()
-        };
+        let mut config = LockingConfig::default();
+        config.mode = LockingMode::Advisory;
         let controller = LockController::new(
             temp.path().to_path_buf(),
             &config,

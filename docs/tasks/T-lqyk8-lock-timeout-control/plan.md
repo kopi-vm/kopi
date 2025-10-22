@@ -64,16 +64,16 @@ Expose a unified resolver that honours CLI/env/config precedence and special val
 
 ### Tasks
 
-- [ ] **Parsing & Data Model**
-  - [ ] Introduce `LockTimeoutValue` enum and serde helpers for numeric/string (`"infinite"`) values.
-  - [ ] Extend `LockingConfig` to expose `timeout_value()` returning `LockTimeoutValue`.
-- [ ] **Input Precedence**
-  - [ ] Add global Clap flag `--lock-timeout <seconds|infinite>` with custom parser.
-  - [ ] Read `KOPI_LOCK_TIMEOUT` environment variable and feed into resolver.
-  - [ ] Implement `LockTimeoutResolver::resolve(scope, cli_override, env_override, config_value)`.
-- [ ] **Tests**
-  - [ ] Unit tests covering precedence order, special values, and validation errors.
-  - [ ] Update config round-trip tests for `"infinite"` serialization.
+- [x] **Parsing & Data Model**
+  - [x] Introduce `LockTimeoutValue` enum and serde helpers for numeric/string (`"infinite"`) values.
+  - [x] Extend `LockingConfig` to expose `timeout_value()` returning `LockTimeoutValue`.
+- [x] **Input Precedence**
+  - [x] Add global Clap flag `--lock-timeout <seconds|infinite>` with custom parser.
+  - [x] Read `KOPI_LOCK_TIMEOUT` environment variable and feed into resolver.
+  - [x] Implement `LockTimeoutResolver::resolve(scope, cli_override, env_override, config_value)`.
+- [x] **Tests**
+  - [x] Unit tests covering precedence order, special values, and validation errors.
+  - [x] Update config round-trip tests for `"infinite"` serialization.
 
 ### Deliverables
 

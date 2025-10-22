@@ -43,6 +43,10 @@ struct Cli {
     #[arg(long, global = true)]
     no_progress: bool,
 
+    /// Override lock acquisition timeout (seconds or 'infinite')
+    #[arg(long, value_name = "SECONDS|infinite", global = true)]
+    lock_timeout: Option<String>,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -240,13 +244,18 @@ fn main() {
     setup_logger(&cli);
 
     // Load configuration once at startup
-    let config = match new_kopi_config() {
+    let mut config = match new_kopi_config() {
         Ok(config) => config,
         Err(e) => {
             eprintln!("{}", format_error_chain(&e));
             std::process::exit(get_exit_code(&e));
         }
     };
+
+    if let Err(e) = config.apply_lock_timeout_overrides(cli.lock_timeout.as_deref()) {
+        eprintln!("{}", format_error_chain(&e));
+        std::process::exit(get_exit_code(&e));
+    }
 
     if let Err(err) = kopi::locking::run_startup_hygiene(config.kopi_home(), &config.locking) {
         warn!("Lock hygiene sweep failed: {err}");

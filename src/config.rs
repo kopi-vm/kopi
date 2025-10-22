@@ -13,10 +13,16 @@
 // limitations under the License.
 
 use crate::error::{KopiError, Result};
+use crate::locking::timeout::{
+    LockTimeoutParseError, LockTimeoutResolution, LockTimeoutResolver, LockTimeoutSource,
+    LockTimeoutValue, parse_timeout_override,
+};
 use crate::paths::{cache, home};
 use config::{Config, ConfigError, Environment, File};
 use dirs::home_dir;
 use log::warn;
+use serde::de::{self, Deserializer};
+use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -199,22 +205,77 @@ pub struct LockingConfig {
     #[serde(default = "default_locking_mode")]
     pub mode: LockingMode,
 
-    #[serde(default = "default_locking_timeout_secs", rename = "timeout")]
-    pub timeout_secs: u64,
+    #[serde(
+        default = "default_lock_timeout_value",
+        rename = "timeout",
+        deserialize_with = "deserialize_lock_timeout",
+        serialize_with = "serialize_lock_timeout"
+    )]
+    configured_timeout: LockTimeoutValue,
+
+    #[serde(skip, default = "default_lock_timeout_value")]
+    effective_timeout: LockTimeoutValue,
+
+    #[serde(skip, default)]
+    timeout_source: LockTimeoutSource,
 }
 
 impl LockingConfig {
     /// Returns the configured timeout as a `Duration` for convenience.
     pub fn timeout(&self) -> Duration {
-        Duration::from_secs(self.timeout_secs)
+        self.effective_timeout.as_duration()
+    }
+
+    pub fn timeout_value(&self) -> LockTimeoutValue {
+        self.effective_timeout
+    }
+
+    pub fn set_timeout_value(&mut self, value: LockTimeoutValue) {
+        self.configured_timeout = value;
+        self.initialize_effective_timeout();
+    }
+
+    pub fn configured_timeout_value(&self) -> LockTimeoutValue {
+        self.configured_timeout
+    }
+
+    pub fn timeout_source(&self) -> LockTimeoutSource {
+        self.timeout_source
+    }
+
+    pub fn resolve_timeout(
+        &mut self,
+        cli_override: Option<&str>,
+        env_override: Option<&str>,
+    ) -> std::result::Result<LockTimeoutResolution, LockTimeoutParseError> {
+        let default = default_lock_timeout_value();
+        let resolution =
+            LockTimeoutResolver::new(cli_override, env_override, self.configured_timeout, default)
+                .resolve()?;
+        self.effective_timeout = resolution.value;
+        self.timeout_source = resolution.source;
+        Ok(resolution)
+    }
+
+    fn initialize_effective_timeout(&mut self) {
+        let default = default_lock_timeout_value();
+        if self.configured_timeout == default {
+            self.timeout_source = LockTimeoutSource::Default;
+        } else {
+            self.timeout_source = LockTimeoutSource::Config;
+        }
+        self.effective_timeout = self.configured_timeout;
     }
 }
 
 impl Default for LockingConfig {
     fn default() -> Self {
+        let default_timeout = default_lock_timeout_value();
         Self {
             mode: default_locking_mode(),
-            timeout_secs: default_locking_timeout_secs(),
+            configured_timeout: default_timeout,
+            effective_timeout: default_timeout,
+            timeout_source: LockTimeoutSource::Default,
         }
     }
 }
@@ -253,8 +314,46 @@ fn default_locking_mode() -> LockingMode {
     LockingMode::Auto
 }
 
-fn default_locking_timeout_secs() -> u64 {
-    DEFAULT_LOCK_TIMEOUT_SECS
+fn default_lock_timeout_value() -> LockTimeoutValue {
+    LockTimeoutValue::from_secs(DEFAULT_LOCK_TIMEOUT_SECS)
+}
+
+fn deserialize_lock_timeout<'de, D>(
+    deserializer: D,
+) -> std::result::Result<LockTimeoutValue, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum RawTimeout<'a> {
+        Number(u64),
+        BorrowedStr(&'a str),
+        OwnedString(String),
+    }
+
+    match RawTimeout::deserialize(deserializer)? {
+        RawTimeout::Number(seconds) => Ok(LockTimeoutValue::from_secs(seconds)),
+        RawTimeout::BorrowedStr(value) => {
+            parse_timeout_override(value).map_err(|err| de::Error::custom(err.to_string()))
+        }
+        RawTimeout::OwnedString(value) => {
+            parse_timeout_override(&value).map_err(|err| de::Error::custom(err.to_string()))
+        }
+    }
+}
+
+fn serialize_lock_timeout<S>(
+    value: &LockTimeoutValue,
+    serializer: S,
+) -> std::result::Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match value {
+        LockTimeoutValue::Finite(duration) => serializer.serialize_u64(duration.as_secs()),
+        LockTimeoutValue::Infinite => serializer.serialize_str("infinite"),
+    }
 }
 
 fn default_distribution() -> String {
@@ -384,8 +483,20 @@ impl KopiConfig {
 
         // Set the kopi_home path
         config.kopi_home = kopi_home;
+        config.locking.initialize_effective_timeout();
+        let _ = config.apply_lock_timeout_overrides(None)?;
 
         Ok(config)
+    }
+
+    pub fn apply_lock_timeout_overrides(
+        &mut self,
+        cli_override: Option<&str>,
+    ) -> Result<LockTimeoutResolution> {
+        let env_override = std::env::var("KOPI_LOCK_TIMEOUT").ok();
+        self.locking
+            .resolve_timeout(cli_override, env_override.as_deref())
+            .map_err(|err| KopiError::InvalidConfig(err.to_string()))
     }
 
     pub fn save(&self) -> Result<()> {
@@ -474,6 +585,7 @@ mod tests {
             env::remove_var("KOPI_HOME");
             env::remove_var("KOPI_LOCKING__MODE");
             env::remove_var("KOPI_LOCKING__TIMEOUT");
+            env::remove_var("KOPI_LOCK_TIMEOUT");
         }
 
         let kopi_home = resolve_kopi_home().unwrap();
@@ -481,7 +593,10 @@ mod tests {
         assert_eq!(config.storage.min_disk_space_mb, DEFAULT_MIN_DISK_SPACE_MB);
         assert_eq!(config.default_distribution, "temurin");
         assert_eq!(config.locking.mode, LockingMode::Auto);
-        assert_eq!(config.locking.timeout_secs, DEFAULT_LOCK_TIMEOUT_SECS);
+        assert_eq!(
+            config.locking.timeout_value(),
+            LockTimeoutValue::from_secs(DEFAULT_LOCK_TIMEOUT_SECS)
+        );
         // The path should contain .kopi - it could be absolute or relative
         let path_str = config.kopi_home.to_string_lossy();
         assert!(
@@ -502,6 +617,7 @@ mod tests {
             env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
             env::remove_var("KOPI_LOCKING__MODE");
             env::remove_var("KOPI_LOCKING__TIMEOUT");
+            env::remove_var("KOPI_LOCK_TIMEOUT");
         }
 
         let temp_dir = TempDir::new().unwrap();
@@ -510,7 +626,10 @@ mod tests {
         assert_eq!(config.default_distribution, "temurin");
         assert_eq!(config.kopi_home, temp_dir.path());
         assert_eq!(config.locking.mode, LockingMode::Auto);
-        assert_eq!(config.locking.timeout_secs, DEFAULT_LOCK_TIMEOUT_SECS);
+        assert_eq!(
+            config.locking.timeout_value(),
+            LockTimeoutValue::from_secs(DEFAULT_LOCK_TIMEOUT_SECS)
+        );
     }
 
     #[test]
@@ -525,6 +644,7 @@ mod tests {
             env::remove_var("KOPI_AUTO_INSTALL__TIMEOUT_SECS");
             env::remove_var("KOPI_LOCKING__MODE");
             env::remove_var("KOPI_LOCKING__TIMEOUT");
+            env::remove_var("KOPI_LOCK_TIMEOUT");
         }
 
         let temp_dir = TempDir::new().unwrap();
@@ -537,7 +657,9 @@ mod tests {
         config.auto_install.prompt = false;
         config.auto_install.timeout_secs = 600;
         config.locking.mode = LockingMode::Fallback;
-        config.locking.timeout_secs = 900;
+        config
+            .locking
+            .set_timeout_value(LockTimeoutValue::from_secs(900));
 
         config.save().unwrap();
 
@@ -552,7 +674,10 @@ mod tests {
         assert!(!loaded.auto_install.prompt);
         assert_eq!(loaded.auto_install.timeout_secs, 600);
         assert_eq!(loaded.locking.mode, LockingMode::Fallback);
-        assert_eq!(loaded.locking.timeout_secs, 900);
+        assert_eq!(
+            loaded.locking.timeout_value(),
+            LockTimeoutValue::from_secs(900)
+        );
     }
 
     #[test]
@@ -564,6 +689,7 @@ mod tests {
             env::remove_var("KOPI_DEFAULT_DISTRIBUTION");
             env::remove_var("KOPI_LOCKING__MODE");
             env::remove_var("KOPI_LOCKING__TIMEOUT");
+            env::remove_var("KOPI_LOCK_TIMEOUT");
         }
 
         let temp_dir = TempDir::new().unwrap();
@@ -576,7 +702,10 @@ mod tests {
         assert_eq!(loaded.storage.min_disk_space_mb, DEFAULT_MIN_DISK_SPACE_MB);
         assert_eq!(loaded.default_distribution, "corretto");
         assert_eq!(loaded.locking.mode, LockingMode::Auto);
-        assert_eq!(loaded.locking.timeout_secs, DEFAULT_LOCK_TIMEOUT_SECS);
+        assert_eq!(
+            loaded.locking.timeout_value(),
+            LockTimeoutValue::from_secs(DEFAULT_LOCK_TIMEOUT_SECS)
+        );
         assert!(loaded.additional_distributions.is_empty());
     }
 
@@ -608,6 +737,73 @@ min_disk_space_mb = 2048
         assert_eq!(loaded.storage.min_disk_space_mb, 2048);
         assert_eq!(loaded.default_distribution, "zulu");
         assert_eq!(loaded.additional_distributions, vec!["custom1", "custom2"]);
+    }
+
+    #[test]
+    #[serial]
+    fn test_infinite_lock_timeout_from_config() {
+        unsafe {
+            env::remove_var("KOPI_LOCK_TIMEOUT");
+        }
+
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join(CONFIG_FILE_NAME);
+
+        fs::write(
+            &config_path,
+            r#"
+[locking]
+timeout = "infinite"
+"#,
+        )
+        .unwrap();
+
+        let loaded = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        assert!(loaded.locking.timeout_value().is_infinite());
+    }
+
+    #[test]
+    #[serial]
+    fn test_lock_timeout_environment_override() {
+        unsafe {
+            env::remove_var("KOPI_LOCK_TIMEOUT");
+        }
+        unsafe {
+            env::set_var("KOPI_LOCK_TIMEOUT", "45");
+        }
+
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+
+        assert_eq!(
+            config.locking.timeout_value(),
+            LockTimeoutValue::from_secs(45)
+        );
+        assert_eq!(
+            config.locking.timeout_source(),
+            LockTimeoutSource::Environment
+        );
+
+        unsafe {
+            env::remove_var("KOPI_LOCK_TIMEOUT");
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_lock_timeout_cli_override() {
+        unsafe {
+            env::remove_var("KOPI_LOCK_TIMEOUT");
+        }
+
+        let temp_dir = TempDir::new().unwrap();
+        let mut config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let resolution = config
+            .apply_lock_timeout_overrides(Some("infinite"))
+            .unwrap();
+
+        assert!(config.locking.timeout_value().is_infinite());
+        assert_eq!(resolution.source, LockTimeoutSource::Cli);
     }
 
     #[test]
