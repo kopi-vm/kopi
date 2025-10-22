@@ -17,6 +17,7 @@
 
 use kopi::archive::{JdkStructureType, detect_jdk_root};
 use kopi::config::KopiConfig;
+use kopi::paths::install;
 use kopi::storage::{InstalledJdk, JdkLister};
 use kopi::version::Version;
 use std::env;
@@ -59,7 +60,7 @@ fn create_mock_jdk_structure(base_path: &Path, structure_type: &str) -> PathBuf 
         }
         "bundle" => {
             // Bundle structure: Contents/Home/bin/
-            let home_dir = base_path.join("Contents").join("Home");
+            let home_dir = install::bundle_java_home(base_path);
             let bin_dir = home_dir.join("bin");
             fs::create_dir_all(&bin_dir).unwrap();
             fs::write(bin_dir.join(java_binary), "#!/bin/sh\necho \"Mock Java\"").unwrap();
@@ -70,8 +71,7 @@ fn create_mock_jdk_structure(base_path: &Path, structure_type: &str) -> PathBuf 
             // Hybrid structure: symlinks at root pointing to bundle
             // Create a Zulu-style nested bundle structure
             let jdk_dir = base_path.join("zulu-21.jdk");
-            let contents_dir = jdk_dir.join("Contents");
-            let home_dir = contents_dir.join("Home");
+            let home_dir = install::bundle_java_home(&jdk_dir);
             let bin_dir = home_dir.join("bin");
             fs::create_dir_all(&bin_dir).unwrap();
             fs::write(bin_dir.join(java_binary), "#!/bin/sh\necho \"Mock Java\"").unwrap();
@@ -113,7 +113,7 @@ fn test_structure_detection_integration() {
         let bundle_jdk = temp_dir.path().join("bundle-jdk");
         create_mock_jdk_structure(&bundle_jdk, "bundle");
         let info = detect_jdk_root(&bundle_jdk).unwrap();
-        assert_eq!(info.jdk_root, bundle_jdk.join("Contents").join("Home"));
+        assert_eq!(info.jdk_root, install::bundle_java_home(&bundle_jdk));
         assert_eq!(info.java_home_suffix, "Contents/Home");
         assert!(matches!(info.structure_type, JdkStructureType::Bundle));
 
@@ -173,13 +173,13 @@ fn test_installed_jdk_path_resolution() {
 
         // Test resolve_java_home for bundle structure
         let java_home = bundle_jdk.resolve_java_home();
-        assert_eq!(java_home, bundle_jdk_path.join("Contents").join("Home"));
+        assert_eq!(java_home, install::bundle_java_home(&bundle_jdk_path));
 
         // Test resolve_bin_path for bundle structure
         let bin_path = bundle_jdk.resolve_bin_path().unwrap();
         assert_eq!(
             bin_path,
-            bundle_jdk_path.join("Contents").join("Home").join("bin")
+            install::bin_directory(&install::bundle_java_home(&bundle_jdk_path))
         );
         assert!(bin_path.exists());
     }
@@ -277,7 +277,7 @@ fn test_env_command_with_different_structures() {
         // Run env command with bundle structure
         let (stdout, _, success) = run_kopi_with_home(test_home, &["env"]);
         assert!(success);
-        let expected_java_home = temurin_path.join("Contents").join("Home");
+        let expected_java_home = install::bundle_java_home(&temurin_path);
         // Check that JAVA_HOME is set and contains the expected path
         // The format varies by shell
         assert!(
@@ -308,11 +308,7 @@ fn test_shim_execution_performance() {
     create_mock_jdk_structure(&temurin_path, "bundle");
 
     // Make the mock java executable
-    let java_path = temurin_path
-        .join("Contents")
-        .join("Home")
-        .join("bin")
-        .join("java");
+    let java_path = install::bin_directory(&install::bundle_java_home(&temurin_path)).join("java");
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

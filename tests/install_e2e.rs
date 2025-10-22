@@ -15,6 +15,7 @@
 mod common;
 use assert_cmd::Command;
 use common::TestHomeGuard;
+use kopi::paths::install;
 use predicates::prelude::*;
 use regex::Regex;
 use serial_test::serial;
@@ -44,7 +45,7 @@ fn default_install_request() -> &'static str {
 /// On macOS, JDK files may be located under Contents/Home/ subdirectory
 fn resolve_jdk_path(jdk_dir: &Path, relative_path: &str) -> std::path::PathBuf {
     if cfg!(target_os = "macos") {
-        let contents_home = jdk_dir.join("Contents").join("Home");
+        let contents_home = install::bundle_java_home(jdk_dir);
         if contents_home.exists() {
             contents_home.join(relative_path)
         } else {
@@ -59,7 +60,7 @@ fn resolve_jdk_path(jdk_dir: &Path, relative_path: &str) -> std::path::PathBuf {
 /// This is used for files that might exist in multiple locations on macOS
 fn resolve_jdk_path_with_fallback(jdk_dir: &Path, relative_path: &str) -> std::path::PathBuf {
     if cfg!(target_os = "macos") {
-        let contents_home = jdk_dir.join("Contents").join("Home");
+        let contents_home = install::bundle_java_home(jdk_dir);
         if contents_home.exists() {
             let path_in_contents = contents_home.join(relative_path);
             if path_in_contents.exists() {

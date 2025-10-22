@@ -280,7 +280,7 @@ mod tests {
         // Create a mock JDK with bundle structure
         let temp_dir = TempDir::new().unwrap();
         let jdk_root = temp_dir.path().join("temurin-21");
-        let bundle_home = jdk_root.join("Contents").join("Home");
+        let bundle_home = install::bundle_java_home(&jdk_root);
         let bundle_bin = install::bin_directory(&bundle_home);
 
         // Create the directory structure
@@ -342,7 +342,7 @@ mod tests {
         #[cfg(target_os = "macos")]
         {
             // Create bundle structure on macOS
-            let bundle_home = jdk_root.join("Contents").join("Home");
+            let bundle_home = install::bundle_java_home(&jdk_root);
             let bundle_bin = install::bin_directory(&bundle_home);
             std::fs::create_dir_all(&bundle_bin).unwrap();
         }
@@ -387,7 +387,7 @@ mod tests {
         #[cfg(target_os = "macos")]
         {
             // Create bundle structure
-            let bundle_home = jdk_root.join("Contents").join("Home");
+            let bundle_home = install::bundle_java_home(&jdk_root);
             let bundle_bin = install::bin_directory(&bundle_home);
             std::fs::create_dir_all(&bundle_bin).unwrap();
         }
@@ -414,7 +414,7 @@ mod tests {
         #[cfg(target_os = "macos")]
         {
             // On macOS with bundle structure, bin should be under Contents/Home
-            let bundle_home = jdk_root.join("Contents").join("Home");
+            let bundle_home = install::bundle_java_home(&jdk_root);
             let bundle_bin = install::bin_directory(&bundle_home);
             if bundle_bin.exists() {
                 assert!(bin_path.to_string_lossy().contains("Contents/Home/bin"));

@@ -15,6 +15,7 @@
 use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 use kopi::archive::detect_jdk_root;
 use kopi::models::api::{Links, Package};
+use kopi::paths::install;
 use kopi::storage::{InstallationMetadata, InstalledJdk, JdkMetadataWithInstallation};
 use kopi::version::Version;
 use std::fs;
@@ -181,7 +182,7 @@ pub fn benchmark_path_resolution_without_metadata(c: &mut Criterion) {
             || {
                 let temp_dir = TempDir::new().unwrap();
                 let jdk_path = temp_dir.path().join("temurin-21.0.1");
-                let contents_home = jdk_path.join("Contents").join("Home");
+                let contents_home = install::bundle_java_home(&jdk_path);
                 fs::create_dir_all(contents_home.join("bin")).unwrap();
 
                 let jdk = InstalledJdk::new(
@@ -233,7 +234,7 @@ pub fn benchmark_structure_detection(c: &mut Criterion) {
             || {
                 let temp_dir = TempDir::new().unwrap();
                 let bundle_path = temp_dir.path();
-                let contents_home = bundle_path.join("Contents").join("Home");
+                let contents_home = install::bundle_java_home(bundle_path);
                 fs::create_dir_all(contents_home.join("bin")).unwrap();
                 fs::File::create(contents_home.join("bin").join("java")).unwrap();
                 (bundle_path.to_path_buf(), temp_dir)
@@ -494,7 +495,7 @@ pub fn benchmark_before_after_comparison(c: &mut Criterion) {
             || {
                 let temp_dir = TempDir::new().unwrap();
                 let jdk_path = temp_dir.path().join("temurin-21.0.1");
-                let contents_home = jdk_path.join("Contents").join("Home");
+                let contents_home = install::bundle_java_home(&jdk_path);
                 fs::create_dir_all(contents_home.join("bin")).unwrap();
                 (jdk_path, temp_dir)
             },

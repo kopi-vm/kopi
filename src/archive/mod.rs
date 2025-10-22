@@ -478,7 +478,7 @@ pub fn detect_jdk_root(extracted_dir: &Path) -> Result<JdkStructureInfo> {
     // Check for macOS bundle structure at root
     #[cfg(target_os = "macos")]
     {
-        let bundle_home = extracted_dir.join("Contents").join("Home");
+        let bundle_home = install::bundle_java_home(extracted_dir);
         if bundle_home.exists() {
             log::debug!("Found Contents/Home/ - checking if valid JDK");
             if validate_jdk_root(&bundle_home)? {
@@ -486,7 +486,7 @@ pub fn detect_jdk_root(extracted_dir: &Path) -> Result<JdkStructureInfo> {
                 return Ok(JdkStructureInfo {
                     jdk_root: bundle_home,
                     structure_type: JdkStructureType::Bundle,
-                    java_home_suffix: "Contents/Home".to_string(),
+                    java_home_suffix: install::BUNDLE_JAVA_HOME_SUFFIX.to_string(),
                 });
             }
         }
@@ -496,7 +496,7 @@ pub fn detect_jdk_root(extracted_dir: &Path) -> Result<JdkStructureInfo> {
         if let Ok(entries) = fs::read_dir(extracted_dir) {
             for entry in entries.flatten() {
                 if entry.file_type().is_ok_and(|ft| ft.is_dir()) {
-                    let nested_bundle = entry.path().join("Contents").join("Home");
+                    let nested_bundle = install::bundle_java_home(&entry.path());
                     if nested_bundle.exists() {
                         log::debug!(
                             "Found nested Contents/Home/ at {} - checking if valid JDK",
@@ -515,7 +515,7 @@ pub fn detect_jdk_root(extracted_dir: &Path) -> Result<JdkStructureInfo> {
                                 return Ok(JdkStructureInfo {
                                     jdk_root: bundle_dir.to_path_buf(),
                                     structure_type: JdkStructureType::Bundle,
-                                    java_home_suffix: "Contents/Home".to_string(),
+                                    java_home_suffix: install::BUNDLE_JAVA_HOME_SUFFIX.to_string(),
                                 });
                             }
                         }
@@ -629,7 +629,7 @@ fn detect_hybrid_suffix(path: &Path) -> Result<String> {
     // If we can't determine the suffix from symlinks, log a warning
     // and return the default for hybrid structures
     log::warn!("Could not determine java_home_suffix from symlinks, using default");
-    Ok("Contents/Home".to_string())
+    Ok(install::BUNDLE_JAVA_HOME_SUFFIX.to_string())
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -886,7 +886,7 @@ mod tests {
         let bundle_path = temp_dir.path();
 
         // Create bundle structure
-        let contents_home = bundle_path.join("Contents").join("Home");
+        let contents_home = install::bundle_java_home(bundle_path);
         let bundle_bin = install::bin_directory(&contents_home);
         fs::create_dir_all(&bundle_bin)?;
         fs::create_dir_all(contents_home.join("lib"))?;
@@ -913,7 +913,7 @@ mod tests {
 
         // Create nested bundle structure (e.g., jdk-24.0.2+12.jdk/Contents/Home/)
         let jdk_dir = extracted_dir.join("jdk-24.0.2+12.jdk");
-        let contents_home = jdk_dir.join("Contents").join("Home");
+        let contents_home = install::bundle_java_home(&jdk_dir);
         let bundle_bin = install::bin_directory(&contents_home);
         fs::create_dir_all(&bundle_bin)?;
         fs::create_dir_all(contents_home.join("lib"))?;
@@ -940,7 +940,7 @@ mod tests {
 
         // Create the actual bundle structure
         let bundle_dir = hybrid_path.join("zulu-24.jdk");
-        let contents_home = bundle_dir.join("Contents").join("Home");
+        let contents_home = install::bundle_java_home(&bundle_dir);
         let bundle_bin = install::bin_directory(&contents_home);
         fs::create_dir_all(&bundle_bin)?;
         fs::create_dir_all(contents_home.join("lib"))?;
@@ -1267,7 +1267,7 @@ mod tests {
 
         // Create standard bundle structure (the structure itself is fixed,
         // but the installation path can have spaces)
-        let bundle_home = jdk_path.join("Contents/Home");
+        let bundle_home = install::bundle_java_home(&jdk_path);
         let bundle_bin = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin)?;
 
@@ -1445,12 +1445,12 @@ mod tests {
         let info = JdkStructureInfo {
             jdk_root: PathBuf::from("/test/jdk"),
             structure_type: JdkStructureType::Bundle,
-            java_home_suffix: "Contents/Home".to_string(),
+            java_home_suffix: install::BUNDLE_JAVA_HOME_SUFFIX.to_string(),
         };
 
         assert_eq!(info.jdk_root, PathBuf::from("/test/jdk"));
         assert_eq!(info.structure_type, JdkStructureType::Bundle);
-        assert_eq!(info.java_home_suffix, "Contents/Home");
+        assert_eq!(info.java_home_suffix, install::BUNDLE_JAVA_HOME_SUFFIX);
     }
 
     #[test]

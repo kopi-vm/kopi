@@ -1106,7 +1106,7 @@ mod tests {
 
         // Create a fake bundle structure
         let bundle_root = temp_path.join("jdk-21.jdk");
-        let contents_home = bundle_root.join("Contents/Home");
+        let contents_home = install::bundle_java_home(&bundle_root);
         let contents_bin_dir = install::bin_directory(&contents_home);
         fs::create_dir_all(&contents_bin_dir).unwrap();
         fs::write(contents_bin_dir.join("java"), "mock java").unwrap();
@@ -1131,7 +1131,9 @@ mod tests {
         let final_path = result.unwrap();
         assert!(final_path.exists());
         // After installation, the structure should be preserved
-        assert!(final_path.join("Contents/Home/bin/java").exists());
+        let final_java =
+            install::bin_directory(&install::bundle_java_home(&final_path)).join("java");
+        assert!(final_java.exists());
     }
 
     #[test]

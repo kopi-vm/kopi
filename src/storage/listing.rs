@@ -236,7 +236,7 @@ impl InstalledJdk {
         #[cfg(target_os = "macos")]
         {
             // Check for bundle structure (Contents/Home)
-            let bundle_path = self.path.join("Contents").join("Home");
+            let bundle_path = install::bundle_java_home(&self.path);
             if install::bin_directory(&bundle_path).exists() {
                 log::debug!(
                     "Resolved JAVA_HOME for {} using bundle structure: {}",
@@ -485,7 +485,7 @@ mod tests {
         let jdk_path = temp_dir.path().join("temurin-21.0.1");
 
         // Create bundle structure
-        let bundle_home = jdk_path.join("Contents").join("Home");
+        let bundle_home = install::bundle_java_home(&jdk_path);
         let bundle_bin_path = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin_path).unwrap();
 
@@ -497,7 +497,7 @@ mod tests {
         );
 
         let java_home = jdk.resolve_java_home();
-        assert_eq!(java_home, jdk_path.join("Contents").join("Home"));
+        assert_eq!(java_home, install::bundle_java_home(&jdk_path));
     }
 
     #[test]
@@ -530,7 +530,7 @@ mod tests {
         // Create hybrid structure (bin at root + Contents/Home exists)
         let root_bin = install::bin_directory(&jdk_path);
         fs::create_dir_all(&root_bin).unwrap();
-        let bundle_home = jdk_path.join("Contents").join("Home");
+        let bundle_home = install::bundle_java_home(&jdk_path);
         let bundle_bin = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin).unwrap();
 
@@ -543,7 +543,7 @@ mod tests {
 
         // Should prefer bundle structure when both exist
         let java_home = jdk.resolve_java_home();
-        assert_eq!(java_home, jdk_path.join("Contents").join("Home"));
+        assert_eq!(java_home, install::bundle_java_home(&jdk_path));
     }
 
     #[test]
@@ -572,7 +572,7 @@ mod tests {
         let jdk_path = temp_dir.path().join("temurin-21.0.1");
 
         // Even if bundle structure exists, should return direct path on non-macOS
-        let bundle_home = jdk_path.join("Contents").join("Home");
+        let bundle_home = install::bundle_java_home(&jdk_path);
         let bundle_bin = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin).unwrap();
         let direct_bin = install::bin_directory(&jdk_path);
@@ -616,7 +616,7 @@ mod tests {
         let jdk_path = temp_dir.path().join("temurin-21.0.1");
 
         // Create bundle structure
-        let bundle_home = jdk_path.join("Contents").join("Home");
+        let bundle_home = install::bundle_java_home(&jdk_path);
         let bundle_bin_path = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin_path).unwrap();
 
@@ -711,7 +711,7 @@ mod tests {
 
         // First access should load metadata
         let java_home = jdk.resolve_java_home();
-        assert_eq!(java_home, jdk_path.join("Contents/Home"));
+        assert_eq!(java_home, install::bundle_java_home(&jdk_path));
 
         // Verify metadata was cached
         assert!(jdk.metadata_cache.borrow().is_some());
@@ -719,7 +719,7 @@ mod tests {
         // Second access should use cached data (delete file to ensure it's not re-read)
         fs::remove_file(&metadata_path).unwrap();
         let java_home2 = jdk.resolve_java_home();
-        assert_eq!(java_home2, jdk_path.join("Contents/Home"));
+        assert_eq!(java_home2, install::bundle_java_home(&jdk_path));
     }
 
     #[test]
@@ -910,7 +910,7 @@ mod tests {
 
         // Note: RefCell is not thread-safe, so this test verifies
         // sequential access from the same thread (which is the actual use case)
-        let expected_java_home = jdk_path.join("Contents/Home");
+        let expected_java_home = install::bundle_java_home(&jdk_path);
 
         // Multiple sequential accesses
         for _ in 0..10 {
@@ -1370,7 +1370,7 @@ mod tests {
         let jdk_path = temp_dir.path();
 
         // Create bundle structure
-        let contents_home = jdk_path.join("Contents").join("Home");
+        let contents_home = install::bundle_java_home(jdk_path);
         let contents_bin = install::bin_directory(&contents_home);
         fs::create_dir_all(&contents_bin).unwrap();
         fs::File::create(contents_bin.join("java")).unwrap();
@@ -1491,7 +1491,7 @@ mod tests {
         // Create JDK directory structure with bundle format
         let jdk_path = jdks_dir.join("temurin-21.0.0");
         fs::create_dir_all(&jdk_path).unwrap();
-        let bundle_home = jdk_path.join("Contents/Home");
+        let bundle_home = install::bundle_java_home(&jdk_path);
         let bundle_bin = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin).unwrap();
 
@@ -1554,7 +1554,11 @@ mod tests {
                 // Each thread tries to resolve paths multiple times
                 for _ in 0..100 {
                     let java_home = jdk_clone.resolve_java_home();
-                    assert!(java_home.to_string_lossy().contains("Contents/Home"));
+                    assert!(
+                        java_home
+                            .to_string_lossy()
+                            .contains(install::BUNDLE_JAVA_HOME_SUFFIX)
+                    );
 
                     let bin_path = jdk_clone.resolve_bin_path();
                     assert!(bin_path.is_ok());
@@ -1631,7 +1635,7 @@ mod tests {
         #[cfg(target_os = "macos")]
         {
             // macOS: Create bundle structure
-            let bundle_home = jdk_path.join("Contents/Home");
+            let bundle_home = install::bundle_java_home(&jdk_path);
             let bundle_bin = install::bin_directory(&bundle_home);
             fs::create_dir_all(&bundle_bin).unwrap();
 
@@ -1667,7 +1671,7 @@ mod tests {
 
         // Expected path depends on platform
         #[cfg(target_os = "macos")]
-        let expected_java_home = jdk_path.join("Contents/Home");
+        let expected_java_home = install::bundle_java_home(&jdk_path);
         #[cfg(not(target_os = "macos"))]
         let expected_java_home = jdk_path.clone();
 
@@ -1679,7 +1683,7 @@ mod tests {
         #[cfg(target_os = "macos")]
         assert_eq!(
             bin_path,
-            install::bin_directory(&jdk_path.join("Contents/Home"))
+            install::bin_directory(&install::bundle_java_home(&jdk_path))
         );
         #[cfg(not(target_os = "macos"))]
         assert_eq!(bin_path, install::bin_directory(&jdk_path));

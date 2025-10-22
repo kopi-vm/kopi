@@ -18,6 +18,9 @@ use crate::paths::shared::ensure_nested_directory;
 use std::path::{Path, PathBuf};
 
 pub const TEMP_STAGING_DIR: &str = ".tmp";
+pub const BUNDLE_CONTENTS_DIR: &str = "Contents";
+pub const BUNDLE_JAVA_HOME_DIR: &str = "Home";
+pub const BUNDLE_JAVA_HOME_SUFFIX: &str = "Contents/Home";
 
 pub fn installations_root(kopi_home: &Path) -> PathBuf {
     home::jdks_dir(kopi_home)
@@ -47,6 +50,14 @@ pub fn bin_directory(java_home: &Path) -> PathBuf {
     java_home.join(home::BIN_DIR)
 }
 
+pub fn bundle_contents_directory(jdk_root: &Path) -> PathBuf {
+    jdk_root.join(BUNDLE_CONTENTS_DIR)
+}
+
+pub fn bundle_java_home(jdk_root: &Path) -> PathBuf {
+    bundle_contents_directory(jdk_root).join(BUNDLE_JAVA_HOME_DIR)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -56,7 +67,7 @@ mod tests {
     fn installation_paths_follow_previous_layout() {
         let home = Path::new("/opt/kopi");
         let slug = "temurin-21-jdk-x64";
-        let java_home = Path::new("/opt/kopi/jdks/temurin-21-jdk-x64");
+        let jdk_root = Path::new("/opt/kopi/jdks/temurin-21-jdk-x64");
 
         assert_eq!(installations_root(home), PathBuf::from("/opt/kopi/jdks"));
         assert_eq!(
@@ -72,8 +83,16 @@ mod tests {
             PathBuf::from("/opt/kopi/jdks/.tmp")
         );
         assert_eq!(
-            bin_directory(java_home),
+            bin_directory(jdk_root),
             PathBuf::from("/opt/kopi/jdks/temurin-21-jdk-x64/bin")
+        );
+        assert_eq!(
+            bundle_contents_directory(jdk_root),
+            PathBuf::from("/opt/kopi/jdks/temurin-21-jdk-x64/Contents")
+        );
+        assert_eq!(
+            bundle_java_home(jdk_root),
+            PathBuf::from("/opt/kopi/jdks/temurin-21-jdk-x64/Contents/Home")
         );
     }
 

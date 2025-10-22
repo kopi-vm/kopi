@@ -526,7 +526,7 @@ mod tests {
         let jdk_path = temp_dir.path().join("temurin-21.0.1");
 
         // Create bundle structure
-        let bundle_home = jdk_path.join("Contents").join("Home");
+        let bundle_home = install::bundle_java_home(&jdk_path);
         let bundle_bin_dir = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin_dir).unwrap();
 

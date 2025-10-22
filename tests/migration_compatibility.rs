@@ -15,6 +15,7 @@
 mod common;
 use assert_cmd::Command;
 use common::TestHomeGuard;
+use kopi::paths::install;
 use predicates::prelude::*;
 use serial_test::serial;
 use std::fs;
@@ -32,7 +33,8 @@ fn create_legacy_jdk_installation(kopi_home: &Path, distribution: &str, version:
     {
         // Create bundle structure for macOS
         if distribution == "temurin" {
-            let bundle_bin = jdk_dir.join("Contents").join("Home").join("bin");
+            let bundle_home = install::bundle_java_home(&jdk_dir);
+            let bundle_bin = install::bin_directory(&bundle_home);
             fs::create_dir_all(&bundle_bin).unwrap();
             fs::write(bundle_bin.join("java"), "#!/bin/sh\necho 'mock java'").unwrap();
             #[cfg(unix)]
@@ -81,7 +83,7 @@ fn create_legacy_jdk_installation(kopi_home: &Path, distribution: &str, version:
 
     // Create lib directory
     let lib_dir = if cfg!(target_os = "macos") && distribution == "temurin" {
-        jdk_dir.join("Contents").join("Home").join("lib")
+        install::bundle_java_home(&jdk_dir).join("lib")
     } else {
         jdk_dir.join("lib")
     };
@@ -89,7 +91,7 @@ fn create_legacy_jdk_installation(kopi_home: &Path, distribution: &str, version:
 
     // Create release file
     let release_path = if cfg!(target_os = "macos") && distribution == "temurin" {
-        jdk_dir.join("Contents").join("Home").join("release")
+        install::bundle_java_home(&jdk_dir).join("release")
     } else {
         jdk_dir.join("release")
     };
@@ -167,7 +169,7 @@ fn test_mixed_environment_old_and_new_installations() {
 
     #[cfg(target_os = "macos")]
     {
-        let bundle_bin = new_jdk_dir.join("Contents").join("Home").join("bin");
+        let bundle_bin = install::bin_directory(&install::bundle_java_home(&new_jdk_dir));
         fs::create_dir_all(&bundle_bin).unwrap();
         fs::write(bundle_bin.join("java"), "#!/bin/sh\necho 'mock java'").unwrap();
     }
@@ -295,7 +297,7 @@ fn test_upgrade_scenario_from_old_to_new() {
 
     #[cfg(target_os = "macos")]
     {
-        let bundle_bin = new_jdk_dir.join("Contents").join("Home").join("bin");
+        let bundle_bin = install::bin_directory(&install::bundle_java_home(&new_jdk_dir));
         fs::create_dir_all(&bundle_bin).unwrap();
         fs::write(bundle_bin.join("java"), "#!/bin/sh\necho 'mock java'").unwrap();
     }
@@ -532,7 +534,7 @@ fn test_performance_comparison() {
 
     #[cfg(target_os = "macos")]
     {
-        let bundle_bin = new_jdk_dir.join("Contents").join("Home").join("bin");
+        let bundle_bin = install::bin_directory(&install::bundle_java_home(&new_jdk_dir));
         fs::create_dir_all(&bundle_bin).unwrap();
         fs::write(bundle_bin.join("java"), "#!/bin/sh\necho 'mock java'").unwrap();
     }

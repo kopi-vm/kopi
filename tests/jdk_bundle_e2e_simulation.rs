@@ -16,6 +16,7 @@
 //! These tests simulate real JDK distributions without requiring actual downloads.
 
 use kopi::config::KopiConfig;
+use kopi::paths::install;
 use kopi::storage::JdkLister;
 use std::env;
 use std::fs;
@@ -32,7 +33,7 @@ fn simulate_real_jdk_structure(jdk_path: &Path, vendor: &str, version: &str) {
             // Temurin uses bundle structure on macOS
             #[cfg(target_os = "macos")]
             {
-                let home_dir = jdk_path.join("Contents").join("Home");
+                let home_dir = install::bundle_java_home(jdk_path);
                 let bin_dir = home_dir.join("bin");
                 fs::create_dir_all(&bin_dir).unwrap();
 
@@ -65,7 +66,7 @@ fn simulate_real_jdk_structure(jdk_path: &Path, vendor: &str, version: &str) {
             #[cfg(target_os = "macos")]
             {
                 // Create bundle structure
-                let home_dir = jdk_path.join("Contents").join("Home");
+                let home_dir = install::bundle_java_home(jdk_path);
                 let bundle_bin_dir = home_dir.join("bin");
                 fs::create_dir_all(&bundle_bin_dir).unwrap();
                 create_mock_java_executables(&bundle_bin_dir);
@@ -157,7 +158,7 @@ fn test_e2e_temurin_installation_workflow() {
     // Test path resolution
     let java_home = temurin_jdk.resolve_java_home();
     #[cfg(target_os = "macos")]
-    assert_eq!(java_home, temurin_path.join("Contents").join("Home"));
+    assert_eq!(java_home, install::bundle_java_home(&temurin_path));
     #[cfg(not(target_os = "macos"))]
     assert_eq!(java_home, temurin_path);
 

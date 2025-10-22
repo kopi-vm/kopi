@@ -23,12 +23,13 @@ mod common;
 use common::TestHomeGuard;
 
 use kopi::config::KopiConfig;
+use kopi::paths::install;
 
 /// Create a minimal JDK structure for testing
 fn create_minimal_jdk(jdk_path: &std::path::Path, vendor: &str, _version: &str) {
     // Create appropriate structure based on vendor
     let bin_dir = if vendor == "temurin" && cfg!(target_os = "macos") {
-        let home_dir = jdk_path.join("Contents").join("Home");
+        let home_dir = install::bundle_java_home(jdk_path);
         fs::create_dir_all(&home_dir).unwrap();
         home_dir.join("bin")
     } else {
@@ -167,10 +168,10 @@ fn test_shim_performance_with_metadata_cache() {
     create_minimal_jdk(&jdk_path, "temurin", "21");
 
     // Create metadata file (simulating what would be created during installation)
-    let metadata = if cfg!(target_os = "macos") && jdk_path.join("Contents/Home").exists() {
+    let metadata = if cfg!(target_os = "macos") && install::bundle_java_home(&jdk_path).exists() {
         serde_json::json!({
             "installation_metadata": {
-                "java_home_suffix": "Contents/Home",
+                "java_home_suffix": install::BUNDLE_JAVA_HOME_SUFFIX,
                 "structure_type": "bundle",
                 "platform": "macos"
             }
