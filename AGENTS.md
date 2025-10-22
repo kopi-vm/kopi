@@ -192,6 +192,7 @@ Produce TDL artifacts sequentially and pause after every stage until the user gi
 
 - Do not create multiple document stages in a single session without collecting approvals between them.
 - When instructions are ambiguous or indirect (e.g., “Start work”, “Option A please”), verify intent with the user instead of assuming approval.
+- Before requesting a review, update the status metadata in every modified document so reviewers see the current phase.
 - Maintain a record of which artifacts have been approved so the audit trail stays intact.
 
 **Violation Recovery**
