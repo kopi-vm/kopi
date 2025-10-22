@@ -186,7 +186,6 @@ graph LR
   - **Stage Separation**: Complete only one stage per approval cycle; never advance without an explicit “go”.
   - **Clarity Guardrail**: Treat ambiguous instructions as cues to request confirmation.
   - **Status Maintenance**: Keep document metadata current so reviewers know the active phase.
-  - **Trace Log**: Record which artifacts have explicit approval to preserve auditability.
 
 - **Exception Handling**
   - **Immediate Pause**: If work advanced without the required approval—or a prerequisite artifact is missing—stop immediately.
@@ -214,8 +213,9 @@ graph LR
 5. **Implementation**
    - **Deliverable**: Code and supporting assets tied to the approved task.
    - **Approval Gate**:
-     - Implementation MUST NOT begin until an explicit written approval (for example, “Approved to start Implementation for T-…”) is recorded.
-     - Treat every phase listed in `plan.md` as its own approval checkpoint. After finishing a phase, immediately stop, mark the corresponding checklist item as `[x]`, capture the approval reference (link or quoted message) in the plan, and request explicit approval to proceed. Do not write code, run tests, or change artefacts for the next phase until that approval is received.
+     - Treat every phase listed in `plan.md` as its own approval checkpoint.
+     - After finishing a phase, immediately stop, mark the corresponding checklist item as `[x]`, and request explicit approval to proceed.
+     - Do not write code, run tests, or change artefacts for the next phase until that approval is received.
      - If approval is missing or unclear at any point, halt all implementation work and ask the approver how to proceed; the only permitted actions while waiting are housekeeping required to request approval (e.g., summarising work done or reverting unintended edits).
 
 ## Development Workflow
