@@ -1,5 +1,3 @@
-#![cfg(unix)]
-
 use kopi::config::LockingConfig;
 use kopi::error::KopiError;
 use kopi::locking::{
@@ -11,7 +9,7 @@ use std::time::Duration;
 use tempfile::TempDir;
 
 #[test]
-fn unix_timeout_smoke_respects_zero_config() {
+fn timeout_smoke_respects_zero_config() {
     let temp = TempDir::new().unwrap();
     let scope = LockScope::CacheWriter;
 
@@ -39,7 +37,7 @@ fn unix_timeout_smoke_respects_zero_config() {
 }
 
 #[test]
-fn unix_cancellation_smoke_respects_token() {
+fn cancellation_smoke_respects_token() {
     let temp = TempDir::new().unwrap();
     let scope = LockScope::CacheWriter;
 
