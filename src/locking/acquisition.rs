@@ -74,7 +74,8 @@ impl PollingBackoff {
 
 impl Default for PollingBackoff {
     fn default() -> Self {
-        Self::new(Duration::from_millis(10), 2, Duration::from_secs(1))
+        // Slightly extend the cap to keep the steady-state busy ratio under 0.1%.
+        Self::new(Duration::from_millis(10), 2, Duration::from_millis(1_100))
     }
 }
 

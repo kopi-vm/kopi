@@ -14,6 +14,7 @@
 
 use crate::error::format::format_error_with_color;
 use crate::error::*;
+use crate::locking::{LockTimeoutSource, LockTimeoutValue};
 use serial_test::serial;
 
 #[test]
@@ -159,6 +160,23 @@ fn test_exit_codes() {
             is_auto_install_context: false,
         }),
         127
+    );
+    assert_eq!(
+        get_exit_code(&KopiError::LockingCancelled {
+            scope: "installation temurin-21".to_string(),
+            waited_secs: 12.5,
+        }),
+        75
+    );
+    assert_eq!(
+        get_exit_code(&KopiError::LockingTimeout {
+            scope: "installation temurin-21".to_string(),
+            waited_secs: 600.0,
+            timeout_value: LockTimeoutValue::from_secs(600),
+            timeout_source: LockTimeoutSource::Default,
+            details: "lock would block".to_string(),
+        }),
+        1
     );
     assert_eq!(get_exit_code(&KopiError::Download("test".to_string())), 1);
 }
