@@ -178,15 +178,28 @@ graph LR
 - **Tasks**: `docs/tasks/T-<id>-<task>/` - Design and plan documents (current format)
 - **Traceability**: `docs/traceability.md` - Central mapping matrix
 
-### Document Creation Order
+### Document Creation Order and Staged Approvals
 
-1. **Analysis (`docs/analysis/AN-…`)** – Capture the problem space, alternatives, and context. Create or update the analysis first; every downstream artifact must reference it, and the analysis is considered complete only once its approval has been granted. Do not advance to requirements work until this approval is finalized.
-2. **Requirements (`docs/requirements/FR-…` / `NFR-…`)** – Translate the approved analysis into verifiable functional and non-functional requirements.
-3. **Architecture Decision (`docs/adr/ADR-…`)** – Record any structural decision needed to satisfy the requirements. Author the ADR before planning work that depends on it.
-4. **Task (`docs/tasks/T-…/`)** – Once the upstream analysis, requirements, and ADR (if required) exist and their approvals are complete, create the task package and write the `design.md` and `plan.md` to describe how the change will be implemented. Do not begin task design or planning work until those upstream approvals have been granted.
-5. **Implementation** – Begin code changes only after the analysis, requirements, ADR (if required), and task design/plan documents are committed and have received their approvals, and ensure every pull request references the relevant task ID.
+Produce TDL artifacts sequentially and pause after every stage until the user gives explicit approval (e.g., “Approved”, “承認します”, “proceed to next stage”). Never advance on the assumption that silence or indirect phrasing grants permission.
 
-Always confirm that the upstream artifacts are in place before drafting a task’s design or plan. If a task uncovers a missing analysis, requirement, or ADR, pause and author the missing document(s) using the templates above, then return to the task once the dependency is satisfied.
+1. **Analysis (`docs/analysis/AN-…`)** – Capture the problem space, alternatives, and context. Present the analysis for review and **wait for explicit approval** before moving on to requirements.
+2. **Requirements (`docs/requirements/FR-…` / `NFR-…`)** – Translate the approved analysis into verifiable functional and non-functional requirements. After drafting, present them and **wait for explicit approval** before authoring an ADR.
+3. **Architecture Decision (`docs/adr/ADR-…`)** – Record structural decisions needed to satisfy the requirements. Submit the ADR for review and **wait for explicit approval** before creating the task package.
+4. **Task (`docs/tasks/T-…/`)** – With approved upstream documents in place, create the task directory and write `design.md` and `plan.md`. Share the task artifacts and **wait for explicit approval** before beginning implementation.
+5. **Implementation** – Start code changes only after confirming that every prior stage has explicit approval and the relevant task ID is referenced in the work.
+
+**Approval Rules**
+
+- Do not create multiple document stages in a single session without collecting approvals between them.
+- When instructions are ambiguous or indirect (e.g., “Start work”, “Option A please”), verify intent with the user instead of assuming approval.
+- Maintain a record of which artifacts have been approved so the audit trail stays intact.
+
+**Violation Recovery**
+
+1. Stop immediately if multiple stages were completed without approvals.
+2. Inform the user about the lapse and ask whether to delete premature documents and restart, or to treat the artifacts as drafts for sequential review.
+
+Always confirm that the upstream artifacts exist and have explicit approvals before drafting downstream documents. If a task exposes a missing analysis, requirement, or ADR, pause implementation work, create the required artifact using the templates, obtain approval, and then resume the task.
 
 ## Development Workflow
 
