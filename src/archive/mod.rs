@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::error::{KopiError, Result};
+use crate::paths::install;
 use crate::platform::file_ops;
 use std::fs::{self, File};
 use std::io::Read;
@@ -445,7 +446,8 @@ pub fn detect_jdk_root(extracted_dir: &Path) -> Result<JdkStructureInfo> {
     log::debug!("Detecting JDK structure in: {}", extracted_dir.display());
 
     // Check for direct structure or hybrid (symlinks at root)
-    if extracted_dir.join("bin").exists() {
+    let root_bin = install::bin_directory(extracted_dir);
+    if root_bin.exists() {
         log::debug!("Found bin/ at root - checking if valid JDK");
         if validate_jdk_root(extracted_dir)? {
             // Check if this is a hybrid structure (symlinks pointing to bundle)
@@ -528,7 +530,8 @@ pub fn detect_jdk_root(extracted_dir: &Path) -> Result<JdkStructureInfo> {
         for entry in entries.flatten() {
             if entry.file_type().is_ok_and(|ft| ft.is_dir()) {
                 let path = entry.path();
-                if path.join("bin").exists() {
+                let candidate_bin = install::bin_directory(&path);
+                if candidate_bin.exists() {
                     log::debug!(
                         "Found bin/ in subdirectory {} - checking if valid JDK",
                         path.display()
@@ -570,7 +573,7 @@ pub fn detect_jdk_root(extracted_dir: &Path) -> Result<JdkStructureInfo> {
 /// Validate that a directory contains a valid JDK by checking for the java binary
 fn validate_jdk_root(path: &Path) -> Result<bool> {
     let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
-    let java_path = path.join("bin").join(java_binary);
+    let java_path = install::bin_directory(path).join(java_binary);
 
     Ok(java_path.exists())
 }
@@ -579,7 +582,7 @@ fn validate_jdk_root(path: &Path) -> Result<bool> {
 #[cfg(target_os = "macos")]
 fn is_hybrid_structure(path: &Path) -> bool {
     // Check if bin is a symlink
-    let bin_path = path.join("bin");
+    let bin_path = install::bin_directory(path);
     if let Ok(metadata) = fs::symlink_metadata(&bin_path)
         && metadata.file_type().is_symlink()
     {
@@ -604,7 +607,7 @@ fn is_hybrid_structure(_path: &Path) -> bool {
 #[cfg(target_os = "macos")]
 fn detect_hybrid_suffix(path: &Path) -> Result<String> {
     // Follow the bin symlink to find the actual bundle location
-    let bin_path = path.join("bin");
+    let bin_path = install::bin_directory(path);
 
     if let Ok(target) = fs::read_link(&bin_path) {
         // The target should be something like "zulu-21.jdk/Contents/Home/bin"
@@ -857,13 +860,14 @@ mod tests {
         let jdk_path = temp_dir.path();
 
         // Create JDK structure
-        fs::create_dir_all(jdk_path.join("bin"))?;
+        let bin_dir = install::bin_directory(jdk_path);
+        fs::create_dir_all(&bin_dir)?;
         fs::create_dir_all(jdk_path.join("lib"))?;
         fs::create_dir_all(jdk_path.join("conf"))?;
 
         // Create java binary
         let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
-        File::create(jdk_path.join("bin").join(java_binary))?;
+        File::create(bin_dir.join(java_binary))?;
 
         // Test detection
         let result = detect_jdk_root(jdk_path)?;
@@ -883,12 +887,13 @@ mod tests {
 
         // Create bundle structure
         let contents_home = bundle_path.join("Contents").join("Home");
-        fs::create_dir_all(contents_home.join("bin"))?;
+        let bundle_bin = install::bin_directory(&contents_home);
+        fs::create_dir_all(&bundle_bin)?;
         fs::create_dir_all(contents_home.join("lib"))?;
         fs::create_dir_all(bundle_path.join("Contents").join("MacOS"))?;
 
         // Create java binary
-        File::create(contents_home.join("bin").join("java"))?;
+        File::create(bundle_bin.join("java"))?;
 
         // Test detection
         let result = detect_jdk_root(bundle_path)?;
@@ -909,12 +914,13 @@ mod tests {
         // Create nested bundle structure (e.g., jdk-24.0.2+12.jdk/Contents/Home/)
         let jdk_dir = extracted_dir.join("jdk-24.0.2+12.jdk");
         let contents_home = jdk_dir.join("Contents").join("Home");
-        fs::create_dir_all(contents_home.join("bin"))?;
+        let bundle_bin = install::bin_directory(&contents_home);
+        fs::create_dir_all(&bundle_bin)?;
         fs::create_dir_all(contents_home.join("lib"))?;
         fs::create_dir_all(jdk_dir.join("Contents").join("MacOS"))?;
 
         // Create java binary
-        File::create(contents_home.join("bin").join("java"))?;
+        File::create(bundle_bin.join("java"))?;
 
         // Test detection
         let result = detect_jdk_root(extracted_dir)?;
@@ -935,18 +941,22 @@ mod tests {
         // Create the actual bundle structure
         let bundle_dir = hybrid_path.join("zulu-24.jdk");
         let contents_home = bundle_dir.join("Contents").join("Home");
-        fs::create_dir_all(contents_home.join("bin"))?;
+        let bundle_bin = install::bin_directory(&contents_home);
+        fs::create_dir_all(&bundle_bin)?;
         fs::create_dir_all(contents_home.join("lib"))?;
         fs::create_dir_all(contents_home.join("conf"))?;
 
         // Create java binary in the bundle
-        File::create(contents_home.join("bin").join("java"))?;
+        File::create(bundle_bin.join("java"))?;
 
         // Create symlinks at root pointing to bundle (using relative paths like Zulu does)
         #[cfg(unix)]
         {
             use std::os::unix::fs::symlink;
-            symlink("zulu-24.jdk/Contents/Home/bin", hybrid_path.join("bin"))?;
+            symlink(
+                "zulu-24.jdk/Contents/Home/bin",
+                install::bin_directory(hybrid_path),
+            )?;
             symlink("zulu-24.jdk/Contents/Home/lib", hybrid_path.join("lib"))?;
             symlink("zulu-24.jdk/Contents/Home/conf", hybrid_path.join("conf"))?;
         }
@@ -954,8 +964,9 @@ mod tests {
         // On non-Unix systems, create regular directories as fallback
         #[cfg(not(unix))]
         {
-            fs::create_dir_all(hybrid_path.join("bin"))?;
-            File::create(hybrid_path.join("bin").join("java"))?;
+            let hybrid_bin = install::bin_directory(hybrid_path);
+            fs::create_dir_all(&hybrid_bin)?;
+            File::create(hybrid_bin.join("java"))?;
         }
 
         // Test detection
@@ -986,12 +997,13 @@ mod tests {
 
         // Create JDK in subdirectory
         let jdk_subdir = extracted_dir.join("graalvm-jdk-21.0.7+8.1");
-        fs::create_dir_all(jdk_subdir.join("bin"))?;
+        let subdir_bin = install::bin_directory(&jdk_subdir);
+        fs::create_dir_all(&subdir_bin)?;
         fs::create_dir_all(jdk_subdir.join("lib"))?;
 
         // Create java binary
         let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
-        File::create(jdk_subdir.join("bin").join(java_binary))?;
+        File::create(subdir_bin.join(java_binary))?;
 
         // Test detection
         let result = detect_jdk_root(extracted_dir)?;
@@ -1030,7 +1042,7 @@ mod tests {
         let path = temp_dir.path();
 
         // Create bin directory but no java binary
-        fs::create_dir_all(path.join("bin")).unwrap();
+        fs::create_dir_all(install::bin_directory(path)).unwrap();
         fs::create_dir_all(path.join("lib")).unwrap();
 
         // Test detection - should fail
@@ -1043,16 +1055,17 @@ mod tests {
         // Test with valid JDK root
         let temp_dir = tempdir()?;
         let jdk_path = temp_dir.path();
-        fs::create_dir_all(jdk_path.join("bin"))?;
+        let bin_dir = install::bin_directory(jdk_path);
+        fs::create_dir_all(&bin_dir)?;
 
         let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
-        File::create(jdk_path.join("bin").join(java_binary))?;
+        File::create(bin_dir.join(java_binary))?;
 
         assert!(validate_jdk_root(jdk_path)?);
 
         // Test with invalid JDK root (no java binary)
         let invalid_dir = tempdir()?;
-        fs::create_dir_all(invalid_dir.path().join("bin"))?;
+        fs::create_dir_all(install::bin_directory(invalid_dir.path()))?;
 
         assert!(!validate_jdk_root(invalid_dir.path())?);
 
@@ -1074,13 +1087,13 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::symlink;
-            symlink(&bundle_bin, hybrid_path.join("bin"))?;
+            symlink(&bundle_bin, install::bin_directory(hybrid_path))?;
             assert!(is_hybrid_structure(hybrid_path));
         }
 
         // Test with direct structure (no symlinks)
         let direct_dir = tempdir()?;
-        fs::create_dir_all(direct_dir.path().join("bin"))?;
+        fs::create_dir_all(install::bin_directory(direct_dir.path()))?;
         assert!(!is_hybrid_structure(direct_dir.path()));
 
         Ok(())
@@ -1101,7 +1114,10 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::symlink;
-            symlink("zulu-21.jdk/Contents/Home/bin", hybrid_path.join("bin"))?;
+            symlink(
+                "zulu-21.jdk/Contents/Home/bin",
+                install::bin_directory(hybrid_path),
+            )?;
 
             let suffix = detect_hybrid_suffix(hybrid_path)?;
             assert_eq!(suffix, "zulu-21.jdk/Contents/Home");
@@ -1116,7 +1132,7 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::symlink;
-            symlink(&bundle_bin2, hybrid_path2.join("bin"))?;
+            symlink(&bundle_bin2, install::bin_directory(hybrid_path2))?;
 
             let suffix = detect_hybrid_suffix(hybrid_path2)?;
             // Should extract the relative part
@@ -1135,7 +1151,7 @@ mod tests {
 
         // Create Zulu-style structure with nested bundle
         let bundle_home = extracted_dir.join("zulu-21.jdk/Contents/Home");
-        let bundle_bin = bundle_home.join("bin");
+        let bundle_bin = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin)?;
         fs::write(bundle_bin.join("java"), "mock java")?;
 
@@ -1143,7 +1159,10 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::symlink;
-            symlink("zulu-21.jdk/Contents/Home/bin", extracted_dir.join("bin"))?;
+            symlink(
+                "zulu-21.jdk/Contents/Home/bin",
+                install::bin_directory(extracted_dir),
+            )?;
             symlink("zulu-21.jdk/Contents/Home/lib", extracted_dir.join("lib"))?;
             symlink("zulu-21.jdk/Contents/Home/conf", extracted_dir.join("conf"))?;
         }
@@ -1208,7 +1227,7 @@ mod tests {
         {
             use std::os::unix::fs::symlink;
             let non_existent_target = hybrid_path.join("non_existent/bin");
-            symlink(&non_existent_target, hybrid_path.join("bin"))?;
+            symlink(&non_existent_target, install::bin_directory(hybrid_path))?;
 
             // Should not panic, but should not be detected as hybrid
             assert!(!is_hybrid_structure(hybrid_path));
@@ -1249,7 +1268,7 @@ mod tests {
         // Create standard bundle structure (the structure itself is fixed,
         // but the installation path can have spaces)
         let bundle_home = jdk_path.join("Contents/Home");
-        let bundle_bin = bundle_home.join("bin");
+        let bundle_bin = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin)?;
 
         // Create java binary
@@ -1278,7 +1297,7 @@ mod tests {
             .join("Program Files")
             .join("Java")
             .join("jdk-21");
-        let bin_path = jdk_path.join("bin");
+        let bin_path = install::bin_directory(&jdk_path);
         fs::create_dir_all(&bin_path)?;
         File::create(bin_path.join("java.exe"))?;
 
@@ -1302,7 +1321,7 @@ mod tests {
         // Test handling of directories with restricted permissions
         let temp_dir = tempdir()?;
         let jdk_path = temp_dir.path().join("restricted-jdk");
-        let bin_path = jdk_path.join("bin");
+        let bin_path = install::bin_directory(&jdk_path);
         fs::create_dir_all(&bin_path)?;
         File::create(bin_path.join("java"))?;
 
@@ -1363,7 +1382,7 @@ mod tests {
         let jdk_path = temp_dir.path();
 
         // Create structure without java binary
-        let bin_path = jdk_path.join("bin");
+        let bin_path = install::bin_directory(jdk_path);
         fs::create_dir_all(&bin_path)?;
 
         // Should fail validation due to missing java binary

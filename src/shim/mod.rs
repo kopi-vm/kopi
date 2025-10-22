@@ -397,7 +397,7 @@ mod tests {
         {
             let temp_dir = TempDir::new().unwrap();
             let jdk_path = temp_dir.path().join("test-jdk");
-            let bin_dir = jdk_path.join("bin");
+            let bin_dir = install::bin_directory(&jdk_path);
             fs::create_dir_all(&bin_dir).unwrap();
 
             let java_path = bin_dir.join("java");
@@ -417,7 +417,7 @@ mod tests {
         {
             let temp_dir = TempDir::new().unwrap();
             let jdk_path = temp_dir.path().join("test-jdk");
-            let bin_dir = jdk_path.join("bin");
+            let bin_dir = install::bin_directory(&jdk_path);
             fs::create_dir_all(&bin_dir).unwrap();
 
             let java_path = bin_dir.join("java.exe");
@@ -435,7 +435,7 @@ mod tests {
     fn test_build_tool_path_not_found() {
         let temp_dir = TempDir::new().unwrap();
         let jdk_path = temp_dir.path().join("test-jdk");
-        let bin_dir = jdk_path.join("bin");
+        let bin_dir = install::bin_directory(&jdk_path);
         fs::create_dir_all(&bin_dir).unwrap();
 
         let installed_jdk =
@@ -526,7 +526,8 @@ mod tests {
         let jdk_path = temp_dir.path().join("temurin-21.0.1");
 
         // Create bundle structure
-        let bundle_bin_dir = jdk_path.join("Contents").join("Home").join("bin");
+        let bundle_home = jdk_path.join("Contents").join("Home");
+        let bundle_bin_dir = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin_dir).unwrap();
 
         let java_path = bundle_bin_dir.join("java");
@@ -550,7 +551,7 @@ mod tests {
         let jdk_path = temp_dir.path().join("liberica-21.0.1");
 
         // Create direct structure
-        let bin_dir = jdk_path.join("bin");
+        let bin_dir = install::bin_directory(&jdk_path);
         fs::create_dir_all(&bin_dir).unwrap();
 
         let java_path = bin_dir.join("java");
@@ -608,7 +609,7 @@ mod tests {
             .with_distribution("temurin".to_string());
 
         // Create bin directory to make it look like a real JDK installation
-        let bin_dir = jdk_path.join("bin");
+        let bin_dir = install::bin_directory(&jdk_path);
         fs::create_dir_all(&bin_dir).unwrap();
 
         // The test should find the JDK and return an InstalledJdk

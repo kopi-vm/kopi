@@ -280,6 +280,7 @@ impl PostUninstallReport {
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
+    use crate::paths::install;
     use crate::version::Version;
     use std::fs;
     use std::str::FromStr;
@@ -304,8 +305,9 @@ mod tests {
 
         // Create some mock files
         fs::write(jdk_path.join("release"), "JAVA_VERSION=\"21\"").unwrap();
-        fs::create_dir_all(jdk_path.join("bin")).unwrap();
-        fs::write(jdk_path.join("bin/java"), "#!/bin/sh\necho mock java").unwrap();
+        let bin_dir = install::bin_directory(&jdk_path);
+        fs::create_dir_all(&bin_dir).unwrap();
+        fs::write(bin_dir.join("java"), "#!/bin/sh\necho mock java").unwrap();
 
         InstalledJdk::new(
             distribution.to_string(),

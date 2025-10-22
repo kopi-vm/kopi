@@ -14,6 +14,7 @@
 
 use crate::config::KopiConfig;
 use crate::doctor::{CheckCategory, CheckResult, CheckStatus, DiagnosticCheck};
+use crate::paths::install;
 use crate::platform::with_executable_extension;
 use crate::storage::disk_probe;
 use crate::storage::formatting::format_size;
@@ -107,7 +108,7 @@ impl<'a> JdkIntegrityCheck<'a> {
 
     fn check_jdk_structure(jdk: &InstalledJdk) -> Result<(bool, Vec<String>), std::io::Error> {
         let mut issues = Vec::new();
-        let bin_dir = jdk.path.join("bin");
+        let bin_dir = install::bin_directory(&jdk.path);
 
         // Check if bin directory exists
         if !bin_dir.exists() {
@@ -403,7 +404,7 @@ impl<'a> JdkVersionConsistencyCheck<'a> {
     }
 
     fn check_java_version(jdk: &InstalledJdk) -> Result<(bool, String), std::io::Error> {
-        let java_path = jdk.path.join("bin").join(with_executable_extension("java"));
+        let java_path = install::bin_directory(&jdk.path).join(with_executable_extension("java"));
 
         if !java_path.exists() {
             return Ok((false, "Java executable not found".to_string()));
@@ -557,7 +558,7 @@ mod tests {
 
         fn create_mock_jdk(&self, name: &str) {
             let jdk_path = self.config.jdks_dir().unwrap().join(name);
-            let bin_dir = jdk_path.join("bin");
+            let bin_dir = install::bin_directory(&jdk_path);
             fs::create_dir_all(&bin_dir).unwrap();
 
             // Create mock executables

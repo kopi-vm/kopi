@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::error::{KopiError, Result};
+use crate::paths::install;
 use crate::platform;
 use crate::storage::JdkRepository;
 use log::{debug, info, warn};
@@ -189,9 +190,10 @@ impl<'a> UninstallCleanup<'a> {
         }
 
         let has_release_file = path.join("release").exists();
-        let has_bin_dir = path.join("bin").exists();
+        let bin_dir = install::bin_directory(path);
+        let has_bin_dir = bin_dir.exists();
         let has_java_executable =
-            path.join("bin").join("java").exists() || path.join("bin").join("java.exe").exists();
+            bin_dir.join("java").exists() || bin_dir.join("java.exe").exists();
 
         // If it's missing essential files, it might be a partial removal
         Ok(!has_release_file || !has_bin_dir || !has_java_executable)
@@ -334,7 +336,8 @@ mod tests {
 
             // Create incomplete JDK structure (missing bin/java)
             fs::write(jdk_path.join("release"), "JAVA_VERSION=\"21\"").unwrap();
-            fs::create_dir_all(jdk_path.join("bin")).unwrap();
+            let bin_dir = install::bin_directory(&jdk_path);
+            fs::create_dir_all(&bin_dir).unwrap();
             // Note: NOT creating bin/java to simulate partial removal
 
             jdk_path

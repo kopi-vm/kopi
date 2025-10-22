@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use crate::error::{KopiError, Result};
+use crate::paths::install;
 use crate::storage::{InstallationMetadata, JdkMetadataWithInstallation};
 use crate::version::Version;
 use std::cell::RefCell;
@@ -236,7 +237,7 @@ impl InstalledJdk {
         {
             // Check for bundle structure (Contents/Home)
             let bundle_path = self.path.join("Contents").join("Home");
-            if bundle_path.join("bin").exists() {
+            if install::bin_directory(&bundle_path).exists() {
                 log::debug!(
                     "Resolved JAVA_HOME for {} using bundle structure: {}",
                     self.distribution,
@@ -246,7 +247,7 @@ impl InstalledJdk {
             }
 
             // Direct structure or hybrid (has bin at root)
-            if self.path.join("bin").exists() {
+            if install::bin_directory(&self.path).exists() {
                 log::debug!(
                     "Resolved JAVA_HOME for {} using direct structure: {}",
                     self.distribution,
@@ -282,7 +283,7 @@ impl InstalledJdk {
     /// correct bin directory path regardless of the JDK structure.
     pub fn resolve_bin_path(&self) -> Result<PathBuf> {
         let java_home = self.resolve_java_home();
-        let bin_path = java_home.join("bin");
+        let bin_path = install::bin_directory(&java_home);
 
         if !bin_path.exists() {
             return Err(KopiError::SystemError(format!(
@@ -484,7 +485,8 @@ mod tests {
         let jdk_path = temp_dir.path().join("temurin-21.0.1");
 
         // Create bundle structure
-        let bundle_bin_path = jdk_path.join("Contents").join("Home").join("bin");
+        let bundle_home = jdk_path.join("Contents").join("Home");
+        let bundle_bin_path = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin_path).unwrap();
 
         let jdk = InstalledJdk::new(
@@ -505,7 +507,7 @@ mod tests {
         let jdk_path = temp_dir.path().join("liberica-21.0.1");
 
         // Create direct structure
-        let bin_path = jdk_path.join("bin");
+        let bin_path = install::bin_directory(&jdk_path);
         fs::create_dir_all(&bin_path).unwrap();
 
         let jdk = InstalledJdk::new(
@@ -526,8 +528,11 @@ mod tests {
         let jdk_path = temp_dir.path().join("zulu-21.0.1");
 
         // Create hybrid structure (bin at root + Contents/Home exists)
-        fs::create_dir_all(jdk_path.join("bin")).unwrap();
-        fs::create_dir_all(jdk_path.join("Contents").join("Home").join("bin")).unwrap();
+        let root_bin = install::bin_directory(&jdk_path);
+        fs::create_dir_all(&root_bin).unwrap();
+        let bundle_home = jdk_path.join("Contents").join("Home");
+        let bundle_bin = install::bin_directory(&bundle_home);
+        fs::create_dir_all(&bundle_bin).unwrap();
 
         let jdk = InstalledJdk::new(
             "zulu".to_string(),
@@ -567,8 +572,11 @@ mod tests {
         let jdk_path = temp_dir.path().join("temurin-21.0.1");
 
         // Even if bundle structure exists, should return direct path on non-macOS
-        fs::create_dir_all(jdk_path.join("Contents").join("Home").join("bin")).unwrap();
-        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+        let bundle_home = jdk_path.join("Contents").join("Home");
+        let bundle_bin = install::bin_directory(&bundle_home);
+        fs::create_dir_all(&bundle_bin).unwrap();
+        let direct_bin = install::bin_directory(&jdk_path);
+        fs::create_dir_all(&direct_bin).unwrap();
 
         let jdk = InstalledJdk::new(
             "temurin".to_string(),
@@ -587,7 +595,7 @@ mod tests {
         let jdk_path = temp_dir.path().join("test-jdk");
 
         // Create a bin directory
-        let bin_path = jdk_path.join("bin");
+        let bin_path = install::bin_directory(&jdk_path);
         fs::create_dir_all(&bin_path).unwrap();
 
         let jdk = InstalledJdk::new(
@@ -608,7 +616,8 @@ mod tests {
         let jdk_path = temp_dir.path().join("temurin-21.0.1");
 
         // Create bundle structure
-        let bundle_bin_path = jdk_path.join("Contents").join("Home").join("bin");
+        let bundle_home = jdk_path.join("Contents").join("Home");
+        let bundle_bin_path = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin_path).unwrap();
 
         let jdk = InstalledJdk::new(
@@ -719,7 +728,8 @@ mod tests {
         let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("liberica-21.0.1");
-        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+        let bin_dir = install::bin_directory(&jdk_path);
+        fs::create_dir_all(&bin_dir).unwrap();
 
         let jdk = InstalledJdk::new(
             "liberica".to_string(),
@@ -747,7 +757,8 @@ mod tests {
         let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("temurin-21.0.1");
-        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+        let bin_dir = install::bin_directory(&jdk_path);
+        fs::create_dir_all(&bin_dir).unwrap();
 
         // Create corrupt metadata file
         let metadata_path = jdks_dir.join("temurin-21.0.1.meta.json");
@@ -917,7 +928,8 @@ mod tests {
         let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("temurin-21.0.1");
-        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+        let bin_dir = install::bin_directory(&jdk_path);
+        fs::create_dir_all(&bin_dir).unwrap();
 
         // Create metadata file with missing required fields
         let incomplete_metadata = r#"{
@@ -982,7 +994,8 @@ mod tests {
         let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("liberica-21.0.1");
-        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+        let bin_dir = install::bin_directory(&jdk_path);
+        fs::create_dir_all(&bin_dir).unwrap();
 
         // Create metadata file with invalid metadata_version
         let invalid_metadata = r#"{
@@ -1042,7 +1055,8 @@ mod tests {
         let jdks_dir = ensure_jdks_dir(&temp_dir);
 
         let jdk_path = jdks_dir.join("zulu-21.0.1");
-        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+        let bin_dir = install::bin_directory(&jdk_path);
+        fs::create_dir_all(&bin_dir).unwrap();
 
         // Create metadata file with empty platform field
         let invalid_metadata = r#"{
@@ -1104,7 +1118,8 @@ mod tests {
 
         // Test 1: Missing metadata file - should work without errors
         let jdk_path1 = jdks_dir.join("temurin-17.0.1");
-        fs::create_dir_all(jdk_path1.join("bin")).unwrap();
+        let bin_dir1 = install::bin_directory(&jdk_path1);
+        fs::create_dir_all(&bin_dir1).unwrap();
         let jdk1 = InstalledJdk::new(
             "temurin".to_string(),
             Version::new(17, 0, 1),
@@ -1120,7 +1135,8 @@ mod tests {
 
         // Test 2: Corrupted metadata file - should work without errors
         let jdk_path2 = jdks_dir.join("liberica-17.0.1");
-        fs::create_dir_all(jdk_path2.join("bin")).unwrap();
+        let bin_dir2 = install::bin_directory(&jdk_path2);
+        fs::create_dir_all(&bin_dir2).unwrap();
         fs::write(jdks_dir.join("liberica-17.0.1.meta.json"), "{ corrupt json").unwrap();
         let jdk2 = InstalledJdk::new(
             "liberica".to_string(),
@@ -1136,7 +1152,8 @@ mod tests {
 
         // Test 3: Incomplete metadata - should work without errors
         let jdk_path3 = jdks_dir.join("zulu-17.0.1");
-        fs::create_dir_all(jdk_path3.join("bin")).unwrap();
+        let bin_dir3 = install::bin_directory(&jdk_path3);
+        fs::create_dir_all(&bin_dir3).unwrap();
         let incomplete_meta = r#"{
             "id": "test",
             "installation_metadata": {
@@ -1195,7 +1212,8 @@ mod tests {
 
         // Test missing metadata logging
         let jdk_path = jdks_dir.join("test-jdk");
-        fs::create_dir_all(jdk_path.join("bin")).unwrap();
+        let bin_dir = install::bin_directory(&jdk_path);
+        fs::create_dir_all(&bin_dir).unwrap();
         let jdk = InstalledJdk::new(
             "test".to_string(),
             Version::new(21, 0, 1),
@@ -1353,8 +1371,9 @@ mod tests {
 
         // Create bundle structure
         let contents_home = jdk_path.join("Contents").join("Home");
-        fs::create_dir_all(contents_home.join("bin")).unwrap();
-        fs::File::create(contents_home.join("bin").join("java")).unwrap();
+        let contents_bin = install::bin_directory(&contents_home);
+        fs::create_dir_all(&contents_bin).unwrap();
+        fs::File::create(contents_bin.join("java")).unwrap();
 
         // Measure detection time
         let start = Instant::now();
@@ -1473,7 +1492,7 @@ mod tests {
         let jdk_path = jdks_dir.join("temurin-21.0.0");
         fs::create_dir_all(&jdk_path).unwrap();
         let bundle_home = jdk_path.join("Contents/Home");
-        let bundle_bin = bundle_home.join("bin");
+        let bundle_bin = install::bin_directory(&bundle_home);
         fs::create_dir_all(&bundle_bin).unwrap();
 
         // Create java binary
@@ -1613,7 +1632,7 @@ mod tests {
         {
             // macOS: Create bundle structure
             let bundle_home = jdk_path.join("Contents/Home");
-            let bundle_bin = bundle_home.join("bin");
+            let bundle_bin = install::bin_directory(&bundle_home);
             fs::create_dir_all(&bundle_bin).unwrap();
 
             // Create java binary
@@ -1624,7 +1643,7 @@ mod tests {
         #[cfg(not(target_os = "macos"))]
         {
             // Other platforms: Create direct structure
-            let bin_dir = jdk_path.join("bin");
+            let bin_dir = install::bin_directory(&jdk_path);
             fs::create_dir_all(&bin_dir).unwrap();
 
             // Create java binary
@@ -1655,13 +1674,15 @@ mod tests {
         assert_eq!(java_home, expected_java_home);
 
         // Bin path should still work via fallback
-        let bin_path = jdk.resolve_bin_path();
-        assert!(bin_path.is_ok());
+        let bin_path = jdk.resolve_bin_path().unwrap();
 
         #[cfg(target_os = "macos")]
-        assert_eq!(bin_path.unwrap(), jdk_path.join("Contents/Home/bin"));
+        assert_eq!(
+            bin_path,
+            install::bin_directory(&jdk_path.join("Contents/Home"))
+        );
         #[cfg(not(target_os = "macos"))]
-        assert_eq!(bin_path.unwrap(), jdk_path.join("bin"));
+        assert_eq!(bin_path, install::bin_directory(&jdk_path));
     }
 
     #[test]
@@ -1671,7 +1692,7 @@ mod tests {
 
         // Create JDK with direct structure
         let jdk_path = jdks_dir.join("liberica-17.0.9");
-        let bin_path = jdk_path.join("bin");
+        let bin_path = install::bin_directory(&jdk_path);
         fs::create_dir_all(&bin_path).unwrap();
 
         let java_binary = if cfg!(windows) { "java.exe" } else { "java" };
@@ -1700,9 +1721,8 @@ mod tests {
         let java_home = jdk.resolve_java_home();
         assert_eq!(java_home, jdk_path);
 
-        let bin_path = jdk.resolve_bin_path();
-        assert!(bin_path.is_ok());
-        assert_eq!(bin_path.unwrap(), jdk_path.join("bin"));
+        let bin_path = jdk.resolve_bin_path().unwrap();
+        assert_eq!(bin_path, install::bin_directory(&jdk_path));
     }
 
     // Helper function to create a test Package

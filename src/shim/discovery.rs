@@ -17,6 +17,7 @@ use std::path::Path;
 use log::debug;
 
 use crate::error::Result;
+use crate::paths::install;
 use crate::platform::file_ops::is_executable;
 use crate::platform::with_executable_extension;
 
@@ -25,7 +26,7 @@ use super::tools::ToolRegistry;
 /// Helper function to check for distribution-specific tools in the bin directory
 fn check_tools_exist(jdk_path: &Path, tools: &[&str]) -> Result<Vec<String>> {
     let mut found_tools = Vec::new();
-    let bin_dir = jdk_path.join("bin");
+    let bin_dir = install::bin_directory(jdk_path);
 
     for tool in tools {
         let tool_name = with_executable_extension(tool);
@@ -44,7 +45,7 @@ fn check_tools_exist(jdk_path: &Path, tools: &[&str]) -> Result<Vec<String>> {
 /// Scans the bin directory of the JDK installation and identifies
 /// executable files that match known JDK tools from the ToolRegistry.
 pub fn discover_jdk_tools(jdk_path: &Path) -> Result<Vec<String>> {
-    let bin_dir = jdk_path.join("bin");
+    let bin_dir = install::bin_directory(jdk_path);
 
     if !bin_dir.exists() {
         return Ok(Vec::new());
@@ -170,7 +171,7 @@ mod tests {
     fn test_discover_jdk_tools_with_standard_tools() {
         let temp_dir = TempDir::new().unwrap();
         let jdk_path = temp_dir.path();
-        let bin_dir = jdk_path.join("bin");
+        let bin_dir = install::bin_directory(jdk_path);
         fs::create_dir(&bin_dir).unwrap();
 
         // Create dummy JDK tools
@@ -224,7 +225,7 @@ mod tests {
     fn test_discover_distribution_tools_graalvm() {
         let temp_dir = TempDir::new().unwrap();
         let jdk_path = temp_dir.path();
-        let bin_dir = jdk_path.join("bin");
+        let bin_dir = install::bin_directory(jdk_path);
         fs::create_dir(&bin_dir).unwrap();
 
         // Create dummy GraalVM tools
@@ -283,7 +284,7 @@ mod tests {
     fn test_discover_distribution_tools_semeru() {
         let temp_dir = TempDir::new().unwrap();
         let jdk_path = temp_dir.path();
-        let bin_dir = jdk_path.join("bin");
+        let bin_dir = install::bin_directory(jdk_path);
         fs::create_dir(&bin_dir).unwrap();
 
         // Create dummy Semeru/OpenJ9 tools
@@ -324,7 +325,7 @@ mod tests {
     fn test_discover_distribution_tools_sap_machine() {
         let temp_dir = TempDir::new().unwrap();
         let jdk_path = temp_dir.path();
-        let bin_dir = jdk_path.join("bin");
+        let bin_dir = install::bin_directory(jdk_path);
         fs::create_dir(&bin_dir).unwrap();
 
         // Create dummy SAP Machine tool
@@ -358,7 +359,7 @@ mod tests {
     fn test_discover_jdk_tools_sorted_and_unique() {
         let temp_dir = TempDir::new().unwrap();
         let jdk_path = temp_dir.path();
-        let bin_dir = jdk_path.join("bin");
+        let bin_dir = install::bin_directory(jdk_path);
         fs::create_dir(&bin_dir).unwrap();
 
         // Create tools in non-alphabetical order

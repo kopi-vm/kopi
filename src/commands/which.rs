@@ -14,6 +14,7 @@
 
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
+use crate::paths::install;
 use crate::platform::{executable_extension, with_executable_extension};
 use crate::storage::{InstalledJdk, JdkRepository};
 use crate::version::VersionRequest;
@@ -115,11 +116,11 @@ fn format_source(source: &VersionSource) -> String {
 
 fn get_tool_path(installation: &InstalledJdk, tool: &str) -> Result<PathBuf> {
     let tool_name = with_executable_extension(tool);
-    let tool_path = installation.path.join("bin").join(&tool_name);
+    let bin_dir = install::bin_directory(&installation.path);
+    let tool_path = bin_dir.join(&tool_name);
 
     if !tool_path.exists() {
         // Get list of available tools in the bin directory
-        let bin_dir = installation.path.join("bin");
         let mut available_tools = Vec::new();
 
         if let Ok(entries) = std::fs::read_dir(&bin_dir) {
@@ -190,7 +191,7 @@ mod tests {
         let slug = format!("{distribution}-{version}");
         let jdk_path = install::installation_directory(temp_dir.path(), &slug);
 
-        let bin_dir = jdk_path.join("bin");
+        let bin_dir = install::bin_directory(&jdk_path);
         fs::create_dir_all(&bin_dir).unwrap();
 
         // Create test tools

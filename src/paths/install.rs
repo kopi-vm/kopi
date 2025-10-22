@@ -43,6 +43,10 @@ pub fn ensure_temp_staging_directory(kopi_home: &Path) -> Result<PathBuf> {
     ensure_nested_directory(kopi_home, [home::JDKS_DIR, TEMP_STAGING_DIR])
 }
 
+pub fn bin_directory(java_home: &Path) -> PathBuf {
+    java_home.join(home::BIN_DIR)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,6 +56,7 @@ mod tests {
     fn installation_paths_follow_previous_layout() {
         let home = Path::new("/opt/kopi");
         let slug = "temurin-21-jdk-x64";
+        let java_home = Path::new("/opt/kopi/jdks/temurin-21-jdk-x64");
 
         assert_eq!(installations_root(home), PathBuf::from("/opt/kopi/jdks"));
         assert_eq!(
@@ -65,6 +70,10 @@ mod tests {
         assert_eq!(
             temp_staging_directory(home),
             PathBuf::from("/opt/kopi/jdks/.tmp")
+        );
+        assert_eq!(
+            bin_directory(java_home),
+            PathBuf::from("/opt/kopi/jdks/temurin-21-jdk-x64/bin")
         );
     }
 

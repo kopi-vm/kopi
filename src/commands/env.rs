@@ -152,6 +152,7 @@ impl EnvFormatter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::install;
     use crate::storage::InstalledJdk;
     use crate::version::Version;
     use std::path::PathBuf;
@@ -280,7 +281,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let jdk_root = temp_dir.path().join("temurin-21");
         let bundle_home = jdk_root.join("Contents").join("Home");
-        let bundle_bin = bundle_home.join("bin");
+        let bundle_bin = install::bin_directory(&bundle_home);
 
         // Create the directory structure
         std::fs::create_dir_all(&bundle_bin).unwrap();
@@ -309,7 +310,7 @@ mod tests {
         // Create a mock JDK with direct structure
         let temp_dir = TempDir::new().unwrap();
         let jdk_root = temp_dir.path().join("liberica-21");
-        let direct_bin = jdk_root.join("bin");
+        let direct_bin = install::bin_directory(&jdk_root);
 
         // Create the directory structure
         std::fs::create_dir_all(&direct_bin).unwrap();
@@ -342,14 +343,14 @@ mod tests {
         {
             // Create bundle structure on macOS
             let bundle_home = jdk_root.join("Contents").join("Home");
-            let bundle_bin = bundle_home.join("bin");
+            let bundle_bin = install::bin_directory(&bundle_home);
             std::fs::create_dir_all(&bundle_bin).unwrap();
         }
 
         #[cfg(not(target_os = "macos"))]
         {
             // Create direct structure on other platforms
-            let direct_bin = jdk_root.join("bin");
+            let direct_bin = install::bin_directory(&jdk_root);
             std::fs::create_dir_all(&direct_bin).unwrap();
         }
 
@@ -387,14 +388,14 @@ mod tests {
         {
             // Create bundle structure
             let bundle_home = jdk_root.join("Contents").join("Home");
-            let bundle_bin = bundle_home.join("bin");
+            let bundle_bin = install::bin_directory(&bundle_home);
             std::fs::create_dir_all(&bundle_bin).unwrap();
         }
 
         #[cfg(not(target_os = "macos"))]
         {
             // Create direct structure
-            let direct_bin = jdk_root.join("bin");
+            let direct_bin = install::bin_directory(&jdk_root);
             std::fs::create_dir_all(&direct_bin).unwrap();
         }
 
@@ -413,7 +414,9 @@ mod tests {
         #[cfg(target_os = "macos")]
         {
             // On macOS with bundle structure, bin should be under Contents/Home
-            if jdk_root.join("Contents").join("Home").join("bin").exists() {
+            let bundle_home = jdk_root.join("Contents").join("Home");
+            let bundle_bin = install::bin_directory(&bundle_home);
+            if bundle_bin.exists() {
                 assert!(bin_path.to_string_lossy().contains("Contents/Home/bin"));
             }
         }

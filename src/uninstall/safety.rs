@@ -112,6 +112,7 @@ pub fn check_tool_dependencies(path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::install;
     use tempfile::TempDir;
 
     #[test]
@@ -154,8 +155,9 @@ mod tests {
         assert!(check_tool_dependencies(&jdk_path).is_ok());
 
         // Should succeed even with java binary (just warns)
-        fs::create_dir(jdk_path.join("bin")).unwrap();
-        fs::write(jdk_path.join("bin/java"), "mock").unwrap();
+        let bin_dir = install::bin_directory(&jdk_path);
+        fs::create_dir(&bin_dir).unwrap();
+        fs::write(bin_dir.join("java"), "mock").unwrap();
         assert!(check_tool_dependencies(&jdk_path).is_ok());
     }
 

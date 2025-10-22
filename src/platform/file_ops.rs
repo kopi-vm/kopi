@@ -530,6 +530,7 @@ pub fn get_file_permissions_string(path: &Path) -> std::io::Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::paths::install;
     use crate::platform::with_executable_extension;
     use std::fs;
     use std::sync::{Arc, Barrier, mpsc};
@@ -583,7 +584,7 @@ mod tests {
     #[test]
     fn check_files_in_use_reports_locked_file() {
         let temp_dir = TempDir::new().unwrap();
-        let bin_dir = temp_dir.path().join("bin");
+        let bin_dir = install::bin_directory(temp_dir.path());
         fs::create_dir_all(&bin_dir).unwrap();
         let java_name = with_executable_extension("java");
         let java_path = bin_dir.join(&java_name);

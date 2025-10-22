@@ -1060,8 +1060,9 @@ mod tests {
 
         // Create a fake JDK structure
         let jdk_root = temp_path.join("jdk-21");
-        fs::create_dir_all(jdk_root.join("bin")).unwrap();
-        fs::write(jdk_root.join("bin/java"), "mock java").unwrap();
+        let bin_dir = install::bin_directory(&jdk_root);
+        fs::create_dir_all(&bin_dir).unwrap();
+        fs::write(bin_dir.join("java"), "mock java").unwrap();
 
         let context = InstallationContext {
             final_path: install::installation_directory(temp_dir.path(), "temurin-21.0.1"),
@@ -1106,8 +1107,9 @@ mod tests {
         // Create a fake bundle structure
         let bundle_root = temp_path.join("jdk-21.jdk");
         let contents_home = bundle_root.join("Contents/Home");
-        fs::create_dir_all(contents_home.join("bin")).unwrap();
-        fs::write(contents_home.join("bin/java"), "mock java").unwrap();
+        let contents_bin_dir = install::bin_directory(&contents_home);
+        fs::create_dir_all(&contents_bin_dir).unwrap();
+        fs::write(contents_bin_dir.join("java"), "mock java").unwrap();
 
         let context = InstallationContext {
             final_path: install::installation_directory(temp_dir.path(), "temurin-21.0.1"),
@@ -1150,8 +1152,9 @@ mod tests {
         let temp_root = install::ensure_temp_staging_directory(temp_dir.path()).unwrap();
         let temp_path = temp_root.join("test-install");
         let jdk_root = temp_path.join("jdk");
-        fs::create_dir_all(jdk_root.join("bin")).unwrap();
-        fs::write(jdk_root.join("bin/java"), "mock").unwrap();
+        let bin_dir = install::bin_directory(&jdk_root);
+        fs::create_dir_all(&bin_dir).unwrap();
+        fs::write(bin_dir.join("java"), "mock").unwrap();
 
         // Test that each structure type can be processed without errors
         for structure_type in [
@@ -1166,8 +1169,9 @@ mod tests {
 
             // Re-create the JDK structure for each test
             if !jdk_root.exists() {
-                fs::create_dir_all(jdk_root.join("bin")).unwrap();
-                fs::write(jdk_root.join("bin/java"), "mock").unwrap();
+                let recreated_bin_dir = install::bin_directory(&jdk_root);
+                fs::create_dir_all(&recreated_bin_dir).unwrap();
+                fs::write(recreated_bin_dir.join("java"), "mock").unwrap();
             }
 
             let repo = JdkRepository::new(&config);
