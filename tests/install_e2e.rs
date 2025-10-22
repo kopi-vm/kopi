@@ -28,6 +28,18 @@ fn get_test_command(kopi_home: &Path) -> Command {
     cmd
 }
 
+/// Returns a JDK version request that is guaranteed to be available on the
+/// current platform. Some distributions, such as Eclipse Temurin, do not ship
+/// JDK 8 builds for macOS on Apple silicon, so we fall back to JDK 11 in that
+/// environment to keep the end-to-end tests portable.
+fn default_install_request() -> &'static str {
+    if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        "11"
+    } else {
+        "8"
+    }
+}
+
 /// Resolves a file path within a JDK directory, handling macOS-specific directory structure
 /// On macOS, JDK files may be located under Contents/Home/ subdirectory
 fn resolve_jdk_path(jdk_dir: &Path, relative_path: &str) -> std::path::PathBuf {
@@ -654,7 +666,7 @@ fn test_install_creates_shims() {
     // Install a JDK
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("install")
-        .arg("8")
+        .arg(default_install_request())
         .arg("--timeout")
         .arg("300")
         .timeout(std::time::Duration::from_secs(600))
@@ -753,7 +765,7 @@ fn test_install_verifies_disk_space() {
     // Try to install
     let mut cmd = get_test_command(&kopi_home);
     cmd.arg("install")
-        .arg("8")
+        .arg(default_install_request())
         .arg("--timeout")
         .arg("300")
         .arg("-v") // Verbose to see disk space messages
@@ -782,7 +794,7 @@ fn test_concurrent_same_version_install() {
     let handle1 = thread::spawn(move || {
         let mut cmd = get_test_command(&kopi_home_1);
         cmd.arg("install")
-            .arg("8")
+            .arg(default_install_request())
             .arg("--timeout")
             .arg("300")
             .timeout(std::time::Duration::from_secs(600))
@@ -794,7 +806,7 @@ fn test_concurrent_same_version_install() {
     let handle2 = thread::spawn(move || {
         let mut cmd = get_test_command(&kopi_home_2);
         cmd.arg("install")
-            .arg("8")
+            .arg(default_install_request())
             .arg("--timeout")
             .arg("300")
             .timeout(std::time::Duration::from_secs(600))
@@ -921,7 +933,7 @@ fn test_simple_install_debug() {
     let output = cmd
         .arg("-vv") // Very verbose
         .arg("install")
-        .arg("8")
+        .arg(default_install_request())
         .arg("--timeout")
         .arg("300")
         .timeout(std::time::Duration::from_secs(600))
