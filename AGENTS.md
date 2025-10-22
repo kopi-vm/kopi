@@ -213,7 +213,10 @@ graph LR
 
 5. **Implementation**
    - **Deliverable**: Code and supporting assets tied to the approved task.
-   - **Approval Gate**: Execute the work phase-by-phase as defined in `plan.md`; after completing each phase, secure explicit approval before starting the next, and mark every finished checklist item as `[x]` before requesting review.
+   - **Approval Gate**:
+     - Implementation MUST NOT begin until an explicit written approval (for example, “Approved to start Implementation for T-…”) is recorded.
+     - Treat every phase listed in `plan.md` as its own approval checkpoint. After finishing a phase, immediately stop, mark the corresponding checklist item as `[x]`, capture the approval reference (link or quoted message) in the plan, and request explicit approval to proceed. Do not write code, run tests, or change artefacts for the next phase until that approval is received.
+     - If approval is missing or unclear at any point, halt all implementation work and ask the approver how to proceed; the only permitted actions while waiting are housekeeping required to request approval (e.g., summarising work done or reverting unintended edits).
 
 ## Development Workflow
 
