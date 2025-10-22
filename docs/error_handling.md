@@ -36,6 +36,7 @@ Failure to coordinate cross-process access (advisory or fallback locking)
 - Include scope labels (`installation temurin-21`, `cache writer`, etc.) and original IO details
 - Let the controller downgrade to fallback automatically; surface INFO logs for downgrade decisions
 - Hygiene failures should log WARN but not abort the CLI; acquisition failures bubble up to commands with actionable text
+- Distinguish user cancellations with `KopiError::LockingCancelled` so scripts can differentiate manual interrupts from timeouts
 
 ## Error Message Format
 
@@ -106,6 +107,7 @@ The `ErrorContext` system automatically provides:
 | 17   | Already exists        | Resource already exists (e.g., JDK already installed)            |
 | 20   | Network error         | Failed API calls, downloads, or metadata fetching                |
 | 28   | Disk space            | Insufficient disk space for operation                            |
+| 75   | Lock wait cancelled   | User interrupted lock acquisition (e.g., Ctrl-C)                 |
 | 127  | Command not found     | Kopi command not found or shell not found                        |
 
 ## Best Practices

@@ -174,6 +174,16 @@ impl<'a> ErrorContext<'a> {
                 );
                 (suggestion, Some(detail_message))
             }
+            KopiError::LockingCancelled { scope, waited_secs } => {
+                let suggestion = Some(
+                    "Command cancelled. Re-run when you are ready to continue the operation."
+                        .to_string(),
+                );
+                let detail_message = format!(
+                    "Cancellation received after {waited_secs:.2}s while waiting for {scope} lock"
+                );
+                (suggestion, Some(detail_message))
+            }
             KopiError::LockingRelease { scope, details } => {
                 let suggestion = Some(
                     "Verify filesystem permissions and that the lock directory is accessible."

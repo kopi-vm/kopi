@@ -129,6 +129,9 @@ pub enum KopiError {
         details: String,
     },
 
+    #[error("Lock acquisition for {scope} was cancelled after {waited_secs:.2}s")]
+    LockingCancelled { scope: String, waited_secs: f64 },
+
     #[error("Failed to release {scope} lock: {details}")]
     LockingRelease { scope: String, details: String },
 

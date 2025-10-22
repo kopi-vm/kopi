@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod acquisition;
+pub mod cancellation;
 pub mod controller;
 pub mod fallback;
 pub mod handle;
@@ -20,6 +22,10 @@ pub mod package_coordinate;
 pub mod scope;
 pub mod timeout;
 
+pub use acquisition::{
+    AcquireMode, LockAcquisitionRequest, LockTimeoutBudget, LockWaitObserver, PollingBackoff,
+};
+pub use cancellation::{CancellationToken, global_token};
 pub use controller::{LockAcquisition, LockController};
 pub use handle::{FallbackHandle, LockBackend, LockHandle};
 pub use hygiene::{LockHygieneReport, LockHygieneRunner, run_startup_hygiene};

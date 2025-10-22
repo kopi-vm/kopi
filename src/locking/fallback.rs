@@ -20,7 +20,7 @@
 //! acquisitions from advisory locks and to clean up stale state after crashes.
 
 use crate::error::{KopiError, Result};
-use crate::locking::controller::AcquireMode;
+use crate::locking::LockAcquisitionRequest;
 use crate::locking::handle::FallbackHandle;
 use crate::locking::scope::LockScope;
 use chrono::{DateTime, Utc};
@@ -30,7 +30,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use uuid::Uuid;
 
 /// File suffix used for marker files accompanying fallback locks.
@@ -55,45 +55,70 @@ struct FallbackLeaseMetadata<'a> {
 }
 
 pub(crate) fn acquire(
-    scope: LockScope,
     lock_path: PathBuf,
-    timeout: Duration,
-    retry_delay: Duration,
-    mode: AcquireMode,
+    request: &mut LockAcquisitionRequest<'_>,
 ) -> Result<FallbackAcquire> {
-    let start = Instant::now();
+    let scope = request.scope().clone();
     let scope_label = scope.to_string();
 
     loop {
+        if request.cancellation().is_cancelled() {
+            request.notify_cancelled();
+            return Err(KopiError::LockingCancelled {
+                scope: scope_label.clone(),
+                waited_secs: request.elapsed().as_secs_f64(),
+            });
+        }
+
         let lease_id = generate_lease_id();
         match attempt_once(&scope, &lock_path, &lease_id) {
             Attempt::Acquired(handle) => {
                 debug!(
                     "Acquired fallback lock for {} after {:.3}s",
                     scope_label,
-                    start.elapsed().as_secs_f64()
+                    request.elapsed().as_secs_f64()
                 );
+                request.notify_acquired();
                 return Ok(FallbackAcquire::Acquired(handle));
             }
             Attempt::Busy => {
-                if matches!(mode, AcquireMode::NonBlocking) {
+                if request.mode().is_non_blocking() {
                     return Ok(FallbackAcquire::NotAcquired);
                 }
 
-                if start.elapsed() >= timeout {
+                request.record_wait_start();
+                if request.budget().is_expired() {
+                    request.notify_timeout();
                     return Err(KopiError::LockingTimeout {
-                        scope: scope_label,
-                        waited_secs: start.elapsed().as_secs_f64(),
+                        scope: scope_label.clone(),
+                        waited_secs: request.elapsed().as_secs_f64(),
                         details: "lock file already exists".to_string(),
                     });
                 }
 
-                thread::sleep(retry_delay);
-                continue;
+                request.record_retry();
+                if let Some(sleep_for) = request.next_sleep_interval() {
+                    if request.cancellation().is_cancelled() {
+                        request.notify_cancelled();
+                        return Err(KopiError::LockingCancelled {
+                            scope: scope_label.clone(),
+                            waited_secs: request.elapsed().as_secs_f64(),
+                        });
+                    }
+                    thread::sleep(sleep_for);
+                    continue;
+                }
+
+                request.notify_timeout();
+                return Err(KopiError::LockingTimeout {
+                    scope: scope_label.clone(),
+                    waited_secs: request.elapsed().as_secs_f64(),
+                    details: "lock file already exists".to_string(),
+                });
             }
             Attempt::IoError(err) => {
                 return Err(KopiError::LockingAcquire {
-                    scope: scope_label,
+                    scope: scope_label.clone(),
                     details: err.to_string(),
                 });
             }
@@ -223,8 +248,11 @@ mod tests {
     use super::*;
     use crate::locking::LockScope;
     use crate::locking::PackageKind;
+    use crate::locking::acquisition::AcquireMode;
     use crate::locking::package_coordinate::PackageCoordinate;
+    use crate::locking::{LockAcquisitionRequest, LockTimeoutValue, PollingBackoff};
     use std::fs;
+    use std::time::Duration;
     use tempfile::TempDir;
 
     fn install_scope() -> LockScope {
@@ -232,19 +260,28 @@ mod tests {
         LockScope::installation(coordinate)
     }
 
+    fn make_request(
+        scope: LockScope,
+        timeout: Duration,
+        mode: AcquireMode,
+    ) -> LockAcquisitionRequest<'static> {
+        LockAcquisitionRequest::new(scope, LockTimeoutValue::Finite(timeout))
+            .with_mode(mode)
+            .with_backoff(PollingBackoff::new(
+                Duration::from_millis(10),
+                2,
+                Duration::from_millis(10),
+            ))
+    }
+
     #[test]
     fn blocking_acquire_and_release_cleanup_files() {
         let temp = TempDir::new().unwrap();
         let lock_path = temp.path().join("cache.lock");
         let scope = LockScope::CacheWriter;
-        let outcome = acquire(
-            scope.clone(),
-            lock_path.clone(),
-            Duration::from_secs(1),
-            Duration::from_millis(10),
-            AcquireMode::Blocking,
-        )
-        .unwrap();
+        let mut request =
+            make_request(scope.clone(), Duration::from_secs(1), AcquireMode::Blocking);
+        let outcome = acquire(lock_path.clone(), &mut request).unwrap();
 
         let handle = match outcome {
             FallbackAcquire::Acquired(handle) => handle,
@@ -264,28 +301,21 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let lock_path = temp.path().join("install.lock");
         let scope = install_scope();
-        let first = acquire(
-            scope.clone(),
-            lock_path.clone(),
-            Duration::from_secs(1),
-            Duration::from_millis(10),
-            AcquireMode::Blocking,
-        )
-        .unwrap();
+        let mut first_request =
+            make_request(scope.clone(), Duration::from_secs(1), AcquireMode::Blocking);
+        let first = acquire(lock_path.clone(), &mut first_request).unwrap();
         let first_handle = match first {
             FallbackAcquire::Acquired(handle) => handle,
             FallbackAcquire::NotAcquired => panic!("First acquisition should succeed"),
         };
         let first_handle = *first_handle;
 
-        let second = acquire(
+        let mut second_request = make_request(
             scope.clone(),
-            lock_path.clone(),
             Duration::from_secs(1),
-            Duration::from_millis(10),
             AcquireMode::NonBlocking,
-        )
-        .unwrap();
+        );
+        let second = acquire(lock_path.clone(), &mut second_request).unwrap();
         assert!(matches!(second, FallbackAcquire::NotAcquired));
 
         first_handle.release().unwrap();
@@ -296,28 +326,24 @@ mod tests {
         let temp = TempDir::new().unwrap();
         let lock_path = temp.path().join("global.lock");
         let scope = LockScope::GlobalConfig;
-        let first = acquire(
+        let mut first_request = make_request(
             scope.clone(),
-            lock_path.clone(),
             Duration::from_millis(100),
-            Duration::from_millis(20),
             AcquireMode::Blocking,
-        )
-        .unwrap();
+        );
+        let first = acquire(lock_path.clone(), &mut first_request).unwrap();
         let first_handle = match first {
             FallbackAcquire::Acquired(handle) => handle,
             FallbackAcquire::NotAcquired => panic!("Expected acquisition"),
         };
         let first_handle = *first_handle;
 
-        let err = acquire(
+        let mut timeout_request = make_request(
             scope.clone(),
-            lock_path.clone(),
             Duration::from_millis(100),
-            Duration::from_millis(20),
             AcquireMode::Blocking,
-        )
-        .unwrap_err();
+        );
+        let err = acquire(lock_path.clone(), &mut timeout_request).unwrap_err();
         match err {
             KopiError::LockingTimeout { scope: label, .. } => {
                 assert!(label.contains("global"));

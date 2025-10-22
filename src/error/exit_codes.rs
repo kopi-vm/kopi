@@ -32,6 +32,8 @@ pub fn get_exit_code(error: &KopiError) -> i32 {
 
         KopiError::DiskSpaceError(_) => 28,
 
+        KopiError::LockingCancelled { .. } => 75,
+
         KopiError::AlreadyExists(_) => 17,
 
         KopiError::KopiNotFound { .. } => 127, // Standard "command not found" exit code

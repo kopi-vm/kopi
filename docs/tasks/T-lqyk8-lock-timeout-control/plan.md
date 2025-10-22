@@ -121,19 +121,19 @@ Refactor lock acquisition loops to use exponential backoff, enforce timeout budg
 
 ### Phase 2 Tasks
 
-- [ ] **Backoff & Budget**
-  - [ ] Introduce `LockAcquisitionRequest` and `PollingBackoff` structures.
-  - [ ] Update advisory and fallback loops to use exponential backoff with 10 ms start and 1 s cap.
-  - [ ] Track elapsed/remaining time via `Instant` to satisfy ±1 s accuracy requirement.
-- [ ] **Cancellation**
-  - [ ] Add `CancellationRegistry` that installs signal handlers once and exposes `CancellationToken`.
-  - [ ] Inject cancellation checks into advisory/fallback loops; return `KopiError::LockingCancelled` when triggered.
-  - [ ] Map `KopiError::LockingCancelled` to a distinct exit code (e.g., 75) in `error::exit_codes`.
-- [ ] **Testing**
-  - [ ] Extend unit tests simulating contention to assert timeout accuracy (within 1 s tolerance).
-  - [ ] Add tests covering cancellation path using manually triggered token.
-- [ ] **Telemetry**
-  - [ ] Emit DEBUG logs summarising resolved timeout, source precedence, and final backend.
+- [x] **Backoff & Budget**
+  - [x] Introduce `LockAcquisitionRequest` and `PollingBackoff` structures.
+  - [x] Update advisory and fallback loops to use exponential backoff with 10 ms start and 1 s cap.
+  - [x] Track elapsed/remaining time via `Instant` to satisfy ±1 s accuracy requirement.
+- [x] **Cancellation**
+  - [x] Add `CancellationRegistry` that installs signal handlers once and exposes `CancellationToken`.
+  - [x] Inject cancellation checks into advisory/fallback loops; return `KopiError::LockingCancelled` when triggered.
+  - [x] Map `KopiError::LockingCancelled` to a distinct exit code (e.g., 75) in `error::exit_codes`.
+- [x] **Testing**
+  - [x] Extend unit tests simulating contention to assert timeout accuracy (within 1 s tolerance).
+  - [x] Add tests covering cancellation path using manually triggered token.
+- [x] **Telemetry**
+  - [x] Emit DEBUG logs summarising resolved timeout, source precedence, and final backend.
 
 ### Phase 2 Deliverables
 
