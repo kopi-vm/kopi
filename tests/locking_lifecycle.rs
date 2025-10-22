@@ -1,6 +1,8 @@
 use kopi::config::LockingConfig;
+use kopi::error::KopiError;
 use kopi::locking::{
-    LockAcquisition, LockController, LockHygieneRunner, LockScope, PackageCoordinate, PackageKind,
+    LockAcquisition, LockController, LockHygieneRunner, LockScope, LockStatusSink,
+    LockTimeoutSource, LockTimeoutValue, PackageCoordinate, PackageKind,
 };
 use kopi::paths::locking::{cache_lock_path, locks_root};
 use std::time::Duration;
@@ -79,6 +81,82 @@ fn fallback_crash_simulation_cleanup() {
         assert_eq!(report.removed_markers, 1);
         assert!(!lock_path.exists());
         assert!(!marker_path.exists());
+    }
+}
+
+#[test]
+fn timeout_override_and_observer_feedback() {
+    let temp = TempDir::new().unwrap();
+    let mut config = LockingConfig::default();
+    config.set_timeout_value(LockTimeoutValue::from_secs(15));
+
+    let resolution = config
+        .resolve_timeout(Some("7"), Some("11"))
+        .expect("CLI override should resolve");
+    assert_eq!(resolution.value, LockTimeoutValue::from_secs(7));
+    assert_eq!(resolution.source, LockTimeoutSource::Cli);
+
+    let resolution = config
+        .resolve_timeout(None, Some("0"))
+        .expect("environment override should resolve");
+    assert_eq!(resolution.value, LockTimeoutValue::from_secs(0));
+    assert_eq!(resolution.source, LockTimeoutSource::Environment);
+
+    let controller = LockController::with_default_inspector(temp.path().to_path_buf(), &config);
+    let scope = installation_scope();
+
+    let first = controller.acquire(scope.clone()).unwrap();
+
+    let sink = RecordingSink::default();
+    let err = controller
+        .acquire_with_status_sink(scope.clone(), &sink)
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        KopiError::LockingTimeout {
+            timeout_source: LockTimeoutSource::Environment,
+            timeout_value,
+            ..
+        } if timeout_value == LockTimeoutValue::from_secs(0)
+    ));
+
+    let messages = sink.messages();
+    assert!(
+        messages
+            .iter()
+            .any(|line| line.contains("source environment variable"))
+    );
+    assert!(
+        messages
+            .iter()
+            .any(|line| line.contains("Timed out waiting for installation"))
+    );
+
+    controller.release(first).unwrap();
+}
+
+#[derive(Default)]
+struct RecordingSink {
+    events: std::sync::Mutex<Vec<String>>,
+}
+
+impl RecordingSink {
+    fn messages(&self) -> Vec<String> {
+        self.events.lock().unwrap().clone()
+    }
+}
+
+impl LockStatusSink for RecordingSink {
+    fn step(&self, message: &str) {
+        self.events.lock().unwrap().push(message.to_string());
+    }
+
+    fn success(&self, message: &str) {
+        self.events.lock().unwrap().push(message.to_string());
+    }
+
+    fn error(&self, message: &str) {
+        self.events.lock().unwrap().push(message.to_string());
     }
 }
 

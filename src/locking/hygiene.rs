@@ -20,6 +20,7 @@
 use crate::config::LockingConfig;
 use crate::error::Result;
 use crate::locking::fallback::{MARKER_SUFFIX, STAGING_SEGMENT};
+use crate::locking::timeout::LockTimeoutValue;
 use crate::paths::locking::locks_root;
 use log::{debug, warn};
 use std::cmp;
@@ -54,10 +55,13 @@ impl LockHygieneRunner {
     }
 
     /// Derives a conservative age threshold from the configured timeout.
-    pub fn default_threshold(timeout: Duration) -> Duration {
+    pub fn default_threshold(timeout: LockTimeoutValue) -> Duration {
         let minimum = Duration::from_secs(600);
-        timeout
-            .checked_add(Duration::from_secs(60))
+        let base = match timeout {
+            LockTimeoutValue::Infinite => return minimum,
+            LockTimeoutValue::Finite(duration) => duration,
+        };
+        base.checked_add(Duration::from_secs(60))
             .map(|candidate| cmp::max(candidate, minimum))
             .unwrap_or(minimum)
     }
@@ -140,7 +144,7 @@ impl LockHygieneRunner {
 
 pub fn run_startup_hygiene(kopi_home: &Path, locking: &LockingConfig) -> Result<LockHygieneReport> {
     let root = locks_root(kopi_home);
-    let threshold = LockHygieneRunner::default_threshold(locking.timeout());
+    let threshold = LockHygieneRunner::default_threshold(locking.timeout_value());
     let runner = LockHygieneRunner::new(root, threshold);
     runner.run()
 }
@@ -329,6 +333,20 @@ mod tests {
 
         assert_eq!(report.removed_staging, 1);
         assert!(!staging_path.exists());
+    }
+
+    #[test]
+    fn default_threshold_uses_effective_timeout_value() {
+        let short = LockHygieneRunner::default_threshold(LockTimeoutValue::from_secs(300));
+        assert_eq!(short, Duration::from_secs(600));
+        assert_eq!(
+            LockHygieneRunner::default_threshold(LockTimeoutValue::from_secs(900)),
+            Duration::from_secs(960)
+        );
+        assert_eq!(
+            LockHygieneRunner::default_threshold(LockTimeoutValue::Infinite),
+            Duration::from_secs(600)
+        );
     }
 
     fn write_file(path: &Path, contents: &[u8]) {

@@ -18,8 +18,8 @@ use crate::locking::fallback::{self, FallbackAcquire};
 use crate::locking::handle::{FallbackHandle, LockBackend, LockHandle};
 use crate::locking::scope::{LockKind, LockScope};
 use crate::locking::{
-    AcquireMode, LockAcquisitionRequest, LockTimeoutSource, LockTimeoutValue, PollingBackoff,
-    global_token,
+    AcquireMode, LockAcquisitionRequest, LockStatusSink, LockTimeoutSource, LockTimeoutValue,
+    LockWaitObserver, PollingBackoff, StatusReporterObserver, global_token,
 };
 use crate::platform::{AdvisorySupport, DefaultFilesystemInspector, FilesystemInspector};
 use log::{debug, info};
@@ -113,16 +113,35 @@ impl LockController {
     }
 
     pub fn acquire(&self, scope: LockScope) -> Result<LockAcquisition> {
-        let request = self.build_request(scope, AcquireMode::Blocking);
+        let request = self.build_request(scope, AcquireMode::Blocking, None);
         self.acquire_with(request)
     }
 
     pub fn try_acquire(&self, scope: LockScope) -> Result<Option<LockAcquisition>> {
-        let request = self.build_request(scope, AcquireMode::NonBlocking);
+        let request = self.build_request(scope, AcquireMode::NonBlocking, None);
         match self.acquire_internal(request)? {
             AcquireDisposition::Acquired(acquired) => Ok(Some(acquired)),
             AcquireDisposition::NotAcquired => Ok(None),
         }
+    }
+
+    pub fn acquire_with_observer(
+        &self,
+        scope: LockScope,
+        observer: Option<&dyn LockWaitObserver>,
+    ) -> Result<LockAcquisition> {
+        let request = self.build_request(scope, AcquireMode::Blocking, observer);
+        self.acquire_with(request)
+    }
+
+    pub fn acquire_with_status_sink(
+        &self,
+        scope: LockScope,
+        sink: &dyn LockStatusSink,
+    ) -> Result<LockAcquisition> {
+        let observer = StatusReporterObserver::new(sink, self.timeout_source);
+        let request = self.build_request(scope, AcquireMode::Blocking, Some(&observer));
+        self.acquire_with(request)
     }
 
     pub fn acquire_with<'a>(&self, request: LockAcquisitionRequest<'a>) -> Result<LockAcquisition> {
@@ -140,15 +159,18 @@ impl LockController {
         acquisition.release()
     }
 
-    fn build_request(
+    fn build_request<'a>(
         &self,
         scope: LockScope,
         mode: AcquireMode,
-    ) -> LockAcquisitionRequest<'static> {
+        observer: Option<&'a dyn LockWaitObserver>,
+    ) -> LockAcquisitionRequest<'a> {
         LockAcquisitionRequest::new(scope, self.timeout)
             .with_mode(mode)
             .with_backoff(self.backoff_config.polling_backoff())
             .with_cancellation(global_token())
+            .with_timeout_source(self.timeout_source)
+            .with_observer(observer)
     }
 
     fn acquire_internal<'a>(
@@ -283,6 +305,8 @@ impl LockController {
                         return Err(KopiError::LockingTimeout {
                             scope: scope.to_string(),
                             waited_secs: request.elapsed().as_secs_f64(),
+                            timeout_value: request.timeout_value(),
+                            timeout_source: request.timeout_source(),
                             details: detail,
                         });
                     }
@@ -301,6 +325,8 @@ impl LockController {
                     return Err(KopiError::LockingTimeout {
                         scope: scope.to_string(),
                         waited_secs: request.elapsed().as_secs_f64(),
+                        timeout_value: request.timeout_value(),
+                        timeout_source: request.timeout_source(),
                         details: detail,
                     });
                 }
@@ -394,8 +420,8 @@ mod tests {
     use super::*;
     use crate::locking::package_coordinate::PackageCoordinate;
     use crate::locking::{
-        CancellationToken, LockAcquisitionRequest, LockKind, LockScope, LockTimeoutValue,
-        LockWaitObserver, PackageKind, PollingBackoff,
+        CancellationToken, LockAcquisitionRequest, LockKind, LockScope, LockStatusSink,
+        LockTimeoutValue, LockWaitObserver, PackageKind, PollingBackoff,
     };
     use crate::platform::{FilesystemInfo, FilesystemInspector, FilesystemKind};
     use std::sync::Mutex;
@@ -611,6 +637,67 @@ mod tests {
         );
         drop(events);
         controller.release(first).unwrap();
+    }
+
+    #[test]
+    fn acquire_with_status_sink_records_timeout_feedback() {
+        let temp = TempDir::new().unwrap();
+        let mut config = LockingConfig::default();
+        config.set_timeout_value(LockTimeoutValue::from_secs(0));
+        let controller = LockController::new(
+            temp.path().to_path_buf(),
+            &config,
+            Arc::new(TestInspector::new(vec![native_fs(), native_fs()])),
+        );
+        let scope =
+            LockScope::installation(PackageCoordinate::new("temurin", 21, PackageKind::Jdk));
+
+        let first = controller.acquire(scope.clone()).unwrap();
+
+        let sink = RecordingSink::default();
+        let err = controller
+            .acquire_with_status_sink(scope.clone(), &sink)
+            .unwrap_err();
+        assert!(matches!(err, KopiError::LockingTimeout { .. }));
+
+        let messages = sink.messages();
+        assert!(
+            messages
+                .iter()
+                .any(|line| line.contains("Waiting for installation"))
+        );
+        assert!(
+            messages
+                .iter()
+                .any(|line| line.contains("Timed out waiting for installation"))
+        );
+
+        controller.release(first).unwrap();
+    }
+
+    #[derive(Default)]
+    struct RecordingSink {
+        events: Mutex<Vec<String>>,
+    }
+
+    impl RecordingSink {
+        fn messages(&self) -> Vec<String> {
+            self.events.lock().unwrap().clone()
+        }
+    }
+
+    impl LockStatusSink for RecordingSink {
+        fn step(&self, message: &str) {
+            self.events.lock().unwrap().push(message.to_string());
+        }
+
+        fn success(&self, message: &str) {
+            self.events.lock().unwrap().push(message.to_string());
+        }
+
+        fn error(&self, message: &str) {
+            self.events.lock().unwrap().push(message.to_string());
+        }
     }
 
     #[test]

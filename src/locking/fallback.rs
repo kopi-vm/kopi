@@ -92,6 +92,8 @@ pub(crate) fn acquire(
                     return Err(KopiError::LockingTimeout {
                         scope: scope_label.clone(),
                         waited_secs: request.elapsed().as_secs_f64(),
+                        timeout_value: request.timeout_value(),
+                        timeout_source: request.timeout_source(),
                         details: "lock file already exists".to_string(),
                     });
                 }
@@ -113,6 +115,8 @@ pub(crate) fn acquire(
                 return Err(KopiError::LockingTimeout {
                     scope: scope_label.clone(),
                     waited_secs: request.elapsed().as_secs_f64(),
+                    timeout_value: request.timeout_value(),
+                    timeout_source: request.timeout_source(),
                     details: "lock file already exists".to_string(),
                 });
             }

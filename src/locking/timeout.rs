@@ -39,6 +39,15 @@ impl LockTimeoutValue {
     }
 }
 
+impl fmt::Display for LockTimeoutValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LockTimeoutValue::Infinite => f.write_str("infinite"),
+            LockTimeoutValue::Finite(duration) => write!(f, "{}s", duration.as_secs()),
+        }
+    }
+}
+
 /// Source precedence used when resolving the effective timeout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum LockTimeoutSource {
@@ -53,6 +62,18 @@ pub enum LockTimeoutSource {
 pub struct LockTimeoutResolution {
     pub value: LockTimeoutValue,
     pub source: LockTimeoutSource,
+}
+
+impl fmt::Display for LockTimeoutSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let label = match self {
+            LockTimeoutSource::Default => "built-in default",
+            LockTimeoutSource::Config => "configuration file",
+            LockTimeoutSource::Environment => "environment variable",
+            LockTimeoutSource::Cli => "CLI flag",
+        };
+        f.write_str(label)
+    }
 }
 
 /// Error produced when parsing a timeout override fails.

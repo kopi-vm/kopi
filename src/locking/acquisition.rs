@@ -14,7 +14,8 @@
 
 use crate::locking::cancellation::CancellationToken;
 use crate::locking::scope::LockScope;
-use crate::locking::timeout::LockTimeoutValue;
+use crate::locking::timeout::{LockTimeoutSource, LockTimeoutValue};
+use crate::locking::wait_observer::LockWaitObserver;
 use std::cmp;
 use std::time::{Duration, Instant};
 
@@ -123,22 +124,6 @@ impl LockTimeoutBudget {
     }
 }
 
-/// Observer hooks for lock wait events.
-pub trait LockWaitObserver {
-    fn on_wait_start(&self, _scope: &LockScope, _timeout: LockTimeoutValue) {}
-    fn on_retry(
-        &self,
-        _scope: &LockScope,
-        _attempt: usize,
-        _elapsed: Duration,
-        _remaining: Option<Duration>,
-    ) {
-    }
-    fn on_acquired(&self, _scope: &LockScope, _waited: Duration) {}
-    fn on_timeout(&self, _scope: &LockScope, _waited: Duration) {}
-    fn on_cancelled(&self, _scope: &LockScope, _waited: Duration) {}
-}
-
 /// Carries the configuration for a single lock acquisition attempt.
 pub struct LockAcquisitionRequest<'a> {
     scope: LockScope,
@@ -146,6 +131,7 @@ pub struct LockAcquisitionRequest<'a> {
     cancellation: CancellationToken,
     backoff: PollingBackoff,
     observer: Option<&'a dyn LockWaitObserver>,
+    source: LockTimeoutSource,
     mode: AcquireMode,
     retries: usize,
     wait_started: bool,
@@ -159,6 +145,7 @@ impl<'a> LockAcquisitionRequest<'a> {
             cancellation: CancellationToken::new(),
             backoff: PollingBackoff::default(),
             observer: None,
+            source: LockTimeoutSource::Default,
             mode: AcquireMode::Blocking,
             retries: 0,
             wait_started: false,
@@ -177,6 +164,11 @@ impl<'a> LockAcquisitionRequest<'a> {
 
     pub fn with_backoff(mut self, backoff: PollingBackoff) -> Self {
         self.backoff = backoff;
+        self
+    }
+
+    pub fn with_timeout_source(mut self, source: LockTimeoutSource) -> Self {
+        self.source = source;
         self
     }
 
@@ -231,6 +223,10 @@ impl<'a> LockAcquisitionRequest<'a> {
 
     pub fn timeout_value(&self) -> LockTimeoutValue {
         self.budget.value()
+    }
+
+    pub fn timeout_source(&self) -> LockTimeoutSource {
+        self.source
     }
 
     pub fn increment_retries(&mut self) {

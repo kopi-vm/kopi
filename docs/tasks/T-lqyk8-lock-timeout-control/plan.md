@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 1 In Progress
+- Status: Phase 3 In Progress
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -180,18 +180,18 @@ Expose observer callbacks, integrate with status reporters, and finalise documen
 
 ### Phase 3 Tasks
 
-- [ ] **Observer Interface**
-  - [ ] Define `LockWaitObserver` trait and default no-op implementation.
-  - [ ] Emit observer events from advisory and fallback loops (start, retry, acquired, timeout, cancelled).
-  - [ ] Provide helper to bridge observers to status reporters (foundation for T-60h68).
-- [ ] **Integration & Docs**
-  - [ ] Update lifecycle integration test to assert observer callbacks and CLI/env overrides.
-  - [ ] Document new timeout behaviour and cancellation error in architecture & error handling docs.
-  - [ ] Record timeout provenance in `ErrorContext`.
-- [ ] **Performance Validation**
-  - [ ] Add optional stress test (ignored by default) measuring CPU usage/backoff consistency over 5-minute wait; capture results in plan notes.
-- [ ] **QA Hooks**
-  - [ ] Ensure `LockHygieneRunner` uses resolved timeout for thresholds (`default_threshold`) and update tests.
+- [x] **Observer Interface**
+  - [x] Define `LockWaitObserver` trait and default no-op implementation.
+  - [x] Emit observer events from advisory and fallback loops (start, retry, acquired, timeout, cancelled).
+  - [x] Provide helper to bridge observers to status reporters (foundation for T-60h68).
+- [x] **Integration & Docs**
+  - [x] Update lifecycle integration test to assert observer callbacks and CLI/env overrides.
+  - [x] Document new timeout behaviour and cancellation error in architecture & error handling docs.
+  - [x] Record timeout provenance in `ErrorContext`.
+- [x] **Performance Validation**
+  - [x] Added ignored stress test `locking_backoff_stress.rs::lock_polling_backoff_stress_profile` modelling 5-minute waits with default backoff and verifying estimated busy ratio ≤ 0.1% (override via `KOPI_STRESS_DURATION_SECS`).
+- [x] **QA Hooks**
+  - [x] `LockHygieneRunner::default_threshold` now consumes the resolved `LockTimeoutValue` and unit tests cover finite, zero, and infinite inputs.
 
 ### Phase 3 Deliverables
 

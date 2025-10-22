@@ -22,6 +22,7 @@ pub use context::ErrorContext;
 pub use exit_codes::get_exit_code;
 pub use format::{format_error_chain, format_error_with_color};
 
+use crate::locking::{LockTimeoutSource, LockTimeoutValue};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -122,10 +123,14 @@ pub enum KopiError {
     #[error("Failed to acquire {scope} lock: {details}")]
     LockingAcquire { scope: String, details: String },
 
-    #[error("Failed to acquire {scope} lock within {waited_secs:.2}s (last error: {details})")]
+    #[error(
+        "Failed to acquire {scope} lock within {waited_secs:.2}s (timeout {timeout_value} from {timeout_source}, last error: {details})"
+    )]
     LockingTimeout {
         scope: String,
         waited_secs: f64,
+        timeout_value: LockTimeoutValue,
+        timeout_source: LockTimeoutSource,
         details: String,
     },
 

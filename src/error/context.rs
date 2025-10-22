@@ -163,14 +163,16 @@ impl<'a> ErrorContext<'a> {
             KopiError::LockingTimeout {
                 scope,
                 waited_secs,
+                timeout_value,
+                timeout_source,
                 details,
             } => {
                 let suggestion = Some(
-                    "Wait for the other process to finish or increase locking.timeout in `config.toml`."
+                    "Wait for the other process to finish or override the lock timeout (CLI flag, KOPI_LOCK_TIMEOUT, or configuration file)."
                         .to_string(),
                 );
                 let detail_message = format!(
-                    "Timed out after {waited_secs:.2}s when acquiring {scope} lock: {details}"
+                    "Timed out after {waited_secs:.2}s when acquiring {scope} lock (timeout {timeout_value} from {timeout_source}): {details}"
                 );
                 (suggestion, Some(detail_message))
             }

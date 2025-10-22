@@ -80,7 +80,7 @@ impl StatusReporter {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use serial_test::serial;
     use std::sync::Mutex;

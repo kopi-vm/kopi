@@ -201,6 +201,7 @@ kopi/
 - **Atomic Fallback**: `create_new`-based locking for network filesystems with JSON metadata and marker files (`src/locking/fallback.rs`)
 - **Lock Hygiene Runner**: Startup sweep that removes stale fallback artifacts and staging files (`src/locking/hygiene.rs`, invoked from `src/main.rs`)
 - **Configuration**: `locking.mode` (`auto`, `advisory`, `fallback`) and `locking.timeout` control acquisition strategy and hygiene thresholds (`src/config.rs`)
+- **Wait Instrumentation**: `LockWaitObserver` exposes wait, retry, and completion events while `StatusReporterObserver` routes them to `indicator::StatusReporter`; timeout errors record both the resolved value and its provenance (CLI flag, environment variable, configuration, or default).
 
 ## Storage Locations
 

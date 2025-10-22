@@ -37,6 +37,7 @@ Failure to coordinate cross-process access (advisory or fallback locking)
 - Let the controller downgrade to fallback automatically; surface INFO logs for downgrade decisions
 - Hygiene failures should log WARN but not abort the CLI; acquisition failures bubble up to commands with actionable text
 - Distinguish user cancellations with `KopiError::LockingCancelled` so scripts can differentiate manual interrupts from timeouts
+- Timeout errors include the resolved timeout value and its provenance (CLI flag, environment variable, configuration file, or built-in default) so users can see which override to adjust
 
 ## Error Message Format
 

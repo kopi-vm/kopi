@@ -21,10 +21,9 @@ pub mod hygiene;
 pub mod package_coordinate;
 pub mod scope;
 pub mod timeout;
+pub mod wait_observer;
 
-pub use acquisition::{
-    AcquireMode, LockAcquisitionRequest, LockTimeoutBudget, LockWaitObserver, PollingBackoff,
-};
+pub use acquisition::{AcquireMode, LockAcquisitionRequest, LockTimeoutBudget, PollingBackoff};
 pub use cancellation::{CancellationToken, global_token};
 pub use controller::{LockAcquisition, LockController};
 pub use handle::{FallbackHandle, LockBackend, LockHandle};
@@ -34,4 +33,7 @@ pub use scope::{LockKind, LockScope};
 pub use timeout::{
     LockTimeoutResolution, LockTimeoutResolver, LockTimeoutSource, LockTimeoutValue,
     parse_timeout_override,
+};
+pub use wait_observer::{
+    LockStatusSink, LockWaitObserver, NoopLockWaitObserver, StatusReporterObserver,
 };
