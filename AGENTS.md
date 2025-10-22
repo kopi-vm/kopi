@@ -186,7 +186,7 @@ Produce TDL artifacts sequentially and pause after every stage until the user gi
 2. **Requirements (`docs/requirements/FR-…` / `NFR-…`)** – Translate the approved analysis into verifiable functional and non-functional requirements. After drafting, present them and **wait for explicit approval** before authoring an ADR.
 3. **Architecture Decision (`docs/adr/ADR-…`)** – Record structural decisions needed to satisfy the requirements. Submit the ADR for review and **wait for explicit approval** before creating the task package.
 4. **Task (`docs/tasks/T-…/`)** – With approved upstream documents in place, create the task directory and write `design.md` and `plan.md`. Share the task artifacts and **wait for explicit approval** before beginning implementation.
-5. **Implementation** – Start code changes only after confirming that every prior stage has explicit approval and the relevant task ID is referenced in the work.
+5. **Implementation** – Start code changes only after confirming that every prior stage has explicit approval and the relevant task ID is referenced in the work. Track progress using the plan template’s Status Tracking categories: Not Started (work has not begun), Phase X In Progress (actively executing a specific phase), Phase X Completed (phase finished and moving to the next), Blocked (waiting on an external dependency), Under Review (implementation complete and awaiting review), and Completed (all phases done and verified). When finishing the task, change every completed checklist item from `[ ]` to `[x]` so the plan reflects the final state.
 
 **Approval Rules**
 
