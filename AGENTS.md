@@ -178,29 +178,42 @@ graph LR
 - **Tasks**: `docs/tasks/T-<id>-<task>/` - Design and plan documents (current format)
 - **Traceability**: `docs/traceability.md` - Central mapping matrix
 
-### Document Creation Order and Staged Approvals
+### Document Workflow & Approvals
 
-Produce TDL artifacts sequentially and pause after every stage until the user gives explicit approval (e.g., “Approved”, “承認します”, “proceed to next stage”). Never advance on the assumption that silence or indirect phrasing grants permission.
+**Cross-Stage Governance**
 
-1. **Analysis (`docs/analysis/AN-…`)** – Capture the problem space, alternatives, and context. Present the analysis for review and **wait for explicit approval** before moving on to requirements.
-2. **Requirements (`docs/requirements/FR-…` / `NFR-…`)** – Translate the approved analysis into verifiable functional and non-functional requirements. After drafting, present them and **wait for explicit approval** before authoring an ADR.
-3. **Architecture Decision (`docs/adr/ADR-…`)** – Record structural decisions needed to satisfy the requirements. Submit the ADR for review and **wait for explicit approval** before creating the task package.
-4. **Task (`docs/tasks/T-…/`)** – With approved upstream documents in place, create the task directory and write `design.md` and `plan.md`, then update the task’s `README.md` before requesting a review. Share the task artifacts and **wait for explicit approval** before beginning implementation.
-5. **Implementation** – Start code changes only after confirming that every prior stage has explicit approval and the relevant task ID is referenced in the work. Secure explicit approval at the end of each implementation phase and **wait for explicit approval** before progressing further. Before requesting a review, change every completed checklist item from `[ ]` to `[x]` so reviewers can confirm the finished work.
+- **Approval Rules**
+  - **Stage Separation**: Complete only one stage per approval cycle; never advance without an explicit “go”.
+  - **Clarity Guardrail**: Treat ambiguous instructions as cues to request confirmation.
+  - **Status Maintenance**: Keep document metadata current so reviewers know the active phase.
+  - **Trace Log**: Record which artifacts have explicit approval to preserve auditability.
 
-**Approval Rules**
+- **Exception Handling**
+  - **Immediate Pause**: If work advanced without the required approval—or a prerequisite artifact is missing—stop immediately.
+  - **User Decision**: Ask whether to delete the premature work and restart or treat it as a draft for sequential review.
+  - **Upstream Gap**: When a needed analysis, requirement, or ADR is absent, suspend implementation, create the missing document via templates, secure approval, and only then resume coding.
 
-- Do not create multiple document stages in a single session without collecting approvals between them.
-- When instructions are ambiguous or indirect (e.g., “Start work”, “Option A please”), verify intent with the user instead of assuming approval.
-- Before requesting a review, update the status metadata in every modified document so reviewers see the current phase.
-- Maintain a record of which artifacts have been approved so the audit trail stays intact.
+**Stage-by-Stage Flow**
 
-**Violation Recovery**
+1. **Analysis (`docs/analysis/AN-…`)**
+   - **Deliverable**: Problem statement with context, alternatives, and recommendation.
+   - **Approval Gate**: Share the draft and wait for explicit approval before drafting requirements.
 
-1. Stop immediately if multiple stages were completed without approvals.
-2. Inform the user about the lapse and ask whether to delete premature documents and restart, or to treat the artifacts as drafts for sequential review.
+2. **Requirements (`docs/requirements/FR-…` / `NFR-…`)**
+   - **Deliverable**: Verifiable functional and non-functional requirements derived from the approved analysis.
+   - **Approval Gate**: Present the requirements and wait for explicit approval before writing the ADR.
 
-Always confirm that the upstream artifacts exist and have explicit approvals before drafting downstream documents. If a task exposes a missing analysis, requirement, or ADR, pause implementation work, create the required artifact using the templates, obtain approval, and then resume the task.
+3. **Architecture Decision (`docs/adr/ADR-…`)**
+   - **Deliverable**: Decision record describing the structural approach that satisfies the requirements.
+   - **Approval Gate**: Submit the ADR and wait for explicit approval before creating the task package.
+
+4. **Task Package (`docs/tasks/T-…/`)**
+   - **Deliverable**: Task directory with `design.md`, `plan.md`, and an updated `README.md` linked to upstream artifacts.
+   - **Approval Gate**: Share the task documents and wait for explicit approval before starting implementation.
+
+5. **Implementation**
+   - **Deliverable**: Code and supporting assets tied to the approved task.
+   - **Approval Gate**: Execute the work phase-by-phase as defined in `plan.md`; after completing each phase, secure explicit approval before starting the next, and mark every finished checklist item as `[x]` before requesting review.
 
 ## Development Workflow
 
