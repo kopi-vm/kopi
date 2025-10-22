@@ -286,7 +286,7 @@ cargo test --test locking_lifecycle -- --ignored cancellation
 - [x] `cargo test --test locking_lifecycle -- --ignored cancellation`
 - [x] Documentation updates merged (`docs/architecture.md`, `docs/error_handling.md`)
 - [x] Exit codes verified against requirements
-- [x] Platform smoke tests (Unix + Windows CI) for cancellation & timeout (Windows coverage implemented 2025-10-22 via `tests/locking_windows_smoke.rs` exercising zero-timeout failure and cancellation token handling with default filesystem inspectors; Unix coverage tracked separately.)
+- [x] Platform smoke tests (Unix + Windows CI) for cancellation & timeout (Windows coverage implemented 2025-10-22 via `tests/locking_windows_smoke.rs`; Unix coverage implemented 2025-10-22 via `tests/locking_unix_smoke.rs`; CI scheduling for both platforms remains to be confirmed.)
 - [ ] External docs issue filed/updated for user-facing instructions (to be opened in `../kopi-vm.github.io`)
 
 ---
