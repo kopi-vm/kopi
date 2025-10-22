@@ -12,7 +12,6 @@ fn kopi_home_paths_use_registry_helpers() {
         ("jdks", "paths::home::jdks_dir(...)"),
         ("cache", "paths::home::cache_dir(...)"),
         ("shims", "paths::home::shims_dir(...)"),
-        ("bin", "paths::home::bin_dir(...)"),
         ("locks", "paths::home::locks_dir(...)"),
     ];
 

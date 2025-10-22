@@ -16,6 +16,7 @@
 //! These tests simulate real JDK distributions without requiring actual downloads.
 
 use kopi::config::KopiConfig;
+#[cfg(target_os = "macos")]
 use kopi::paths::install;
 use kopi::storage::JdkLister;
 use std::env;
