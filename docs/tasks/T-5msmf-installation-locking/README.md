@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Task
-- Status: Draft
+- Status: Complete
   <!-- Draft: Under discussion | In Progress: Actively working | Complete: Code complete | Cancelled: Work intentionally halted -->
 
 ## Links

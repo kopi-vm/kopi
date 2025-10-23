@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 3 In Progress
+- Status: Complete
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -195,5 +195,5 @@ cargo test --test install_locking --quiet
 - [x] `cargo clippy --all-targets -- -D warnings`
 - [x] `cargo test --lib --quiet`
 - [x] Integration suites (`cargo test --test install_locking --quiet`) added/executed
-- [ ] Documentation updated (`docs/architecture.md`, task README) and `bun format && bun lint` run for markdown artifacts
-- [ ] Traceability regenerated via `bun scripts/trace-status.ts --write`
+- [x] Documentation updated (`docs/architecture.md`, task README) and `bun format && bun lint` run for markdown artifacts
+- [x] Traceability regenerated via `bun scripts/trace-status.ts --write`
