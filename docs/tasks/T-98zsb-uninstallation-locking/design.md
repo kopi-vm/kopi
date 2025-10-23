@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Design
-- Status: Draft
+- Status: Approved
   <!-- Draft: Work in progress | Approved: Ready for implementation | Rejected: Not moving forward with this design -->
 
 ## Links
