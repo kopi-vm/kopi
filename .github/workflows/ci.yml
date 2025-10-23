@@ -64,3 +64,7 @@ jobs:
     
     - name: Run integration tests
       run: cargo test --quiet --features integration_tests
+
+    - name: Lint External Links
+      run: bun lint:external
+
