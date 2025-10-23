@@ -17,6 +17,14 @@
       }
     ],
     [
+      "remark-lint-no-dead-urls",
+      {
+        "deadOrAliveOptions": {
+          "timeout": 10000
+        }
+      }
+    ],
+    [
       "remark-lint-maximum-heading-length",
       80
     ],

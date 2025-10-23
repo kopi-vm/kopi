@@ -3,6 +3,7 @@
 	"scripts": {
 		"format": "remark docs/ --frail --output -r config/remark-format.json AGENTS.md CLAUDE.md",
 		"lint": "remark --frail docs/ -r config/remark-lint.json AGENTS.md CLAUDE.md",
+		"lint:external": "remark --frail docs/ -r config/remark-lint-external.json AGENTS.md CLAUDE.md",
 		"format:ts": "biome format --write",
 		"lint:ts": "biome lint",
 		"test:ts": "bun test --coverage"
