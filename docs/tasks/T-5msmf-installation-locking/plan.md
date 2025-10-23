@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 1 Complete
+- Status: Phase 2 In Progress
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -114,13 +114,13 @@ Integrate the guard into the installation workflow, adjust progress accounting, 
 
 ### Phase 2 Tasks
 
-- [ ] **Command wiring**
-  - [ ] Instantiate `LockController::with_default_inspector` and acquire guard after package resolution.
-  - [ ] Move install directory checks, forced removal, staging, extraction, metadata writes, and shim creation inside the guarded block.
-- [ ] **User feedback**
-  - [ ] Insert a progress step for “Acquiring installation lock”.
-  - [ ] Route lock wait messages through `StatusReporterObserver`, ensuring `progress.suspend` prevents bar corruption.
-  - [ ] Log final backend (`Advisory` vs `Fallback`) at INFO level.
+- [x] **Command wiring**
+  - [x] Instantiate `LockController::with_default_inspector` and acquire guard after package resolution.
+  - [x] Move install directory checks, forced removal, staging, extraction, metadata writes, and shim creation inside the guarded block.
+- [x] **User feedback**
+  - [x] Insert a progress step for “Acquiring installation lock”.
+  - [x] Route lock wait messages through `StatusReporterObserver`, ensuring `progress.suspend` prevents bar corruption.
+  - [x] Log final backend (`Advisory` vs `Fallback`) at INFO level.
 
 ### Phase 2 Deliverables
 

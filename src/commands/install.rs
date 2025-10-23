@@ -17,6 +17,10 @@ use crate::cache::{self, MetadataCache};
 use crate::config::KopiConfig;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
+use crate::indicator::StatusReporter;
+use crate::locking::{
+    InstallationLockGuard, LockBackend, LockController, installation_lock_scope_from_package,
+};
 use crate::models::distribution::Distribution;
 use crate::models::metadata::JdkMetadata;
 use crate::platform::{
@@ -188,6 +192,9 @@ impl<'a> InstallCommand<'a> {
             total_steps += 1;
         }
 
+        // Add dedicated step for installation lock acquisition
+        total_steps += 1;
+
         // We'll add checksum verification step dynamically if checksum exists
 
         // Initialize progress with total steps
@@ -226,6 +233,34 @@ impl<'a> InstallCommand<'a> {
             trace!("Found package: {package:?}");
         });
         let jdk_metadata = self.convert_package_to_metadata(package.clone())?;
+
+        let lock_scope = installation_lock_scope_from_package(&package)?;
+        let scope_label = lock_scope.label();
+        let controller = LockController::with_default_inspector(
+            self.config.kopi_home().to_path_buf(),
+            &self.config.locking,
+        );
+        let status_reporter = StatusReporter::new(self.no_progress);
+
+        current_step += 1;
+        progress.update(current_step, Some(total_steps));
+        progress.set_message(format!("Acquiring installation lock for {scope_label}"));
+
+        let mut acquisition_result = None;
+        progress.suspend(&mut || {
+            acquisition_result =
+                Some(controller.acquire_with_status_sink(lock_scope.clone(), &status_reporter));
+        });
+
+        let acquisition =
+            acquisition_result.expect("lock acquisition attempt did not produce a result")?;
+        let install_lock_guard = InstallationLockGuard::new(&controller, acquisition);
+        let lock_backend = match install_lock_guard.backend() {
+            LockBackend::Advisory => "advisory",
+            LockBackend::Fallback => "fallback",
+        };
+        progress.set_message(format!("Installation lock acquired ({lock_backend})",));
+        info!("Installation lock acquired for {scope_label} using {lock_backend} backend");
 
         // Create storage manager with config
         let repository = JdkRepository::new(self.config);
@@ -491,6 +526,8 @@ impl<'a> InstallCommand<'a> {
 
         // Complete progress indicator
         progress.complete(Some("Installation complete".to_string()));
+
+        install_lock_guard.release()?;
 
         // Print final success message using progress.success()
         progress.success(&format!(
