@@ -43,7 +43,9 @@
 - Phase 3 – `[Short label describing the final hardening/cleanup]`
   - `[Add additional phases or remove unused lines as appropriate]`
 
-> **Status Tracking:** Mark checkboxes (`[x]`) immediately after completing each task or subtask. If an item is intentionally skipped or deferred, annotate it (e.g., strike-through with a brief note) instead of leaving it unchecked.
+### Phase Status Tracking
+
+Mark checkboxes (`[x]`) immediately after completing each task or subtask. If an item is intentionally skipped or deferred, annotate it (e.g., strike-through with a brief note) instead of leaving it unchecked.
 
 ---
 
@@ -187,102 +189,6 @@ cargo test --quiet
 
 ---
 
-## Testing Strategy
-
-### Unit Tests
-
-- Place unit tests next to code using `#[cfg(test)]`. Focus on critical logic and edge cases.
-
-### Integration Tests
-
-- Add broader scenarios under `tests/`. Use `cargo it` alias for quick runs.
-
-### External API Parsing (if applicable)
-
-- Include at least one unit test with captured JSON from the real API (curl) stored inline as a string and parsed with serde; assert key fields.
-
-### Performance & Benchmarks (if applicable)
-
-- Perf tests: enable `perf_tests` feature. Run `cargo perf`.
-- Benchmarks: run `cargo bench` and note trends/regressions.
-- Avoid brittle assumptions around thread counts; tests run with `RUST_TEST_THREADS=4`.
-
----
-
-## Platform Matrix (if applicable)
-
-### Unix
-
-- `[Paths/permissions/behavior]`
-
-### Windows
-
-- `[Registry, junctions/symlinks, path separators]`
-
-### Filesystem
-
-- `[Case sensitivity, long paths]`
-
----
-
-## Dependencies
-
-### External Crates
-
-- `[crate_name]` – `[Purpose]`
-- `[Prefer minimal features where possible]`
-
-### Internal Modules
-
-- `src/[module]/` – `[Description]`
-
----
-
-## Risks & Mitigations
-
-1. Risk: `[Description]`
-   - Mitigation: `[Plan]`
-   - Validation: `[How to prove it works]`
-   - Fallback: `[Alternative]`
-
-2. Risk: `[Description]`
-   - Mitigation: `[Plan]`
-   - Validation: `[How to prove it works]`
-   - Fallback: `[Alternative]`
-
----
-
-## Documentation & Change Management
-
-### CLI/Behavior Changes
-
-- Update `docs/reference.md` when commands, flags, or outputs change.
-- If user-facing behavior changes, update user docs in `../kopi-vm.github.io/`.
-
-### ADR Impact
-
-- Add or update ADRs under `/docs/adr/` for material design decisions; include rationale and alternatives.
-
----
-
-## Implementation Guidelines
-
-### Error Handling
-
-- Use `KopiError` variants; keep messages clear, actionable, and in English.
-- Rely on the `ErrorContext` system; ensure correct exit codes for each error type.
-
-### Naming & Structure
-
-- Avoid vague terms like "manager" or "util". Prefer specific, descriptive names.
-- Prefer functions for stateless behavior; introduce structs only when state/traits are required.
-
-### Safety & Clarity
-
-- Do not use `unsafe`. Prefer correct ownership and readability over micro-optimizations; avoid patterns like `Box::leak()`.
-
----
-
 ## Definition of Done
 
 - [ ] `cargo check`
@@ -295,17 +201,6 @@ cargo test --quiet
 - [ ] Error messages actionable and in English; exit codes correct
 - [ ] Platform verification completed (if platform-touching)
 - [ ] No `unsafe` and no vague naming (no "manager"/"util")
-
----
-
-## Status Tracking
-
-- Not Started: Work hasn't begun
-- Phase X In Progress: Currently working on a specific phase
-- Phase X Completed: Phase finished; moving to next
-- Blocked: Waiting on external dependency
-- Under Review: Implementation complete; awaiting review
-- Completed: All phases done and verified
 
 ---
 

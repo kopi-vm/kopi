@@ -128,7 +128,6 @@ Decision Rationale
 
 - Backward/forward compatibility: `[Behavior changes, flags, formats]`
 - Rollout plan: `[Phased enablement, feature flags]`
-- Telemetry/Observability (if any): `[What to measure; where logged]`
 - Deprecation plan: `[Old commands/flags removal timeline]`
 
 ## Testing Strategy
