@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Draft
+- Status: Phase 1 Complete
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -65,12 +65,12 @@ Create the coordination primitives that transform resolved packages into lock sc
 
 ### Tasks
 
-- [ ] **Guard implementation**
-  - [ ] Add `InstallationLockGuard` struct wrapping `LockController` + `LockAcquisition`.
-  - [ ] Provide explicit `release()` returning `Result<()>` and `backend()` accessor for logging.
-- [ ] **Scope derivation**
-  - [ ] Write helper that converts `Package` metadata into `PackageCoordinate` and then `LockScope::installation`.
-  - [ ] Unit-test slug canonicalisation cases (JavaFX, libc variant, architecture).
+- [x] **Guard implementation**
+  - [x] Add `InstallationLockGuard` struct wrapping `LockController` + `LockAcquisition`.
+  - [x] Provide explicit `release()` returning `Result<()>` and `backend()` accessor for logging.
+- [x] **Scope derivation**
+  - [x] Write helper that converts `Package` metadata into `PackageCoordinate` and then `LockScope::installation`.
+  - [x] Unit-test slug canonicalisation cases (JavaFX, libc variant, architecture).
 
 ### Deliverables
 

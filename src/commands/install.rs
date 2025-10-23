@@ -27,6 +27,7 @@ use crate::shim::discovery::{discover_distribution_tools, discover_jdk_tools};
 use crate::shim::installer::ShimInstaller;
 use crate::storage::JdkRepository;
 use crate::version::parser::VersionParser;
+
 use log::{debug, info, trace, warn};
 use std::str::FromStr;
 use std::time::Duration;

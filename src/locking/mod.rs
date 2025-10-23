@@ -18,6 +18,7 @@ pub mod controller;
 pub mod fallback;
 pub mod handle;
 pub mod hygiene;
+pub mod installation;
 pub mod package_coordinate;
 pub mod scope;
 pub mod timeout;
@@ -28,6 +29,7 @@ pub use cancellation::{CancellationToken, global_token};
 pub use controller::{LockAcquisition, LockController};
 pub use handle::{FallbackHandle, LockBackend, LockHandle};
 pub use hygiene::{LockHygieneReport, LockHygieneRunner, run_startup_hygiene};
+pub use installation::{InstallationLockGuard, installation_lock_scope_from_package};
 pub use package_coordinate::{PackageCoordinate, PackageKind};
 pub use scope::{LockKind, LockScope};
 pub use timeout::{
