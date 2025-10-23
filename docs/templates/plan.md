@@ -202,14 +202,6 @@ cargo test --quiet
 - [ ] Platform verification completed (if platform-touching)
 - [ ] No `unsafe` and no vague naming (no "manager"/"util")
 
----
-
-## External References (optional)
-
-<!-- External standards, specifications, articles, or documentation -->
-
-- [External resource title](https://example.com) - Brief description
-
 ## Open Questions
 
 - [ ] `[Question that needs investigation]`
@@ -217,14 +209,6 @@ cargo test --quiet
 - [ ] `[Information that needs gathering]` → Method: `[How to obtain insight]`
 
 <!-- Complex investigations should spin out into their own ADR or analysis document -->
-
----
-
-## Visual/UI Reference (optional)
-
-```text
-[ASCII diagram or example output]
-```
 
 ---
 
