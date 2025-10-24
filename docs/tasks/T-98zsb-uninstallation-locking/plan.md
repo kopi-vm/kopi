@@ -193,10 +193,10 @@ Validate behaviour under contention, update documentation, and finalise traceabi
 
 ### Tasks
 
-- [ ] Add integration suite (`tests/uninstall_locking.rs`) spawning concurrent install/uninstall processes and validating serialization + cleanup.
-- [ ] Expand existing batch/uninstall integration tests to assert logging/exit codes for lock failures.
-- [ ] Update `docs/architecture.md` and task README to reflect new locking coverage; coordinate external docs note if required.
-- [ ] Run `bun format` and `bun lint` for modified Markdown, regenerate traceability via `bun scripts/trace-status.ts --write`.
+- [x] Add integration suite (`tests/uninstall_locking.rs`) spawning concurrent install/uninstall processes and validating serialization + cleanup.
+- [x] Expand existing batch/uninstall integration tests to assert logging/exit codes for lock failures.
+- [x] Update `docs/architecture.md` and task README to reflect new locking coverage; coordinate external docs note if required.
+- [x] Run `bun format` and `bun lint` for modified Markdown, regenerate traceability via `bun scripts/trace-status.ts --write`.
 
 ### Verification
 
@@ -224,9 +224,9 @@ bun scripts/trace-status.ts --write
 
 ## Definition of Done
 
-- [ ] `cargo fmt`
-- [ ] `cargo clippy --all-targets -- -D warnings`
-- [ ] `cargo test --lib --quiet`
-- [ ] Targeted integration suites (`cargo test --test uninstall_locking --quiet`, batch-specific modules)
-- [ ] Updated documentation (`docs/architecture.md`, task README) with `bun format && bun lint`
-- [ ] `bun scripts/trace-status.ts --write`
+- [x] `cargo fmt`
+- [x] `cargo clippy --all-targets -- -D warnings`
+- [x] `cargo test --lib --quiet`
+- [x] Targeted integration suites (`cargo test --test uninstall_locking --quiet`, batch-specific modules)
+- [x] Updated documentation (`docs/architecture.md`, task README) with `bun format && bun lint`
+- [x] `bun scripts/trace-status.ts --write`

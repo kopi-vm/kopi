@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Task
-- Status: Draft
+- Status: In Progress
   <!-- Draft: Under discussion | In Progress: Actively working | Complete: Code complete | Cancelled: Work intentionally halted -->
 
 ## Links
@@ -21,7 +21,7 @@
 
 ## Summary
 
-Apply exclusive locking and timeout-aware coordination to the uninstallation workflow to guarantee atomic removal of JDKs while preventing conflicts with concurrent installations or other uninstallations.
+Apply exclusive locking and timeout-aware coordination to the uninstallation workflow to guarantee atomic removal of JDKs while preventing conflicts with concurrent installations or other uninstallations. Phase 4 adds cross-process contention tests that prove uninstall operations block on both peer uninstallers and in-flight installs before proceeding.
 
 ## Scope
 

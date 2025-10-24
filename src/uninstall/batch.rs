@@ -207,9 +207,7 @@ impl<'a> BatchUninstaller<'a> {
                 progress_reporter.suspend(|| {
                     reporter.step(&format!("Using {backend_label} backend for {scope_label}"));
                 });
-                info!(
-                    "Acquired uninstall lock for {scope_label} using {backend_label} backend"
-                );
+                info!("Acquired uninstall lock for {scope_label} using {backend_label} backend");
 
                 crate::uninstall::safety::perform_safety_checks(
                     &jdk.distribution.to_string(),
