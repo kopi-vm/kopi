@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 1 In Progress
+- Status: Phase 2 In Progress
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -111,11 +111,11 @@ Wrap `UninstallHandler::uninstall_jdk` in the scoped lock guard with user-visibl
 
 ### Tasks
 
-- [ ] Acquire lock controller within `UninstallHandler`, reusing `KopiConfig::kopi_home()` and locking config.
-- [ ] Integrate `ScopedPackageLockGuard` around safety checks, atomic rename, metadata removal, and rollback paths.
-- [ ] Route wait messaging through `StatusReporterObserver`, ensuring progress output remains intact (`StatusReporter::step/success/error`).
-- [ ] Surface backend (`advisory`/`fallback`) via `info!` logging and append scope labels for diagnostics.
-- [ ] Update unit tests for `UninstallHandler` to account for locking, including success, timeout, and rollback scenarios with mock controllers.
+- [x] Acquire lock controller within `UninstallHandler`, reusing `KopiConfig::kopi_home()` and locking config.
+- [x] Integrate `ScopedPackageLockGuard` around safety checks, atomic rename, metadata removal, and rollback paths.
+- [x] Route wait messaging through `StatusReporterObserver`, ensuring progress output remains intact (`StatusReporter::step/success/error`).
+- [x] Surface backend (`advisory`/`fallback`) via `info!` logging and append scope labels for diagnostics.
+- [x] Update unit tests for `UninstallHandler` to account for locking, including success, timeout, and rollback scenarios with mock controllers.
 
 ### Deliverables
 

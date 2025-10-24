@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::indicator::StatusReporter;
+use crate::locking::{InstalledScopeResolver, LockBackend, LockController, ScopedPackageLockGuard};
 use crate::platform;
 use crate::storage::formatting::format_size;
 use crate::storage::{InstalledJdk, JdkRepository};
@@ -35,13 +37,16 @@ pub mod safety;
 pub mod selection;
 
 pub struct UninstallHandler<'a> {
+    config: &'a KopiConfig,
     repository: &'a JdkRepository<'a>,
     no_progress: bool,
 }
 
 impl<'a> UninstallHandler<'a> {
     pub fn new(repository: &'a JdkRepository<'a>, no_progress: bool) -> Self {
+        let config = repository.config();
         Self {
+            config,
             repository,
             no_progress,
         }
@@ -127,12 +132,31 @@ impl<'a> UninstallHandler<'a> {
             return Ok(());
         }
 
+        let controller = LockController::with_default_inspector(
+            self.config.kopi_home().to_path_buf(),
+            &self.config.locking,
+        );
+        let scope_resolver = InstalledScopeResolver::new(self.repository);
+        let lock_scope = scope_resolver.resolve(&jdk)?;
+        let scope_label = lock_scope.label();
+
+        reporter.step(&format!("Acquiring uninstall lock for {scope_label}"));
+        let acquisition = controller.acquire_with_status_sink(lock_scope.clone(), &reporter)?;
+        let uninstall_lock_guard = ScopedPackageLockGuard::new(&controller, acquisition);
+        let backend_label = match uninstall_lock_guard.backend() {
+            LockBackend::Advisory => "advisory",
+            LockBackend::Fallback => "fallback",
+        };
+        info!("Uninstall lock acquired for {scope_label} using {backend_label} backend");
+        reporter.step(&format!("Using {backend_label} backend for {scope_label}"));
+
         // Perform safety checks
         safety::perform_safety_checks(&jdk.distribution, &jdk.version.to_string())?;
 
         // Remove with progress
         match self.remove_jdk_with_progress(&jdk, jdk_size) {
             Ok(()) => {
+                uninstall_lock_guard.release()?;
                 reporter.success(&format!(
                     "Successfully uninstalled {}@{}",
                     jdk.distribution, jdk.version
@@ -265,8 +289,13 @@ impl<'a> UninstallHandler<'a> {
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
+    use crate::locking::{
+        InstalledScopeResolver, LockController, LockTimeoutValue, ScopedPackageLockGuard,
+    };
     use crate::paths::install;
+    use crate::version::Version;
     use std::fs;
+    use std::str::FromStr;
     use tempfile::TempDir;
 
     struct TestSetup {
@@ -376,5 +405,108 @@ mod tests {
         handler.rollback_removal(&jdk_path, &temp_path).unwrap();
         assert_eq!(jdk_path.exists(), original_exists);
         assert!(!temp_path.exists());
+    }
+
+    #[test]
+    fn uninstall_releases_lock_on_success() {
+        let setup = TestSetup::new();
+        let repository = JdkRepository::new(&setup.config);
+        let handler = UninstallHandler::new(&repository, true);
+
+        let jdk_path = setup.create_mock_jdk("temurin", "21.0.5+11");
+
+        handler
+            .uninstall_jdk("temurin@21.0.5+11", false)
+            .expect("uninstall should succeed");
+        assert!(!jdk_path.exists());
+
+        let controller = LockController::with_default_inspector(
+            setup.config.kopi_home().to_path_buf(),
+            &setup.config.locking,
+        );
+        let resolver = InstalledScopeResolver::new(&repository);
+        let installed = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::from_str("21.0.5+11").unwrap(),
+            jdk_path.clone(),
+            false,
+        );
+        let scope = resolver.resolve(&installed).unwrap();
+        let reacquired = controller.try_acquire(scope).unwrap();
+        assert!(reacquired.is_some());
+        if let Some(handle) = reacquired {
+            controller.release(handle).unwrap();
+        }
+    }
+
+    #[test]
+    fn uninstall_errors_when_lock_times_out() {
+        let mut setup = TestSetup::new();
+        setup
+            .config
+            .locking
+            .set_timeout_value(LockTimeoutValue::from_secs(0));
+
+        let repository = JdkRepository::new(&setup.config);
+        let handler = UninstallHandler::new(&repository, true);
+        let jdk_path = setup.create_mock_jdk("temurin", "21.0.5+11");
+
+        let controller = LockController::with_default_inspector(
+            setup.config.kopi_home().to_path_buf(),
+            &setup.config.locking,
+        );
+        let resolver = InstalledScopeResolver::new(&repository);
+        let installed = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::from_str("21.0.5+11").unwrap(),
+            jdk_path.clone(),
+            false,
+        );
+        let scope = resolver.resolve(&installed).unwrap();
+        let acquisition = controller.acquire(scope).unwrap();
+        let guard = ScopedPackageLockGuard::new(&controller, acquisition);
+
+        let result = handler.uninstall_jdk("temurin@21.0.5+11", false);
+        assert!(matches!(result, Err(KopiError::LockingTimeout { .. })));
+        assert!(jdk_path.exists());
+
+        guard.release().unwrap();
+    }
+
+    #[test]
+    fn uninstall_releases_lock_on_failure() {
+        let setup = TestSetup::new();
+        let repository = JdkRepository::new(&setup.config);
+        let handler = UninstallHandler::new(&repository, true);
+
+        let jdk_path = setup.create_mock_jdk("temurin", "21.0.5+11");
+        let removing_path = jdk_path.parent().unwrap().join(format!(
+            ".{}.removing",
+            jdk_path.file_name().unwrap().to_str().unwrap()
+        ));
+        fs::write(&removing_path, "reserved").unwrap();
+
+        let result = handler.uninstall_jdk("temurin@21.0.5+11", false);
+        let err = result.expect_err("expected uninstall failure");
+        assert!(matches!(err, KopiError::Io(_)), "unexpected error: {err:?}");
+        assert!(jdk_path.exists());
+
+        let controller = LockController::with_default_inspector(
+            setup.config.kopi_home().to_path_buf(),
+            &setup.config.locking,
+        );
+        let resolver = InstalledScopeResolver::new(&repository);
+        let installed = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::from_str("21.0.5+11").unwrap(),
+            jdk_path,
+            false,
+        );
+        let scope = resolver.resolve(&installed).unwrap();
+        let reacquired = controller.try_acquire(scope).unwrap();
+        assert!(reacquired.is_some());
+        if let Some(handle) = reacquired {
+            controller.release(handle).unwrap();
+        }
     }
 }
