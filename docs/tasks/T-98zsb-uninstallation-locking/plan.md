@@ -60,15 +60,15 @@ Provide shared locking primitives for installed artifacts so later phases can fo
 
 ### Tasks
 
-- [ ] **Scoped guard extraction**
-  - [ ] Move `InstallationLockGuard` into a neutral module (e.g., `locking/scoped_guard.rs`) and rename to `ScopedPackageLockGuard`.
-  - [ ] Update existing installation call sites to use the new module and confirm API compatibility.
-- [ ] **Installed scope resolver**
-  - [ ] Add helper that strictly parses `JdkMetadataWithInstallation` for an `InstalledJdk`, deriving `LockScope::installation` and variant tags.
-  - [ ] Implement fallback slug generation leveraging `InstallationMetadata::platform` and directory naming when metadata is absent or parsing fails (no recovery attempt).
-  - [ ] Unit-test metadata parsing, platform splitting, and slug sanitisation cases, including corrupted JSON that triggers the fallback without modifying files.
-- [ ] **Repository accessors**
-  - [ ] Expose read-only access to `KopiConfig` or introduce a dedicated metadata loader on `JdkRepository` with security checks.
+- [x] **Scoped guard extraction**
+  - [x] Move `InstallationLockGuard` into a neutral module (e.g., `locking/scoped_guard.rs`) and rename to `ScopedPackageLockGuard`.
+  - [x] Update existing installation call sites to use the new module and confirm API compatibility.
+- [x] **Installed scope resolver**
+  - [x] Add helper that strictly parses `JdkMetadataWithInstallation` for an `InstalledJdk`, deriving `LockScope::installation` and variant tags.
+  - [x] Implement fallback slug generation leveraging `InstallationMetadata::platform` and directory naming when metadata is absent or parsing fails (no recovery attempt).
+  - [x] Unit-test metadata parsing, platform splitting, and slug sanitisation cases, including corrupted JSON that triggers the fallback without modifying files.
+- [x] **Repository accessors**
+  - [x] Expose read-only access to `KopiConfig` or introduce a dedicated metadata loader on `JdkRepository` with security checks.
 
 ### Deliverables
 

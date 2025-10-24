@@ -16,11 +16,14 @@ use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::models::api::Package;
 use crate::models::distribution::Distribution;
+use crate::paths::install;
 use crate::storage::disk_space::DiskSpaceChecker;
 use crate::storage::installation::{InstallationContext, JdkInstaller};
 use crate::storage::listing::{InstalledJdk, JdkLister};
+use crate::storage::{InstallationMetadata, JdkMetadataWithInstallation};
 use crate::version::{Version, VersionRequest};
-use log::debug;
+use log::{debug, warn};
+use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -70,6 +73,69 @@ impl<'a> JdkRepository<'a> {
 
     pub fn cleanup_failed_installation(&self, context: &InstallationContext) -> Result<()> {
         JdkInstaller::cleanup_failed_installation(context)
+    }
+
+    pub fn load_installed_metadata(
+        &self,
+        installed: &InstalledJdk,
+    ) -> Result<InstalledMetadataSnapshot> {
+        let jdks_dir = self.config.jdks_dir()?;
+        if !installed.path.starts_with(&jdks_dir) {
+            return Err(KopiError::SecurityError(format!(
+                "Refusing to read metadata outside of the JDKs directory: {:?}",
+                installed.path
+            )));
+        }
+
+        let slug = installed
+            .path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| {
+                KopiError::ValidationError(format!(
+                    "Invalid installation path for {} {}",
+                    installed.distribution, installed.version
+                ))
+            })?;
+
+        let metadata_path = install::metadata_file(self.config.kopi_home(), slug);
+        if !metadata_path.exists() {
+            return Ok(InstalledMetadataSnapshot::missing());
+        }
+
+        let contents = fs::read_to_string(&metadata_path).map_err(|error| {
+            KopiError::SystemError(format!(
+                "Failed to read metadata file {}: {error}",
+                metadata_path.display()
+            ))
+        })?;
+
+        match serde_json::from_str::<JdkMetadataWithInstallation>(&contents) {
+            Ok(metadata) => {
+                let installation_metadata = metadata.installation_metadata.clone();
+                Ok(InstalledMetadataSnapshot::complete(
+                    metadata,
+                    installation_metadata,
+                ))
+            }
+            Err(parse_error) => {
+                warn!(
+                    "Failed to parse installed metadata {}: {}",
+                    metadata_path.display(),
+                    parse_error
+                );
+
+                let installation_metadata = serde_json::from_str::<Value>(&contents)
+                    .ok()
+                    .and_then(|value| value.get("installation_metadata").cloned())
+                    .and_then(|value| serde_json::from_value(value).ok());
+
+                Ok(InstalledMetadataSnapshot {
+                    metadata: None,
+                    installation_metadata,
+                })
+            }
+        }
     }
 
     pub fn list_installed_jdks(&self) -> Result<Vec<InstalledJdk>> {
@@ -167,7 +233,7 @@ impl<'a> JdkRepository<'a> {
         distribution: &Distribution,
         distribution_version: &str,
         metadata: &Package,
-        installation_metadata: &super::InstallationMetadata,
+        installation_metadata: &InstallationMetadata,
         javafx_bundled: bool,
     ) -> Result<()> {
         let jdks_dir = self.config.jdks_dir()?;
@@ -229,9 +295,33 @@ impl<'a> JdkRepository<'a> {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct InstalledMetadataSnapshot {
+    pub metadata: Option<JdkMetadataWithInstallation>,
+    pub installation_metadata: Option<InstallationMetadata>,
+}
+
+impl InstalledMetadataSnapshot {
+    pub fn missing() -> Self {
+        Self::default()
+    }
+
+    pub fn complete(
+        metadata: JdkMetadataWithInstallation,
+        installation: InstallationMetadata,
+    ) -> Self {
+        Self {
+            metadata: Some(metadata),
+            installation_metadata: Some(installation),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::api::{Links, Package};
+    use crate::paths::install;
     use std::str::FromStr;
     use tempfile::TempDir;
 
@@ -504,10 +594,128 @@ min_disk_space_mb = 1024
     }
 
     #[test]
-    fn test_save_jdk_metadata_with_installation() {
-        use crate::models::api::Links;
-        use tempfile::TempDir;
+    fn load_installed_metadata_returns_complete_snapshot() {
+        let test_storage = TestStorage::new();
+        let manager = test_storage.manager();
+        let jdks_dir = test_storage.config.jdks_dir().unwrap();
 
+        let slug = "temurin-21.0.2";
+        let install_path = jdks_dir.join(slug);
+        fs::create_dir_all(&install_path).unwrap();
+
+        let installed = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::from_str("21.0.2").unwrap(),
+            install_path,
+            false,
+        );
+
+        let package = Package {
+            id: "pkg-id".to_string(),
+            archive_type: "tar.gz".to_string(),
+            distribution: "temurin".to_string(),
+            major_version: 21,
+            java_version: "21.0.2".to_string(),
+            distribution_version: "21.0.2".to_string(),
+            jdk_version: 21,
+            directly_downloadable: true,
+            filename: "openjdk.tar.gz".to_string(),
+            links: Links {
+                pkg_download_redirect: "https://example.com".to_string(),
+                pkg_info_uri: Some("https://example.com/info".to_string()),
+            },
+            free_use_in_production: true,
+            tck_tested: "yes".to_string(),
+            size: 1024,
+            operating_system: "linux".to_string(),
+            architecture: Some("x64".to_string()),
+            lib_c_type: Some("gnu".to_string()),
+            package_type: "JDK".to_string(),
+            javafx_bundled: false,
+            term_of_support: Some("lts".to_string()),
+            release_status: Some("ga".to_string()),
+            latest_build_available: Some(true),
+        };
+
+        let installation_metadata = InstallationMetadata {
+            java_home_suffix: String::new(),
+            structure_type: "direct".to_string(),
+            platform: "linux_x64".to_string(),
+            metadata_version: 1,
+        };
+
+        let complete_metadata = JdkMetadataWithInstallation {
+            package: package.clone(),
+            installation_metadata: installation_metadata.clone(),
+        };
+
+        let metadata_path = install::metadata_file(test_storage.config.kopi_home(), slug);
+        fs::write(
+            &metadata_path,
+            format!(
+                "{}\n",
+                serde_json::to_string_pretty(&complete_metadata).unwrap()
+            ),
+        )
+        .unwrap();
+
+        let snapshot = manager.load_installed_metadata(&installed).unwrap();
+        assert!(snapshot.metadata.is_some());
+        assert!(snapshot.installation_metadata.is_some());
+
+        let parsed_package = &snapshot.metadata.as_ref().unwrap().package;
+        assert_eq!(parsed_package.distribution, package.distribution);
+        assert_eq!(
+            parsed_package.distribution_version,
+            package.distribution_version
+        );
+
+        let parsed_installation = snapshot.installation_metadata.unwrap();
+        assert_eq!(parsed_installation.platform, installation_metadata.platform);
+    }
+
+    #[test]
+    fn load_installed_metadata_handles_corruption() {
+        let test_storage = TestStorage::new();
+        let manager = test_storage.manager();
+        let jdks_dir = test_storage.config.jdks_dir().unwrap();
+
+        let slug = "temurin-21.0.3";
+        let install_path = jdks_dir.join(slug);
+        fs::create_dir_all(&install_path).unwrap();
+
+        let installed = InstalledJdk::new(
+            "temurin".to_string(),
+            Version::from_str("21.0.3").unwrap(),
+            install_path,
+            false,
+        );
+
+        let metadata_path = install::metadata_file(test_storage.config.kopi_home(), slug);
+        fs::write(
+            &metadata_path,
+            r#"{
+"installation_metadata": {
+    "java_home_suffix": "",
+    "structure_type": "direct",
+    "platform": "linux_x64",
+    "metadata_version": 1
+},
+"package": "invalid"
+}
+"#,
+        )
+        .unwrap();
+
+        let snapshot = manager.load_installed_metadata(&installed).unwrap();
+        assert!(snapshot.metadata.is_none());
+
+        let installation = snapshot.installation_metadata.expect("fallback metadata");
+        assert_eq!(installation.platform, "linux_x64");
+    }
+
+    #[test]
+    fn test_save_jdk_metadata_with_installation() {
         let temp_dir = TempDir::new().unwrap();
         let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         let repository = JdkRepository::new(&config);

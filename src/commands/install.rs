@@ -19,7 +19,7 @@ use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
 use crate::indicator::StatusReporter;
 use crate::locking::{
-    InstallationLockGuard, LockBackend, LockController, installation_lock_scope_from_package,
+    LockBackend, LockController, ScopedPackageLockGuard, installation_lock_scope_from_package,
 };
 use crate::models::distribution::Distribution;
 use crate::models::metadata::JdkMetadata;
@@ -254,7 +254,7 @@ impl<'a> InstallCommand<'a> {
 
         let acquisition =
             acquisition_result.expect("lock acquisition attempt did not produce a result")?;
-        let install_lock_guard = InstallationLockGuard::new(&controller, acquisition);
+        let install_lock_guard = ScopedPackageLockGuard::new(&controller, acquisition);
         let lock_backend = match install_lock_guard.backend() {
             LockBackend::Advisory => "advisory",
             LockBackend::Fallback => "fallback",

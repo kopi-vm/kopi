@@ -4,7 +4,7 @@ use std::sync::Arc;
 use kopi::config::LockingConfig;
 use kopi::error::KopiError;
 use kopi::locking::{
-    InstallationLockGuard, LockBackend, LockController, LockTimeoutValue,
+    LockBackend, LockController, LockTimeoutValue, ScopedPackageLockGuard,
     installation_lock_scope_from_package,
 };
 use kopi::models::api::{Links, Package};
@@ -52,7 +52,7 @@ fn installation_lock_serializes_writers() {
     let scope = installation_lock_scope_from_package(&package).unwrap();
 
     let primary = controller.acquire(scope.clone()).unwrap();
-    let guard = InstallationLockGuard::new(&controller, primary);
+    let guard = ScopedPackageLockGuard::new(&controller, primary);
 
     let second = controller.try_acquire(scope.clone()).unwrap();
     assert!(
@@ -69,7 +69,7 @@ fn installation_lock_serializes_writers() {
     );
 
     if let Some(handle) = reacquired {
-        InstallationLockGuard::new(&controller, handle)
+        ScopedPackageLockGuard::new(&controller, handle)
             .release()
             .unwrap();
     }
@@ -88,7 +88,7 @@ fn installation_lock_honours_timeout() {
     let scope = installation_lock_scope_from_package(&package).unwrap();
 
     let primary = controller.acquire(scope.clone()).unwrap();
-    let guard = InstallationLockGuard::new(&controller, primary);
+    let guard = ScopedPackageLockGuard::new(&controller, primary);
 
     let err = controller.acquire(scope.clone()).unwrap_err();
     match err {
@@ -133,7 +133,7 @@ fn fallback_lock_creates_and_cleans_marker() {
     };
 
     let acquisition = controller.acquire(scope.clone()).unwrap();
-    let guard = InstallationLockGuard::new(&controller, acquisition);
+    let guard = ScopedPackageLockGuard::new(&controller, acquisition);
     assert_eq!(guard.backend(), LockBackend::Fallback);
     assert!(lock_path.exists());
     assert!(marker_path.exists());

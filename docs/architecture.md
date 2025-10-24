@@ -202,7 +202,7 @@ kopi/
 - **Lock Hygiene Runner**: Startup sweep that removes stale fallback artifacts and staging files (`src/locking/hygiene.rs`, invoked from `src/main.rs`)
 - **Configuration**: `locking.mode` (`auto`, `advisory`, `fallback`) and `locking.timeout` control acquisition strategy and hygiene thresholds (`src/config.rs`)
 - **Wait Instrumentation**: `LockWaitObserver` exposes wait, retry, and completion events while `StatusReporterObserver` routes them to `indicator::StatusReporter`; timeout errors record both the resolved value and its provenance (CLI flag, environment variable, configuration, or default).
-- **Installation Integration**: `InstallCommand` acquires an `InstallationLockGuard` before touching staging directories or shims, surfaces wait feedback through the status reporter, and explicitly releases the guard to bubble up release failures (`src/commands/install.rs`).
+- **Installation Integration**: `InstallCommand` acquires a `ScopedPackageLockGuard` before touching staging directories or shims, surfaces wait feedback through the status reporter, and explicitly releases the guard to bubble up release failures (`src/commands/install.rs`).
 
 ## Storage Locations
 

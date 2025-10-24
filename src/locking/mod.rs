@@ -21,6 +21,7 @@ pub mod hygiene;
 pub mod installation;
 pub mod package_coordinate;
 pub mod scope;
+pub mod scoped_guard;
 pub mod timeout;
 pub mod wait_observer;
 
@@ -29,9 +30,10 @@ pub use cancellation::{CancellationToken, global_token};
 pub use controller::{LockAcquisition, LockController};
 pub use handle::{FallbackHandle, LockBackend, LockHandle};
 pub use hygiene::{LockHygieneReport, LockHygieneRunner, run_startup_hygiene};
-pub use installation::{InstallationLockGuard, installation_lock_scope_from_package};
+pub use installation::{InstalledScopeResolver, installation_lock_scope_from_package};
 pub use package_coordinate::{PackageCoordinate, PackageKind};
 pub use scope::{LockKind, LockScope};
+pub use scoped_guard::ScopedPackageLockGuard;
 pub use timeout::{
     LockTimeoutResolution, LockTimeoutResolver, LockTimeoutSource, LockTimeoutValue,
     parse_timeout_override,

@@ -140,6 +140,9 @@ pub enum KopiError {
     #[error("Failed to release {scope} lock: {details}")]
     LockingRelease { scope: String, details: String },
 
+    #[error("Unable to derive locking scope for {slug}: {reason}")]
+    LockingScopeUnavailable { slug: String, reason: String },
+
     #[error("System error: {0}")]
     SystemError(String),
 

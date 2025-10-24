@@ -28,7 +28,7 @@ use std::path::Path;
 
 pub use installation::InstallationContext;
 pub use listing::{InstalledJdk, JdkLister};
-pub use repository::JdkRepository;
+pub use repository::{InstalledMetadataSnapshot, JdkRepository};
 
 /// Installation metadata containing platform-specific JDK structure information
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
