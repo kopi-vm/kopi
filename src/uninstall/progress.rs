@@ -155,6 +155,26 @@ impl ProgressReporter {
         indicator.start(config);
         self.create_progress_handle(indicator, Some(total_jdks))
     }
+
+    /// Suspends the active progress indicator to print status without corrupting output.
+    pub fn suspend<F>(&self, mut action: F)
+    where
+        F: FnMut(),
+    {
+        if self.no_progress {
+            action();
+            return;
+        }
+
+        if let Some(indicator) = self.progress_indicators.last()
+            && let Ok(handle) = indicator.lock()
+        {
+            handle.suspend(&mut action);
+            return;
+        }
+
+        action();
+    }
 }
 
 impl Default for ProgressReporter {
@@ -215,5 +235,26 @@ mod tests {
         assert!(!bar.is_finished());
         bar.finish();
         assert!(bar.is_finished());
+    }
+
+    #[test]
+    fn suspend_runs_action_when_indicator_present() {
+        let mut reporter = ProgressReporter::new(false);
+        let _bar = reporter.create_bar(3, "items");
+        let mut executed = false;
+        reporter.suspend(|| {
+            executed = true;
+        });
+        assert!(executed);
+    }
+
+    #[test]
+    fn suspend_runs_action_without_indicators() {
+        let reporter = ProgressReporter::new(false);
+        let mut executed = false;
+        reporter.suspend(|| {
+            executed = true;
+        });
+        assert!(executed);
     }
 }

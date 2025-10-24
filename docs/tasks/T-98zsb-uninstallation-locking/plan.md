@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 2 In Progress
+- Status: Phase 3 Complete
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -156,10 +156,10 @@ Ensure batch uninstall and recovery paths adopt the same locking guarantees with
 
 ### Tasks
 
-- [ ] Acquire/release scoped locks per entry inside `BatchUninstaller::execute_batch_removal`, integrating wait observers with progress suspension.
-- [ ] Handle lock acquisition failures by recording actionable errors and continuing with remaining entries.
-- [ ] Ensure cleanup routines reuse per-coordinate locks only when scopes are identifiable, while keeping `force_cleanup_jdk` intentionally lock-free; document the behaviour.
-- [ ] Add tests covering batch contention (mixed success/failure) and cleanup locking around temporary directories.
+- [x] Acquire/release scoped locks per entry inside `BatchUninstaller::execute_batch_removal`, integrating wait observers with progress suspension.
+- [x] Handle lock acquisition failures by recording actionable errors and continuing with remaining entries.
+- [x] Ensure cleanup routines reuse per-coordinate locks only when scopes are identifiable, while keeping `force_cleanup_jdk` intentionally lock-free; document the behaviour.
+- [x] Add tests covering batch contention (mixed success/failure) and cleanup locking around temporary directories.
 
 ### Deliverables
 

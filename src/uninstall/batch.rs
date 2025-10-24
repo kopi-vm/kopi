@@ -15,6 +15,7 @@
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
 use crate::indicator::StatusReporter;
+use crate::locking::{InstalledScopeResolver, LockBackend, LockController, ScopedPackageLockGuard};
 use crate::models::distribution::Distribution;
 use crate::storage::formatting::format_size;
 use crate::storage::{InstalledJdk, JdkRepository};
@@ -173,6 +174,11 @@ impl<'a> BatchUninstaller<'a> {
         let mut log_messages = Vec::new(); // Collect log messages to output after progress
 
         let reporter = StatusReporter::new(self.no_progress);
+        let controller = LockController::with_default_inspector(
+            self.config.kopi_home().to_path_buf(),
+            &self.config.locking,
+        );
+        let scope_resolver = InstalledScopeResolver::new(self.repository);
 
         for jdk in &jdks {
             log_messages.push(format!("Removing {}@{}", jdk.distribution, jdk.version));
@@ -180,37 +186,60 @@ impl<'a> BatchUninstaller<'a> {
             // Update overall progress bar message for current JDK
             overall_pb.set_message(format!("Removing {}@{}...", jdk.distribution, jdk.version));
 
-            // Perform safety checks
-            match crate::uninstall::safety::perform_safety_checks(
-                &jdk.distribution.to_string(),
-                &jdk.version.to_string(),
-            ) {
-                Ok(()) => {}
-                Err(e) => {
-                    log_messages.push(format!(
-                        "Safety check failed for {}@{}: {}",
-                        jdk.distribution, jdk.version, e
-                    ));
-                    failed_jdks.push((jdk.clone(), e));
-                    overall_pb.inc(1); // Still increment to show progress
-                    continue;
-                }
-            }
+            let removal_result = (|| -> Result<()> {
+                let scope = scope_resolver.resolve(jdk)?;
+                let scope_label = scope.label().to_string();
 
-            // Attempt removal
-            match self.repository.remove_jdk(&jdk.path) {
+                let mut acquisition_result = None;
+                progress_reporter.suspend(|| {
+                    reporter.step(&format!("Acquiring uninstall lock for {scope_label}"));
+                    acquisition_result =
+                        Some(controller.acquire_with_status_sink(scope.clone(), &reporter));
+                });
+                let acquisition =
+                    acquisition_result.expect("lock acquisition attempt did not run")?;
+                let uninstall_lock_guard = ScopedPackageLockGuard::new(&controller, acquisition);
+                let backend_label = match uninstall_lock_guard.backend() {
+                    LockBackend::Advisory => "advisory",
+                    LockBackend::Fallback => "fallback",
+                };
+
+                progress_reporter.suspend(|| {
+                    reporter.step(&format!("Using {backend_label} backend for {scope_label}"));
+                });
+                info!(
+                    "Acquired uninstall lock for {scope_label} using {backend_label} backend"
+                );
+
+                crate::uninstall::safety::perform_safety_checks(
+                    &jdk.distribution.to_string(),
+                    &jdk.version.to_string(),
+                )?;
+
+                match self.repository.remove_jdk(&jdk.path) {
+                    Ok(()) => uninstall_lock_guard.release(),
+                    Err(err) => Err(err),
+                }
+            })();
+
+            overall_pb.inc(1);
+
+            match removal_result {
                 Ok(()) => {
                     removed_count += 1;
                     removed_jdks.push(jdk.clone());
-                    overall_pb.inc(1);
                 }
-                Err(e) => {
+                Err(err) => {
+                    let err_string = err.to_string();
                     log_messages.push(format!(
-                        "Failed to remove {}@{}: {}",
-                        jdk.distribution, jdk.version, e
+                        "Failed to remove {}@{}: {err_string}",
+                        jdk.distribution, jdk.version
                     ));
-                    failed_jdks.push((jdk.clone(), e));
-                    overall_pb.inc(1); // Still increment to show progress
+                    warn!(
+                        "Failed to remove {}@{}: {err_string}",
+                        jdk.distribution, jdk.version
+                    );
+                    failed_jdks.push((jdk.clone(), err));
                 }
             }
         }
@@ -262,6 +291,9 @@ impl<'a> BatchUninstaller<'a> {
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
+    use crate::locking::{
+        InstalledScopeResolver, LockController, LockTimeoutValue, ScopedPackageLockGuard,
+    };
     use crate::paths::install;
     use mockall::mock;
     use tempfile::TempDir;
@@ -320,6 +352,100 @@ mod tests {
                 // Good, got the expected error type
             }
             _ => panic!("Expected InvalidVersionFormat error"),
+        }
+    }
+
+    #[test]
+    fn batch_uninstall_handles_lock_contention() {
+        let temp_dir = TempDir::new().unwrap();
+        let mut config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        config
+            .locking
+            .set_timeout_value(LockTimeoutValue::from_secs(0));
+        let repository = JdkRepository::new(&config);
+        install::ensure_installations_root(temp_dir.path()).unwrap();
+
+        let locked_slug = "temurin-21.0.5+11";
+        let other_slug = "corretto-17.0.9";
+        let locked_path = install::installation_directory(temp_dir.path(), locked_slug);
+        let other_path = install::installation_directory(temp_dir.path(), other_slug);
+        std::fs::create_dir_all(&locked_path).unwrap();
+        std::fs::create_dir_all(&other_path).unwrap();
+
+        let locked_jdk =
+            create_test_jdk_with_path("temurin", "21.0.5+11", locked_path.to_str().unwrap());
+        let other_jdk =
+            create_test_jdk_with_path("corretto", "17.0.9", other_path.to_str().unwrap());
+
+        let controller = LockController::with_default_inspector(
+            config.kopi_home().to_path_buf(),
+            &config.locking,
+        );
+        let resolver = InstalledScopeResolver::new(&repository);
+        let scope = resolver.resolve(&locked_jdk).unwrap();
+        let acquisition = controller.acquire(scope.clone()).unwrap();
+        let guard = ScopedPackageLockGuard::new(&controller, acquisition);
+
+        let batch_uninstaller = BatchUninstaller::new(&config, &repository, true);
+        let result = batch_uninstaller.uninstall_batch(
+            vec![locked_jdk.clone(), other_jdk.clone()],
+            true,
+            false,
+        );
+        assert!(
+            result.is_ok(),
+            "batch uninstall should continue despite lock contention"
+        );
+        assert!(
+            locked_jdk.path.exists(),
+            "locked JDK should remain when lock acquisition times out"
+        );
+        assert!(
+            !other_jdk.path.exists(),
+            "unlocked JDK should be removed successfully"
+        );
+
+        guard.release().unwrap();
+        if locked_jdk.path.exists() {
+            std::fs::remove_dir_all(&locked_jdk.path).unwrap();
+        }
+    }
+
+    #[test]
+    fn batch_uninstall_releases_lock_after_success() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        let repository = JdkRepository::new(&config);
+        install::ensure_installations_root(temp_dir.path()).unwrap();
+
+        let slug = "temurin-21.0.5+11";
+        let path = install::installation_directory(temp_dir.path(), slug);
+        std::fs::create_dir_all(&path).unwrap();
+        let jdk = create_test_jdk_with_path("temurin", "21.0.5+11", path.to_str().unwrap());
+
+        let resolver = InstalledScopeResolver::new(&repository);
+        let scope = resolver.resolve(&jdk).unwrap();
+
+        let batch_uninstaller = BatchUninstaller::new(&config, &repository, true);
+        batch_uninstaller
+            .uninstall_batch(vec![jdk.clone()], true, false)
+            .expect("batch uninstall should succeed");
+        assert!(
+            !jdk.path.exists(),
+            "JDK directory should be removed after successful uninstall"
+        );
+
+        let controller = LockController::with_default_inspector(
+            config.kopi_home().to_path_buf(),
+            &config.locking,
+        );
+        let reacquired = controller.try_acquire(scope.clone()).unwrap();
+        assert!(
+            reacquired.is_some(),
+            "lock scope should be re-acquirable after uninstall completes"
+        );
+        if let Some(handle) = reacquired {
+            controller.release(handle).unwrap();
         }
     }
 }

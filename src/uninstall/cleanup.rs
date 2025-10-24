@@ -13,9 +13,10 @@
 // limitations under the License.
 
 use crate::error::{KopiError, Result};
+use crate::locking::{InstalledScopeResolver, LockBackend, LockController, ScopedPackageLockGuard};
 use crate::paths::install;
 use crate::platform;
-use crate::storage::JdkRepository;
+use crate::storage::{JdkLister, JdkRepository};
 use log::{debug, info, warn};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -69,9 +70,15 @@ impl<'a> UninstallCleanup<'a> {
         force: bool,
     ) -> Result<CleanupResult> {
         let mut result = CleanupResult::default();
+        let config = self.repository.config();
+        let controller = LockController::with_default_inspector(
+            config.kopi_home().to_path_buf(),
+            &config.locking,
+        );
+        let resolver = InstalledScopeResolver::new(self.repository);
 
         for action in actions {
-            match self.execute_cleanup_action(action, force) {
+            match self.execute_cleanup_action(action, force, &controller, &resolver) {
                 Ok(success_msg) => {
                     result.successes.push(success_msg);
                 }
@@ -199,34 +206,151 @@ impl<'a> UninstallCleanup<'a> {
         Ok(!has_release_file || !has_bin_dir || !has_java_executable)
     }
 
-    fn execute_cleanup_action(&self, action: CleanupAction, force: bool) -> Result<String> {
+    fn execute_cleanup_action(
+        &self,
+        action: CleanupAction,
+        force: bool,
+        controller: &LockController,
+        resolver: &InstalledScopeResolver,
+    ) -> Result<String> {
         match action {
             CleanupAction::CleanupTempDir(path) => {
                 info!("Cleaning up temporary directory: {}", path.display());
                 if force {
+                    // Force cleanup intentionally bypasses locking for emergency remediation.
                     self.force_cleanup_jdk(&path)?;
+                    Ok(format!(
+                        "Cleaned up temporary directory: {}",
+                        path.display()
+                    ))
                 } else {
-                    fs::remove_dir_all(&path)?;
+                    self.run_with_lock(&path, controller, resolver, || {
+                        fs::remove_dir_all(&path)?;
+                        Ok(format!(
+                            "Cleaned up temporary directory: {}",
+                            path.display()
+                        ))
+                    })
                 }
-                Ok(format!(
-                    "Cleaned up temporary directory: {}",
-                    path.display()
-                ))
             }
             CleanupAction::CompleteRemoval(path) => {
                 info!("Completing partial removal: {}", path.display());
                 if force {
+                    // Force cleanup intentionally bypasses locking for emergency remediation.
                     self.force_cleanup_jdk(&path)?;
+                    Ok(format!("Completed removal of: {}", path.display()))
                 } else {
-                    fs::remove_dir_all(&path)?;
+                    self.run_with_lock(&path, controller, resolver, || {
+                        fs::remove_dir_all(&path)?;
+                        Ok(format!("Completed removal of: {}", path.display()))
+                    })
                 }
-                Ok(format!("Completed removal of: {}", path.display()))
             }
             CleanupAction::CleanupOrphanedMetadata(path) => {
                 info!("Cleaning up orphaned metadata: {}", path.display());
-                fs::remove_file(&path)?;
-                Ok(format!("Cleaned up orphaned metadata: {}", path.display()))
+                self.run_with_lock(&path, controller, resolver, || {
+                    fs::remove_file(&path)?;
+                    Ok(format!("Cleaned up orphaned metadata: {}", path.display()))
+                })
             }
+        }
+    }
+
+    fn run_with_lock<F>(
+        &self,
+        path: &Path,
+        controller: &LockController,
+        resolver: &InstalledScopeResolver,
+        mut action: F,
+    ) -> Result<String>
+    where
+        F: FnMut() -> Result<String>,
+    {
+        match self.cleanup_lock_scope(path, resolver)? {
+            Some(scope) => {
+                let scope_label = scope.label().to_string();
+                info!("Acquiring cleanup lock for {scope_label}");
+                let acquisition = controller.acquire(scope.clone())?;
+                let guard = ScopedPackageLockGuard::new(controller, acquisition);
+                let backend_label = match guard.backend() {
+                    LockBackend::Advisory => "advisory",
+                    LockBackend::Fallback => "fallback",
+                };
+                info!("Cleanup lock acquired for {scope_label} using {backend_label} backend");
+
+                match action() {
+                    Ok(message) => {
+                        guard.release()?;
+                        Ok(message)
+                    }
+                    Err(err) => {
+                        // Guard releases on drop; propagate original error.
+                        Err(err)
+                    }
+                }
+            }
+            None => {
+                debug!(
+                    "Skipping uninstall lock for cleanup target {}; scope could not be resolved",
+                    path.display()
+                );
+                action()
+            }
+        }
+    }
+
+    fn cleanup_lock_scope(
+        &self,
+        path: &Path,
+        resolver: &InstalledScopeResolver,
+    ) -> Result<Option<crate::locking::LockScope>> {
+        let jdks_dir = self.repository.jdks_dir()?;
+        if !path.starts_with(&jdks_dir) {
+            return Ok(None);
+        }
+
+        let file_name = match path.file_name().and_then(|n| n.to_str()) {
+            Some(name) => name,
+            None => return Ok(None),
+        };
+
+        let slug = if file_name.starts_with('.') && file_name.ends_with(".removing") {
+            file_name
+                .trim_start_matches('.')
+                .trim_end_matches(".removing")
+                .to_string()
+        } else if file_name.ends_with(".meta.json") {
+            file_name.trim_end_matches(".meta.json").to_string()
+        } else if file_name.starts_with('.') {
+            return Ok(None);
+        } else {
+            file_name.to_string()
+        };
+
+        if slug.is_empty() {
+            return Ok(None);
+        }
+
+        let normalized_path = jdks_dir.join(&slug);
+        if let Some(mut installed) = JdkLister::parse_jdk_dir_name(&normalized_path) {
+            installed.path = normalized_path;
+            match resolver.resolve(&installed) {
+                Ok(scope) => Ok(Some(scope)),
+                Err(err) => {
+                    warn!(
+                        "Failed to resolve lock scope for cleanup target {}: {}",
+                        path.display(),
+                        err
+                    );
+                    Ok(None)
+                }
+            }
+        } else {
+            debug!(
+                "Unable to derive installation coordinate from cleanup target {}",
+                path.display()
+            );
+            Ok(None)
         }
     }
 
@@ -298,6 +422,10 @@ impl CleanupResult {
 mod tests {
     use super::*;
     use crate::config::KopiConfig;
+    use crate::locking::{
+        InstalledScopeResolver, LockController, LockTimeoutValue, ScopedPackageLockGuard,
+    };
+    use crate::test::fixtures::create_test_jdk_with_path;
     use std::fs;
     use tempfile::TempDir;
 
@@ -429,5 +557,91 @@ mod tests {
         assert_eq!(result.failures.len(), 0);
         assert!(!temp_path.exists());
         assert!(!metadata_path.exists());
+    }
+
+    #[test]
+    fn cleanup_respects_lock_contention() {
+        let mut setup = TestSetup::new();
+        setup
+            .config
+            .locking
+            .set_timeout_value(LockTimeoutValue::from_secs(0));
+        let repository = JdkRepository::new(&setup.config);
+        let cleanup = UninstallCleanup::new(&repository);
+
+        let temp_path = setup.create_temp_removal_dir("temurin-21.0.1");
+        let slug = "temurin-21.0.1";
+        let install_path = setup.config.jdks_dir().unwrap().join(slug);
+        fs::create_dir_all(&install_path).unwrap();
+
+        let locked_jdk =
+            create_test_jdk_with_path("temurin", "21.0.1", install_path.to_str().unwrap());
+        let controller = LockController::with_default_inspector(
+            setup.config.kopi_home().to_path_buf(),
+            &setup.config.locking,
+        );
+        let resolver = InstalledScopeResolver::new(&repository);
+        let scope = resolver.resolve(&locked_jdk).unwrap();
+        let guard = ScopedPackageLockGuard::new(&controller, controller.acquire(scope).unwrap());
+
+        let actions = vec![CleanupAction::CleanupTempDir(temp_path.clone())];
+        let result = cleanup.execute_cleanup(actions, false).unwrap();
+
+        assert!(
+            result.failures.len() == 1,
+            "cleanup should record failure when lock acquisition times out"
+        );
+        assert!(
+            temp_path.exists(),
+            "temporary directory should remain when cleanup fails to acquire lock"
+        );
+
+        guard.release().unwrap();
+        if temp_path.exists() {
+            fs::remove_dir_all(&temp_path).unwrap();
+        }
+    }
+
+    #[test]
+    fn cleanup_force_bypasses_locking() {
+        let mut setup = TestSetup::new();
+        setup
+            .config
+            .locking
+            .set_timeout_value(LockTimeoutValue::from_secs(0));
+        let repository = JdkRepository::new(&setup.config);
+        let cleanup = UninstallCleanup::new(&repository);
+
+        let slug = "temurin-21.0.2";
+        let install_path = setup.config.jdks_dir().unwrap().join(slug);
+        fs::create_dir_all(&install_path).unwrap();
+        fs::write(install_path.join("release"), "JAVA_VERSION=\"21\"").unwrap();
+
+        let locked_jdk =
+            create_test_jdk_with_path("temurin", "21.0.2", install_path.to_str().unwrap());
+        let controller = LockController::with_default_inspector(
+            setup.config.kopi_home().to_path_buf(),
+            &setup.config.locking,
+        );
+        let resolver = InstalledScopeResolver::new(&repository);
+        let scope = resolver.resolve(&locked_jdk).unwrap();
+        let guard = ScopedPackageLockGuard::new(&controller, controller.acquire(scope).unwrap());
+
+        let actions = vec![CleanupAction::CompleteRemoval(install_path.clone())];
+        let result = cleanup.execute_cleanup(actions, true).unwrap();
+        assert!(
+            result.failures.is_empty(),
+            "force cleanup should not fail when a lock is held"
+        );
+        assert!(
+            result.successes.len() == 1,
+            "force cleanup should report the completed removal"
+        );
+        assert!(
+            !install_path.exists(),
+            "force cleanup should remove the directory even under lock contention"
+        );
+
+        guard.release().unwrap();
     }
 }
