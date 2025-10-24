@@ -436,7 +436,7 @@ mod tests {
 
         // Set PATH to exclude kopi
         unsafe {
-            env::set_var("PATH", "/usr/bin:/bin");
+            env::set_var("PATH", "");
         }
 
         let check = KopiBinaryCheck;
@@ -460,7 +460,7 @@ mod tests {
 
         // Set PATH to exclude kopi
         unsafe {
-            env::set_var("PATH", "/usr/bin:/bin");
+            env::set_var("PATH", "");
         }
 
         let check = VersionCheck;

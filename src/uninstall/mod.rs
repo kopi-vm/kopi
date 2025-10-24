@@ -484,7 +484,8 @@ mod tests {
             ".{}.removing",
             jdk_path.file_name().unwrap().to_str().unwrap()
         ));
-        fs::write(&removing_path, "reserved").unwrap();
+        fs::create_dir_all(&removing_path).unwrap();
+        fs::write(removing_path.join("marker"), "reserved").unwrap();
 
         let result = handler.uninstall_jdk("temurin@21.0.5+11", false);
         let err = result.expect_err("expected uninstall failure");
