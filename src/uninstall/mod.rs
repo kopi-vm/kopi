@@ -92,7 +92,7 @@ impl<'a> UninstallHandler<'a> {
         Ok(())
     }
 
-    pub fn uninstall_jdk(&self, version_spec: &str, dry_run: bool) -> Result<()> {
+    pub fn uninstall_jdk(&self, version_spec: &str, force: bool, dry_run: bool) -> Result<()> {
         info!("Uninstalling JDK {version_spec}");
         let reporter = StatusReporter::new(self.no_progress);
 
@@ -151,7 +151,7 @@ impl<'a> UninstallHandler<'a> {
         reporter.step(&format!("Using {backend_label} backend for {scope_label}"));
 
         // Perform safety checks
-        safety::perform_safety_checks(&jdk.distribution, &jdk.version.to_string())?;
+        safety::perform_safety_checks(self.config, self.repository, &jdk, force)?;
 
         // Remove with progress
         match self.remove_jdk_with_progress(&jdk, jdk_size) {
@@ -416,7 +416,7 @@ mod tests {
         let jdk_path = setup.create_mock_jdk("temurin", "21.0.5+11");
 
         handler
-            .uninstall_jdk("temurin@21.0.5+11", false)
+            .uninstall_jdk("temurin@21.0.5+11", false, false)
             .expect("uninstall should succeed");
         assert!(!jdk_path.exists());
 
@@ -466,7 +466,7 @@ mod tests {
         let acquisition = controller.acquire(scope).unwrap();
         let guard = ScopedPackageLockGuard::new(&controller, acquisition);
 
-        let result = handler.uninstall_jdk("temurin@21.0.5+11", false);
+        let result = handler.uninstall_jdk("temurin@21.0.5+11", false, false);
         assert!(matches!(result, Err(KopiError::LockingTimeout { .. })));
         assert!(jdk_path.exists());
 
@@ -487,7 +487,7 @@ mod tests {
         fs::create_dir_all(&removing_path).unwrap();
         fs::write(removing_path.join("marker"), "reserved").unwrap();
 
-        let result = handler.uninstall_jdk("temurin@21.0.5+11", false);
+        let result = handler.uninstall_jdk("temurin@21.0.5+11", false, false);
         let err = result.expect_err("expected uninstall failure");
         assert!(matches!(err, KopiError::Io(_)), "unexpected error: {err:?}");
         assert!(jdk_path.exists());

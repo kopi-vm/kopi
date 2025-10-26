@@ -12,57 +12,233 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
-use log::{debug, warn};
+use crate::storage::{InstalledJdk, JdkRepository};
+use crate::version::VersionRequest;
+use log::{debug, trace, warn};
+use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
-/// Perform safety checks before uninstalling a JDK
-pub fn perform_safety_checks(distribution: &str, version: &str) -> Result<()> {
-    debug!("Performing safety checks for {distribution}@{version}");
+const GLOBAL_VERSION_FILENAME: &str = "version";
+const KOPI_VERSION_FILE: &str = ".kopi-version";
+const JAVA_VERSION_FILE: &str = ".java-version";
 
-    // Check if JDK is currently active (global)
-    if is_active_global_jdk(distribution, version)? {
-        return Err(KopiError::ValidationError(format!(
-            "Cannot uninstall {distribution}@{version} - it is currently active globally. Use \
-             --force to override this check"
-        )));
-    }
+/// Perform safety checks before uninstalling a JDK.
+///
+/// The new active-use detection deliberately ignores the `KOPI_JAVA_VERSION`
+/// environment variable for now (see T-s2g7h Phase 1 decision); only global and
+/// project version files participate in uninstall blocking.
+pub fn perform_safety_checks(
+    config: &KopiConfig,
+    _repository: &JdkRepository,
+    jdk: &InstalledJdk,
+    force: bool,
+) -> Result<()> {
+    debug!(
+        "Performing safety checks for {}@{}",
+        jdk.distribution, jdk.version
+    );
 
-    // Check if JDK is currently active (local)
-    if is_active_local_jdk(distribution, version)? {
-        return Err(KopiError::ValidationError(format!(
-            "Cannot uninstall {distribution}@{version} - it is currently active in this project. \
-             Use --force to override this check"
-        )));
+    if force {
+        debug!(
+            "Skipping active-use detection for {}@{} due to force override",
+            jdk.distribution, jdk.version
+        );
+    } else {
+        if let Some(active) = detect_global_active_jdk(config, jdk)? {
+            return Err(KopiError::ValidationError(format!(
+                "Cannot uninstall {dist}@{ver} - it is currently active globally via {} \
+                 (configured as {}). Use --force to override this check or run \
+                 'kopi global unset' before uninstalling.",
+                active.version_file.display(),
+                active.request,
+                dist = jdk.distribution,
+                ver = jdk.version
+            )));
+        }
+
+        if let Some(active) = detect_project_active_jdk(jdk)? {
+            return Err(KopiError::ValidationError(format!(
+                "Cannot uninstall {dist}@{ver} - it is configured for this project via {} \
+                 (configured as {}). Use --force to override this check or update the \
+                 project version file.",
+                active.version_file.display(),
+                active.request,
+                dist = jdk.distribution,
+                ver = jdk.version
+            )));
+        }
     }
 
     // Check for running Java processes (future enhancement)
-    check_running_processes(distribution, version)?;
+    check_running_processes(&jdk.distribution, &jdk.version.to_string())?;
 
     Ok(())
 }
 
-/// Check if the JDK is currently set as the global default
-/// This is a stub function that always returns false for Phase 1
-pub fn is_active_global_jdk(distribution: &str, version: &str) -> Result<bool> {
-    debug!("Checking if {distribution}@{version} is active global JDK");
-    // TODO: Implement actual global JDK detection when global command is implemented
-    Ok(false)
+fn detect_global_active_jdk(config: &KopiConfig, jdk: &InstalledJdk) -> Result<Option<ActiveUse>> {
+    let version_file = config.kopi_home().join(GLOBAL_VERSION_FILENAME);
+    if !version_file.exists() {
+        return Ok(None);
+    }
+
+    match read_kopi_version_request(&version_file)? {
+        Some(request) => {
+            if request_matches_jdk(&request, jdk) {
+                debug!(
+                    "Global version file {} matches target {}@{} (request: {})",
+                    version_file.display(),
+                    jdk.distribution,
+                    jdk.version,
+                    request
+                );
+                Ok(Some(ActiveUse::new(version_file, request)))
+            } else {
+                Ok(None)
+            }
+        }
+        None => Ok(None),
+    }
 }
 
-/// Check if the JDK is currently active in the local project
-/// This is a stub function that always returns false for Phase 1
-pub fn is_active_local_jdk(distribution: &str, version: &str) -> Result<bool> {
-    debug!("Checking if {distribution}@{version} is active local JDK");
-    // TODO: Implement actual local JDK detection when local command is implemented
-    Ok(false)
+fn detect_project_active_jdk(jdk: &InstalledJdk) -> Result<Option<ActiveUse>> {
+    let start_dir = env::current_dir().map_err(|e| {
+        KopiError::SystemError(format!("Failed to determine current directory: {e}"))
+    })?;
+
+    let mut current = start_dir.as_path();
+    loop {
+        let kopi_version_file = current.join(KOPI_VERSION_FILE);
+        if let Some(request) = read_kopi_version_request(&kopi_version_file)?
+            && request_matches_jdk(&request, jdk)
+        {
+            debug!(
+                "Project version file {} matches target {}@{} (request: {})",
+                kopi_version_file.display(),
+                jdk.distribution,
+                jdk.version,
+                request
+            );
+            return Ok(Some(ActiveUse::new(kopi_version_file, request)));
+        }
+
+        let java_version_file = current.join(JAVA_VERSION_FILE);
+        if let Some(request) = read_java_version_request(&java_version_file)?
+            && request_matches_jdk(&request, jdk)
+        {
+            debug!(
+                "Java version file {} matches target {}@{} (request: {})",
+                java_version_file.display(),
+                jdk.distribution,
+                jdk.version,
+                request
+            );
+            return Ok(Some(ActiveUse::new(java_version_file, request)));
+        }
+
+        match current.parent() {
+            Some(parent) => current = parent,
+            None => break,
+        }
+    }
+
+    Ok(None)
 }
 
-/// Check for running Java processes using this JDK
+fn read_kopi_version_request(path: &Path) -> Result<Option<VersionRequest>> {
+    read_version_request(path, VersionFileKind::Kopi)
+}
+
+fn read_java_version_request(path: &Path) -> Result<Option<VersionRequest>> {
+    read_version_request(path, VersionFileKind::Java)
+}
+
+fn read_version_request(path: &Path, kind: VersionFileKind) -> Result<Option<VersionRequest>> {
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let content = match fs::read_to_string(path) {
+        Ok(raw) => raw,
+        Err(e) => {
+            warn!(
+                "Failed to read version file {}: {e}. Ignoring for active-use detection.",
+                path.display()
+            );
+            return Ok(None);
+        }
+    };
+
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        trace!(
+            "Version file {} is empty; ignoring for active-use detection",
+            path.display()
+        );
+        return Ok(None);
+    }
+
+    let request_result = match kind {
+        VersionFileKind::Kopi => VersionRequest::from_str(trimmed),
+        VersionFileKind::Java => VersionRequest::new(trimmed.to_string()),
+    };
+
+    match request_result {
+        Ok(request) => Ok(Some(request)),
+        Err(e) => {
+            warn!(
+                "Ignoring version file {} due to parse error: {e}",
+                path.display()
+            );
+            Ok(None)
+        }
+    }
+}
+
+fn request_matches_jdk(request: &VersionRequest, jdk: &InstalledJdk) -> bool {
+    if request
+        .distribution
+        .as_ref()
+        .is_some_and(|distribution| !distribution.eq_ignore_ascii_case(&jdk.distribution))
+    {
+        return false;
+    }
+
+    if request
+        .javafx_bundled
+        .is_some_and(|javafx| javafx != jdk.javafx_bundled)
+    {
+        return false;
+    }
+
+    jdk.version.matches_pattern(&request.version_pattern)
+}
+
 fn check_running_processes(_distribution: &str, _version: &str) -> Result<()> {
     // TODO: Future enhancement - check for running processes
     Ok(())
+}
+
+struct ActiveUse {
+    version_file: PathBuf,
+    request: VersionRequest,
+}
+
+impl ActiveUse {
+    fn new(version_file: PathBuf, request: VersionRequest) -> Self {
+        Self {
+            version_file,
+            request,
+        }
+    }
+}
+
+enum VersionFileKind {
+    Kopi,
+    Java,
 }
 
 /// Verify user has permission to remove the directory
@@ -112,23 +288,137 @@ pub fn check_tool_dependencies(path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::KopiConfig;
     use crate::paths::install;
+    use crate::storage::JdkRepository;
+    use crate::version::Version;
+    use serial_test::serial;
+    use std::env;
     use tempfile::TempDir;
 
-    #[test]
-    fn test_active_jdk_stubs() {
-        // Test that stub functions always return false
-        assert!(!is_active_global_jdk("temurin", "21.0.5+11").unwrap());
-        assert!(!is_active_local_jdk("temurin", "21.0.5+11").unwrap());
-        assert!(!is_active_global_jdk("corretto", "17.0.9").unwrap());
-        assert!(!is_active_local_jdk("corretto", "17.0.9").unwrap());
+    struct TestFixture {
+        temp_dir: TempDir,
+        config: KopiConfig,
+    }
+
+    impl TestFixture {
+        fn new() -> Self {
+            let temp_dir = TempDir::new().unwrap();
+            let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+            fs::create_dir_all(config.jdks_dir().unwrap()).unwrap();
+            Self { temp_dir, config }
+        }
+
+        fn repository(&self) -> JdkRepository<'_> {
+            JdkRepository::new(&self.config)
+        }
+
+        fn create_installed_jdk(&self, distribution: &str, version: &str) -> InstalledJdk {
+            let jdk_path = self
+                .config
+                .jdks_dir()
+                .unwrap()
+                .join(format!("{distribution}-{version}"));
+            fs::create_dir_all(&jdk_path).unwrap();
+
+            let bin_dir = install::bin_directory(&jdk_path);
+            fs::create_dir_all(&bin_dir).unwrap();
+            fs::write(bin_dir.join("java"), "#!/bin/sh\necho mock java").unwrap();
+            fs::write(
+                jdk_path.join("release"),
+                format!("JAVA_VERSION=\"{version}\""),
+            )
+            .unwrap();
+
+            InstalledJdk::new(
+                distribution.to_string(),
+                Version::from_str(version).unwrap(),
+                jdk_path,
+                false,
+            )
+        }
     }
 
     #[test]
-    fn test_safety_checks_pass_with_stubs() {
-        // With stubs returning false, safety checks should pass
-        assert!(perform_safety_checks("temurin", "21.0.5+11").is_ok());
-        assert!(perform_safety_checks("corretto", "17.0.9").is_ok());
+    fn safety_checks_allow_when_not_active() {
+        let fixture = TestFixture::new();
+        let repository = fixture.repository();
+        let jdk = fixture.create_installed_jdk("temurin", "21.0.5+11");
+
+        assert!(perform_safety_checks(&fixture.config, &repository, &jdk, false).is_ok());
+    }
+
+    #[test]
+    fn safety_checks_block_global_default() {
+        let fixture = TestFixture::new();
+        let repository = fixture.repository();
+        let jdk = fixture.create_installed_jdk("temurin", "21.0.5+11");
+
+        let global_path = fixture.config.kopi_home().join(GLOBAL_VERSION_FILENAME);
+        jdk.write_to(&global_path).unwrap();
+
+        let result = perform_safety_checks(&fixture.config, &repository, &jdk, false);
+        assert!(matches!(result, Err(KopiError::ValidationError(_))));
+
+        // Force override should bypass the guard
+        assert!(perform_safety_checks(&fixture.config, &repository, &jdk, true).is_ok());
+    }
+
+    #[test]
+    #[serial]
+    fn safety_checks_block_project_kopi_version() {
+        let fixture = TestFixture::new();
+        let repository = fixture.repository();
+        let jdk = fixture.create_installed_jdk("temurin", "21.0.5+11");
+
+        let project_dir = fixture.temp_dir.path().join("workspace/project");
+        fs::create_dir_all(&project_dir).unwrap();
+        jdk.write_to(&project_dir.join(KOPI_VERSION_FILE)).unwrap();
+
+        let original_dir = env::current_dir().unwrap();
+        env::set_current_dir(&project_dir).unwrap();
+        let result = perform_safety_checks(&fixture.config, &repository, &jdk, false);
+        env::set_current_dir(original_dir).unwrap();
+
+        assert!(matches!(result, Err(KopiError::ValidationError(_))));
+    }
+
+    #[test]
+    #[serial]
+    fn safety_checks_block_project_java_version() {
+        let fixture = TestFixture::new();
+        let repository = fixture.repository();
+        let jdk = fixture.create_installed_jdk("zulu", "17.0.9");
+
+        let project_dir = fixture.temp_dir.path().join("workspace/java");
+        fs::create_dir_all(&project_dir).unwrap();
+        fs::write(project_dir.join(JAVA_VERSION_FILE), "17.0.9\n").unwrap();
+
+        let original_dir = env::current_dir().unwrap();
+        env::set_current_dir(&project_dir).unwrap();
+        let result = perform_safety_checks(&fixture.config, &repository, &jdk, false);
+        env::set_current_dir(original_dir).unwrap();
+
+        assert!(matches!(result, Err(KopiError::ValidationError(_))));
+    }
+
+    #[test]
+    #[serial]
+    fn safety_checks_ignore_invalid_version_files() {
+        let fixture = TestFixture::new();
+        let repository = fixture.repository();
+        let jdk = fixture.create_installed_jdk("temurin", "21.0.5+11");
+
+        let project_dir = fixture.temp_dir.path().join("workspace/invalid");
+        fs::create_dir_all(&project_dir).unwrap();
+        fs::write(project_dir.join(KOPI_VERSION_FILE), "not-a-version").unwrap();
+
+        let original_dir = env::current_dir().unwrap();
+        env::set_current_dir(&project_dir).unwrap();
+        let result = perform_safety_checks(&fixture.config, &repository, &jdk, false);
+        env::set_current_dir(original_dir).unwrap();
+
+        assert!(result.is_ok());
     }
 
     #[test]

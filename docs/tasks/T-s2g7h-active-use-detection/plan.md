@@ -65,13 +65,13 @@ Implement reusable helpers in `uninstall::safety` to evaluate global and project
 
 ### Tasks
 
-- [ ] **`ActiveUseDetector scaffolding`**
-  - [ ] Decide and document whether `KOPI_JAVA_VERSION` should be treated as active (per open question).
-  - [ ] Introduce helpers to read global and project version files with error handling.
-  - [ ] Implement `request_matches_jdk` comparison covering distribution, version, and JavaFX suffix.
-- [ ] **`Safety check integration`**
-  - [ ] Update `perform_safety_checks` signature to accept config, repository, target `InstalledJdk`, and a `force` flag.
-  - [ ] Ensure validation errors include actionable guidance (switch or `--force`).
+- [x] **`ActiveUseDetector scaffolding`**
+  - [x] Decide and document whether `KOPI_JAVA_VERSION` should be treated as active (per open question).
+  - [x] Introduce helpers to read global and project version files with error handling.
+  - [x] Implement `request_matches_jdk` comparison covering distribution, version, and JavaFX suffix.
+- [x] **`Safety check integration`**
+  - [x] Update `perform_safety_checks` signature to accept config, repository, target `InstalledJdk`, and a `force` flag.
+  - [x] Ensure validation errors include actionable guidance (switch or `--force`).
 
 ### Deliverables
 

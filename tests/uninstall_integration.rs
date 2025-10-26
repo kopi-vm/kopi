@@ -16,9 +16,7 @@ use kopi::commands::uninstall::UninstallCommand;
 use kopi::config::KopiConfig;
 use kopi::storage::JdkRepository;
 use kopi::uninstall::UninstallHandler;
-use kopi::uninstall::safety::{
-    check_tool_dependencies, is_active_global_jdk, is_active_local_jdk, perform_safety_checks,
-};
+use kopi::uninstall::safety::check_tool_dependencies;
 
 #[cfg(unix)]
 use kopi::uninstall::safety::verify_removal_permission;
@@ -86,7 +84,7 @@ fn test_real_jdk_removal() {
     assert!(jdk_path.join("bin/java").exists());
 
     // Uninstall the JDK
-    let result = handler.uninstall_jdk("temurin@21.0.5-11", false);
+    let result = handler.uninstall_jdk("temurin@21.0.5-11", false, false);
     assert!(result.is_ok());
 
     // Verify removal
@@ -100,7 +98,7 @@ fn test_uninstall_nonexistent_jdk() {
     let handler = UninstallHandler::new(&repository, false);
 
     // Try to uninstall non-existent JDK
-    let result = handler.uninstall_jdk("temurin@21.0.5-11", false);
+    let result = handler.uninstall_jdk("temurin@21.0.5-11", false, false);
     assert!(result.is_err());
 
     match result {
@@ -125,7 +123,7 @@ fn test_uninstall_with_version_pattern() {
     env.create_real_jdk("zulu", "21.0.1-12"); // Two JDKs with version 21
 
     // Try to uninstall with just version - should fail due to multiple matches
-    let result = handler.uninstall_jdk("21", false);
+    let result = handler.uninstall_jdk("21", false, false);
     assert!(result.is_err());
     assert!(
         result
@@ -146,27 +144,11 @@ fn test_uninstall_dry_run() {
     assert!(jdk_path.exists());
 
     // Dry run should not remove anything
-    let result = handler.uninstall_jdk("temurin@21.0.5-11", true);
+    let result = handler.uninstall_jdk("temurin@21.0.5-11", false, true);
     assert!(result.is_ok());
 
     // JDK should still exist
     assert!(jdk_path.exists());
-}
-
-#[test]
-fn test_active_jdk_detection_stubs() {
-    // Test that stub functions always return false in Phase 1
-    assert!(!is_active_global_jdk("temurin", "21.0.5-11").unwrap());
-    assert!(!is_active_local_jdk("temurin", "21.0.5-11").unwrap());
-    assert!(!is_active_global_jdk("corretto", "17.0.9").unwrap());
-    assert!(!is_active_local_jdk("corretto", "17.0.9").unwrap());
-}
-
-#[test]
-fn test_safety_checks_pass() {
-    // With active JDK stubs returning false, safety checks should pass
-    assert!(perform_safety_checks("temurin", "21.0.5-11").is_ok());
-    assert!(perform_safety_checks("corretto", "17.0.9").is_ok());
 }
 
 #[test]
@@ -217,7 +199,7 @@ fn test_atomic_removal_with_recovery() {
     }
 
     // Uninstall should be atomic
-    let result = handler.uninstall_jdk("temurin@21.0.5-11", false);
+    let result = handler.uninstall_jdk("temurin@21.0.5-11", false, false);
     assert!(result.is_ok());
 
     // Verify complete removal
@@ -250,7 +232,7 @@ fn test_multiple_jdk_versions() {
     let jdk3 = env.create_real_jdk("temurin", "11.0.21-9");
 
     // Uninstall specific version
-    let result = handler.uninstall_jdk("temurin@17.0.9-9", false);
+    let result = handler.uninstall_jdk("temurin@17.0.9-9", false, false);
     assert!(result.is_ok());
 
     // Verify only the specified version was removed
@@ -269,7 +251,7 @@ fn test_partial_version_matching() {
     env.create_real_jdk("temurin", "21.0.5-11");
 
     // Should match with partial version
-    let result = handler.uninstall_jdk("temurin@21", false);
+    let result = handler.uninstall_jdk("temurin@21", false, false);
     assert!(result.is_ok());
 }
 
@@ -321,7 +303,7 @@ fn test_corretto_extended_version_formats() {
     assert!(jdk3.exists());
 
     // Test that specifying partial version matches multiple JDKs
-    let result = handler.uninstall_jdk("corretto@21.0.7.6", false);
+    let result = handler.uninstall_jdk("corretto@21.0.7.6", false, false);
     assert!(result.is_err());
     assert!(
         result
@@ -331,17 +313,17 @@ fn test_corretto_extended_version_formats() {
     );
 
     // Remove JDK2 first to avoid ambiguity
-    let result = handler.uninstall_jdk("corretto@21.0.7.6.1", false);
+    let result = handler.uninstall_jdk("corretto@21.0.7.6.1", false, false);
     assert!(result.is_ok());
     assert!(!jdk2.exists());
 
     // Now we can uninstall JDK1 without ambiguity
-    let result = handler.uninstall_jdk("corretto@21.0.7.6", false);
+    let result = handler.uninstall_jdk("corretto@21.0.7.6", false, false);
     assert!(result.is_ok());
     assert!(!jdk1.exists());
 
     // Test partial version matching for Corretto Java 8
-    let result = handler.uninstall_jdk("corretto@8", false);
+    let result = handler.uninstall_jdk("corretto@8", false, false);
     assert!(result.is_ok());
     assert!(!jdk3.exists());
 }
@@ -360,12 +342,12 @@ fn test_dragonwell_extended_version_formats() {
     assert!(jdk2.exists());
 
     // Test uninstall with partial version matching
-    let result = handler.uninstall_jdk("dragonwell@21.0.7", false);
+    let result = handler.uninstall_jdk("dragonwell@21.0.7", false, false);
     assert!(result.is_ok());
     assert!(!jdk1.exists());
 
     // Test uninstall with full version including build
-    let result = handler.uninstall_jdk("dragonwell@17.0.13.0.13.11-11", false);
+    let result = handler.uninstall_jdk("dragonwell@17.0.13.0.13.11-11", false, false);
     assert!(result.is_ok());
     assert!(!jdk2.exists());
 }
@@ -382,7 +364,7 @@ fn test_partial_version_matching_extended() {
     let temurin = env.create_real_jdk("temurin", "21.0.7-11");
 
     // Try to uninstall with just "21" - should fail due to multiple matches
-    let result = handler.uninstall_jdk("21", false);
+    let result = handler.uninstall_jdk("21", false, false);
     assert!(result.is_err());
     assert!(
         result
@@ -392,14 +374,14 @@ fn test_partial_version_matching_extended() {
     );
 
     // Uninstall with distribution and partial version
-    let result = handler.uninstall_jdk("corretto@21", false);
+    let result = handler.uninstall_jdk("corretto@21", false, false);
     assert!(result.is_ok());
     assert!(!corretto.exists());
     assert!(dragonwell.exists());
     assert!(temurin.exists());
 
     // Test more specific partial match
-    let result = handler.uninstall_jdk("dragonwell@21.0.7.0", false);
+    let result = handler.uninstall_jdk("dragonwell@21.0.7.0", false, false);
     assert!(result.is_ok());
     assert!(!dragonwell.exists());
     assert!(temurin.exists());
@@ -417,17 +399,17 @@ fn test_complex_build_identifiers() {
     let graalvm = env.create_real_jdk("graalvm", "21.0.5-11-jvmci-24.1-b01");
 
     // Test uninstall with full version including complex build
-    let result = handler.uninstall_jdk("jetbrains@21.0.5-13.674.11", false);
+    let result = handler.uninstall_jdk("jetbrains@21.0.5-13.674.11", false, false);
     assert!(result.is_ok());
     assert!(!jetbrains.exists());
 
     // Test partial matching still works
-    let result = handler.uninstall_jdk("semeru@21", false);
+    let result = handler.uninstall_jdk("semeru@21", false, false);
     assert!(result.is_ok());
     assert!(!semeru.exists());
 
     // Test with pre-release identifier
-    let result = handler.uninstall_jdk("graalvm@21.0.5-11-jvmci-24.1-b01", false);
+    let result = handler.uninstall_jdk("graalvm@21.0.5-11-jvmci-24.1-b01", false, false);
     assert!(result.is_ok());
     assert!(!graalvm.exists());
 }

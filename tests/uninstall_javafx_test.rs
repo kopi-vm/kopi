@@ -61,7 +61,7 @@ fn test_uninstall_javafx_jdk() {
     assert_eq!(matches[1].distribution, "liberica");
 
     // Test uninstalling the JavaFX version
-    let result = handler.uninstall_jdk("liberica@21+fx", false);
+    let result = handler.uninstall_jdk("liberica@21+fx", false, false);
     assert!(result.is_ok(), "Should successfully uninstall JavaFX JDK");
 
     // Verify JavaFX JDK was removed
@@ -102,7 +102,7 @@ fn test_uninstall_javafx_with_simplified_version() {
     assert!(matches[0].javafx_bundled);
 
     // Test uninstalling
-    let result = handler.uninstall_jdk("liberica@21+fx", false);
+    let result = handler.uninstall_jdk("liberica@21+fx", false, false);
     assert!(result.is_ok(), "Should successfully uninstall JavaFX JDK");
 
     // Verify JDK was removed
@@ -129,7 +129,7 @@ fn test_uninstall_with_fx_no_match() {
     assert_eq!(matches.len(), 0, "Should not find any JavaFX JDK");
 
     // Try to uninstall JavaFX version that doesn't exist
-    let result = handler.uninstall_jdk("liberica@21+fx", false);
+    let result = handler.uninstall_jdk("liberica@21+fx", false, false);
     assert!(
         result.is_err(),
         "Should fail to uninstall non-existent JavaFX JDK"

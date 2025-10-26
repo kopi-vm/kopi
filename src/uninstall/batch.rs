@@ -124,7 +124,7 @@ impl<'a> BatchUninstaller<'a> {
         println!();
 
         // Perform batch removal with transaction-like behavior
-        self.execute_batch_removal(jdks, total_size)
+        self.execute_batch_removal(jdks, total_size, force)
     }
 
     fn calculate_total_size(&self, jdks: &[InstalledJdk]) -> Result<u64> {
@@ -164,7 +164,12 @@ impl<'a> BatchUninstaller<'a> {
         display_batch_uninstall_confirmation(jdks, total_size)
     }
 
-    fn execute_batch_removal(&self, jdks: Vec<InstalledJdk>, total_size: u64) -> Result<()> {
+    fn execute_batch_removal(
+        &self,
+        jdks: Vec<InstalledJdk>,
+        total_size: u64,
+        force: bool,
+    ) -> Result<()> {
         let mut progress_reporter = ProgressReporter::new_batch(self.no_progress);
         let overall_pb = progress_reporter.create_batch_removal_bar(jdks.len() as u64);
 
@@ -210,8 +215,10 @@ impl<'a> BatchUninstaller<'a> {
                 info!("Acquired uninstall lock for {scope_label} using {backend_label} backend");
 
                 crate::uninstall::safety::perform_safety_checks(
-                    &jdk.distribution.to_string(),
-                    &jdk.version.to_string(),
+                    self.config,
+                    self.repository,
+                    jdk,
+                    force,
                 )?;
 
                 match self.repository.remove_jdk(&jdk.path) {

@@ -123,7 +123,7 @@ fn test_metadata_consistency_after_uninstall() {
     assert_eq!(jdks_before[0].version.to_string(), "21.0.1");
 
     // Perform uninstall
-    let result = handler.uninstall_jdk("temurin@21.0.1", false);
+    let result = handler.uninstall_jdk("temurin@21.0.1", false, false);
     assert!(result.is_ok());
 
     // Verify JDK is completely removed
@@ -167,7 +167,7 @@ fn test_command_integration_after_uninstall() {
 
     // Test uninstall functionality
     let handler = UninstallHandler::new(&repository, false);
-    let result = handler.uninstall_jdk("temurin@21.0.1", false);
+    let result = handler.uninstall_jdk("temurin@21.0.1", false, false);
     assert!(result.is_ok());
 
     // Test list functionality after uninstall
@@ -212,7 +212,7 @@ fn test_multi_command_workflow() {
 
     // Step 2: Uninstall one JDK
     let handler = UninstallHandler::new(&repository, false);
-    let result = handler.uninstall_jdk("temurin@21.0.1", false);
+    let result = handler.uninstall_jdk("temurin@21.0.1", false, false);
     assert!(result.is_ok());
 
     // Step 3: List JDKs again (should show 1)
@@ -221,7 +221,7 @@ fn test_multi_command_workflow() {
     assert_eq!(jdks[0].distribution, "corretto");
 
     // Step 4: Uninstall remaining JDK
-    let result = handler.uninstall_jdk("corretto@17.0.9", false);
+    let result = handler.uninstall_jdk("corretto@17.0.9", false, false);
     assert!(result.is_ok());
 
     // Step 5: List JDKs (should show 0)
@@ -243,7 +243,7 @@ fn test_orphaned_metadata_detection_and_cleanup() {
 
     // Uninstall the JDK
     let handler = UninstallHandler::new(&repository, false);
-    let result = handler.uninstall_jdk("temurin@21.0.1", false);
+    let result = handler.uninstall_jdk("temurin@21.0.1", false, false);
     assert!(result.is_ok());
 
     // Create a mock InstalledJdk for post-uninstall checks
@@ -290,7 +290,7 @@ fn test_disk_space_calculation_integration() {
 
     // Uninstall one JDK
     let handler = UninstallHandler::new(&repository, false);
-    let result = handler.uninstall_jdk("temurin@21.0.1", false);
+    let result = handler.uninstall_jdk("temurin@21.0.1", false, false);
     assert!(result.is_ok());
 
     // Verify the JDK directory is gone

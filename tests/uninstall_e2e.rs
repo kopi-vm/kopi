@@ -205,7 +205,7 @@ JAVA_RUNTIME_VERSION="{version}"
         assert_eq!(installed_jdks[0].version.to_string(), "21.0.5+11");
 
         // Perform uninstall
-        let result = handler.uninstall_jdk("temurin@21.0.5+11", false);
+        let result = handler.uninstall_jdk("temurin@21.0.5+11", false, false);
         assert!(result.is_ok(), "Uninstall should succeed: {result:?}");
 
         // Verify complete removal
@@ -228,7 +228,7 @@ JAVA_RUNTIME_VERSION="{version}"
         assert!(jdk_path.exists());
 
         // Perform dry run
-        let result = handler.uninstall_jdk("corretto@17.0.9", true);
+        let result = handler.uninstall_jdk("corretto@17.0.9", false, true);
         assert!(result.is_ok(), "Dry run should succeed: {result:?}");
 
         // Verify JDK still exists
@@ -251,7 +251,7 @@ JAVA_RUNTIME_VERSION="{version}"
         let jdk3_path = setup.create_full_jdk("corretto", "21.0.1");
 
         // Try to uninstall with ambiguous version
-        let result = handler.uninstall_jdk("21", false);
+        let result = handler.uninstall_jdk("21", false, false);
         assert!(result.is_err(), "Should fail with multiple matches");
 
         // Verify all JDKs still exist
@@ -260,7 +260,7 @@ JAVA_RUNTIME_VERSION="{version}"
         assert!(jdk3_path.exists());
 
         // Verify specific uninstall works
-        let result = handler.uninstall_jdk("temurin@21.0.1", false);
+        let result = handler.uninstall_jdk("temurin@21.0.1", false, false);
         assert!(
             result.is_ok(),
             "Specific uninstall should succeed: {result:?}"
@@ -279,7 +279,7 @@ JAVA_RUNTIME_VERSION="{version}"
         let handler = UninstallHandler::new(&repository, false);
 
         // Try to uninstall non-existent JDK
-        let result = handler.uninstall_jdk("nonexistent@1.0.0", false);
+        let result = handler.uninstall_jdk("nonexistent@1.0.0", false, false);
         assert!(result.is_err(), "Should fail for non-existent JDK");
 
         // Verify error is appropriate
@@ -408,8 +408,8 @@ JAVA_RUNTIME_VERSION="{version}"
 
         // Try to perform operations simultaneously
         // Note: This is a simplified test - real concurrent testing would require threading
-        let result1 = handler1.uninstall_jdk("temurin@21.0.1", false);
-        let result2 = handler2.uninstall_jdk("temurin@21.0.1", false);
+        let result1 = handler1.uninstall_jdk("temurin@21.0.1", false, false);
+        let result2 = handler2.uninstall_jdk("temurin@21.0.1", false, false);
 
         // One should succeed, one should fail
         let successes = [&result1, &result2].iter().filter(|r| r.is_ok()).count();
@@ -453,7 +453,7 @@ JAVA_RUNTIME_VERSION="{version}"
         }
 
         // Perform uninstall
-        let result = handler.uninstall_jdk("temurin@21.0.1", false);
+        let result = handler.uninstall_jdk("temurin@21.0.1", false, false);
         assert!(
             result.is_ok(),
             "Platform-specific uninstall should succeed: {result:?}"
@@ -505,7 +505,7 @@ JAVA_RUNTIME_VERSION="{version}"
         assert!(size > 100 * 1024 * 1024, "JDK should be larger than 100MB");
 
         // Perform uninstall (should show progress bar)
-        let result = handler.uninstall_jdk("temurin@21.0.1", false);
+        let result = handler.uninstall_jdk("temurin@21.0.1", false, false);
         assert!(
             result.is_ok(),
             "Large JDK uninstall should succeed: {result:?}"
