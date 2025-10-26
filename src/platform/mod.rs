@@ -46,3 +46,4 @@ pub use filesystem::{
     AdvisorySupport, DefaultFilesystemInspector, FilesystemInfo, FilesystemInspector,
     FilesystemKind,
 };
+pub use process::{ProcessInfo, processes_using_path};

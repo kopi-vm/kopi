@@ -65,12 +65,12 @@ Create shared data types, helper functions, and the public `processes_using_path
 
 ### Tasks
 
-- [ ] **API definition**
-  - [ ] Introduce `ProcessInfo` struct and associated helper enums in `process.rs`.
-  - [ ] Stub `processes_using_path` with `cfg`-dispatched backend calls returning `todo!()`.
-- [ ] **Path normalization helpers**
-  - [ ] Implement `normalize_target` using `std::fs::canonicalize` with descriptive error mapping.
-  - [ ] Add tests covering symlinked directories and missing paths.
+- [x] **API definition**
+  - [x] Introduce `ProcessInfo` struct and associated helper enums in `process.rs`.
+  - [x] Stub `processes_using_path` with `cfg`-dispatched backend calls returning `todo!()`.
+- [x] **Path normalization helpers**
+  - [x] Implement `normalize_target` using `std::fs::canonicalize` with descriptive error mapping.
+  - [x] Add tests covering symlinked directories and missing paths.
 
 ### Deliverables
 
