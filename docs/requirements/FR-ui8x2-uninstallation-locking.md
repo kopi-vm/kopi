@@ -17,6 +17,7 @@
   - [FR-rxelv-file-in-use-detection](../requirements/FR-rxelv-file-in-use-detection.md)
 - Related Tasks:
   - [T-98zsb-uninstallation-locking](../tasks/T-98zsb-uninstallation-locking/README.md)
+  - [T-s2g7h-active-use-detection](../tasks/T-s2g7h-active-use-detection/README.md)
 
 ## Requirement Statement
 

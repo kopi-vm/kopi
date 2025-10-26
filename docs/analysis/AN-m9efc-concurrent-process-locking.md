@@ -25,6 +25,7 @@
   - [T-5msmf-installation-locking](../tasks/T-5msmf-installation-locking/README.md)
   - [T-ec5ew-locking-foundation](../tasks/T-ec5ew-locking-foundation/README.md)
   - [T-98zsb-uninstallation-locking](../tasks/T-98zsb-uninstallation-locking/README.md)
+  - [T-s2g7h-active-use-detection](../tasks/T-s2g7h-active-use-detection/README.md)
   - [T-m13bb-cache-locking](../tasks/T-m13bb-cache-locking/README.md)
   - [T-lqyk8-lock-timeout-control](../tasks/T-lqyk8-lock-timeout-control/README.md)
   - [T-60h68-lock-feedback](../tasks/T-60h68-lock-feedback/README.md)

@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Task
-- Status: In Progress
+- Status: Complete
   <!-- Draft: Under discussion | In Progress: Actively working | Complete: Code complete | Cancelled: Work intentionally halted -->
 
 ## Links
@@ -36,9 +36,13 @@ Apply exclusive locking and timeout-aware coordination to the uninstallation wor
 
 ## Success Metrics
 
-- Atomic removal: Tests verify uninstallation either completes fully or rolls back without leaving partial directories or metadata.
-- Concurrent safety: Mixed install/uninstall operations respect timeout and cancellation policies with accurate feedback.
-- Active-use protection: Flow detects active defaults or running JDK processes and aborts safely with actionable guidance.
+- [x] Atomic removal: Tests verify uninstallation either completes fully or rolls back without leaving partial directories or metadata.
+- [x] Concurrent safety: Mixed install/uninstall operations respect timeout and cancellation policies with accurate feedback.
+- [ ] Active-use protection: Flow detects active defaults or running JDK processes and aborts safely with actionable guidance. Current implementation relies on stub safety checks in `src/uninstall/safety.rs`; completion is deferred to [T-s2g7h-active-use-detection](../T-s2g7h-active-use-detection/README.md).
+
+## Follow-Up
+
+- Deferred scope: Active-use detection migrated to [T-s2g7h-active-use-detection](../T-s2g7h-active-use-detection/README.md).
 
 ---
 

@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 3 Complete
+- Status: Complete
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -17,9 +17,9 @@ Coordinate the changes required to bring per-coordinate locking, timeout-aware f
 
 ## Success Metrics
 
-- [ ] Install/uninstall contention tests complete without filesystem corruption or orphaned directories.
-- [ ] Batch uninstall under contention reports accurate failures while other entries proceed.
-- [ ] No new clippy warnings or failing tests across `cargo test --lib --quiet` and targeted integration suites.
+- [x] Install/uninstall contention tests complete without filesystem corruption or orphaned directories.
+- [x] Batch uninstall under contention reports accurate failures while other entries proceed.
+- [x] No new clippy warnings or failing tests across `cargo test --lib --quiet` and targeted integration suites.
 
 ## Scope
 
@@ -30,8 +30,8 @@ Coordinate the changes required to bring per-coordinate locking, timeout-aware f
 
 ## ADR & Legacy Alignment
 
-- [ ] Confirm ADR-8mnaz remains the authoritative reference for locking backend selection.
-- [ ] Verify no legacy `fs2` remnants interfere with new guard abstractions.
+- [x] Confirmed ADR-8mnaz remains the authoritative reference for locking backend selection.
+- [x] Verified no legacy `fs2` remnants interfere with new guard abstractions.
 
 ## Plan Summary
 
