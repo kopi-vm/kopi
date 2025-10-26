@@ -214,12 +214,46 @@ impl<'a> BatchUninstaller<'a> {
                 });
                 info!("Acquired uninstall lock for {scope_label} using {backend_label} backend");
 
-                crate::uninstall::safety::perform_safety_checks(
+                let active_summary = crate::uninstall::safety::perform_safety_checks(
                     self.config,
                     self.repository,
                     jdk,
                     force,
                 )?;
+
+                if force && active_summary.has_active_use() {
+                    if let Some(global) = &active_summary.global {
+                        warn!(
+                            "--force removing {}@{} despite active global configuration {}",
+                            jdk.distribution, jdk.version, global
+                        );
+                        log_messages.push(format!(
+                            "Force removing active global default via {} for {}@{}",
+                            global, jdk.distribution, jdk.version
+                        ));
+                        progress_reporter.suspend(|| {
+                            reporter.step(&format!(
+                                "Proceeding with --force: global default set via {global}"
+                            ));
+                        });
+                    }
+
+                    if let Some(project) = &active_summary.project {
+                        warn!(
+                            "--force removing {}@{} despite active project configuration {}",
+                            jdk.distribution, jdk.version, project
+                        );
+                        log_messages.push(format!(
+                            "Force removing active project default via {} for {}@{}",
+                            project, jdk.distribution, jdk.version
+                        ));
+                        progress_reporter.suspend(|| {
+                            reporter.step(&format!(
+                                "Proceeding with --force: project default set via {project}"
+                            ));
+                        });
+                    }
+                }
 
                 match self.repository.remove_jdk(&jdk.path) {
                     Ok(()) => uninstall_lock_guard.release(),

@@ -18,6 +18,7 @@ use crate::storage::{InstalledJdk, JdkRepository};
 use crate::version::VersionRequest;
 use log::{debug, trace, warn};
 use std::env;
+use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -36,19 +37,19 @@ pub fn perform_safety_checks(
     _repository: &JdkRepository,
     jdk: &InstalledJdk,
     force: bool,
-) -> Result<()> {
+) -> Result<ActiveUseSummary> {
     debug!(
         "Performing safety checks for {}@{}",
         jdk.distribution, jdk.version
     );
 
-    if force {
-        debug!(
-            "Skipping active-use detection for {}@{} due to force override",
-            jdk.distribution, jdk.version
-        );
-    } else {
-        if let Some(active) = detect_global_active_jdk(config, jdk)? {
+    let active_summary = ActiveUseSummary {
+        global: detect_global_active_jdk(config, jdk)?,
+        project: detect_project_active_jdk(jdk)?,
+    };
+
+    if !force {
+        if let Some(active) = &active_summary.global {
             return Err(KopiError::ValidationError(format!(
                 "Cannot uninstall {dist}@{ver} - it is currently active globally via {} \
                  (configured as {}). Use --force to override this check or run \
@@ -60,7 +61,7 @@ pub fn perform_safety_checks(
             )));
         }
 
-        if let Some(active) = detect_project_active_jdk(jdk)? {
+        if let Some(active) = &active_summary.project {
             return Err(KopiError::ValidationError(format!(
                 "Cannot uninstall {dist}@{ver} - it is configured for this project via {} \
                  (configured as {}). Use --force to override this check or update the \
@@ -76,7 +77,7 @@ pub fn perform_safety_checks(
     // Check for running Java processes (future enhancement)
     check_running_processes(&jdk.distribution, &jdk.version.to_string())?;
 
-    Ok(())
+    Ok(active_summary)
 }
 
 fn detect_global_active_jdk(config: &KopiConfig, jdk: &InstalledJdk) -> Result<Option<ActiveUse>> {
@@ -222,7 +223,8 @@ fn check_running_processes(_distribution: &str, _version: &str) -> Result<()> {
     Ok(())
 }
 
-struct ActiveUse {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActiveUse {
     version_file: PathBuf,
     request: VersionRequest,
 }
@@ -233,6 +235,29 @@ impl ActiveUse {
             version_file,
             request,
         }
+    }
+}
+
+impl fmt::Display for ActiveUse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} (configured as {})",
+            self.version_file.display(),
+            self.request
+        )
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct ActiveUseSummary {
+    pub global: Option<ActiveUse>,
+    pub project: Option<ActiveUse>,
+}
+
+impl ActiveUseSummary {
+    pub fn has_active_use(&self) -> bool {
+        self.global.is_some() || self.project.is_some()
     }
 }
 
@@ -345,7 +370,8 @@ mod tests {
         let repository = fixture.repository();
         let jdk = fixture.create_installed_jdk("temurin", "21.0.5+11");
 
-        assert!(perform_safety_checks(&fixture.config, &repository, &jdk, false).is_ok());
+        let summary = perform_safety_checks(&fixture.config, &repository, &jdk, false).unwrap();
+        assert!(!summary.has_active_use());
     }
 
     #[test]
@@ -361,7 +387,8 @@ mod tests {
         assert!(matches!(result, Err(KopiError::ValidationError(_))));
 
         // Force override should bypass the guard
-        assert!(perform_safety_checks(&fixture.config, &repository, &jdk, true).is_ok());
+        let summary = perform_safety_checks(&fixture.config, &repository, &jdk, true).unwrap();
+        assert!(summary.global.is_some());
     }
 
     #[test]
@@ -418,7 +445,8 @@ mod tests {
         let result = perform_safety_checks(&fixture.config, &repository, &jdk, false);
         env::set_current_dir(original_dir).unwrap();
 
-        assert!(result.is_ok());
+        let summary = result.unwrap();
+        assert!(!summary.has_active_use());
     }
 
     #[test]

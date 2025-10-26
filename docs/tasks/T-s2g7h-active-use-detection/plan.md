@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Draft
+- Status: Phase 2 In Progress
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -32,7 +32,7 @@ Implement active-use detection across uninstall flows so Kopi blocks removal of 
 ## ADR & Legacy Alignment
 
 - [x] Confirm alignment with `/docs/adr/ADR-8mnaz-concurrent-process-locking-strategy.md` (no locking changes required).
-- [ ] Evaluate whether environment variable overrides should count as active use; document decision in Phase 1 checklist.
+- [x] Evaluate whether environment variable overrides should count as active use; document decision in Phase 1 checklist.
 
 ## Plan Summary
 
@@ -114,12 +114,12 @@ Propagate the force flag and detection results through single and batch uninstal
 
 ### Phase 2 Tasks
 
-- [ ] **`API adjustments`**
-  - [ ] Update `UninstallHandler::uninstall_jdk` signature and callers to include `force`.
-  - [ ] Modify batch execution to carry `force` into `perform_safety_checks`.
-- [ ] **`User feedback`**
-  - [ ] Add reporter/log messages acknowledging forced removal when applicable.
-  - [ ] Ensure batch summary highlights blocked entries due to active-use detection.
+- [x] **`API adjustments`**
+  - [x] Update `UninstallHandler::uninstall_jdk` signature and callers to include `force`.
+  - [x] Modify batch execution to carry `force` into `perform_safety_checks`.
+- [x] **`User feedback`**
+  - [x] Add reporter/log messages acknowledging forced removal when applicable.
+  - [x] Ensure batch summary highlights blocked entries due to active-use detection.
 
 ### Phase 2 Deliverables
 

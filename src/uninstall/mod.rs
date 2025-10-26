@@ -151,7 +151,30 @@ impl<'a> UninstallHandler<'a> {
         reporter.step(&format!("Using {backend_label} backend for {scope_label}"));
 
         // Perform safety checks
-        safety::perform_safety_checks(self.config, self.repository, &jdk, force)?;
+        let active_summary =
+            safety::perform_safety_checks(self.config, self.repository, &jdk, force)?;
+
+        if force && active_summary.has_active_use() {
+            if let Some(global) = &active_summary.global {
+                warn!(
+                    "--force removing {}@{} despite active global configuration {}",
+                    jdk.distribution, jdk.version, global
+                );
+                reporter.step(&format!(
+                    "Proceeding with --force: global default set via {global}"
+                ));
+            }
+
+            if let Some(project) = &active_summary.project {
+                warn!(
+                    "--force removing {}@{} despite active project configuration {}",
+                    jdk.distribution, jdk.version, project
+                );
+                reporter.step(&format!(
+                    "Proceeding with --force: project default set via {project}"
+                ));
+            }
+        }
 
         // Remove with progress
         match self.remove_jdk_with_progress(&jdk, jdk_size) {
