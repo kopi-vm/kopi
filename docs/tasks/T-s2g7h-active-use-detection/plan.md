@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 2 In Progress
+- Status: Complete
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -17,10 +17,10 @@ Implement active-use detection across uninstall flows so Kopi blocks removal of 
 
 ## Success Metrics
 
-- [ ] Active-use guard triggers for global and project defaults in single uninstall without `--force`.
-- [ ] Batch uninstall reports blocked entries while continuing to remove safe targets.
-- [ ] `cargo test --lib --quiet uninstall` and `tests/uninstall_integration.rs` exercise the new paths.
-- [ ] All existing checks (`cargo fmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test --lib --quiet`) pass.
+- [x] Active-use guard triggers for global and project defaults in single uninstall without `--force`.
+- [x] Batch uninstall reports blocked entries while continuing to remove safe targets.
+- [x] `cargo test --lib --quiet uninstall` and `tests/uninstall_integration.rs` exercise the new paths.
+- [x] All existing checks (`cargo fmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test --lib --quiet`) pass.
 
 ## Scope
 
@@ -152,15 +152,15 @@ Add comprehensive automated coverage validating global/project guard behavior in
 
 ### Phase 3 Tasks
 
-- [ ] Test utilities
-  - [ ] Extend test fixtures to create `.kopi-version` / `.java-version` files.
-  - [ ] Provide helper to write global version file via `InstalledJdk::write_to`.
-- [ ] Scenarios
-  - [ ] Single uninstall blocked by global default, unblocked by `--force`.
-  - [ ] Single uninstall blocked by project default from nested directory.
-  - [ ] Batch uninstall where only subset is blocked.
-- [ ] Concurrency & cleanup
-  - [ ] Confirm tests clean up version files to avoid cross-test pollution.
+- [x] Test utilities
+  - [x] Extend test fixtures to create `.kopi-version` / `.java-version` files.
+  - [x] Provide helper to write global version file via `InstalledJdk::write_to`.
+- [x] Scenarios
+  - [x] Single uninstall blocked by global default, unblocked by `--force`.
+  - [x] Single uninstall blocked by project default from nested directory.
+  - [x] Batch uninstall where only subset is blocked.
+- [x] Concurrency & cleanup
+  - [x] Confirm tests clean up version files to avoid cross-test pollution.
 
 ### Phase 3 Deliverables
 
@@ -172,20 +172,22 @@ Add comprehensive automated coverage validating global/project guard behavior in
 cargo fmt
 cargo clippy --all-targets -- -D warnings
 cargo test --lib --quiet uninstall
-cargo test --quiet tests::uninstall_integration
+cargo test --test uninstall_integration -- --test-threads=1
+cargo test --test uninstall_locking -- --test-threads=1
 ```
 
 ### Phase 3 Acceptance Criteria
 
-- New tests fail on stubbed detection and pass with implementation; no regressions in existing suites.
+- [x] New tests fail on stubbed detection and pass with implementation; no regressions in existing suites.
 
 ---
 
 ## Definition of Done
 
-- [ ] `cargo check`
-- [ ] `cargo fmt`
-- [ ] `cargo clippy --all-targets -- -D warnings`
-- [ ] `cargo test --lib --quiet`
-- [ ] Integration tests: `cargo test --quiet tests::uninstall_integration`
-- [ ] Documentation updates complete; follow-up PR filed for user docs if messaging changes
+- [x] `cargo check`
+- [x] `cargo fmt`
+- [x] `cargo clippy --all-targets -- -D warnings`
+- [x] `cargo test --lib --quiet`
+- [x] Integration tests: `cargo test --test uninstall_integration -- --test-threads=1`
+- [x] Integration tests: `cargo test --test uninstall_locking -- --test-threads=1`
+- [x] Documentation updates complete; follow-up PR filed for user docs if messaging changes

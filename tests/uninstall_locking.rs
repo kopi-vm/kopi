@@ -37,6 +37,98 @@ struct InstalledFixture {
 
 #[test]
 #[serial]
+fn uninstall_requires_force_for_active_global() {
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home().to_path_buf();
+
+    let fixture = provision_installed_jdk(&kopi_home, "temurin", "21.0.5+11");
+    let global_file = kopi_home.join("version");
+    fs::write(&global_file, &fixture.spec).unwrap();
+
+    let mut blocked = test_command(&kopi_home);
+    blocked.arg("uninstall").arg(&fixture.spec);
+
+    blocked
+        .write_stdin("y\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("active globally"))
+        .stderr(predicate::str::contains("Use --force"));
+
+    let mut forced = test_command(&kopi_home);
+    forced.arg("uninstall").arg(&fixture.spec).arg("--force");
+
+    forced
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Proceeding with --force: global default set via",
+        ))
+        .stdout(predicate::str::contains("configured as temurin@21.0.5+11"));
+
+    assert!(
+        !fixture.install_path.exists(),
+        "installation directory should be removed when forcing uninstall"
+    );
+    assert!(
+        !fixture.metadata_path.exists(),
+        "metadata should be removed when forcing uninstall"
+    );
+}
+
+#[test]
+#[serial]
+fn uninstall_requires_force_for_active_project() {
+    let test_home = TestHomeGuard::new();
+    test_home.setup_kopi_structure();
+    let kopi_home = test_home.kopi_home().to_path_buf();
+
+    let fixture = provision_installed_jdk(&kopi_home, "temurin", "17.0.9+9");
+    let project_dir = kopi_home.join("projects/sample");
+    fs::create_dir_all(&project_dir).unwrap();
+    fs::write(project_dir.join(".kopi-version"), &fixture.spec).unwrap();
+
+    let mut blocked = test_command(&kopi_home);
+    blocked
+        .current_dir(&project_dir)
+        .arg("uninstall")
+        .arg(&fixture.spec);
+
+    blocked
+        .write_stdin("y\n")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("configured for this project"))
+        .stderr(predicate::str::contains("Use --force"));
+
+    let mut forced = test_command(&kopi_home);
+    forced
+        .current_dir(&project_dir)
+        .arg("uninstall")
+        .arg(&fixture.spec)
+        .arg("--force");
+
+    forced
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Proceeding with --force: project default set via",
+        ))
+        .stdout(predicate::str::contains("configured as temurin@17.0.9+9"));
+
+    assert!(
+        !fixture.install_path.exists(),
+        "installation directory should be removed when forcing uninstall"
+    );
+    assert!(
+        !fixture.metadata_path.exists(),
+        "metadata should be removed when forcing uninstall"
+    );
+}
+
+#[test]
+#[serial]
 fn uninstall_blocks_when_peer_uninstall_holds_lock() {
     let test_home = TestHomeGuard::new();
     test_home.setup_kopi_structure();

@@ -210,6 +210,60 @@ fn test_atomic_removal_with_recovery() {
 }
 
 #[test]
+fn test_uninstall_blocks_active_global_without_force() {
+    let env = TestEnvironment::new();
+    let repository = JdkRepository::new(&env.config);
+    let handler = UninstallHandler::new(&repository, false);
+
+    let jdk_path = env.create_real_jdk("temurin", "21.0.5-11");
+    assert!(jdk_path.exists());
+
+    let global_file = env.config.kopi_home().join("version");
+    std::fs::write(&global_file, "temurin@21.0.5-11").unwrap();
+
+    let result = handler.uninstall_jdk("temurin@21.0.5-11", false, false);
+    assert!(matches!(
+        result,
+        Err(kopi::error::KopiError::ValidationError(_))
+    ));
+
+    let result = handler.uninstall_jdk("temurin@21.0.5-11", true, false);
+    assert!(result.is_ok());
+    assert!(!jdk_path.exists());
+
+    std::fs::remove_file(global_file).unwrap();
+}
+
+#[test]
+fn test_uninstall_blocks_active_project_without_force() {
+    let env = TestEnvironment::new();
+    let repository = JdkRepository::new(&env.config);
+    let handler = UninstallHandler::new(&repository, false);
+
+    let jdk_path = env.create_real_jdk("temurin", "17.0.9-9");
+    assert!(jdk_path.exists());
+
+    let project_dir = env.config.kopi_home().join("workspace/project");
+    std::fs::create_dir_all(&project_dir).unwrap();
+    std::fs::write(project_dir.join(".kopi-version"), "temurin@17.0.9-9").unwrap();
+
+    let original_dir = std::env::current_dir().unwrap();
+    std::env::set_current_dir(&project_dir).unwrap();
+
+    let result = handler.uninstall_jdk("temurin@17.0.9-9", false, false);
+    assert!(matches!(
+        result,
+        Err(kopi::error::KopiError::ValidationError(_))
+    ));
+
+    let result = handler.uninstall_jdk("temurin@17.0.9-9", true, false);
+    assert!(result.is_ok());
+    assert!(!jdk_path.exists());
+
+    std::env::set_current_dir(original_dir).unwrap();
+}
+
+#[test]
 fn test_tool_dependency_check() {
     let env = TestEnvironment::new();
 
