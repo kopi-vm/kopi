@@ -307,7 +307,10 @@ mod tests {
 
         // Test successful command
         #[cfg(unix)]
-        let cmd = std::process::Command::new("true");
+        let cmd = {
+            let true_path = which::which("true").expect("'true' command must exist");
+            std::process::Command::new(true_path)
+        };
 
         #[cfg(windows)]
         let cmd = {
@@ -328,8 +331,12 @@ mod tests {
         let installer = AutoInstaller::new(&config, false);
 
         // Test command that exceeds timeout
-        let mut cmd = std::process::Command::new("sleep");
-        cmd.arg("10");
+        let cmd = {
+            let sleep_path = which::which("sleep").expect("'sleep' command must exist");
+            let mut command = std::process::Command::new(sleep_path);
+            command.arg("10");
+            command
+        };
         let result = installer.execute_with_timeout(cmd, Duration::from_secs(1));
         assert!(result.is_err());
         match result {

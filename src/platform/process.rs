@@ -68,10 +68,92 @@ fn normalize_target(target: &Path) -> Result<PathBuf> {
 }
 
 #[cfg(target_os = "linux")]
-fn platform_processes_using_path(_target: &Path) -> Result<Vec<ProcessInfo>> {
-    Err(KopiError::NotImplemented(
-        "Process activity detection for Linux is not implemented yet".to_string(),
-    ))
+fn platform_processes_using_path(target: &Path) -> Result<Vec<ProcessInfo>> {
+    use std::collections::{BTreeMap, BTreeSet};
+
+    let proc_root = Path::new("/proc");
+    let entries = fs::read_dir(proc_root)
+        .map_err(|err| KopiError::SystemError(format!("Failed to read /proc: {err}")))?;
+
+    let mut processes: BTreeMap<u32, ProcessInfo> = BTreeMap::new();
+
+    for entry_result in entries {
+        let entry = match entry_result {
+            Ok(value) => value,
+            Err(err) => {
+                log::debug!("skipping /proc entry due to error: {err}");
+                continue;
+            }
+        };
+
+        let pid = match entry.file_name().to_string_lossy().parse::<u32>() {
+            Ok(pid) => pid,
+            Err(_) => continue,
+        };
+
+        let proc_path = entry.path();
+        let exe_link = proc_path.join("exe");
+        let exe_path =
+            fs::read_link(exe_link).unwrap_or_else(|_| PathBuf::from(format!("/proc/{pid}/exe")));
+
+        let fd_dir = proc_path.join("fd");
+        let fd_entries = match fs::read_dir(&fd_dir) {
+            Ok(iter) => iter,
+            Err(err) => {
+                log::debug!("skipping fd inspection for pid {pid} due to error: {err}");
+                continue;
+            }
+        };
+
+        let mut handles = BTreeSet::new();
+
+        for fd_entry in fd_entries {
+            let fd_entry = match fd_entry {
+                Ok(value) => value,
+                Err(err) => {
+                    log::debug!("skipping fd entry for pid {pid} due to error: {err}");
+                    continue;
+                }
+            };
+
+            let link_path = match fs::read_link(fd_entry.path()) {
+                Ok(path) => path,
+                Err(err) => {
+                    log::debug!("unable to resolve fd symlink for pid {pid}: {err}");
+                    continue;
+                }
+            };
+
+            if !link_path.is_absolute() {
+                continue;
+            }
+
+            let canonical_handle = match fs::canonicalize(&link_path) {
+                Ok(path) => path,
+                Err(err) => {
+                    log::debug!("canonicalize failed for fd owned by pid {pid}: {err}");
+                    continue;
+                }
+            };
+
+            if canonical_handle.starts_with(target) {
+                handles.insert(canonical_handle);
+            }
+        }
+
+        if !handles.is_empty() {
+            processes.insert(
+                pid,
+                ProcessInfo {
+                    pid,
+                    exe_path: exe_path.clone(),
+                    handles: handles.into_iter().collect(),
+                },
+            );
+        }
+    }
+
+    Ok(processes.into_values().collect())
 }
 
 #[cfg(target_os = "macos")]
@@ -203,6 +285,15 @@ mod tests {
         }
     }
 
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn processes_using_path_returns_empty_vec_for_temp_dir() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let processes = processes_using_path(temp_dir.path()).expect("expected success");
+        assert!(processes.is_empty());
+    }
+
+    #[cfg(not(target_os = "linux"))]
     #[test]
     fn processes_using_path_returns_not_implemented_for_current_platform() {
         let temp_dir = tempfile::tempdir().expect("tempdir");

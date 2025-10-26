@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Draft
+- Status: Phase 2 In Progress
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -107,17 +107,17 @@ Implement Linux/Unix, macOS, and Windows backends plus captured fixtures that en
 
 - Dependencies:
   - Phase 1 facade and helpers.
-  - New crates: `procfs` (Linux), `libproc` (macOS), `windows` (Windows) added to `Cargo.toml`.
+  - Platform crates added to `Cargo.toml` as required (e.g., `procfs`, `libproc`, `windows`).
 - Source Code to Modify:
   - `src/platform/process.rs` – Add `cfg`-scoped helpers for each platform alongside shared facade.
   - `Cargo.toml` – Dependency declarations with platform-specific cfg.
 
 ### Phase 2 Tasks
 
-- [ ] **Linux / Unix backend**
-  - [ ] Add `cfg(target_os = "linux")` (and related Unix platforms) helper inside `process.rs` that iterates `/proc` using `procfs` and filters FD symlinks under target.
-  - [ ] Populate `ProcessInfo` with executable paths and handle lists.
-  - [ ] Handle permission errors gracefully with warnings.
+- [x] **Linux / Unix backend**
+  - [x] Add `cfg(target_os = "linux")` helper inside `process.rs` that walks `/proc` using standard library iterators and filters descriptor symlinks under the target.
+  - [x] Populate `ProcessInfo` with executable paths and handle lists.
+  - [x] Handle permission errors gracefully with warnings.
 - [ ] **macOS backend**
   - [ ] Implement a `cfg(target_os = "macos")` helper inside `process.rs` that uses `libproc` to inspect open file descriptors and convert Mach paths to `PathBuf`.
   - [ ] Capture fixture JSON or plist from `lsof -F` for unit tests and document provenance.
