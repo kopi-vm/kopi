@@ -30,6 +30,7 @@
   - [T-60h68-lock-feedback](../tasks/T-60h68-lock-feedback/README.md)
   - [T-ec5ew-locking-foundation](../tasks/T-ec5ew-locking-foundation/README.md)
   - [T-9r1su-fs2-dependency-retirement](../tasks/T-9r1su-fs2-dependency-retirement/README.md)
+  - [T-q5f2p-process-activity-detection](../tasks/T-q5f2p-process-activity-detection/README.md)
 
 ## Context
 

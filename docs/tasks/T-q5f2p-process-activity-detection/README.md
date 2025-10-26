@@ -15,9 +15,9 @@
 - Related ADRs:
   - [ADR-8mnaz-concurrent-process-locking-strategy](../../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Associated Design Document:
-  - N/A – Design not started
+  - [design.md](design.md)
 - Associated Plan Document:
-  - N/A – Plan not started
+  - [plan.md](plan.md)
 
 ## Summary
 
