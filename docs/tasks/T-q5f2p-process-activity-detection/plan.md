@@ -121,10 +121,10 @@ Implement Linux/Unix, macOS, and Windows backends plus captured fixtures that en
 - [ ] **macOS backend**
   - [ ] Implement a `cfg(target_os = "macos")` helper inside `process.rs` that uses `libproc` to inspect open file descriptors and convert Mach paths to `PathBuf`.
   - [ ] Capture fixture JSON or plist from `lsof -F` for unit tests and document provenance.
-- [ ] **Windows backend**
-  - [ ] Implement a `cfg(windows)` helper inside `process.rs` that enumerates handles via `NtQuerySystemInformation` and filters `FILE` types.
-  - [ ] Resolve paths with `GetFinalPathNameByHandleW`; normalize case-insensitive comparisons.
-  - [ ] Ensure duplicated handles close reliably to avoid leaks.
+- [x] **Windows backend**
+  - [x] Implement a `cfg(windows)` helper inside `process.rs` that enumerates handles via `NtQuerySystemInformation` and filters `FILE` types.
+  - [x] Resolve paths with `GetFinalPathNameByHandleW`; normalize case-insensitive comparisons.
+  - [x] Ensure duplicated handles close reliably to avoid leaks.
 - [ ] **Fixtures & tests**
   - [ ] Store recorded API responses (e.g., handle dumps, mocked `/proc`) under `tests/fixtures/` and cite collection commands in comments.
   - [ ] Add unit tests for each backend using fixtures.

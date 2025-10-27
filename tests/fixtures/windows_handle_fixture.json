@@ -1,0 +1,24 @@
+{
+  "note": "Trimmed from handle.exe -nobanner -a capture on 2025-10-24",
+  "target": "C:\\\\Users\\\\example\\\\AppData\\\\Local\\\\Kopi\\\\jdks\\\\temurin-21.0.3",
+  "processes": [
+    {
+      "pid": 4321,
+      "exe": "C:\\\\Program Files\\\\Java\\\\bin\\\\java.exe",
+      "handles": [
+        "C:\\\\Users\\\\example\\\\AppData\\\\Local\\\\Kopi\\\\jdks\\\\temurin-21.0.3\\\\bin\\\\java.exe",
+        "C:\\\\Users\\\\example\\\\AppData\\\\Local\\\\Kopi\\\\jdks\\\\temurin-21.0.3\\\\lib\\\\modules",
+        "C:\\\\Users\\\\example\\\\AppData\\\\Local\\\\Kopi\\\\jdks\\\\temurin-21.0.3\\\\lib\\\\modules"
+      ]
+    },
+    {
+      "pid": 5020,
+      "exe": "C:\\\\Tools\\\\Gradle\\\\bin\\\\gradle.exe",
+      "handles": [
+        "C:\\\\Users\\\\example\\\\AppData\\\\Local\\\\Kopi\\\\jdks\\\\temurin-21.0.3\\\\bin\\\\java.exe",
+        "C:\\\\Users\\\\example\\\\AppData\\\\Local\\\\Kopi\\\\jdks\\\\temurin-21.0.3\\\\bin\\\\jcmd.exe",
+        "C:\\\\Temp\\\\other\\\\outside.txt"
+      ]
+    }
+  ]
+}
