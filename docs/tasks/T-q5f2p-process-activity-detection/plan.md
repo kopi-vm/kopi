@@ -118,9 +118,9 @@ Implement Linux/Unix, macOS, and Windows backends plus captured fixtures that en
   - [x] Add `cfg(target_os = "linux")` helper inside `process.rs` that walks `/proc` using standard library iterators and filters descriptor symlinks under the target.
   - [x] Populate `ProcessInfo` with executable paths and handle lists.
   - [x] Handle permission errors gracefully with warnings.
-- [ ] **macOS backend**
-  - [ ] Implement a `cfg(target_os = "macos")` helper inside `process.rs` that uses `libproc` to inspect open file descriptors and convert Mach paths to `PathBuf`.
-  - [ ] Capture fixture JSON or plist from `lsof -F` for unit tests and document provenance.
+- [x] **macOS backend**
+  - [x] Implement a `cfg(target_os = "macos")` helper inside `process.rs` that uses `libproc` to inspect open file descriptors and convert Mach paths to `PathBuf`.
+  - [x] Capture fixture JSON or plist from `lsof -F` for unit tests and document provenance.
 - [x] **Windows backend**
   - [x] Implement a `cfg(windows)` helper inside `process.rs` that enumerates handles via `NtQuerySystemInformation` and filters `FILE` types.
   - [x] Resolve paths with `GetFinalPathNameByHandleW`; normalize case-insensitive comparisons.

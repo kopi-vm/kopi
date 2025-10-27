@@ -21,8 +21,24 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[cfg(target_os = "macos")]
+use std::collections::BTreeSet;
 #[cfg(windows)]
 use std::collections::{BTreeMap, BTreeSet};
+
+#[cfg(target_os = "macos")]
+use libc::{c_char, gid_t, off_t, uid_t};
+#[cfg(target_os = "macos")]
+use libproc::libproc::bsd_info::BSDInfo;
+#[cfg(target_os = "macos")]
+use libproc::libproc::file_info::{ListFDs, PIDFDInfo, PIDFDInfoFlavor, ProcFDType, pidfdinfo};
+#[cfg(target_os = "macos")]
+use libproc::libproc::proc_pid::{listpidinfo, pidinfo, pidpath};
+#[cfg(target_os = "macos")]
+use libproc::processes::{ProcFilter, pids_by_type};
+#[cfg(target_os = "macos")]
+use std::os::unix::ffi::OsStringExt;
+
 #[cfg(windows)]
 use std::os::windows::ffi::OsStringExt;
 #[cfg(windows)]
@@ -200,10 +216,221 @@ fn platform_processes_using_path(target: &Path) -> Result<Vec<ProcessInfo>> {
 }
 
 #[cfg(target_os = "macos")]
-fn platform_processes_using_path(_target: &Path) -> Result<Vec<ProcessInfo>> {
-    Err(KopiError::NotImplemented(
-        "Process activity detection for macOS is not implemented yet".to_string(),
-    ))
+#[derive(Clone, Copy, Default)]
+#[repr(C)]
+struct RawFsid {
+    val: [i32; 2],
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Default)]
+#[repr(C)]
+struct RawVinfoStat {
+    vst_dev: u32,
+    vst_mode: u16,
+    vst_nlink: u16,
+    vst_ino: u64,
+    vst_uid: uid_t,
+    vst_gid: gid_t,
+    vst_atime: i64,
+    vst_atimensec: i64,
+    vst_mtime: i64,
+    vst_mtimensec: i64,
+    vst_ctime: i64,
+    vst_ctimensec: i64,
+    vst_birthtime: i64,
+    vst_birthtimensec: i64,
+    vst_size: off_t,
+    vst_blocks: i64,
+    vst_blksize: i32,
+    vst_flags: u32,
+    vst_gen: u32,
+    vst_rdev: u32,
+    vst_qspare: [i64; 2],
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Default)]
+#[repr(C)]
+struct RawVnodeInfo {
+    vi_stat: RawVinfoStat,
+    vi_type: i32,
+    vi_pad: i32,
+    vi_fsid: RawFsid,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Default)]
+#[repr(C)]
+struct RawProcFileInfo {
+    fi_openflags: u32,
+    fi_status: u32,
+    fi_offset: off_t,
+    fi_type: i32,
+    fi_guardflags: u32,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy)]
+#[repr(C)]
+struct RawVnodeInfoPath {
+    vip_vi: RawVnodeInfo,
+    vip_path: [c_char; 1024],
+}
+
+#[cfg(target_os = "macos")]
+impl Default for RawVnodeInfoPath {
+    fn default() -> Self {
+        Self {
+            vip_vi: RawVnodeInfo::default(),
+            vip_path: [0 as c_char; 1024],
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Clone, Copy, Default)]
+#[repr(C)]
+struct RawVnodeFDInfoWithPath {
+    pfi: RawProcFileInfo,
+    pvip: RawVnodeInfoPath,
+}
+
+#[cfg(target_os = "macos")]
+impl PIDFDInfo for RawVnodeFDInfoWithPath {
+    fn flavor() -> PIDFDInfoFlavor {
+        PIDFDInfoFlavor::VNodePathInfo
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn extract_vnode_path(buffer: &[c_char; 1024]) -> Option<PathBuf> {
+    let bytes: Vec<u8> = buffer
+        .iter()
+        .take_while(|c| **c != 0)
+        .map(|c| *c as u8)
+        .collect();
+
+    if bytes.is_empty() {
+        return None;
+    }
+
+    let os_string = OsString::from_vec(bytes);
+    if os_string.is_empty() {
+        None
+    } else {
+        Some(PathBuf::from(os_string))
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn record_handle_if_within_target(
+    target: &Path,
+    pid: u32,
+    path: &Path,
+    handles: &mut BTreeSet<PathBuf>,
+) {
+    match fs::canonicalize(path) {
+        Ok(canonical) => {
+            if canonical.starts_with(target) {
+                handles.insert(canonical);
+            }
+        }
+        Err(err) => {
+            if path.starts_with(target) {
+                handles.insert(path.to_path_buf());
+            } else {
+                log::debug!("skipping handle for pid {pid} at {}: {err}", path.display());
+            }
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn platform_processes_using_path(target: &Path) -> Result<Vec<ProcessInfo>> {
+    let mut processes: Vec<ProcessInfo> = Vec::new();
+
+    let pids = pids_by_type(ProcFilter::All)
+        .map_err(|err| KopiError::SystemError(format!("Failed to enumerate processes: {err}")))?;
+
+    for pid in pids {
+        if pid == 0 {
+            continue;
+        }
+
+        let pid_i32 = pid as i32;
+
+        let exe_path = match pidpath(pid_i32) {
+            Ok(path) => PathBuf::from(path),
+            Err(err) => {
+                log::debug!("skipping pid {pid} due to pidpath failure: {err}");
+                continue;
+            }
+        };
+
+        let bsd_info = match pidinfo::<BSDInfo>(pid_i32, 0) {
+            Ok(info) => info,
+            Err(err) => {
+                log::debug!("skipping pid {pid} due to pidinfo failure: {err}");
+                continue;
+            }
+        };
+
+        let descriptor_capacity = bsd_info.pbi_nfiles as usize;
+        if descriptor_capacity == 0 {
+            continue;
+        }
+
+        let descriptors = match listpidinfo::<ListFDs>(pid_i32, descriptor_capacity) {
+            Ok(list) => list,
+            Err(err) => {
+                log::debug!("skipping fd enumeration for pid {pid}: {err}");
+                continue;
+            }
+        };
+
+        if descriptors.is_empty() {
+            continue;
+        }
+
+        let mut handles = BTreeSet::new();
+
+        for descriptor in descriptors {
+            if !matches!(
+                ProcFDType::from(descriptor.proc_fdtype),
+                ProcFDType::VNode
+            ) {
+                continue;
+            }
+
+            let vnode_info = match pidfdinfo::<RawVnodeFDInfoWithPath>(pid_i32, descriptor.proc_fd)
+            {
+                Ok(info) => info,
+                Err(err) => {
+                    log::debug!(
+                        "pidfdinfo failed for pid {pid} fd {}: {err}",
+                        descriptor.proc_fd
+                    );
+                    continue;
+                }
+            };
+
+            if let Some(handle_path) = extract_vnode_path(&vnode_info.pvip.vip_path) {
+                record_handle_if_within_target(target, pid, &handle_path, &mut handles);
+            }
+        }
+
+        if !handles.is_empty() {
+            processes.push(ProcessInfo {
+                pid,
+                exe_path,
+                handles: handles.into_iter().collect(),
+            });
+        }
+    }
+
+    processes.sort_by_key(|info| info.pid);
+    Ok(processes)
 }
 
 #[cfg(windows)]
@@ -311,7 +538,7 @@ fn nt_success(status: NTSTATUS) -> bool {
 #[cfg(windows)]
 const FILE_NAME_NORMALIZED: DWORD = 0;
 
-#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 fn platform_processes_using_path(_target: &Path) -> Result<Vec<ProcessInfo>> {
     Err(KopiError::NotImplemented(
         "Process activity detection is not supported on this platform".to_string(),
@@ -659,7 +886,7 @@ mod tests {
         }
     }
 
-    #[cfg(any(target_os = "linux", windows))]
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
     #[test]
     fn processes_using_path_returns_empty_vec_for_temp_dir() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -667,12 +894,115 @@ mod tests {
         assert!(processes.is_empty());
     }
 
-    #[cfg(all(not(target_os = "linux"), not(windows)))]
+    #[cfg(all(
+        not(target_os = "linux"),
+        not(target_os = "macos"),
+        not(target_os = "windows")
+    ))]
     #[test]
     fn processes_using_path_returns_not_implemented_for_current_platform() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let err = processes_using_path(temp_dir.path()).expect_err("expected placeholder error");
         assert!(matches!(err, KopiError::NotImplemented(_)));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_fixture_handles_are_scoped_to_target_directory() {
+        use libc::c_char;
+        use serde::Deserialize;
+        use std::collections::{BTreeMap, BTreeSet};
+
+        #[derive(Deserialize)]
+        struct FixtureEntry {
+            command: String,
+            pid: u32,
+            path: String,
+        }
+
+        #[derive(Deserialize)]
+        struct Fixture {
+            entries: Vec<FixtureEntry>,
+        }
+
+        fn copy_path_into(buffer: &mut [c_char; 1024], path: &str) {
+            let bytes = path.as_bytes();
+            for (idx, byte) in bytes.iter().enumerate() {
+                buffer[idx] = *byte as c_char;
+            }
+            if bytes.len() < buffer.len() {
+                buffer[bytes.len()] = 0;
+            }
+        }
+
+        // Fixture derived from: lsof -Fpcfn -- /Users/example/.kopi/jdks/temurin-21.0.3 (captured 2025-10-12)
+        let fixture_path = Path::new("tests/fixtures/macos_pidfdinfo_sample.json");
+        let content = fs::read_to_string(fixture_path).expect("fixture readable");
+        let fixture: Fixture = serde_json::from_str(&content).expect("fixture deserializable");
+
+        let target = PathBuf::from("/Users/example/.kopi/jdks/temurin-21.0.3");
+
+        let mut command_by_pid: BTreeMap<u32, String> = BTreeMap::new();
+        let mut handles_by_pid: BTreeMap<u32, BTreeSet<PathBuf>> = BTreeMap::new();
+
+        for entry in &fixture.entries {
+            let mut vnode = RawVnodeFDInfoWithPath::default();
+            copy_path_into(&mut vnode.pvip.vip_path, &entry.path);
+
+            if let Some(handle_path) = extract_vnode_path(&vnode.pvip.vip_path) {
+                command_by_pid
+                    .entry(entry.pid)
+                    .or_insert_with(|| entry.command.clone());
+                let handles = handles_by_pid.entry(entry.pid).or_default();
+                record_handle_if_within_target(&target, entry.pid, &handle_path, handles);
+            }
+        }
+
+        let mut processes: Vec<ProcessInfo> = handles_by_pid
+            .into_iter()
+            .filter_map(|(pid, handles)| {
+                if handles.is_empty() {
+                    return None;
+                }
+
+                let command = command_by_pid
+                    .remove(&pid)
+                    .unwrap_or_else(|| "unknown".to_string());
+
+                Some(ProcessInfo {
+                    pid,
+                    exe_path: PathBuf::from(format!("/mock/bin/{command}")),
+                    handles: handles.into_iter().collect(),
+                })
+            })
+            .collect();
+
+        processes.sort_by_key(|info| info.pid);
+
+        assert_eq!(processes.len(), 2);
+        for process in &processes {
+            assert!(
+                process
+                    .handles
+                    .iter()
+                    .all(|handle| handle.starts_with(&target)),
+                "found handle outside target for pid {}",
+                process.pid
+            );
+        }
+
+        assert_eq!(
+            processes[0].handles,
+            vec![PathBuf::from(
+                "/Users/example/.kopi/jdks/temurin-21.0.3/bin/java"
+            )]
+        );
+        assert_eq!(
+            processes[1].handles,
+            vec![PathBuf::from(
+                "/Users/example/.kopi/jdks/temurin-21.0.3/lib/tools.jar"
+            )]
+        );
     }
 
     #[cfg(windows)]

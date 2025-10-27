@@ -1,0 +1,17 @@
+{
+  "source": "lsof -Fpcfn -- /Users/example/.kopi/jdks/temurin-21.0.3",
+  "captured_at": "2025-10-12T14:00:00Z",
+  "platform": "macOS 14.6",
+  "entries": [
+    {
+      "command": "java",
+      "pid": 8421,
+      "path": "/Users/example/.kopi/jdks/temurin-21.0.3/bin/java"
+    },
+    {
+      "command": "javac",
+      "pid": 8422,
+      "path": "/Users/example/.kopi/jdks/temurin-21.0.3/lib/tools.jar"
+    }
+  ]
+}
