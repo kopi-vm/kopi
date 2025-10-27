@@ -201,7 +201,7 @@ kopi/
 - **Atomic Fallback**: `create_new`-based locking for network filesystems with JSON metadata and marker files (`src/locking/fallback.rs`)
 - **Lock Hygiene Runner**: Startup sweep that removes stale fallback artifacts and staging files (`src/locking/hygiene.rs`, invoked from `src/main.rs`)
 - **Configuration**: `locking.mode` (`auto`, `advisory`, `fallback`) and `locking.timeout` control acquisition strategy and hygiene thresholds (`src/config.rs`)
-- **Wait Instrumentation**: `LockWaitObserver` exposes wait, retry, and completion events while `StatusReporterObserver` routes them to `indicator::StatusReporter`; timeout errors record both the resolved value and its provenance (CLI flag, environment variable, configuration, or default).
+- **Wait Instrumentation**: `LockFeedbackBridge` charts wait lifecycle events through shared progress indicators (TTY, non-TTY, or silent), while `StatusReporterObserver` falls back to textual messaging when no indicator is available; timeout errors continue to record both the resolved value and its provenance (CLI flag, environment variable, configuration, or default).
 - **Installation Integration**: `InstallCommand` acquires a `ScopedPackageLockGuard` before touching staging directories or shims, surfaces wait feedback through the status reporter, and explicitly releases the guard to bubble up release failures (`src/commands/install.rs`).
 - **Uninstall Integration**: `UninstallHandler` and batch/recovery paths resolve the same scoped lock identifiers as installs, enforce acquisition before destructive work begins, and reuse status reporter wait messaging to expose contention (`src/uninstall/mod.rs`, `src/uninstall/batch.rs`, `src/uninstall/cleanup.rs`).
 

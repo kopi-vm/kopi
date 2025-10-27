@@ -39,6 +39,11 @@ Implement consistent user feedback for lock waits, including real-time progress 
 - Update cadence: Progress indicators refresh ≥1 Hz on TTYs and every ≤5 seconds in log mode without polluting CI logs.
 - Actionable guidance: Manual tests confirm cancellation and override instructions are clear across supported scenarios.
 
+## Manual Validation (2025-10-27)
+
+- Non-TTY sample output (captured via `TestProgressCapture` harness): `Waiting for lock on installation (timeout: 30s, source CLI flag) — Ctrl-C to cancel; override with --lock-timeout.`
+- Quiet mode validation: executing lock acquisition with `SilentProgress` produced no user-facing lines while logging continued at DEBUG level.
+
 ---
 
 ## Template Usage

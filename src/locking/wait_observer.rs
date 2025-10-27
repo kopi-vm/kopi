@@ -421,9 +421,9 @@ fn format_duration(duration: Duration) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::indicator::ProgressConfig;
+    use crate::indicator::{ProgressConfig, SilentProgress};
     use crate::locking::timeout::LockTimeoutValue;
-    use std::sync::Mutex;
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn reporter_observer_uses_progress_bridge_when_available() {
@@ -454,6 +454,59 @@ mod tests {
                 .iter()
                 .any(|line| line.contains("Lock acquired after 2.0s"))
         );
+    }
+
+    #[test]
+    fn bridge_formats_infinite_timeout() {
+        RecordingIndicator::take_messages();
+        let indicator = Arc::new(Mutex::new(
+            Box::new(RecordingIndicator::new()) as Box<dyn ProgressIndicator>
+        ));
+        let bridge = LockFeedbackBridge::for_handle(indicator, LockTimeoutSource::Cli);
+        let scope = LockScope::CacheWriter;
+
+        bridge.on_wait_start(&scope, LockTimeoutValue::Infinite);
+
+        let (output, errors) = RecordingIndicator::take_messages();
+        assert!(errors.is_empty());
+        assert!(
+            output.iter().any(|line| line.contains("timeout: infinite")),
+            "expected timeout line mentioning infinite, got {output:?}"
+        );
+    }
+
+    #[test]
+    fn bridge_reports_cancellation_events() {
+        RecordingIndicator::take_messages();
+        let indicator = Arc::new(Mutex::new(
+            Box::new(RecordingIndicator::new()) as Box<dyn ProgressIndicator>
+        ));
+        let bridge = LockFeedbackBridge::for_handle(indicator, LockTimeoutSource::Cli);
+        let scope = LockScope::CacheWriter;
+
+        bridge.on_wait_start(&scope, LockTimeoutValue::from_secs(30));
+        bridge.on_cancelled(&scope, Duration::from_secs(2));
+
+        let (_output, errors) = RecordingIndicator::take_messages();
+        assert!(
+            errors
+                .iter()
+                .any(|line| line.contains("Cancelled wait for cache writer lock")),
+            "expected cancellation line, got {errors:?}"
+        );
+    }
+
+    #[test]
+    fn bridge_handles_silent_renderer_without_output() {
+        let indicator = Arc::new(Mutex::new(
+            Box::new(SilentProgress::new()) as Box<dyn ProgressIndicator>
+        ));
+        let bridge = LockFeedbackBridge::for_handle(indicator, LockTimeoutSource::Cli);
+        let scope = LockScope::CacheWriter;
+
+        bridge.on_wait_start(&scope, LockTimeoutValue::from_secs(5));
+        bridge.on_retry(&scope, 1, Duration::from_millis(250), None);
+        bridge.on_acquired(&scope, Duration::from_millis(300));
     }
 
     #[test]

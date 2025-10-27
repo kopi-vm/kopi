@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 2 In Progress
+- Status: Phase 3 In Progress
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -170,15 +170,15 @@ Finalize automated coverage, validate cross-platform behaviour, and update archi
 ### Phase 3 Tasks
 
 - [ ] **Automated tests**
-  - [ ] Add targeted unit tests for TTY vs. non-TTY rendering, infinite timeout messaging, and quiet mode suppression (indicator + bridge modules).
-  - [ ] Introduce integration tests simulating lock contention using temporary directories and background threads; verify elapsed/remaining output cadence.
-  - [ ] Add regression tests for cancellation path ensuring `Ctrl-C` triggers the bridge’s cancellation messaging.
-- [ ] **Documentation updates**
-  - [ ] Update `docs/architecture.md` lock instrumentation section with the new bridge responsibilities.
-  - [ ] Regenerate `docs/traceability.md` after changes (`bun scripts/trace-status.ts --write`).
+  - [x] Add targeted unit tests for TTY vs. non-TTY rendering, infinite timeout messaging, and quiet mode suppression (indicator + bridge modules).
+  - [x] Introduce integration tests simulating lock contention using temporary directories and background threads; verify elapsed/remaining output cadence.
+  - [x] Add regression tests for cancellation path ensuring `Ctrl-C` triggers the bridge’s cancellation messaging.
+- [x] **Documentation updates**
+  - [x] Update `docs/architecture.md` lock instrumentation section with the new bridge responsibilities.
+  - [x] Regenerate `docs/traceability.md` after changes (`bun scripts/trace-status.ts --write`).
 - [ ] **Manual validation**
   - [ ] Perform smoke tests on macOS/Linux/Windows terminals to confirm carriage-return behaviour and action hints.
-  - [ ] Capture non-TTY sample output for CI review.
+  - [x] Capture non-TTY sample output for CI review.
 
 ### Phase 3 Deliverables
 

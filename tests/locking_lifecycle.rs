@@ -1,12 +1,18 @@
 use kopi::config::LockingConfig;
 use kopi::error::KopiError;
+use kopi::indicator::{ProgressConfig, ProgressIndicator, ProgressStyle};
 use kopi::locking::{
     LockAcquisition, LockController, LockHygieneRunner, LockScope, LockStatusSink,
     LockTimeoutSource, LockTimeoutValue, PackageCoordinate, PackageKind,
 };
 use kopi::paths::locking::{cache_lock_path, locks_root};
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Duration;
 use tempfile::TempDir;
+
+mod common;
+use common::progress_capture::TestProgressCapture;
 
 fn installation_scope() -> LockScope {
     let coordinate = PackageCoordinate::new("temurin", 21, PackageKind::Jdk);
@@ -133,6 +139,52 @@ fn timeout_override_and_observer_feedback() {
     );
 
     controller.release(first).unwrap();
+}
+
+#[test]
+fn acquire_with_feedback_emits_wait_messages() {
+    let temp = TempDir::new().unwrap();
+    let controller = Arc::new(LockController::with_default_inspector(
+        temp.path().to_path_buf(),
+        &LockingConfig::default(),
+    ));
+    let scope = installation_scope();
+
+    let first = controller.acquire(scope.clone()).unwrap();
+    let controller_clone = controller.clone();
+    let release_thread = thread::spawn(move || {
+        thread::sleep(Duration::from_millis(150));
+        controller_clone.release(first).unwrap();
+    });
+
+    let capture = TestProgressCapture::new();
+    let indicator = Arc::new(Mutex::new(
+        Box::new(capture.clone()) as Box<dyn ProgressIndicator>
+    ));
+    {
+        let mut handle = indicator.lock().unwrap();
+        handle.start(ProgressConfig::new(ProgressStyle::Status));
+    }
+
+    let acquisition = controller
+        .acquire_with_feedback(scope.clone(), indicator.clone())
+        .unwrap();
+    controller.release(acquisition).unwrap();
+    release_thread.join().unwrap();
+
+    let messages = capture.get_messages();
+    assert!(
+        messages
+            .iter()
+            .any(|msg| msg.message.contains("Waiting for lock on installation")),
+        "expected wait message, got {messages:?}"
+    );
+    assert!(
+        messages
+            .iter()
+            .any(|msg| msg.message.contains("Lock acquired")),
+        "expected acquisition message, got {messages:?}"
+    );
 }
 
 #[derive(Default)]
