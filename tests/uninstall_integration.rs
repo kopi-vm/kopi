@@ -21,7 +21,15 @@ use kopi::uninstall::safety::check_tool_dependencies;
 #[cfg(unix)]
 use kopi::uninstall::safety::verify_removal_permission;
 use std::fs;
+#[cfg(target_os = "linux")]
+use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
+#[cfg(target_os = "linux")]
+use std::process::{Child, Command, Stdio};
+#[cfg(target_os = "linux")]
+use std::thread;
+#[cfg(target_os = "linux")]
+use std::time::Duration;
 use tempfile::TempDir;
 
 struct TestEnvironment {
@@ -70,6 +78,65 @@ impl TestEnvironment {
         // The JDK listing is done by parsing directory names
         self.create_real_jdk(distribution, version)
     }
+}
+
+#[cfg(target_os = "linux")]
+struct RunningProcessGuard {
+    child: Option<Child>,
+}
+
+#[cfg(target_os = "linux")]
+impl RunningProcessGuard {
+    fn pid(&self) -> u32 {
+        self.child.as_ref().expect("child process present").id()
+    }
+}
+
+#[cfg(target_os = "linux")]
+impl Drop for RunningProcessGuard {
+    fn drop(&mut self) {
+        if let Some(mut child) = self.child.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn spawn_process_holding_file(target: &std::path::Path) -> RunningProcessGuard {
+    let script = format!(
+        "exec 3<\"{path}\"; echo $$; while true; do sleep 1; done",
+        path = target.display()
+    );
+
+    let mut child = Command::new("/bin/sh")
+        .arg("-c")
+        .arg(script)
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("spawn helper process to hold handle");
+
+    {
+        let stdout = child.stdout.take().expect("child stdout available");
+        let mut reader = BufReader::new(stdout);
+        let mut pid_line = String::new();
+        reader
+            .read_line(&mut pid_line)
+            .expect("read pid from helper process");
+        let parsed_pid: u32 = pid_line
+            .trim()
+            .parse()
+            .expect("helper pid must be an integer");
+        assert_eq!(
+            parsed_pid,
+            child.id(),
+            "helper pid should match spawned child id"
+        );
+    }
+
+    thread::sleep(Duration::from_millis(200));
+
+    RunningProcessGuard { child: Some(child) }
 }
 
 #[test]
@@ -149,6 +216,57 @@ fn test_uninstall_dry_run() {
 
     // JDK should still exist
     assert!(jdk_path.exists());
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_uninstall_blocks_running_java_process() {
+    let env = TestEnvironment::new();
+    let repository = JdkRepository::new(&env.config);
+    let handler = UninstallHandler::new(&repository, false);
+
+    let jdk_path = env.create_real_jdk("temurin", "21.0.5-11");
+    let java_path = jdk_path.join("bin/java");
+
+    let guard = spawn_process_holding_file(&java_path);
+    let pid = guard.pid();
+
+    let result = handler.uninstall_jdk("temurin@21.0.5-11", false, false);
+    match result {
+        Err(kopi::error::KopiError::ValidationError(message)) => {
+            assert!(
+                message.contains("running processes are using"),
+                "expected running-process diagnostics, got: {message}"
+            );
+            assert!(
+                message.contains(&format!("PID {pid}")),
+                "expected message to mention PID {pid}, got: {message}"
+            );
+            assert!(
+                message.contains("bin/java"),
+                "expected message to mention bin/java, got: {message}"
+            );
+        }
+        other => panic!("unexpected uninstall outcome: {other:?}"),
+    }
+
+    assert!(
+        jdk_path.exists(),
+        "JDK directory should remain when uninstall is blocked"
+    );
+
+    let force_result = handler.uninstall_jdk("temurin@21.0.5-11", true, false);
+    assert!(
+        force_result.is_ok(),
+        "expected forced uninstall to succeed despite running process: {force_result:?}"
+    );
+
+    drop(guard);
+
+    assert!(
+        !jdk_path.exists(),
+        "JDK directory should be removed after forced uninstall"
+    );
 }
 
 #[test]
