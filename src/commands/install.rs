@@ -17,7 +17,7 @@ use crate::cache::{self, MetadataCache};
 use crate::config::KopiConfig;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
-use crate::indicator::{ProgressConfig, ProgressFactory, ProgressStyle};
+use crate::indicator::{ProgressConfig, ProgressFactory, ProgressIndicator, ProgressStyle};
 use crate::locking::{
     LockBackend, LockController, ScopedPackageLockGuard, installation_lock_scope_from_package,
 };
@@ -241,12 +241,10 @@ impl<'a> InstallCommand<'a> {
             self.config.kopi_home().to_path_buf(),
             &self.config.locking,
         );
-        let lock_feedback = Arc::new(Mutex::new(ProgressFactory::create(self.no_progress)));
-        {
-            if let Ok(mut indicator) = lock_feedback.lock() {
-                indicator.start(ProgressConfig::new(ProgressStyle::Status));
-            }
-        }
+        let mut lock_child = progress.create_child();
+        lock_child.start(ProgressConfig::new(ProgressStyle::Status));
+        let lock_feedback: Arc<Mutex<Box<dyn ProgressIndicator>>> =
+            Arc::new(Mutex::new(lock_child));
 
         current_step += 1;
         progress.update(current_step, Some(total_steps));
