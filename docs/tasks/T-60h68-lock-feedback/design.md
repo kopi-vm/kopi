@@ -3,13 +3,13 @@
 ## Metadata
 
 - Type: Design
-- Status: Draft
+- Status: Approved
   <!-- Draft: Work in progress | Approved: Ready for implementation | Rejected: Not moving forward with this design -->
 
 ## Links
 
 - Associated Plan Document:
-  - N/A – Plan not started
+  - [T-60h68-lock-feedback-plan](./plan.md)
 
 ## Overview
 
