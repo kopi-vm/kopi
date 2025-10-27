@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 3 In Progress
+- Status: Complete
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -17,10 +17,10 @@ Implement the lock wait feedback experience defined in the approved design by in
 
 ## Success Metrics
 
-- [ ] Initial wait messages appear within 100 ms of `on_wait_start` in automated timing tests.
-- [ ] Progress indicators refresh ≥1 Hz on interactive terminals and ≤5 s cadence on non-TTY outputs during sustained contention.
-- [ ] Quiet/JSON modes emit no additional lock wait lines while still logging diagnostic context at DEBUG level.
-- [ ] Unit and integration tests exercising lock contention, timeout, and cancellation scenarios pass without regressions; `cargo fmt`, `cargo clippy --all-targets -- -D warnings`, and `cargo test --lib --quiet` complete successfully.
+- [x] Initial wait messages appear within 100 ms of `on_wait_start` in automated timing tests.
+- [x] Progress indicators refresh ≥1 Hz on interactive terminals and ≤5 s cadence on non-TTY outputs during sustained contention.
+- [x] Quiet/JSON modes emit no additional lock wait lines while still logging diagnostic context at DEBUG level.
+- [x] Unit and integration tests exercising lock contention, timeout, and cancellation scenarios pass without regressions; `cargo fmt`, `cargo clippy --all-targets -- -D warnings`, and `cargo test --lib --quiet` complete successfully.
 
 ## Scope
 
@@ -31,8 +31,8 @@ Implement the lock wait feedback experience defined in the approved design by in
 
 ## ADR & Legacy Alignment
 
-- [ ] Confirm ADR-8mnaz covers all locking behaviours referenced; update links if additional ADRs become relevant.
-- [ ] Identify and retire legacy `StatusReporterObserver` messaging once the bridge is in place; ensure plan tasks track removal or migration of the old observer to avoid dual outputs.
+- [x] Confirm ADR-8mnaz covers all locking behaviours referenced; update links if additional ADRs become relevant.
+- [x] Identify and retire legacy `StatusReporterObserver` messaging once the bridge is in place; ensure plan tasks track removal or migration of the old observer to avoid dual outputs.
 
 ## Plan Summary
 
@@ -169,15 +169,15 @@ Finalize automated coverage, validate cross-platform behaviour, and update archi
 
 ### Phase 3 Tasks
 
-- [ ] **Automated tests**
+- [x] **Automated tests**
   - [x] Add targeted unit tests for TTY vs. non-TTY rendering, infinite timeout messaging, and quiet mode suppression (indicator + bridge modules).
   - [x] Introduce integration tests simulating lock contention using temporary directories and background threads; verify elapsed/remaining output cadence.
   - [x] Add regression tests for cancellation path ensuring `Ctrl-C` triggers the bridge’s cancellation messaging.
 - [x] **Documentation updates**
   - [x] Update `docs/architecture.md` lock instrumentation section with the new bridge responsibilities.
   - [x] Regenerate `docs/traceability.md` after changes (`bun scripts/trace-status.ts --write`).
-- [ ] **Manual validation**
-  - [ ] Perform smoke tests on macOS/Linux/Windows terminals to confirm carriage-return behaviour and action hints.
+- [x] **Manual validation**
+  - [x] Perform smoke tests on macOS/Linux/Windows terminals to confirm carriage-return behaviour and action hints (2025-10-27).
   - [x] Capture non-TTY sample output for CI review.
 
 ### Phase 3 Deliverables
@@ -211,12 +211,12 @@ bun scripts/trace-status.ts --write
 
 ## Definition of Done
 
-- [ ] `cargo fmt`
-- [ ] `cargo clippy --all-targets -- -D warnings`
-- [ ] `cargo test --lib --quiet`
-- [ ] `cargo test --quiet`
-- [ ] `bun format`
-- [ ] `bun lint`
-- [ ] `bun scripts/trace-status.ts --write`
-- [ ] Relevant documentation (e.g., `docs/architecture.md`, task README) updated
-- [ ] Traceability matrix regenerated with no gaps
+- [x] `cargo fmt` (2025-10-27)
+- [x] `cargo clippy --all-targets -- -D warnings` (2025-10-27)
+- [x] `cargo test --lib --quiet` (2025-10-27)
+- [x] `cargo test --quiet` (2025-10-27)
+- [x] `bun format` (2025-10-27)
+- [x] `bun lint` (2025-10-27)
+- [x] `bun scripts/trace-status.ts --write` (2025-10-27)
+- [x] Relevant documentation (e.g., `docs/architecture.md`, task README) updated (2025-10-27)
+- [x] Traceability matrix regenerated with no gaps (2025-10-27)

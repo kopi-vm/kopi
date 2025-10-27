@@ -17,11 +17,11 @@ Deliver a reusable lock wait feedback layer that consumes the instrumentation ho
 
 ## Success Metrics
 
-- [ ] Initial wait notification prints within 100 ms of `on_wait_start`.
-- [ ] Progress updates occur ≥1 Hz on TTYs and ≤5 s cadence on non-TTY outputs during sustained contention.
-- [ ] Cancellation (`Ctrl-C`) and timeout outcomes emit distinct guidance referencing `--lock-timeout` overrides.
-- [ ] Unit tests cover TTY and non-TTY renderers, ensuring message parity and elapsed time accuracy within ±1 s.
-- [ ] Observer integration verifies no progress output is written when quiet mode is enabled.
+- [x] Initial wait notification prints within 100 ms of `on_wait_start`.
+- [x] Progress updates occur ≥1 Hz on TTYs and ≤5 s cadence on non-TTY outputs during sustained contention.
+- [x] Cancellation (`Ctrl-C`) and timeout outcomes emit distinct guidance referencing `--lock-timeout` overrides.
+- [x] Unit tests cover TTY and non-TTY renderers, ensuring message parity and elapsed time accuracy within ±1 s.
+- [x] Observer integration verifies no progress output is written when quiet mode is enabled.
 
 ## Background and Current State
 
