@@ -21,12 +21,14 @@ mod storage;
 mod tests;
 
 use chrono::Utc;
-use log::warn;
+use log::{info, warn};
 use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
-use crate::indicator::{ProgressIndicator, SilentProgress};
+use crate::indicator::{ProgressIndicator, ProgressRendererKind, SilentProgress, StatusReporter};
+use crate::locking::CacheWriterLockGuard;
 use crate::metadata::provider::MetadataProvider;
 use crate::models::distribution::Distribution as JdkDistribution;
 use crate::models::metadata::JdkMetadata;
@@ -94,6 +96,23 @@ pub fn fetch_and_cache_metadata_with_progress(
     progress: &mut dyn ProgressIndicator,
     current_step: &mut u64,
 ) -> Result<MetadataCache> {
+    let renderer_kind = progress.renderer_kind();
+    let cache_lock_guard = match renderer_kind {
+        ProgressRendererKind::Silent => {
+            let reporter = StatusReporter::new(true);
+            CacheWriterLockGuard::acquire_with_status_reporter(config, &reporter)?
+        }
+        _ => {
+            let feedback_indicator = Arc::new(Mutex::new(progress.create_child()));
+            CacheWriterLockGuard::acquire_with_feedback(config, feedback_indicator)?
+        }
+    };
+    info!(
+        "Acquired cache writer lock for metadata refresh via {:?} backend after {:.3}s",
+        cache_lock_guard.backend(),
+        cache_lock_guard.waited().as_secs_f32()
+    );
+
     // Create metadata provider from config
     let provider = MetadataProvider::from_config(config)?;
 
@@ -165,6 +184,23 @@ pub fn fetch_and_cache_distribution(
     progress: &mut dyn ProgressIndicator,
     current_step: &mut u64,
 ) -> Result<MetadataCache> {
+    let renderer_kind = progress.renderer_kind();
+    let cache_lock_guard = match renderer_kind {
+        ProgressRendererKind::Silent => {
+            let reporter = StatusReporter::new(true);
+            CacheWriterLockGuard::acquire_with_status_reporter(config, &reporter)?
+        }
+        _ => {
+            let feedback_indicator = Arc::new(Mutex::new(progress.create_child()));
+            CacheWriterLockGuard::acquire_with_feedback(config, feedback_indicator)?
+        }
+    };
+    info!(
+        "Acquired cache writer lock for distribution {distribution_name} via {:?} backend after {:.3}s",
+        cache_lock_guard.backend(),
+        cache_lock_guard.waited().as_secs_f32()
+    );
+
     // Step: Loading existing cache
     *current_step += 1;
     progress.update(*current_step, None);

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub mod acquisition;
+pub mod cache_writer;
 pub mod cancellation;
 pub mod controller;
 pub mod fallback;
@@ -26,6 +27,7 @@ pub mod timeout;
 pub mod wait_observer;
 
 pub use acquisition::{AcquireMode, LockAcquisitionRequest, LockTimeoutBudget, PollingBackoff};
+pub use cache_writer::CacheWriterLockGuard;
 pub use cancellation::{CancellationToken, global_token};
 pub use controller::{LockAcquisition, LockController};
 pub use handle::{FallbackHandle, LockBackend, LockHandle};

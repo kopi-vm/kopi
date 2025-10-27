@@ -65,14 +65,14 @@ Mark checkboxes (`[x]`) immediately after completing each task or subtask. If an
 
 ### Tasks
 
-- [ ] **Guard scaffolding**
-  - [ ] Add `src/cache/lock.rs` with `CacheWriterLockGuard` and helper constructors.
-  - [ ] Integrate with `LockController::acquire_with_feedback` and `StatusReporter` fallback for silent contexts.
-- [ ] **Call site integration**
-  - [ ] Wrap `fetch_and_cache_metadata_with_progress` and `fetch_and_cache_distribution` in the guard lifecycle.
-  - [ ] Update CLI/automatic refresh entry points to log backend and wait duration using existing logging facilities.
-- [ ] **Interactive feedback**
-  - [ ] Ensure contention messages flow through `StatusReporterObserver` and `info!` logs for interactive progress only; silent/non-interactive paths remain quiet.
+- [x] **Guard scaffolding**
+  - [x] Add `src/locking/cache_writer.rs` with `CacheWriterLockGuard` and helper constructors.
+  - [x] Integrate with `LockController::acquire_with_feedback` and `StatusReporter` fallback for silent contexts.
+- [x] **Call site integration**
+  - [x] Wrap `fetch_and_cache_metadata_with_progress` and `fetch_and_cache_distribution` in the guard lifecycle.
+  - [x] Update CLI/automatic refresh entry points to log backend and wait duration using existing logging facilities.
+- [x] **Interactive feedback**
+  - [x] Ensure contention messages flow through `StatusReporterObserver` and `info!` logs for interactive progress only; silent/non-interactive paths remain quiet.
 
 ### Deliverables
 

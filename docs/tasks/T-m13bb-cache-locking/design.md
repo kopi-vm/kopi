@@ -46,7 +46,7 @@ Introduce an exclusive cache writer lock that reuses Kopi's advisory/fallback lo
 
 ### Components
 
-- **CacheWriterLockGuard** (`src/cache/lock.rs`): RAII wrapper around `LockController::acquire_with_feedback` for `LockScope::CacheWriter`. Captures backend (advisory vs fallback) for logging, releases via `Drop`, and exposes `acquired_backend()` for diagnostics.
+- **CacheWriterLockGuard** (`src/locking/cache_writer.rs`): RAII wrapper around `LockController::acquire_with_feedback` for `LockScope::CacheWriter`. Captures backend (advisory vs fallback) for logging, releases via `Drop`, and exposes `acquired_backend()` for diagnostics.
 - **CacheWriterLock** helper (`src/cache/lock.rs`): Constructs a `LockController` using `KopiConfig.locking`, wires either a `StatusReporter` (for silent contexts) or shared progress indicator (for CLI refresh), and returns the guard.
 - **Cache refresh orchestration** (`src/cache/mod.rs`): Wraps existing `fetch_and_cache_*` flows with `CacheWriterLockGuard`, surfacing wait messages through `StatusReporterObserver` so contention becomes visible in logs and progress output.
 - **Durable save routine** (`src/cache/storage.rs`): Rewrites `save_cache` to open the temp file with `std::fs::File`, `write_all`, `sync_all`/`FlushFileBuffers`, then `platform::file_ops::atomic_rename`. Retains orphan cleanup but ensures fsync before rename and retries rename on transient sharing violations (Windows) using backoff aligned with lock timeouts.
