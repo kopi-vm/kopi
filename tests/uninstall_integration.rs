@@ -131,6 +131,46 @@ fn spawn_process_holding_file(target: &std::path::Path) -> RunningProcessGuard {
     RunningProcessGuard { child: Some(child) }
 }
 
+#[cfg(target_os = "macos")]
+fn spawn_process_holding_file(target: &std::path::Path) -> RunningProcessGuard {
+    use std::io::{BufRead, BufReader};
+    use std::process::{Command, Stdio};
+
+    let script = format!(
+        "exec 3<\"{path}\"; echo $$; while true; do sleep 1; done",
+        path = target.display()
+    );
+
+    let mut child = Command::new("/bin/sh")
+        .arg("-c")
+        .arg(script)
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("spawn helper process to hold handle");
+
+    {
+        let stdout = child.stdout.take().expect("child stdout available");
+        let mut reader = BufReader::new(stdout);
+        let mut pid_line = String::new();
+        reader
+            .read_line(&mut pid_line)
+            .expect("read pid from helper process");
+        let parsed_pid: u32 = pid_line
+            .trim()
+            .parse()
+            .expect("helper pid must be an integer");
+        assert_eq!(
+            parsed_pid,
+            child.id(),
+            "helper pid should match spawned child id"
+        );
+    }
+
+    std::thread::sleep(std::time::Duration::from_millis(200));
+
+    RunningProcessGuard { child: Some(child) }
+}
+
 #[cfg(target_os = "windows")]
 fn spawn_process_holding_file(target: &std::path::Path) -> RunningProcessGuard {
     use std::io::{BufRead, BufReader};
@@ -251,7 +291,6 @@ fn test_uninstall_dry_run() {
 }
 
 #[test]
-#[cfg(any(target_os = "linux", target_os = "windows"))]
 fn test_uninstall_blocks_running_java_process() {
     let env = TestEnvironment::new();
     let repository = JdkRepository::new(&env.config);
