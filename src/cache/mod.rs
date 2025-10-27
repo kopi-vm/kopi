@@ -162,7 +162,7 @@ pub fn fetch_and_cache_metadata_with_progress(
     progress.set_message("Saving metadata to cache...".to_string());
 
     let cache_path = config.metadata_cache_path()?;
-    new_cache.save(&cache_path)?;
+    new_cache.save(&cache_path, config.locking.timeout_value())?;
 
     // Step: Completion
     *current_step += 1;
@@ -253,7 +253,7 @@ pub fn fetch_and_cache_distribution(
     progress.update(*current_step, None);
     progress.set_message("Saving updated cache...".to_string());
 
-    result_cache.save(&cache_path)?;
+    result_cache.save(&cache_path, config.locking.timeout_value())?;
 
     Ok(result_cache)
 }

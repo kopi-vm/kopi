@@ -980,7 +980,10 @@ mod tests {
         // Save the cache
         cache_paths::ensure_cache_root(temp_dir.path()).unwrap();
         let cache_path = cache_paths::metadata_cache_file(temp_dir.path());
-        cache.save(&cache_path).unwrap();
+        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+        cache
+            .save(&cache_path, config.locking.timeout_value())
+            .unwrap();
 
         // Test searching with the synonym "sapmachine"
         let options = SearchOptions {
@@ -992,7 +995,6 @@ mod tests {
             force_java_version: false,
             force_distribution_version: false,
         };
-        let config = crate::config::KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
         let result = search_cache(options, &config);
         assert!(result.is_ok(), "Search should succeed with synonym");
 

@@ -97,7 +97,9 @@ fn test_cache_checks_with_valid_cache() {
     // Create a valid cache
     let cache = MetadataCache::new();
     let cache_path = cache_dir.join("metadata.json");
-    cache.save(&cache_path).expect("Failed to save cache");
+    cache
+        .save(&cache_path, config.locking.timeout_value())
+        .expect("Failed to save cache");
 
     let engine = DiagnosticEngine::new(&config);
     let results = engine.run_checks(Some(vec![CheckCategory::Cache]), false);
@@ -173,7 +175,9 @@ fn test_cache_permissions_on_unix() {
 
     let cache = MetadataCache::new();
     let cache_path = cache_dir.join("metadata.json");
-    cache.save(&cache_path).expect("Failed to save cache");
+    cache
+        .save(&cache_path, config.locking.timeout_value())
+        .expect("Failed to save cache");
 
     // Make cache unreadable (for testing)
     let mut perms = fs::metadata(&cache_path).unwrap().permissions();
@@ -273,7 +277,9 @@ fn test_cache_staleness_detection() {
     cache.last_updated = chrono::Utc::now() - chrono::Duration::days(stale_days as i64);
 
     let cache_path = cache_dir.join("metadata.json");
-    cache.save(&cache_path).expect("Failed to save cache");
+    cache
+        .save(&cache_path, config.locking.timeout_value())
+        .expect("Failed to save cache");
 
     let engine = DiagnosticEngine::new(&config);
     let results = engine.run_checks(Some(vec![CheckCategory::Cache]), false);
@@ -298,7 +304,10 @@ fn test_all_network_and_cache_checks() {
     fs::create_dir_all(&cache_dir).expect("Failed to create cache directory");
     let cache = MetadataCache::new();
     cache
-        .save(&cache_dir.join("metadata.json"))
+        .save(
+            &cache_dir.join("metadata.json"),
+            config.locking.timeout_value(),
+        )
         .expect("Failed to save cache");
 
     let engine = DiagnosticEngine::new(&config);

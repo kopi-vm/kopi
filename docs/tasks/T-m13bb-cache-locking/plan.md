@@ -116,15 +116,15 @@ cargo test --lib --quiet cache
 
 ### Phase 2 Tasks
 
-- [ ] **Durable temp write**
-  - [ ] Replace `fs::write` with explicit `File` creation, `write_all`, and `sync_all`/`FlushFileBuffers`.
-  - [ ] Ensure temp files inherit restrictive permissions and reside alongside the final cache.
-- [ ] **Atomic swap retry**
-  - [ ] Introduce a fixed exponential-backoff retry loop for `atomic_rename` (start 50 ms, double per attempt, cap at 1 s) and enforce an upper bound equal to the lock timeout budget.
-  - [ ] Preserve orphan cleanup on startup while avoiding deletion of an active writer’s temp file.
-  - [ ] Capture metrics (retry count, elapsed time) during tests to prove the retry window respects the lock timeout while succeeding under simulated `ERROR_SHARING_VIOLATION` conditions.
-- [ ] **Error surface**
-  - [ ] Wrap failures in `KopiError::ConfigError` with actionable English hints, referencing lock contention when applicable.
+- [x] **Durable temp write**
+  - [x] Replace `fs::write` with explicit `File` creation, `write_all`, and `sync_all`/`FlushFileBuffers`.
+  - [x] Ensure temp files inherit restrictive permissions and reside alongside the final cache.
+- [x] **Atomic swap retry**
+  - [x] Introduce a fixed exponential-backoff retry loop for `atomic_rename` (start 50 ms, double per attempt, cap at 1 s) and enforce an upper bound equal to the lock timeout budget.
+  - [x] Preserve orphan cleanup on startup while avoiding deletion of an active writer’s temp file.
+  - [x] Capture metrics (retry count, elapsed time) during tests to prove the retry window respects the lock timeout while succeeding under simulated `ERROR_SHARING_VIOLATION` conditions.
+- [x] **Error surface**
+  - [x] Wrap failures in `KopiError::ConfigError` with actionable English hints, referencing lock contention when applicable.
 
 ### Phase 2 Deliverables
 

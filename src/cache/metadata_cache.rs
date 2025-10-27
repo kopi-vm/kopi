@@ -19,6 +19,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use crate::error::Result;
+use crate::locking::LockTimeoutValue;
 use crate::models::distribution::Distribution as JdkDistribution;
 use crate::models::metadata::JdkMetadata;
 use crate::models::package::PackageType;
@@ -84,8 +85,8 @@ impl MetadataCache {
         false
     }
 
-    pub fn save(&self, path: &Path) -> Result<()> {
-        super::storage::save_cache(self, path)
+    pub fn save(&self, path: &Path, timeout_budget: LockTimeoutValue) -> Result<()> {
+        super::storage::save_cache(self, path, timeout_budget)
     }
 
     /// Get the canonical name for a distribution from the synonym map

@@ -178,7 +178,9 @@ fn setup_test_cache() -> (
     if let Some(parent) = cache_path.parent() {
         std::fs::create_dir_all(parent).unwrap();
     }
-    cache.save(&cache_path).unwrap();
+    cache
+        .save(&cache_path, config.locking.timeout_value())
+        .unwrap();
 
     (test_home, config, guard)
 }

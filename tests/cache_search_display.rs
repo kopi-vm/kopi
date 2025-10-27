@@ -16,6 +16,7 @@ mod common;
 use common::TestHomeGuard;
 use kopi::cache::DistributionCache;
 use kopi::cache::MetadataCache;
+use kopi::config::KopiConfig;
 use kopi::models::distribution::Distribution;
 use kopi::models::metadata::JdkMetadata;
 use kopi::models::package::{ArchiveType, ChecksumType, PackageType};
@@ -162,7 +163,10 @@ fn create_test_cache_with_lts_data() -> (TestHomeGuard, MetadataCache) {
 fn test_compact_display_shows_minimal_columns() {
     let (test_home, cache) = create_test_cache_with_lts_data();
     let cache_path = test_home.kopi_home().join("cache").join("metadata.json");
-    cache.save(&cache_path).unwrap();
+    let config = KopiConfig::new(test_home.kopi_home()).unwrap();
+    cache
+        .save(&cache_path, config.locking.timeout_value())
+        .unwrap();
 
     // Set cache path for the test
     unsafe {
@@ -185,7 +189,10 @@ fn test_compact_display_shows_minimal_columns() {
 fn test_detailed_display_includes_all_information() {
     let (temp_dir, cache) = create_test_cache_with_lts_data();
     let cache_path = temp_dir.path().join("metadata.json");
-    cache.save(&cache_path).unwrap();
+    let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+    cache
+        .save(&cache_path, config.locking.timeout_value())
+        .unwrap();
 
     unsafe {
         std::env::set_var("KOPI_HOME", temp_dir.path());
@@ -205,7 +212,10 @@ fn test_detailed_display_includes_all_information() {
 fn test_json_output_contains_all_fields() {
     let (temp_dir, cache) = create_test_cache_with_lts_data();
     let cache_path = temp_dir.path().join("metadata.json");
-    cache.save(&cache_path).unwrap();
+    let config = KopiConfig::new(temp_dir.path().to_path_buf()).unwrap();
+    cache
+        .save(&cache_path, config.locking.timeout_value())
+        .unwrap();
 
     unsafe {
         std::env::set_var("KOPI_HOME", temp_dir.path());
