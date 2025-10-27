@@ -14,9 +14,11 @@
 
 use crate::config::{LockingConfig, LockingMode};
 use crate::error::{KopiError, Result};
+use crate::indicator::ProgressIndicator;
 use crate::locking::fallback::{self, FallbackAcquire};
 use crate::locking::handle::{FallbackHandle, LockBackend, LockHandle};
 use crate::locking::scope::{LockKind, LockScope};
+use crate::locking::wait_observer::LockFeedbackBridge;
 use crate::locking::{
     AcquireMode, LockAcquisitionRequest, LockStatusSink, LockTimeoutSource, LockTimeoutValue,
     LockWaitObserver, PollingBackoff, StatusReporterObserver, global_token,
@@ -27,7 +29,7 @@ use std::fs::TryLockError;
 use std::fs::{self, File, OpenOptions};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -140,6 +142,16 @@ impl LockController {
         sink: &dyn LockStatusSink,
     ) -> Result<LockAcquisition> {
         let observer = StatusReporterObserver::new(sink, self.timeout_source);
+        let request = self.build_request(scope, AcquireMode::Blocking, Some(&observer));
+        self.acquire_with(request)
+    }
+
+    pub fn acquire_with_feedback(
+        &self,
+        scope: LockScope,
+        indicator: Arc<Mutex<Box<dyn ProgressIndicator>>>,
+    ) -> Result<LockAcquisition> {
+        let observer = LockFeedbackBridge::for_handle(indicator.clone(), self.timeout_source);
         let request = self.build_request(scope, AcquireMode::Blocking, Some(&observer));
         self.acquire_with(request)
     }

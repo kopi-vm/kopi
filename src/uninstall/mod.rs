@@ -14,7 +14,7 @@
 
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
-use crate::indicator::StatusReporter;
+use crate::indicator::{ProgressConfig, ProgressFactory, ProgressStyle, StatusReporter};
 use crate::locking::{InstalledScopeResolver, LockBackend, LockController, ScopedPackageLockGuard};
 use crate::platform;
 use crate::storage::formatting::format_size;
@@ -25,6 +25,7 @@ use crate::uninstall::progress::ProgressReporter;
 use log::{debug, info, warn};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub mod batch;
@@ -54,7 +55,11 @@ impl<'a> UninstallHandler<'a> {
 
     /// Perform cleanup operations for failed uninstalls
     pub fn recover_from_failures(&self, force: bool) -> Result<()> {
-        let reporter = StatusReporter::new(self.no_progress);
+        let lock_feedback = Arc::new(Mutex::new(ProgressFactory::create(self.no_progress)));
+        if let Ok(mut indicator) = lock_feedback.lock() {
+            indicator.start(ProgressConfig::new(ProgressStyle::Status));
+        }
+        let reporter = StatusReporter::with_shared_indicator(lock_feedback.clone());
         let cleanup = UninstallCleanup::new(self.repository);
 
         let actions = cleanup.detect_and_cleanup_partial_removals()?;
@@ -94,7 +99,11 @@ impl<'a> UninstallHandler<'a> {
 
     pub fn uninstall_jdk(&self, version_spec: &str, force: bool, dry_run: bool) -> Result<()> {
         info!("Uninstalling JDK {version_spec}");
-        let reporter = StatusReporter::new(self.no_progress);
+        let lock_feedback = Arc::new(Mutex::new(ProgressFactory::create(self.no_progress)));
+        if let Ok(mut indicator) = lock_feedback.lock() {
+            indicator.start(ProgressConfig::new(ProgressStyle::Status));
+        }
+        let reporter = StatusReporter::with_shared_indicator(lock_feedback.clone());
 
         // Resolve JDKs to uninstall
         let jdks_to_remove = self.resolve_jdks_to_uninstall(version_spec)?;
@@ -141,7 +150,8 @@ impl<'a> UninstallHandler<'a> {
         let scope_label = lock_scope.label();
 
         reporter.step(&format!("Acquiring uninstall lock for {scope_label}"));
-        let acquisition = controller.acquire_with_status_sink(lock_scope.clone(), &reporter)?;
+        let acquisition =
+            controller.acquire_with_feedback(lock_scope.clone(), lock_feedback.clone())?;
         let uninstall_lock_guard = ScopedPackageLockGuard::new(&controller, acquisition);
         let backend_label = match uninstall_lock_guard.backend() {
             LockBackend::Advisory => "advisory",

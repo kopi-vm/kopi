@@ -17,7 +17,7 @@ use crate::cache::{self, MetadataCache};
 use crate::config::KopiConfig;
 use crate::download::download_jdk;
 use crate::error::{KopiError, Result};
-use crate::indicator::StatusReporter;
+use crate::indicator::{ProgressConfig, ProgressFactory, ProgressStyle};
 use crate::locking::{
     LockBackend, LockController, ScopedPackageLockGuard, installation_lock_scope_from_package,
 };
@@ -34,6 +34,7 @@ use crate::version::parser::VersionParser;
 
 use log::{debug, info, trace, warn};
 use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub struct InstallCommand<'a> {
@@ -165,7 +166,7 @@ impl<'a> InstallCommand<'a> {
         };
 
         // Create progress indicator
-        let mut progress = crate::indicator::ProgressFactory::create(self.no_progress);
+        let mut progress = ProgressFactory::create(self.no_progress);
 
         // Show operation message using progress indicator
         progress.println(&format!(
@@ -240,20 +241,19 @@ impl<'a> InstallCommand<'a> {
             self.config.kopi_home().to_path_buf(),
             &self.config.locking,
         );
-        let status_reporter = StatusReporter::new(self.no_progress);
+        let lock_feedback = Arc::new(Mutex::new(ProgressFactory::create(self.no_progress)));
+        {
+            if let Ok(mut indicator) = lock_feedback.lock() {
+                indicator.start(ProgressConfig::new(ProgressStyle::Status));
+            }
+        }
 
         current_step += 1;
         progress.update(current_step, Some(total_steps));
         progress.set_message(format!("Acquiring installation lock for {scope_label}"));
 
-        let mut acquisition_result = None;
-        progress.suspend(&mut || {
-            acquisition_result =
-                Some(controller.acquire_with_status_sink(lock_scope.clone(), &status_reporter));
-        });
-
         let acquisition =
-            acquisition_result.expect("lock acquisition attempt did not produce a result")?;
+            controller.acquire_with_feedback(lock_scope.clone(), lock_feedback.clone())?;
         let install_lock_guard = ScopedPackageLockGuard::new(&controller, acquisition);
         let lock_backend = match install_lock_guard.backend() {
             LockBackend::Advisory => "advisory",

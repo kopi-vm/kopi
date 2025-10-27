@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 1 In Progress
+- Status: Phase 2 In Progress
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -123,15 +123,15 @@ Integrate the bridge across lock-using workflows (installation, uninstallation, 
 
 ### Phase 2 Tasks
 
-- [ ] **Controller integration**
-  - [ ] Add API (e.g., `LockController::acquire_with_feedback(progress: &mut dyn ProgressIndicator, scope: ...)`) that constructs the bridge and passes it to acquisition.
-  - [ ] Ensure cancellation tokens and timeout sources flow into the bridge for action guidance.
-- [ ] **Command wiring**
-  - [ ] Update installation, uninstallation, cache refresh (and any other lock users) to obtain a progress indicator from `ProgressFactory`, register the bridge, and emit outcome messages through the bridge instead of ad-hoc prints.
-  - [ ] Confirm quiet mode / non-interactive commands bypass visible output while still logging at DEBUG.
-- [ ] **Configuration hooks**
-  - [ ] Honour `KOPI_NO_TTY_PROGRESS` / `KOPI_FORCE_TTY_PROGRESS` when selecting the renderer for lock feedback.
-  - [ ] Ensure CLI global flags (`--quiet`, `--json`, `--lock-timeout`) plumb into bridge action hints and suppression logic.
+- [x] **Controller integration**
+  - [x] Add API (e.g., `LockController::acquire_with_feedback(progress: &mut dyn ProgressIndicator, scope: ...)`) that constructs the bridge and passes it to acquisition.
+  - [x] Ensure cancellation tokens and timeout sources flow into the bridge for action guidance.
+- [x] **Command wiring**
+  - [x] Update installation, uninstallation, cache refresh (and any other lock users) to obtain a progress indicator from `ProgressFactory`, register the bridge, and emit outcome messages through the bridge instead of ad-hoc prints.
+  - [x] Confirm quiet mode / non-interactive commands bypass visible output while still logging at DEBUG.
+- [x] **Configuration hooks**
+  - [x] Honour `KOPI_NO_TTY_PROGRESS` / `KOPI_FORCE_TTY_PROGRESS` when selecting the renderer for lock feedback.
+  - [x] Ensure CLI global flags (`--quiet`, `--json`, `--lock-timeout`) plumb into bridge action hints and suppression logic.
 
 ### Phase 2 Deliverables
 

@@ -54,7 +54,7 @@ pub struct NoopLockWaitObserver;
 impl LockWaitObserver for NoopLockWaitObserver {}
 
 /// Feedback bridge that renders lock wait events using a progress indicator.
-struct LockFeedbackBridge {
+pub(crate) struct LockFeedbackBridge {
     progress: Arc<Mutex<Box<dyn ProgressIndicator>>>,
     renderer_kind: ProgressRendererKind,
     timeout_source: LockTimeoutSource,
@@ -82,7 +82,7 @@ impl BridgeState {
 }
 
 impl LockFeedbackBridge {
-    fn new(
+    pub(crate) fn for_handle(
         progress: Arc<Mutex<Box<dyn ProgressIndicator>>>,
         timeout_source: LockTimeoutSource,
     ) -> Self {
@@ -314,7 +314,7 @@ impl<'a> StatusReporterObserver<'a> {
     pub fn new(reporter: &'a dyn LockStatusSink, source: LockTimeoutSource) -> Self {
         let bridge = reporter
             .progress_handle()
-            .map(|handle| LockFeedbackBridge::new(handle, source));
+            .map(|handle| LockFeedbackBridge::for_handle(handle, source));
 
         Self {
             reporter,

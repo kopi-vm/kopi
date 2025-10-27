@@ -36,6 +36,19 @@ impl StatusReporter {
         }
     }
 
+    /// Creates a status reporter using a shared indicator handle.
+    pub fn with_shared_indicator(handle: Arc<Mutex<Box<dyn ProgressIndicator>>>) -> Self {
+        let renderer_kind = handle
+            .lock()
+            .ok()
+            .map(|indicator| indicator.renderer_kind())
+            .unwrap_or(ProgressRendererKind::NonTty);
+        Self {
+            progress: handle,
+            renderer_kind,
+        }
+    }
+
     /// Exposes the underlying progress handle for lock feedback integration.
     pub fn progress_handle(&self) -> Arc<Mutex<Box<dyn ProgressIndicator>>> {
         Arc::clone(&self.progress)

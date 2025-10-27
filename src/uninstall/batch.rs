@@ -14,7 +14,7 @@
 
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
-use crate::indicator::StatusReporter;
+use crate::indicator::{ProgressConfig, ProgressFactory, ProgressStyle, StatusReporter};
 use crate::locking::{InstalledScopeResolver, LockBackend, LockController, ScopedPackageLockGuard};
 use crate::models::distribution::Distribution;
 use crate::storage::formatting::format_size;
@@ -26,6 +26,7 @@ use crate::uninstall::progress::ProgressReporter;
 use crate::version::VersionRequest;
 use log::{debug, info, warn};
 use std::str::FromStr;
+use std::sync::{Arc, Mutex};
 
 pub struct BatchUninstaller<'a> {
     config: &'a KopiConfig,
@@ -136,7 +137,11 @@ impl<'a> BatchUninstaller<'a> {
     }
 
     fn display_batch_summary(&self, jdks: &[InstalledJdk], total_size: u64) -> Result<()> {
-        let reporter = StatusReporter::new(self.no_progress);
+        let lock_feedback = Arc::new(Mutex::new(ProgressFactory::create(self.no_progress)));
+        if let Ok(mut indicator) = lock_feedback.lock() {
+            indicator.start(ProgressConfig::new(ProgressStyle::Status));
+        }
+        let reporter = StatusReporter::with_shared_indicator(lock_feedback.clone());
 
         reporter.operation("JDKs to be removed", "");
 
@@ -178,7 +183,11 @@ impl<'a> BatchUninstaller<'a> {
         let mut removed_jdks = Vec::new();
         let mut log_messages = Vec::new(); // Collect log messages to output after progress
 
-        let reporter = StatusReporter::new(self.no_progress);
+        let lock_feedback = Arc::new(Mutex::new(ProgressFactory::create(self.no_progress)));
+        if let Ok(mut indicator) = lock_feedback.lock() {
+            indicator.start(ProgressConfig::new(ProgressStyle::Status));
+        }
+        let reporter = StatusReporter::with_shared_indicator(lock_feedback.clone());
         let controller = LockController::with_default_inspector(
             self.config.kopi_home().to_path_buf(),
             &self.config.locking,
@@ -195,14 +204,11 @@ impl<'a> BatchUninstaller<'a> {
                 let scope = scope_resolver.resolve(jdk)?;
                 let scope_label = scope.label().to_string();
 
-                let mut acquisition_result = None;
                 progress_reporter.suspend(|| {
                     reporter.step(&format!("Acquiring uninstall lock for {scope_label}"));
-                    acquisition_result =
-                        Some(controller.acquire_with_status_sink(scope.clone(), &reporter));
                 });
                 let acquisition =
-                    acquisition_result.expect("lock acquisition attempt did not run")?;
+                    controller.acquire_with_feedback(scope.clone(), lock_feedback.clone())?;
                 let uninstall_lock_guard = ScopedPackageLockGuard::new(&controller, acquisition);
                 let backend_label = match uninstall_lock_guard.backend() {
                     LockBackend::Advisory => "advisory",
