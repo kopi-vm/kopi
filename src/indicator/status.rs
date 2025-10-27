@@ -327,7 +327,8 @@ pub mod tests {
 
         test_reporter.error("Color error");
         let output = TestReporter::get_error_output();
-        assert!(output[0].contains("✗"));
+        let latest = output.last().expect("expected at least one error entry");
+        assert!(latest.contains("✗"));
 
         // Test without color
         TestReporter::clear_output();
@@ -340,7 +341,8 @@ pub mod tests {
 
         test_reporter.error("No color error");
         let output = TestReporter::get_error_output();
-        assert!(output[0].starts_with("[ERROR]"));
+        let latest = output.last().expect("expected at least one error entry");
+        assert!(latest.starts_with("[ERROR]"));
     }
 
     #[test]
