@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Task
-- Status: Draft
+- Status: Complete
   <!-- Draft: Under discussion | In Progress: Actively working | Complete: Code complete | Cancelled: Work intentionally halted -->
 
 ## Links
@@ -15,9 +15,9 @@
 - Related ADRs:
   - [ADR-8mnaz-concurrent-process-locking-strategy](../../adr/ADR-8mnaz-concurrent-process-locking-strategy.md)
 - Associated Design Document:
-  - N/A – Design not started
+  - [T-s2g7h-active-use-detection-design](./design.md)
 - Associated Plan Document:
-  - N/A – Plan not started
+  - [T-s2g7h-active-use-detection-plan](./plan.md)
 
 ## Summary
 
