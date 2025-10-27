@@ -17,10 +17,10 @@ Introduce an exclusive cache writer lock around all metadata refresh paths, surf
 
 ## Success Metrics
 
-- [ ] Demonstrate single-writer enforcement under stress by running two concurrent refresh commands; second invocation blocks or times out per configuration.
-- [ ] Execute 100 reader iterations during a refresh without JSON parse failures or truncated reads.
-- [ ] Verify temporary cache files are fsynced, atomically renamed, and removed after simulated crashes.
-- [ ] All existing tests pass; regressions avoided in cache loading and install flows.
+- [x] Demonstrate single-writer enforcement under stress by running two concurrent refresh commands; second invocation blocks or times out per configuration. (See `tests/cache_locking.rs::concurrent_cache_writers_block_until_release`.)
+- [x] Execute 100 reader iterations during a refresh without JSON parse failures or truncated reads. (Covered by the `readers_observe_consistent_cache_during_writes` integration test.)
+- [x] Verify temporary cache files are fsynced, atomically renamed, and removed after simulated crashes. (`save_cache` regression tests assert fsync + temp cleanup behaviour.)
+- [x] All existing tests pass; regressions avoided in cache loading and install flows. (CI commands executed locally.)
 
 ## Scope
 
@@ -31,8 +31,8 @@ Introduce an exclusive cache writer lock around all metadata refresh paths, surf
 
 ## ADR & Legacy Alignment
 
-- [ ] Confirm ADR-8mnaz guidance is followed for advisory vs. fallback behaviour.
-- [ ] Audit existing cache write paths to remove legacy temp-file handling in favour of the new durable implementation.
+- [x] Confirm ADR-8mnaz guidance is followed for advisory vs. fallback behaviour. (Integration tests cover both advisory and forced fallback acquisitions.)
+- [x] Audit existing cache write paths to remove legacy temp-file handling in favour of the new durable implementation. (Legacy temp removal logic replaced with durable `save_cache` implementation.)
 
 ## Plan Summary
 
@@ -195,14 +195,14 @@ cargo test --quiet --tests
 - [x] `cargo clippy --all-targets -- -D warnings`
 - [x] `cargo test --lib --quiet`
 - [x] `cargo test --quiet --tests`
-- [ ] Update `docs/reference.md` and upstream docs if CLI messaging changes
+- [ ] Update `docs/reference.md` and upstream docs if CLI messaging changes _(not required – CLI messaging unchanged)._
 - [x] Ensure no `unsafe` code, avoid vague naming, and run `bun scripts/trace-status.ts --write`
-- [ ] Confirm design/plan links in `docs/traceability.md`
+- [x] Confirm design/plan links in `docs/traceability.md`
 
 ## Open Questions
 
-- [ ] Confirm the logging-only approach (with interactive progress messaging only) satisfies FR-c04js requirements without introducing telemetry counters.
-- [ ] Finalise and document the retry timing (initial delay, cap, maximum attempts) that guarantees success in Windows sharing-violation tests without exceeding the lock timeout.
+- [x] Confirm the logging-only approach (with interactive progress messaging only) satisfies FR-c04js requirements without introducing telemetry counters. (StatusReporter-based lock feedback keeps interactive paths chatty while silent contexts remain quiet; no telemetry added.)
+- [x] Finalise and document the retry timing (initial delay, cap, maximum attempts) that guarantees success in Windows sharing-violation tests without exceeding the lock timeout. (Implementation uses 50 ms initial backoff, doubles to 1 s cap, bounded by the lock timeout budget and validated in unit tests.)
 
 ---
 

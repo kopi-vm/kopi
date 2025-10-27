@@ -175,7 +175,7 @@ fn readers_observe_consistent_cache_during_writes() {
     let writer_config = config.clone();
 
     let writer = thread::spawn(move || {
-        for iteration in 0..25 {
+        for iteration in 0..100 {
             let reporter = StatusReporter::new(true);
             let guard =
                 CacheWriterLockGuard::acquire_with_status_reporter(&writer_config, &reporter)
