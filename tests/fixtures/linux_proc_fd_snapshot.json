@@ -1,0 +1,22 @@
+{
+  "note": "Sanitized snapshot from: ls -l /proc/*/fd | grep temurin-21.0.3 (captured 2025-10-20 on Ubuntu 24.04)",
+  "target": "temurin-21.0.3",
+  "processes": [
+    {
+      "pid": 7152,
+      "exe": { "path": "bin/java", "scope": "target", "kind": "file" },
+      "handles": [
+        { "path": "bin/java", "scope": "target", "kind": "file" },
+        { "path": "lib/modules", "scope": "target", "kind": "file" }
+      ]
+    },
+    {
+      "pid": 7321,
+      "exe": { "path": "bin/javac", "scope": "target", "kind": "file" },
+      "handles": [
+        { "path": "lib/tools.jar", "scope": "target", "kind": "file" },
+        { "path": "gradle/cache.lock", "scope": "external", "kind": "file" }
+      ]
+    }
+  ]
+}

@@ -128,11 +128,19 @@ fn normalize_target(target: &Path) -> Result<PathBuf> {
 
 #[cfg(target_os = "linux")]
 fn platform_processes_using_path(target: &Path) -> Result<Vec<ProcessInfo>> {
+    linux_processes_using_path_with_root(Path::new("/proc"), target)
+}
+
+#[cfg(target_os = "linux")]
+fn linux_processes_using_path_with_root(
+    proc_root: &Path,
+    target: &Path,
+) -> Result<Vec<ProcessInfo>> {
     use std::collections::{BTreeMap, BTreeSet};
 
-    let proc_root = Path::new("/proc");
-    let entries = fs::read_dir(proc_root)
-        .map_err(|err| KopiError::SystemError(format!("Failed to read /proc: {err}")))?;
+    let entries = fs::read_dir(proc_root).map_err(|err| {
+        KopiError::SystemError(format!("Failed to read {}: {err}", proc_root.display()))
+    })?;
 
     let mut processes: BTreeMap<u32, ProcessInfo> = BTreeMap::new();
 
@@ -140,7 +148,7 @@ fn platform_processes_using_path(target: &Path) -> Result<Vec<ProcessInfo>> {
         let entry = match entry_result {
             Ok(value) => value,
             Err(err) => {
-                log::debug!("skipping /proc entry due to error: {err}");
+                log::debug!("skipping {proc_root:?} entry due to error: {err}");
                 continue;
             }
         };
@@ -396,10 +404,7 @@ fn platform_processes_using_path(target: &Path) -> Result<Vec<ProcessInfo>> {
         let mut handles = BTreeSet::new();
 
         for descriptor in descriptors {
-            if !matches!(
-                ProcFDType::from(descriptor.proc_fdtype),
-                ProcFDType::VNode
-            ) {
+            if !matches!(ProcFDType::from(descriptor.proc_fdtype), ProcFDType::VNode) {
                 continue;
             }
 
@@ -844,6 +849,7 @@ mod tests {
     use super::*;
     use crate::error::KopiError;
     use std::fs;
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn normalize_target_returns_canonical_directory() {
@@ -892,6 +898,152 @@ mod tests {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let processes = processes_using_path(temp_dir.path()).expect("expected success");
         assert!(processes.is_empty());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_fixture_enumeration_matches_snapshot() {
+        use serde::Deserialize;
+        use std::collections::BTreeMap;
+        use std::os::unix::fs::symlink;
+
+        #[derive(Deserialize)]
+        struct FixturePath {
+            path: String,
+            #[serde(default = "FixturePath::default_scope")]
+            scope: String,
+            #[serde(default = "FixturePath::default_kind")]
+            kind: String,
+        }
+
+        impl FixturePath {
+            fn default_scope() -> String {
+                "target".to_string()
+            }
+
+            fn default_kind() -> String {
+                "file".to_string()
+            }
+        }
+
+        #[derive(Deserialize)]
+        struct FixtureProcess {
+            pid: u32,
+            exe: FixturePath,
+            handles: Vec<FixturePath>,
+        }
+
+        #[derive(Deserialize)]
+        struct Fixture {
+            #[serde(rename = "note")]
+            _note: String,
+            target: String,
+            processes: Vec<FixtureProcess>,
+        }
+
+        // Fixture derived from: ls -l /proc/*/fd | grep temurin-21.0.3 (captured 2025-10-20)
+        let fixture_path = Path::new("tests/fixtures/linux_proc_fd_snapshot.json");
+        let content = fs::read_to_string(fixture_path).expect("fixture readable");
+        let fixture: Fixture = serde_json::from_str(&content).expect("fixture deserializable");
+
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let proc_root = temp_dir.path().join("proc");
+        let target_root = temp_dir.path().join("targets");
+        let external_root = temp_dir.path().join("external");
+        fs::create_dir_all(&proc_root).expect("create proc root");
+        fs::create_dir_all(&target_root).expect("create target root");
+        fs::create_dir_all(&external_root).expect("create external root");
+
+        let target_dir = target_root.join(&fixture.target);
+        fs::create_dir_all(&target_dir).expect("create target path");
+        let target_dir = fs::canonicalize(&target_dir).expect("canonical target");
+        let canonical_target = target_dir.clone();
+
+        let mut expected: BTreeMap<u32, (PathBuf, Vec<PathBuf>)> = BTreeMap::new();
+
+        for process in &fixture.processes {
+            let pid_dir = proc_root.join(process.pid.to_string());
+            let fd_dir = pid_dir.join("fd");
+            fs::create_dir_all(&fd_dir).expect("create fd dir");
+
+            let exe_path = materialize_fixture_path(
+                &process.exe,
+                &target_dir,
+                &external_root,
+                process.pid,
+                "exe",
+            );
+            let exe_link = pid_dir.join("exe");
+            symlink(&exe_path, &exe_link).expect("create exe symlink");
+
+            let mut recorded_handles: Vec<PathBuf> = Vec::new();
+            for (handle_index, handle) in process.handles.iter().enumerate() {
+                let resolved = materialize_fixture_path(
+                    handle,
+                    &target_dir,
+                    &external_root,
+                    process.pid,
+                    "handle",
+                );
+                let fd_path = fd_dir.join(handle_index.to_string());
+                symlink(&resolved, &fd_path).expect("create fd symlink");
+
+                if resolved.starts_with(&canonical_target) {
+                    recorded_handles.push(resolved);
+                }
+            }
+
+            if !recorded_handles.is_empty() {
+                expected.insert(process.pid, (exe_path.clone(), recorded_handles));
+            }
+        }
+
+        let mut processes = linux_processes_using_path_with_root(&proc_root, &canonical_target)
+            .expect("enumeration succeeds");
+        processes.sort_by_key(|info| info.pid);
+
+        assert_eq!(processes.len(), expected.len());
+
+        for process in processes {
+            let Some((exe, handles)) = expected.get(&process.pid) else {
+                panic!("unexpected pid {} in results", process.pid);
+            };
+
+            assert_eq!(&process.exe_path, exe);
+            assert_eq!(process.handles, *handles);
+        }
+
+        fn materialize_fixture_path(
+            descriptor: &FixturePath,
+            target_dir: &Path,
+            external_root: &Path,
+            pid: u32,
+            kind: &str,
+        ) -> PathBuf {
+            let base = match descriptor.scope.as_str() {
+                "target" => target_dir.join(&descriptor.path),
+                _ => external_root
+                    .join(format!("pid-{pid}"))
+                    .join(&descriptor.path),
+            };
+
+            if let Some(parent) = base.parent() {
+                fs::create_dir_all(parent).expect("create parent dirs");
+            }
+
+            match descriptor.kind.as_str() {
+                "dir" => {
+                    fs::create_dir_all(&base).expect("create dir fixture");
+                }
+                _ => {
+                    if !base.exists() {
+                        fs::write(&base, format!("{kind}-{pid}")).expect("write file fixture");
+                    }
+                }
+            }
+
+            fs::canonicalize(base).expect("canonical fixture path")
+        }
     }
 
     #[cfg(all(

@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 2 In Progress
+- Status: Phase 2 Complete
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -125,9 +125,9 @@ Implement Linux/Unix, macOS, and Windows backends plus captured fixtures that en
   - [x] Implement a `cfg(windows)` helper inside `process.rs` that enumerates handles via `NtQuerySystemInformation` and filters `FILE` types.
   - [x] Resolve paths with `GetFinalPathNameByHandleW`; normalize case-insensitive comparisons.
   - [x] Ensure duplicated handles close reliably to avoid leaks.
-- [ ] **Fixtures & tests**
-  - [ ] Store recorded API responses (e.g., handle dumps, mocked `/proc`) under `tests/fixtures/` and cite collection commands in comments.
-  - [ ] Add unit tests for each backend using fixtures.
+- [x] **Fixtures & tests**
+  - [x] Store recorded API responses (e.g., handle dumps, mocked `/proc`) under `tests/fixtures/` and cite collection commands in comments.
+  - [x] Add unit tests for each backend using fixtures.
 
 ### Phase 2 Deliverables
 
