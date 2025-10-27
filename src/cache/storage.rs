@@ -262,6 +262,15 @@ mod tests {
             let mode = fs::metadata(&cache_path).unwrap().permissions().mode() & 0o777;
             assert_eq!(mode, 0o600, "cache file should be owner read/write");
         }
+
+        // Ensure stale temp files from previous crashes are removed on subsequent writes.
+        let stale_temp = cache_path.with_extension(CACHE_TEMP_EXTENSION);
+        fs::write(&stale_temp, b"partial").unwrap();
+        save_cache(&cache, &cache_path, LockTimeoutValue::from_secs(2)).unwrap();
+        assert!(
+            !stale_temp.exists(),
+            "stale cache temp file should be removed before rewriting"
+        );
     }
 
     #[test]

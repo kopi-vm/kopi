@@ -158,16 +158,16 @@ cargo test --lib --quiet cache::storage
 
 ### Phase 3 Tasks
 
-- [ ] Test utilities
-  - [ ] Add helpers to simulate concurrent refresh invocations using threads or command harness.
-  - [ ] Capture Foojay API sample JSON within tests per external API policy.
-- [ ] Scenarios
-  - [ ] Happy path: single refresh obtains lock, writes cache, readers succeed.
-  - [ ] Timeout path: second writer respects configured timeout and surfaces error messaging.
-  - [ ] Reader safety: concurrent readers and writers over 100 iterations without parse failures.
-- [ ] Concurrency & cleanup
-  - [ ] Validate fallback backend path (network filesystem simulation) still serialises writes.
-  - [ ] Verify orphan temp file cleanup on startup hygiene.
+- [x] Test utilities
+  - [x] Add helpers to simulate concurrent refresh invocations using threads or command harness.
+  - [x] Capture Foojay API sample JSON within tests per external API policy.
+- [x] Scenarios
+  - [x] Happy path: single refresh obtains lock, writes cache, readers succeed.
+  - [x] Timeout path: second writer respects configured timeout and surfaces error messaging.
+  - [x] Reader safety: concurrent readers and writers over 100 iterations without parse failures.
+- [x] Concurrency & cleanup
+  - [x] Validate fallback backend path (network filesystem simulation) still serialises writes.
+  - [x] Verify orphan temp file cleanup on startup hygiene.
 
 ### Phase 3 Deliverables
 
@@ -190,13 +190,13 @@ cargo test --quiet --tests
 
 ## Definition of Done
 
-- [ ] `cargo check`
-- [ ] `cargo fmt`
-- [ ] `cargo clippy --all-targets -- -D warnings`
-- [ ] `cargo test --lib --quiet`
-- [ ] `cargo test --quiet --tests`
+- [x] `cargo check`
+- [x] `cargo fmt`
+- [x] `cargo clippy --all-targets -- -D warnings`
+- [x] `cargo test --lib --quiet`
+- [x] `cargo test --quiet --tests`
 - [ ] Update `docs/reference.md` and upstream docs if CLI messaging changes
-- [ ] Ensure no `unsafe` code, avoid vague naming, and run `bun scripts/trace-status.ts --write`
+- [x] Ensure no `unsafe` code, avoid vague naming, and run `bun scripts/trace-status.ts --write`
 - [ ] Confirm design/plan links in `docs/traceability.md`
 
 ## Open Questions
