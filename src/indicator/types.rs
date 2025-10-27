@@ -33,6 +33,7 @@ impl ProgressConfig {
 pub enum ProgressStyle {
     Bytes,
     Count,
+    Status,
 }
 
 impl Default for ProgressStyle {
@@ -46,8 +47,20 @@ impl std::fmt::Display for ProgressStyle {
         match self {
             Self::Bytes => write!(f, "bytes"),
             Self::Count => write!(f, "count"),
+            Self::Status => write!(f, "status"),
         }
     }
+}
+
+/// Indicates which renderer behaviour a progress indicator supports.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProgressRendererKind {
+    /// Interactive terminal renderer supporting carriage-return updates.
+    Tty,
+    /// Line-oriented renderer for non-interactive output (pipes, CI logs).
+    NonTty,
+    /// Silent renderer that suppresses all user-facing output.
+    Silent,
 }
 
 #[cfg(test)]
@@ -76,6 +89,7 @@ mod tests {
     fn test_progress_style_display() {
         assert_eq!(format!("{}", ProgressStyle::Bytes), "bytes");
         assert_eq!(format!("{}", ProgressStyle::Count), "count");
+        assert_eq!(format!("{}", ProgressStyle::Status), "status");
     }
 
     #[test]

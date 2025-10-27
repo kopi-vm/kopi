@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::indicator::{ProgressConfig, ProgressIndicator, SilentProgress};
+use crate::indicator::{ProgressConfig, ProgressIndicator, ProgressRendererKind, SilentProgress};
 
 pub struct SimpleProgress {}
 
@@ -70,6 +70,10 @@ impl ProgressIndicator for SimpleProgress {
         // SimpleProgress can output directly without suspension
         println!("{message}");
         Ok(())
+    }
+
+    fn renderer_kind(&self) -> ProgressRendererKind {
+        ProgressRendererKind::NonTty
     }
 }
 
@@ -145,6 +149,10 @@ mod tests {
 
         fn println(&self, message: &str) -> std::io::Result<()> {
             self.inner.println(message)
+        }
+
+        fn renderer_kind(&self) -> ProgressRendererKind {
+            ProgressRendererKind::NonTty
         }
     }
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::indicator::{ProgressConfig, ProgressIndicator};
+use crate::indicator::{ProgressConfig, ProgressIndicator, ProgressRendererKind};
 
 pub struct SilentProgress;
 
@@ -66,6 +66,10 @@ impl ProgressIndicator for SilentProgress {
     fn println(&self, _message: &str) -> std::io::Result<()> {
         // SilentProgress doesn't output anything
         Ok(())
+    }
+
+    fn renderer_kind(&self) -> ProgressRendererKind {
+        ProgressRendererKind::Silent
     }
 }
 

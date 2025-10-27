@@ -67,17 +67,17 @@ Create the `LockFeedbackBridge`, refactor `StatusReporter` output to flow throug
 
 ### Tasks
 
-- [ ] **Bridge implementation**
-  - [ ] Introduce `LockFeedbackBridge` implementing `LockWaitObserver`, mapping lifecycle events to indicator calls.
-  - [ ] Add elapsed/remaining time tracking and uniform action hints (`Ctrl-C`, `--lock-timeout`).
-  - [ ] Provide constructor helpers (e.g., `LockFeedbackBridge::for_progress(progress: &mut dyn ProgressIndicator, scope: LockScope, timeout: LockTimeoutValue)`).
-- [ ] **Indicator alignment**
-  - [ ] Extend `ProgressFactory` with a method that returns the appropriate indicator trio (`IndicatifProgress`, `SimpleProgress`, `SilentProgress`) for lock feedback contexts.
-  - [ ] Update `StatusReporter` to delegate `operation/step/success/error` through the active `ProgressIndicator::println` / `success` / `error` pathways; add `lock_feedback_start` helper per design.
-  - [ ] Ensure renderer throttling and quiet-mode detection remain centralised in the factory.
-- [ ] **Legacy observer migration**
-  - [ ] Replace `StatusReporterObserver` usage with the new bridge; keep a temporary shim if needed for incremental rollout.
-  - [ ] Update or remove `LockStatusSink` trait if superseded by bridge wiring.
+- [x] **Bridge implementation**
+  - [x] Introduce `LockFeedbackBridge` implementing `LockWaitObserver`, mapping lifecycle events to indicator calls.
+  - [x] Add elapsed/remaining time tracking and uniform action hints (`Ctrl-C`, `--lock-timeout`).
+  - [x] Provide constructor helpers (e.g., `LockFeedbackBridge::for_progress(progress: &mut dyn ProgressIndicator, scope: LockScope, timeout: LockTimeoutValue)`).
+- [x] **Indicator alignment**
+  - [x] Extend `ProgressFactory` with a method that returns the appropriate indicator trio (`IndicatifProgress`, `SimpleProgress`, `SilentProgress`) for lock feedback contexts.
+  - [x] Update `StatusReporter` to delegate `operation/step/success/error` through the active `ProgressIndicator::println` / `success` / `error` pathways; add `lock_feedback_start` helper per design.
+  - [x] Ensure renderer throttling and quiet-mode detection remain centralised in the factory.
+- [x] **Legacy observer migration**
+  - [x] Replace `StatusReporterObserver` usage with the new bridge; keep a temporary shim if needed for incremental rollout.
+  - [x] Update or remove `LockStatusSink` trait if superseded by bridge wiring.
 
 ### Deliverables
 

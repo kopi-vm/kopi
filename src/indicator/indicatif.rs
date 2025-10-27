@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::indicator::{ProgressConfig, ProgressIndicator, ProgressStyle};
+use crate::indicator::{ProgressConfig, ProgressIndicator, ProgressRendererKind, ProgressStyle};
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar};
 use std::sync::Arc;
@@ -63,6 +63,14 @@ impl IndicatifProgress {
                     format!(
                         "{{spinner:.green}} [{{elapsed_precise}}] [{{bar:{bar_width}.cyan/blue}}] {{pos}}/{{len}} {{msg}}"
                     )
+                }
+            }
+            // Status-style spinner lines
+            (_, ProgressStyle::Status) => {
+                if self.is_child {
+                    "  └─ {spinner:.green} [{elapsed_precise}] {msg}".to_string()
+                } else {
+                    "{spinner:.green} [{elapsed_precise}] {msg}".to_string()
                 }
             }
             // Indeterminate operations (spinner only when total is None)
@@ -212,6 +220,10 @@ impl ProgressIndicator for IndicatifProgress {
             println!("{message}");
         }
         Ok(())
+    }
+
+    fn renderer_kind(&self) -> ProgressRendererKind {
+        ProgressRendererKind::Tty
     }
 }
 

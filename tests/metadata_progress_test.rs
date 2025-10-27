@@ -17,7 +17,7 @@
 mod common;
 
 use common::progress_capture::TestProgressCapture;
-use kopi::indicator::{ProgressConfig, ProgressIndicator};
+use kopi::indicator::{ProgressConfig, ProgressIndicator, ProgressRendererKind};
 use kopi::metadata::{FoojayMetadataSource, HttpMetadataSource, LocalDirectorySource};
 use kopi::metadata::{IndexFile, IndexFileEntry, MetadataSource};
 use kopi::models::metadata::JdkMetadata;
@@ -149,6 +149,10 @@ impl ProgressIndicator for ChildProgressTracker {
 
     fn println(&self, message: &str) -> std::io::Result<()> {
         self.parent.println(message)
+    }
+
+    fn renderer_kind(&self) -> ProgressRendererKind {
+        ProgressRendererKind::NonTty
     }
 }
 

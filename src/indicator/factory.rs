@@ -23,13 +23,27 @@ impl ProgressFactory {
         if no_progress {
             // User explicitly requested no progress output
             Box::new(SilentProgress)
-        } else if Self::should_use_simple_progress() {
-            // Non-terminal or CI environment
+        } else if Self::env_flag("KOPI_FORCE_TTY_PROGRESS") {
+            // Force full TTY indicator even if detection would choose simple output
+            Box::new(IndicatifProgress::new())
+        } else if Self::env_flag("KOPI_NO_TTY_PROGRESS") || Self::should_use_simple_progress() {
+            // Non-terminal or CI environment, or explicit opt-out of TTY rendering
             Box::new(SimpleProgress::new())
         } else {
             // Terminal environment with full animation support
             Box::new(IndicatifProgress::new())
         }
+    }
+
+    fn env_flag(name: &str) -> bool {
+        env::var(name)
+            .map(|value| match value.trim() {
+                "" => true,
+                v if v.eq_ignore_ascii_case("0") => false,
+                v if v.eq_ignore_ascii_case("false") => false,
+                _ => true,
+            })
+            .unwrap_or(false)
     }
 
     fn should_use_simple_progress() -> bool {
@@ -62,7 +76,7 @@ impl ProgressFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::indicator::{ProgressConfig, ProgressStyle};
+    use crate::indicator::{ProgressConfig, ProgressRendererKind, ProgressStyle};
     use std::sync::Mutex;
 
     // Helper to temporarily set environment variables
@@ -122,6 +136,8 @@ mod tests {
         let _guard = ENV_LOCK.lock().unwrap();
         let mut env_guard = EnvGuard::new();
         env_guard.set("CI", "true");
+        env_guard.remove("KOPI_FORCE_TTY_PROGRESS");
+        env_guard.remove("KOPI_NO_TTY_PROGRESS");
 
         let progress = ProgressFactory::create(false);
 
@@ -139,6 +155,8 @@ mod tests {
         let mut env_guard = EnvGuard::new();
         env_guard.set("TERM", "dumb");
         env_guard.remove("CI");
+        env_guard.remove("KOPI_FORCE_TTY_PROGRESS");
+        env_guard.remove("KOPI_NO_TTY_PROGRESS");
 
         let progress = ProgressFactory::create(false);
 
@@ -155,6 +173,8 @@ mod tests {
         env_guard.set("NO_COLOR", "1");
         env_guard.remove("CI");
         env_guard.remove("TERM");
+        env_guard.remove("KOPI_FORCE_TTY_PROGRESS");
+        env_guard.remove("KOPI_NO_TTY_PROGRESS");
 
         let progress = ProgressFactory::create(false);
 
@@ -171,6 +191,8 @@ mod tests {
         env_guard.remove("CI");
         env_guard.remove("NO_COLOR");
         env_guard.set("TERM", "xterm-256color");
+        env_guard.remove("KOPI_FORCE_TTY_PROGRESS");
+        env_guard.remove("KOPI_NO_TTY_PROGRESS");
 
         // Note: This test might still return SimpleProgress if stderr is not a terminal
         // during test execution, which is expected behavior
@@ -187,6 +209,8 @@ mod tests {
         let _guard = ENV_LOCK.lock().unwrap();
         let mut env_guard = EnvGuard::new();
         env_guard.set("CI", "true");
+        env_guard.remove("KOPI_FORCE_TTY_PROGRESS");
+        env_guard.remove("KOPI_NO_TTY_PROGRESS");
 
         assert!(ProgressFactory::should_use_simple_progress());
     }
@@ -197,8 +221,37 @@ mod tests {
         let mut env_guard = EnvGuard::new();
         env_guard.set("TERM", "dumb");
         env_guard.remove("CI");
+        env_guard.remove("KOPI_FORCE_TTY_PROGRESS");
+        env_guard.remove("KOPI_NO_TTY_PROGRESS");
 
         assert!(ProgressFactory::should_use_simple_progress());
+    }
+
+    #[test]
+    fn test_force_tty_progress_flag_overrides_detection() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let mut env_guard = EnvGuard::new();
+        env_guard.set("KOPI_FORCE_TTY_PROGRESS", "1");
+        env_guard.remove("KOPI_NO_TTY_PROGRESS");
+        env_guard.remove("CI");
+        env_guard.remove("TERM");
+        env_guard.remove("NO_COLOR");
+
+        let progress = ProgressFactory::create(false);
+        assert_eq!(progress.renderer_kind(), ProgressRendererKind::Tty);
+    }
+
+    #[test]
+    fn test_no_tty_flag_forces_simple_progress() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let mut env_guard = EnvGuard::new();
+        env_guard.set("KOPI_NO_TTY_PROGRESS", "1");
+        env_guard.remove("KOPI_FORCE_TTY_PROGRESS");
+        env_guard.remove("CI");
+        env_guard.remove("TERM");
+
+        let progress = ProgressFactory::create(false);
+        assert_eq!(progress.renderer_kind(), ProgressRendererKind::NonTty);
     }
 
     #[test]

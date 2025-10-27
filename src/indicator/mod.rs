@@ -24,7 +24,7 @@ pub use indicatif::IndicatifProgress;
 pub use silent::SilentProgress;
 pub use simple::SimpleProgress;
 pub use status::StatusReporter;
-pub use types::{ProgressConfig, ProgressStyle};
+pub use types::{ProgressConfig, ProgressRendererKind, ProgressStyle};
 
 pub trait ProgressIndicator: Send + Sync {
     fn start(&mut self, config: ProgressConfig);
@@ -36,6 +36,7 @@ pub trait ProgressIndicator: Send + Sync {
     fn create_child(&mut self) -> Box<dyn ProgressIndicator>;
     fn suspend(&self, f: &mut dyn FnMut());
     fn println(&self, message: &str) -> std::io::Result<()>;
+    fn renderer_kind(&self) -> ProgressRendererKind;
 }
 
 #[cfg(test)]
@@ -109,6 +110,10 @@ mod tests {
         fn println(&self, message: &str) -> std::io::Result<()> {
             println!("{message}");
             Ok(())
+        }
+
+        fn renderer_kind(&self) -> ProgressRendererKind {
+            ProgressRendererKind::NonTty
         }
     }
 

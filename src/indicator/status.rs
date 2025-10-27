@@ -12,375 +12,223 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use colored::Colorize;
-use std::env;
-use std::io::IsTerminal;
+use crate::indicator::{ProgressFactory, ProgressIndicator, ProgressRendererKind};
+use std::sync::{Arc, Mutex};
 
+/// Provides high-level status messaging that reuses the shared progress indicator stack.
 pub struct StatusReporter {
-    silent: bool,
-    use_color: bool,
+    progress: Arc<Mutex<Box<dyn ProgressIndicator>>>,
+    renderer_kind: ProgressRendererKind,
 }
 
 impl StatusReporter {
-    pub fn new(silent: bool) -> Self {
+    /// Creates a status reporter using the shared progress factory.
+    pub fn new(no_progress: bool) -> Self {
+        Self::with_indicator(ProgressFactory::create(no_progress))
+    }
+
+    /// Creates a status reporter backed by the provided indicator (primarily for tests).
+    pub fn with_indicator(indicator: Box<dyn ProgressIndicator>) -> Self {
+        let renderer_kind = indicator.renderer_kind();
         Self {
-            silent,
-            use_color: Self::should_use_color(),
+            progress: Arc::new(Mutex::new(indicator)),
+            renderer_kind,
         }
     }
 
-    fn should_use_color() -> bool {
-        // Respect NO_COLOR environment variable
-        if env::var("NO_COLOR").is_ok() {
-            return false;
+    /// Exposes the underlying progress handle for lock feedback integration.
+    pub fn progress_handle(&self) -> Arc<Mutex<Box<dyn ProgressIndicator>>> {
+        Arc::clone(&self.progress)
+    }
+
+    fn is_silent(&self) -> bool {
+        matches!(self.renderer_kind, ProgressRendererKind::Silent)
+    }
+
+    fn with_progress<R>(&self, f: impl FnOnce(&dyn ProgressIndicator) -> R) -> Option<R> {
+        if self.is_silent() {
+            return None;
         }
 
-        // Disable colors for dumb terminals
-        if let Ok(term) = env::var("TERM")
-            && term == "dumb"
-        {
-            return false;
+        let guard = self.progress.lock().ok()?;
+        Some(f(guard.as_ref()))
+    }
+
+    fn with_progress_mut<R>(&self, f: impl FnOnce(&mut dyn ProgressIndicator) -> R) -> Option<R> {
+        if self.is_silent() {
+            return None;
         }
 
-        // Check if stderr supports colors
-        std::io::stderr().is_terminal()
+        let mut guard = self.progress.lock().ok()?;
+        Some(f(guard.as_mut()))
     }
 
     pub fn operation(&self, operation: &str, context: &str) {
-        if !self.silent {
-            println!("{operation} {context}...");
-        }
+        let message = format!("{operation} {context}...");
+        let _ = self.with_progress(|indicator| indicator.println(&message));
     }
 
     pub fn step(&self, message: &str) {
-        if !self.silent {
-            println!("  {message}");
-        }
+        let message = format!("  {message}");
+        let _ = self.with_progress(|indicator| indicator.println(&message));
     }
 
     pub fn success(&self, message: &str) {
-        if !self.silent {
-            let symbol = if self.use_color {
-                "✓".green().bold().to_string()
-            } else {
-                "[OK]".to_string()
-            };
-            println!("{symbol} {message}");
-        }
+        let _ = self.with_progress(|indicator| indicator.success(message));
     }
 
     pub fn error(&self, message: &str) {
-        let symbol = if self.use_color {
-            "✗".red().bold().to_string()
-        } else {
-            "[ERROR]".to_string()
-        };
-        eprintln!("{symbol} {message}");
+        let _ = self.with_progress_mut(|indicator| indicator.error(message.to_string()));
+    }
+
+    /// Emits the initial lock-wait message using the shared indicator infrastructure.
+    pub fn lock_feedback_start(&self, message: &str) {
+        let _ = self.with_progress(|indicator| indicator.println(message));
     }
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
-    use serial_test::serial;
+    use crate::indicator::{ProgressConfig, SilentProgress};
     use std::sync::Mutex;
 
-    // Helper to temporarily set environment variables
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-    struct EnvGuard {
-        vars: Vec<(String, Option<String>)>,
-    }
-
-    impl EnvGuard {
-        fn new() -> Self {
-            Self { vars: Vec::new() }
-        }
-
-        fn set(&mut self, key: &str, value: &str) {
-            let old = env::var(key).ok();
-            self.vars.push((key.to_string(), old));
-            unsafe {
-                env::set_var(key, value);
-            }
-        }
-
-        fn remove(&mut self, key: &str) {
-            let old = env::var(key).ok();
-            self.vars.push((key.to_string(), old));
-            unsafe {
-                env::remove_var(key);
-            }
-        }
-    }
-
-    impl Drop for EnvGuard {
-        fn drop(&mut self) {
-            for (key, value) in self.vars.iter().rev() {
-                match value {
-                    Some(v) => unsafe { env::set_var(key, v) },
-                    None => unsafe { env::remove_var(key) },
-                }
-            }
-        }
-    }
-
-    // Helper to capture stdout/stderr for testing
     static OUTPUT: Mutex<Vec<String>> = Mutex::new(Vec::new());
     static ERROR_OUTPUT: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
-    pub struct TestReporter {
-        inner: StatusReporter,
-    }
+    struct RecordingIndicator;
 
-    impl TestReporter {
-        pub fn new(silent: bool) -> Self {
-            Self {
-                inner: StatusReporter::new(silent),
-            }
+    impl RecordingIndicator {
+        fn new() -> Self {
+            RecordingIndicator
         }
 
-        pub fn operation(&self, operation: &str, context: &str) {
-            if !self.inner.silent {
-                OUTPUT
-                    .lock()
-                    .unwrap()
-                    .push(format!("{operation} {context}..."));
-            }
+        fn push_output(message: String) {
+            OUTPUT.lock().unwrap().push(message);
         }
 
-        pub fn step(&self, message: &str) {
-            if !self.inner.silent {
-                OUTPUT.lock().unwrap().push(format!("  {message}"));
-            }
+        fn push_error(message: String) {
+            ERROR_OUTPUT.lock().unwrap().push(message);
         }
 
-        pub fn success(&self, message: &str) {
-            if !self.inner.silent {
-                let symbol = if self.inner.use_color {
-                    "✓".green().bold().to_string()
-                } else {
-                    "[OK]".to_string()
-                };
-                OUTPUT.lock().unwrap().push(format!("{symbol} {message}"));
-            }
-        }
-
-        pub fn error(&self, message: &str) {
-            let symbol = if self.inner.use_color {
-                "✗".red().bold().to_string()
-            } else {
-                "[ERROR]".to_string()
-            };
-            ERROR_OUTPUT
-                .lock()
-                .unwrap()
-                .push(format!("{symbol} {message}"));
-        }
-
-        pub fn get_output() -> Vec<String> {
-            OUTPUT.lock().unwrap().clone()
-        }
-
-        pub fn get_error_output() -> Vec<String> {
-            ERROR_OUTPUT.lock().unwrap().clone()
-        }
-
-        pub fn clear_output() {
-            OUTPUT.lock().unwrap().clear();
-            ERROR_OUTPUT.lock().unwrap().clear();
+        fn take_messages() -> (Vec<String>, Vec<String>) {
+            let output = OUTPUT.lock().unwrap().drain(..).collect();
+            let errors = ERROR_OUTPUT.lock().unwrap().drain(..).collect();
+            (output, errors)
         }
     }
 
-    #[serial]
+    impl ProgressIndicator for RecordingIndicator {
+        fn start(&mut self, _config: ProgressConfig) {}
+
+        fn update(&mut self, _current: u64, _total: Option<u64>) {}
+
+        fn set_message(&mut self, message: String) {
+            Self::push_output(format!("set:{message}"));
+        }
+
+        fn complete(&mut self, message: Option<String>) {
+            if let Some(msg) = message {
+                Self::push_output(format!("complete:{msg}"));
+            }
+        }
+
+        fn success(&self, message: &str) -> std::io::Result<()> {
+            Self::push_output(format!("success:{message}"));
+            Ok(())
+        }
+
+        fn error(&mut self, message: String) {
+            Self::push_error(format!("error:{message}"));
+        }
+
+        fn create_child(&mut self) -> Box<dyn ProgressIndicator> {
+            Box::new(RecordingIndicator::new())
+        }
+
+        fn suspend(&self, f: &mut dyn FnMut()) {
+            f();
+        }
+
+        fn println(&self, message: &str) -> std::io::Result<()> {
+            Self::push_output(message.to_string());
+            Ok(())
+        }
+
+        fn renderer_kind(&self) -> ProgressRendererKind {
+            ProgressRendererKind::NonTty
+        }
+    }
+
     #[test]
-    fn test_message_formatting() {
-        TestReporter::clear_output();
-        let reporter = TestReporter::new(false);
+    fn operation_and_step_emit_messages() {
+        let reporter = StatusReporter::with_indicator(Box::new(RecordingIndicator::new()));
 
         reporter.operation("Installing", "temurin@21");
-        reporter.step("Downloading JDK");
+        reporter.step("Downloading archive");
+
+        let (output, errors) = RecordingIndicator::take_messages();
+        assert!(errors.is_empty());
+        assert_eq!(
+            output,
+            vec![
+                "Installing temurin@21...".to_string(),
+                "  Downloading archive".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn success_and_error_route_through_indicator() {
+        let reporter = StatusReporter::with_indicator(Box::new(RecordingIndicator::new()));
+
         reporter.success("Installation complete");
+        reporter.error("Failed to extract archive");
 
-        let output = TestReporter::get_output();
-        assert_eq!(output.len(), 3);
-        assert_eq!(output[0], "Installing temurin@21...");
-        assert_eq!(output[1], "  Downloading JDK");
-        assert!(output[2].contains("Installation complete"));
+        let (output, errors) = RecordingIndicator::take_messages();
+        assert_eq!(output, vec!["success:Installation complete".to_string()]);
+        assert_eq!(errors, vec!["error:Failed to extract archive".to_string()]);
     }
 
-    #[serial]
     #[test]
-    fn test_silent_mode() {
-        TestReporter::clear_output();
-        let reporter = TestReporter::new(true);
+    fn progress_handle_exposes_shared_indicator() {
+        let reporter = StatusReporter::with_indicator(Box::new(RecordingIndicator::new()));
+        let handle = reporter.progress_handle();
 
-        reporter.operation("Installing", "JDK");
-        reporter.step("Step 1");
-        reporter.success("Done");
+        {
+            let indicator = handle.lock().unwrap();
+            let _ = indicator.println("from-handle");
+        }
 
-        let output = TestReporter::get_output();
-        assert_eq!(output.len(), 0);
-
-        // Error messages should still appear
-        reporter.error("Something went wrong");
-        let error_output = TestReporter::get_error_output();
-        assert_eq!(error_output.len(), 1);
-        assert!(error_output[0].contains("Something went wrong"));
+        let (output, errors) = RecordingIndicator::take_messages();
+        assert!(errors.is_empty());
+        assert_eq!(output, vec!["from-handle".to_string()]);
     }
 
-    #[serial]
     #[test]
-    fn test_error_always_shown() {
-        // Test silent mode error reporting
-        TestReporter::clear_output();
-        let silent_reporter = TestReporter::new(true);
-        silent_reporter.error("Error in silent mode");
-        let error_output = TestReporter::get_error_output();
-        assert!(
-            error_output
-                .iter()
-                .any(|s| s.contains("Error in silent mode")),
-            "Silent mode should still show errors"
-        );
+    fn lock_feedback_start_uses_shared_output() {
+        let reporter = StatusReporter::with_indicator(Box::new(RecordingIndicator::new()));
+        reporter.lock_feedback_start("Waiting for lock on cache (timeout: 30s)");
 
-        // Test normal mode error reporting
-        TestReporter::clear_output();
-        let normal_reporter = TestReporter::new(false);
-        normal_reporter.error("Error in normal mode");
-        let error_output = TestReporter::get_error_output();
-        assert!(
-            error_output
-                .iter()
-                .any(|s| s.contains("Error in normal mode")),
-            "Normal mode should show errors"
+        let (output, errors) = RecordingIndicator::take_messages();
+        assert!(errors.is_empty());
+        assert_eq!(
+            output,
+            vec!["Waiting for lock on cache (timeout: 30s)".to_string()]
         );
     }
 
     #[test]
-    fn test_should_use_color_with_no_color_env() {
-        let _guard = ENV_LOCK.lock().unwrap();
-        let mut env_guard = EnvGuard::new();
-        env_guard.set("NO_COLOR", "1");
+    fn silent_indicator_suppresses_output() {
+        let reporter = StatusReporter::with_indicator(Box::new(SilentProgress::new()));
 
-        assert!(!StatusReporter::should_use_color());
-    }
+        reporter.operation("Installing", "temurin@21");
+        reporter.step("Downloading archive");
+        reporter.success("Installation complete");
+        reporter.error("Failed to extract archive");
 
-    #[test]
-    fn test_should_use_color_with_dumb_term() {
-        let _guard = ENV_LOCK.lock().unwrap();
-        let mut env_guard = EnvGuard::new();
-        env_guard.set("TERM", "dumb");
-        env_guard.remove("NO_COLOR");
-
-        assert!(!StatusReporter::should_use_color());
-    }
-
-    #[test]
-    fn test_color_symbols() {
-        let _guard = ENV_LOCK.lock().unwrap();
-        let mut env_guard = EnvGuard::new();
-
-        // Remove NO_COLOR to potentially enable colors
-        env_guard.remove("NO_COLOR");
-        env_guard.set("TERM", "xterm-256color");
-
-        TestReporter::clear_output();
-
-        // Create reporter that would use colors if terminal is available
-        let test_reporter = TestReporter {
-            inner: StatusReporter {
-                silent: false,
-                use_color: true, // Force color mode for testing
-            },
-        };
-
-        test_reporter.success("With color");
-        let output = TestReporter::get_output();
-        assert!(output[0].contains("✓"));
-
-        // Test without color
-        TestReporter::clear_output();
-        let test_reporter = TestReporter {
-            inner: StatusReporter {
-                silent: false,
-                use_color: false, // Force no-color mode for testing
-            },
-        };
-
-        test_reporter.success("Without color");
-        let output = TestReporter::get_output();
-        assert!(output[0].starts_with("[OK]"));
-    }
-
-    #[test]
-    fn test_error_symbols() {
-        TestReporter::clear_output();
-
-        // Test with color
-        let test_reporter = TestReporter {
-            inner: StatusReporter {
-                silent: false,
-                use_color: true,
-            },
-        };
-
-        test_reporter.error("Color error");
-        let output = TestReporter::get_error_output();
-        let latest = output.last().expect("expected at least one error entry");
-        assert!(latest.contains("✗"));
-
-        // Test without color
-        TestReporter::clear_output();
-        let test_reporter = TestReporter {
-            inner: StatusReporter {
-                silent: false,
-                use_color: false,
-            },
-        };
-
-        test_reporter.error("No color error");
-        let output = TestReporter::get_error_output();
-        let latest = output.last().expect("expected at least one error entry");
-        assert!(latest.starts_with("[ERROR]"));
-    }
-
-    #[test]
-    fn test_environment_detection() {
-        let _guard = ENV_LOCK.lock().unwrap();
-        let mut env_guard = EnvGuard::new();
-
-        // Clean environment should use terminal detection
-        env_guard.remove("NO_COLOR");
-        env_guard.remove("CI");
-        env_guard.set("TERM", "xterm-256color");
-
-        // This will return based on actual terminal detection
-        // During tests, stderr is typically not a terminal
-        let _result = StatusReporter::should_use_color();
-
-        // Just verify it doesn't panic - the result depends on test environment
-    }
-
-    #[serial]
-    #[test]
-    fn test_message_consistency() {
-        TestReporter::clear_output();
-        let reporter = TestReporter::new(false);
-
-        // Test a complete workflow
-        reporter.operation("Processing", "batch job");
-        reporter.step("Step 1: Initialize");
-        reporter.step("Step 2: Process data");
-        reporter.step("Step 3: Cleanup");
-        reporter.success("Batch job completed successfully");
-
-        let output = TestReporter::get_output();
-        assert_eq!(output.len(), 5);
-        assert_eq!(output[0], "Processing batch job...");
-        assert_eq!(output[1], "  Step 1: Initialize");
-        assert_eq!(output[2], "  Step 2: Process data");
-        assert_eq!(output[3], "  Step 3: Cleanup");
-        assert!(output[4].contains("Batch job completed successfully"));
+        let (output, errors) = RecordingIndicator::take_messages();
+        assert!(output.is_empty());
+        assert!(errors.is_empty());
     }
 }

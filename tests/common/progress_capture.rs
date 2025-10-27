@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use kopi::indicator::{ProgressConfig, ProgressIndicator, ProgressStyle};
+use kopi::indicator::{ProgressConfig, ProgressIndicator, ProgressRendererKind, ProgressStyle};
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
@@ -157,6 +157,10 @@ impl ProgressIndicator for TestProgressCapture {
             style: self.current_style,
         });
         Ok(())
+    }
+
+    fn renderer_kind(&self) -> ProgressRendererKind {
+        ProgressRendererKind::NonTty
     }
 }
 
