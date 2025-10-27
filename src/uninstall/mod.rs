@@ -174,6 +174,53 @@ impl<'a> UninstallHandler<'a> {
                     "Proceeding with --force: project default set via {project}"
                 ));
             }
+
+            if !active_summary.processes.is_empty() {
+                let canonical_root = jdk.path.canonicalize().unwrap_or_else(|_| jdk.path.clone());
+
+                for process in &active_summary.processes {
+                    let mut handles: Vec<String> = process
+                        .handles
+                        .iter()
+                        .map(|handle| {
+                            handle
+                                .strip_prefix(&canonical_root)
+                                .ok()
+                                .map(|relative| {
+                                    let rendered = relative.display().to_string();
+                                    if rendered.is_empty() {
+                                        ".".to_string()
+                                    } else {
+                                        rendered
+                                    }
+                                })
+                                .unwrap_or_else(|| handle.display().to_string())
+                        })
+                        .collect();
+                    handles.sort();
+
+                    let handle_summary = if handles.is_empty() {
+                        "<no handles reported>".to_string()
+                    } else {
+                        handles.join(", ")
+                    };
+
+                    warn!(
+                        "--force removing {}@{} despite PID {} ({}) with open handles: {}",
+                        jdk.distribution,
+                        jdk.version,
+                        process.pid,
+                        process.exe_path.display(),
+                        handle_summary
+                    );
+                    reporter.step(&format!(
+                        "Proceeding with --force: PID {} ({}) still open: {}",
+                        process.pid,
+                        process.exe_path.display(),
+                        handle_summary
+                    ));
+                }
+            }
         }
 
         // Remove with progress

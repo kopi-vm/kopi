@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 2 Complete
+- Status: Phase 3 In Progress
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -162,15 +162,15 @@ Wire the new API into uninstall safeguards, add integration tests, and update do
 
 ### Phase 3 Tasks
 
-- [ ] Integration
-  - [ ] Update uninstall logic to call `processes_using_path` and extend diagnostics with PID/executable info.
-  - [ ] Ensure CLI messaging follows existing style guides and remains localized in English.
-- [ ] Test coverage
-  - [ ] Add integration tests (per platform) that open a file within a temp JDK directory and assert detection.
-  - [ ] Extend existing locking-related tests to confirm no regressions.
-- [ ] Documentation & traceability
-  - [ ] Update task README, traceability matrix, and downstream docs references per TDL.
-  - [ ] Capture manual verification steps for Windows/macOS permission edge cases.
+- [x] Integration
+  - [x] Update uninstall logic to call `processes_using_path` and extend diagnostics with PID/executable info.
+  - [x] Ensure CLI messaging follows existing style guides and remains localized in English.
+- [x] Test coverage
+  - [x] Add integration tests (per platform) that open a file within a temp JDK directory and assert detection.
+  - [x] Extend existing locking-related tests to confirm no regressions.
+- [x] Documentation & traceability
+  - [x] Update task README, traceability matrix, and downstream docs references per TDL.
+  - [x] Capture manual verification steps for Windows/macOS permission edge cases.
 
 ### Phase 3 Deliverables
 
@@ -202,14 +202,14 @@ bun lint
 
 ## Definition of Done
 
-- [ ] `cargo check`
-- [ ] `cargo fmt`
-- [ ] `cargo clippy --all-targets -- -D warnings`
-- [ ] `cargo test --lib --quiet`
-- [ ] Broader test suites (integration/perf) executed when relevant
-- [ ] Documentation and traceability artifacts updated per TDL
-- [ ] Error messages actionable in English; exit codes preserved
-- [ ] No `unsafe` code and no vague naming such as "manager" or "util"
+- [x] `cargo check`
+- [x] `cargo fmt`
+- [x] `cargo clippy --all-targets -- -D warnings`
+- [x] `cargo test --lib --quiet`
+- [x] Broader test suites (integration/perf) executed when relevant
+- [x] Documentation and traceability artifacts updated per TDL
+- [x] Error messages actionable in English; exit codes preserved
+- [x] No `unsafe` code and no vague naming such as "manager" or "util"
 
 ## Open Questions
 

@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Task
-- Status: Draft
+- Status: In Progress
   <!-- Draft: Under discussion | In Progress: Actively working | Complete: Code complete | Cancelled: Work intentionally halted -->
 
 ## Links
@@ -39,6 +39,19 @@ Implement cross-platform detection of running processes that are using a target 
 - Enumerating processes on supported platforms reliably surfaces PID and executable information when any file under the target JDK tree is open.
 - The new API integrates with uninstall safety checks without introducing `unsafe` into higher layers.
 - Automated tests pass across targeted platforms, using real fixture data collected via `lsof`, `procfs`, or Windows handle inspection.
+
+## Manual Verification
+
+- **macOS**
+  - Launch a terminal and start `java` from the target JDK, for example `~/.kopi/jdks/temurin-21.0.5+11/Contents/Home/bin/java -version` without closing the shell.
+  - In a second terminal, run `kopi uninstall temurin@21.0.5+11` and confirm the validation error lists the PID, executable, and affected handle paths.
+  - Retry with `kopi uninstall temurin@21.0.5+11 --force` and ensure the command succeeds while logging the same diagnostics as warnings.
+  - Test from a non-admin user to observe the permission warning when scanning processes owned by other accounts.
+- **Windows**
+  - Open PowerShell and execute `Start-Process -PassThru "$env:USERPROFILE\.kopi\jdks\temurin-21.0.5+11\bin\java.exe" -ArgumentList '-version'` to hold an open handle.
+  - Run `kopi uninstall temurin@21.0.5+11` in a separate shell and verify the CLI reports the PID, executable path, and the handle list before blocking.
+  - Re-run with `--force` to confirm uninstall proceeds while emitting the warning banner captured in the logs and status reporter.
+  - Attempt to enumerate a system-owned process (e.g., `services.exe`) to validate the permission-denied path is downgraded to a warning instead of aborting.
 
 ---
 

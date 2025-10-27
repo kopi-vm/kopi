@@ -241,6 +241,9 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    #[cfg(unix)]
+    use std::path::Path;
+
     fn create_test_config() -> KopiConfig {
         let temp_dir = TempDir::new().unwrap();
         // Clear environment variables that might interfere with config loading
@@ -308,8 +311,11 @@ mod tests {
         // Test successful command
         #[cfg(unix)]
         let cmd = {
-            let true_path = which::which("true").expect("'true' command must exist");
-            std::process::Command::new(true_path)
+            let shell = Path::new("/bin/sh");
+            assert!(shell.exists(), "/bin/sh must exist for Unix timeout tests");
+            let mut command = std::process::Command::new(shell);
+            command.args(["-c", "exit 0"]);
+            command
         };
 
         #[cfg(windows)]
@@ -332,9 +338,10 @@ mod tests {
 
         // Test command that exceeds timeout
         let cmd = {
-            let sleep_path = which::which("sleep").expect("'sleep' command must exist");
-            let mut command = std::process::Command::new(sleep_path);
-            command.arg("10");
+            let shell = Path::new("/bin/sh");
+            assert!(shell.exists(), "/bin/sh must exist for Unix timeout tests");
+            let mut command = std::process::Command::new(shell);
+            command.args(["-c", "while true; do :; done"]);
             command
         };
         let result = installer.execute_with_timeout(cmd, Duration::from_secs(1));

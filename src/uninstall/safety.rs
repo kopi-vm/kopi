@@ -14,11 +14,12 @@
 
 use crate::config::KopiConfig;
 use crate::error::{KopiError, Result};
+use crate::platform::{ProcessInfo, processes_using_path};
 use crate::storage::{InstalledJdk, JdkRepository};
 use crate::version::VersionRequest;
 use log::{debug, trace, warn};
 use std::env;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -43,13 +44,11 @@ pub fn perform_safety_checks(
         jdk.distribution, jdk.version
     );
 
-    let active_summary = ActiveUseSummary {
-        global: detect_global_active_jdk(config, jdk)?,
-        project: detect_project_active_jdk(jdk)?,
-    };
+    let global_active = detect_global_active_jdk(config, jdk)?;
+    let project_active = detect_project_active_jdk(jdk)?;
 
     if !force {
-        if let Some(active) = &active_summary.global {
+        if let Some(active) = &global_active {
             return Err(KopiError::ValidationError(format!(
                 "Cannot uninstall {dist}@{ver} - it is currently active globally via {} \
                  (configured as {}). Use --force to override this check or run \
@@ -61,7 +60,7 @@ pub fn perform_safety_checks(
             )));
         }
 
-        if let Some(active) = &active_summary.project {
+        if let Some(active) = &project_active {
             return Err(KopiError::ValidationError(format!(
                 "Cannot uninstall {dist}@{ver} - it is configured for this project via {} \
                  (configured as {}). Use --force to override this check or update the \
@@ -74,10 +73,19 @@ pub fn perform_safety_checks(
         }
     }
 
-    // Check for running Java processes (future enhancement)
-    check_running_processes(&jdk.distribution, &jdk.version.to_string())?;
+    let processes = detect_running_processes(jdk)?;
 
-    Ok(active_summary)
+    if !force && !processes.is_empty() {
+        return Err(build_running_process_error(jdk, &processes));
+    }
+
+    let summary = ActiveUseSummary {
+        global: global_active,
+        project: project_active,
+        processes,
+    };
+
+    Ok(summary)
 }
 
 fn detect_global_active_jdk(config: &KopiConfig, jdk: &InstalledJdk) -> Result<Option<ActiveUse>> {
@@ -218,9 +226,50 @@ fn request_matches_jdk(request: &VersionRequest, jdk: &InstalledJdk) -> bool {
     jdk.version.matches_pattern(&request.version_pattern)
 }
 
-fn check_running_processes(_distribution: &str, _version: &str) -> Result<()> {
-    // TODO: Future enhancement - check for running processes
-    Ok(())
+fn detect_running_processes(jdk: &InstalledJdk) -> Result<Vec<ProcessInfo>> {
+    processes_using_path(&jdk.path)
+}
+
+fn build_running_process_error(jdk: &InstalledJdk, processes: &[ProcessInfo]) -> KopiError {
+    let canonical_root = jdk.path.canonicalize().unwrap_or_else(|_| jdk.path.clone());
+
+    let mut message = format!(
+        "Cannot uninstall {dist}@{ver} - running processes are using {jdk_path}:",
+        dist = jdk.distribution,
+        ver = jdk.version,
+        jdk_path = jdk.path.display()
+    );
+
+    for process in processes {
+        let exe_display = process.exe_path.display();
+        let _ = writeln!(message, "\n  PID {} ({exe_display})", process.pid);
+
+        if process.handles.is_empty() {
+            let _ = writeln!(message, "    - <no open handles reported>");
+            continue;
+        }
+
+        for handle in &process.handles {
+            let handle_display = handle
+                .strip_prefix(&canonical_root)
+                .ok()
+                .map(|relative| {
+                    let rendered = relative.display().to_string();
+                    if rendered.is_empty() {
+                        ".".to_string()
+                    } else {
+                        rendered
+                    }
+                })
+                .unwrap_or_else(|| handle.display().to_string());
+            let _ = writeln!(message, "    - {handle_display}");
+        }
+    }
+
+    message
+        .push_str("\nClose these processes or re-run with --force to proceed with the uninstall.");
+
+    KopiError::ValidationError(message)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -253,11 +302,12 @@ impl fmt::Display for ActiveUse {
 pub struct ActiveUseSummary {
     pub global: Option<ActiveUse>,
     pub project: Option<ActiveUse>,
+    pub processes: Vec<ProcessInfo>,
 }
 
 impl ActiveUseSummary {
     pub fn has_active_use(&self) -> bool {
-        self.global.is_some() || self.project.is_some()
+        self.global.is_some() || self.project.is_some() || !self.processes.is_empty()
     }
 }
 
@@ -372,6 +422,7 @@ mod tests {
 
         let summary = perform_safety_checks(&fixture.config, &repository, &jdk, false).unwrap();
         assert!(!summary.has_active_use());
+        assert!(summary.processes.is_empty());
     }
 
     #[test]
@@ -389,6 +440,7 @@ mod tests {
         // Force override should bypass the guard
         let summary = perform_safety_checks(&fixture.config, &repository, &jdk, true).unwrap();
         assert!(summary.global.is_some());
+        assert!(summary.processes.is_empty());
     }
 
     #[test]
@@ -447,6 +499,54 @@ mod tests {
 
         let summary = result.unwrap();
         assert!(!summary.has_active_use());
+        assert!(summary.processes.is_empty());
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn safety_checks_detect_running_processes() {
+        use std::process;
+
+        let fixture = TestFixture::new();
+        let repository = fixture.repository();
+        let jdk = fixture.create_installed_jdk("temurin", "21.0.5+11");
+
+        let bin_java = install::bin_directory(&jdk.path).join("java");
+
+        // Hold an open handle inside the JDK to simulate active use.
+        let file_handle = fs::OpenOptions::new()
+            .read(true)
+            .open(&bin_java)
+            .expect("open java binary for reading");
+
+        let result = perform_safety_checks(&fixture.config, &repository, &jdk, false);
+        drop(file_handle);
+
+        match result {
+            Err(KopiError::ValidationError(message)) => {
+                assert!(
+                    message.contains("running processes are using"),
+                    "expected message to mention running processes: {message}"
+                );
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+
+        // Re-open to verify force path collects diagnostics.
+        let file_handle = fs::OpenOptions::new()
+            .read(true)
+            .open(&bin_java)
+            .expect("reopen java binary for reading");
+        let summary = perform_safety_checks(&fixture.config, &repository, &jdk, true).unwrap();
+        drop(file_handle);
+
+        assert!(
+            summary
+                .processes
+                .iter()
+                .any(|info| info.pid == process::id()),
+            "expected current process to be reported"
+        );
     }
 
     #[test]
