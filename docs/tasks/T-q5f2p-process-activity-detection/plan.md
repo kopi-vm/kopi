@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Implementation Plan
-- Status: Phase 3 In Progress
+- Status: Complete
   <!-- Draft: Planning complete, awaiting start | Phase X In Progress: Actively working | Cancelled: Work intentionally halted before completion | Complete: All phases done and verified -->
 
 ## Links
@@ -17,10 +17,10 @@ Deliver a safe Rust API that enumerates operating system processes with open han
 
 ## Success Metrics
 
-- [ ] `processes_using_path` returns accurate `ProcessInfo` data for Linux, macOS, and Windows in manual smoke tests.
-- [ ] New functionality integrates with uninstall safeguards without introducing regressions in existing locking tests.
-- [ ] End-to-end uninstall flow prints actionable PID/executable diagnostics when files are in use.
-- [ ] All existing tests continue to pass across supported platforms.
+- [x] `processes_using_path` returns accurate `ProcessInfo` data for Linux, macOS, and Windows in manual smoke tests.
+- [x] New functionality integrates with uninstall safeguards without introducing regressions in existing locking tests.
+- [x] End-to-end uninstall flow prints actionable PID/executable diagnostics when files are in use.
+- [x] All existing tests continue to pass across supported platforms.
 
 ## Scope
 
