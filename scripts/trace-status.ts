@@ -1450,6 +1450,7 @@ export function printStatus(
   const headingMismatches = findHeadingMismatches(documents);
   const reciprocalLinkIssues = collectTaskReciprocalLinkIssues(documents);
   const designPlanIssues = collectTaskDesignPlanIssues(documents);
+  const duplicateIdIssues = findDuplicateIdIssues(documents);
 
   console.log("=== Kopi TDL Status ===\n");
   if (showStatusDetails) {
@@ -1574,6 +1575,16 @@ export function printStatus(
     console.log("✓ Task design/plan links consistent\n");
   }
 
+  if (duplicateIdIssues.length) {
+    console.log("Duplicate document ID suffixes detected:");
+    for (const issue of duplicateIdIssues) {
+      console.log(`  ⚠ ${formatDuplicateIdIssue(issue)}`);
+    }
+    console.log();
+  } else {
+    console.log("✓ Document ID suffixes unique\n");
+  }
+
   if (headingMismatches.length) {
     console.log("Document ID heading mismatches detected:");
     for (const mismatch of headingMismatches) {
@@ -1653,6 +1664,19 @@ type DuplicateIdIssue = {
   readonly documents: readonly TDLDocument[];
 };
 
+function formatDuplicateIdIssue(issue: DuplicateIdIssue): string {
+  const displayEntries = issue.documents
+    .map((doc) => {
+      const location = relative(process.cwd(), doc.path);
+      const displayPath = location.startsWith("..")
+        ? doc.path
+        : location || doc.path;
+      return `${doc.docId} (${displayPath})`;
+    })
+    .join(", ");
+  return `Suffix ${issue.suffix} reused by ${displayEntries}`;
+}
+
 function extractIdSuffix(docId: string): string | null {
   const match = docId.match(/^(AN|FR|NFR|ADR|T)-([0-9A-Za-z]+)/);
   if (!match) return null;
@@ -1708,18 +1732,9 @@ export function checkIntegrity(documents: Map<string, TDLDocument>): boolean {
 
   const duplicateIdIssues = findDuplicateIdIssues(documents);
   if (duplicateIdIssues.length) {
-    console.error("Duplicate document IDs detected:");
+    console.error("Duplicate document ID suffixes detected:");
     for (const issue of duplicateIdIssues) {
-      const displayEntries = issue.documents
-        .map((doc) => {
-          const location = relative(process.cwd(), doc.path);
-          const displayPath = location.startsWith("..")
-            ? doc.path
-            : location || doc.path;
-          return `${doc.docId} (${displayPath})`;
-        })
-        .join(", ");
-      console.error(`  - Suffix ${issue.suffix} reused by ${displayEntries}`);
+      console.error(`  - ${formatDuplicateIdIssue(issue)}`);
     }
     ok = false;
   }

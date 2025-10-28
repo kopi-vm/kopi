@@ -7,7 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 
 import {
   capitalize,
@@ -1687,7 +1687,7 @@ describe("checkIntegrity", () => {
     const result = checkIntegrity(documents);
     expect(result).toBe(false);
     const flattened = errors.map((entry) => entry.join(" ")).join("\n");
-    expect(flattened).toContain("Duplicate document IDs detected:");
+    expect(flattened).toContain("Duplicate document ID suffixes detected:");
     expect(flattened).toContain("Suffix j1k2m reused by");
     expect(flattened).toContain("AN-j1k2m");
     expect(flattened).toContain("T-j1k2m");
@@ -2079,7 +2079,7 @@ describe("resolveOutputPath", () => {
   it("resolves repository-relative paths", () => {
     const repoRoot = "/tmp/repo";
     expect(resolveOutputPath("reports/trace.md", repoRoot)).toBe(
-      join(repoRoot, "reports", "trace.md"),
+      resolve(repoRoot, "reports/trace.md"),
     );
   });
 
