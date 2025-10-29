@@ -156,7 +156,7 @@ kopi/
 - **Provider Abstraction**: `metadata::provider::MetadataProvider` merges Foojay API sources, local indexes, and generator output, delivering a consolidated view for cache writes and offline usage.
 - **Cache Lifecycle**: `cache::metadata_cache` persists aggregated metadata to `~/.kopi/cache/metadata.json` with timestamping; `CacheCommand::Refresh` performs multi-source fetches with progress instrumentation and summarises distribution counts.
 - **Search & Filtering**: `CacheCommand::Search` supports compact, detailed, JSON, LTS-only, and field-forced lookups; hidden aliases share the implementation so automation can rely on consistent output options.
-- **Metadata Manifests**: During installs, `storage::repository` writes `.meta.json` descriptors into each JDK directory, enabling fast tool discovery and avoiding repeated filesystem scans as highlighted in `docs/reference.md`.
+- **Metadata Manifests**: During installs, `storage::repository` writes `<distribution>-<version>.meta.json` descriptors alongside each JDK under `~/.kopi/jdks/`, enabling fast tool discovery and avoiding repeated filesystem scans as highlighted in `docs/reference.md`.
 - **Offline Generation**: `src/metadata/generator` and the `kopi-metadata-gen` binary allow precomputing metadata bundles for air-gapped environments.
 
 ### JDK Installation & Storage
@@ -203,14 +203,14 @@ kopi/
 
 ### Platform Abstraction
 
-- **OS Detection**: `platform::current` identifies OS/arch combinations for metadata filtering and download selection.
-- **Path Handling**: Provides platform-aware path utilities (Windows drive normalisation, Unix permissions).
-- **Symlink & Process Management**: Abstracted symlink creation and subprocess execution ensures consistent behaviour across Unix and Windows, including enabling virtual terminal mode for progress output.
+- **OS Detection**: `platform::detection` (re-exported via `platform::{get_current_platform, get_current_os, get_current_architecture, matches_foojay_libc_type}`) identifies platform triples for metadata filtering and download selection.
+- **Path Handling**: `platform::filesystem` and `platform::file_ops` provide platform-aware path utilities (Windows drive normalisation, Unix permission fixes).
+- **Symlink & Process Management**: `platform::symlink` and `platform::process` abstract symlink creation and process inspection, ensuring consistent behaviour across Unix and Windows when managing shims and detecting in-use installations.
 
 ### Security & Validation
 
 - **Path Safety**: `paths::shared` and shim validation guard against traversal outside `KOPI_HOME`.
-- **Version Sanitisation**: `version::validation` enforces safe character sets and length limits aligned with `docs/development.md`.
+- **Version Sanitisation**: `version::parser::VersionParser::validate_version_semantics` and `shim::security::SecurityValidator::validate_version` enforce safe character sets and length limits aligned with `docs/development.md`.
 - **Tool Registry**: Shim commands verify allowed tool names, rejecting arbitrary executables.
 - **Archive & Network**: `security/` validates HTTPS certificates, checksums, and enforces secure download transports; archives undergo integrity checks before extraction.
 - **Permissions**: Commands validate permissions for shims and JDK directories, rejecting world-writable executables where unsafe.
@@ -234,7 +234,7 @@ kopi/
 ### Storage Locations
 
 - JDKs: `~/.kopi/jdks/<vendor>-<version>/`.
-- JDK metadata manifests: `~/.kopi/jdks/<vendor>-<version>/.meta.json`.
+- JDK metadata manifests: `~/.kopi/jdks/<vendor>-<version>.meta.json`.
 - Shims: `~/.kopi/shims/`.
 - Config: `~/.kopi/config.toml`.
 - Cache: `~/.kopi/cache/metadata.json` plus auxiliary cache artefacts.
