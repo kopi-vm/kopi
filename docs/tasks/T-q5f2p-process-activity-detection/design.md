@@ -161,7 +161,6 @@ Decision Rationale
 ## External References (optional)
 
 - [Microsoft Docs: NtQuerySystemInformation](https://learn.microsoft.com/windows/win32/api/winternl/nf-winternl-ntquerysysteminformation) – Handle enumeration API description.
-- [Apple Developer: proc_pidinfo](https://developer.apple.com/documentation/kernel/1387446-proc_pidinfo) – macOS process information interfaces.
 
 ## Open Questions
 
