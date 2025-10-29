@@ -12,17 +12,17 @@ Use the `-v/--verbose` flag (can be specified multiple times) with any command:
 
 ```bash
 kopi install 21              # Default: warnings and errors only
-kopi install 21 -v           # Info level: show major operations
-kopi install 21 -vv          # Debug level: detailed flow information
-kopi install 21 -vvv         # Trace level: very detailed debugging
+kopi -v install 21           # Info level: show major operations
+kopi -vv install 21          # Debug level: detailed flow information
+kopi -vvv install 21         # Trace level: very detailed debugging
 ```
 
 The verbose flag is global and works with all commands:
 
 ```bash
-kopi list -v                 # Show info logs for list command
-kopi use 21 -vv              # Debug version switching
-kopi current -vvv            # Trace current version detection
+kopi -v list                 # Show info logs for list command
+kopi -vv shell 21            # Debug version switching (alias: use)
+kopi -vvv current            # Trace current version detection
 ```
 
 ### Environment Variable Control
@@ -36,8 +36,8 @@ kopi install 21
 
 # Debug specific modules
 RUST_LOG=kopi::download=debug kopi install 21        # Debug downloads only
-RUST_LOG=kopi::api=trace kopi list --remote          # Trace API calls
-RUST_LOG=kopi::storage=debug kopi uninstall 21       # Debug storage operations
+RUST_LOG=kopi::api=trace kopi cache search latest    # Trace API calls
+RUST_LOG=kopi::storage=debug kopi uninstall temurin@21  # Debug storage operations
 
 # Multiple module filters
 RUST_LOG=kopi::download=debug,kopi::security=trace kopi install 21
@@ -48,7 +48,7 @@ RUST_LOG=kopi::download=debug,kopi::security=trace kopi install 21
 **Installation Issues:**
 
 ```bash
-kopi install 21 -vv          # See download URLs, checksums, extraction paths
+kopi -vv install 21          # See download URLs, checksums, extraction paths
 ```
 
 **Version Resolution Problems:**
@@ -60,13 +60,13 @@ RUST_LOG=kopi::version=debug kopi install temurin@21  # Debug version parsing
 **API Communication:**
 
 ```bash
-RUST_LOG=kopi::api=debug kopi list --remote           # Debug foojay.io API calls
+RUST_LOG=kopi::api=debug kopi cache search latest     # Debug foojay.io API calls
 ```
 
 **Storage and Disk Space:**
 
 ```bash
-RUST_LOG=kopi::storage=debug kopi install 21          # Debug installation paths
+RUST_LOG=kopi::storage=debug kopi -v install 21       # Debug installation paths
 ```
 
 ## Security Considerations
@@ -75,9 +75,9 @@ Kopi implements several security measures to ensure safe operation:
 
 ### Path Validation
 
-- All file operations are restricted to the `KOPI_HOME` directory (`~/.kopi` by default)
-- Path traversal attempts (e.g., `../../../etc/passwd`) are blocked
-- Symlinks are validated to ensure they don't point outside the kopi directory
+- Persistent artefacts (JDKs, shims, cache files) are created via `paths::*` helpers under `KOPI_HOME` (`~/.kopi` by default); temporary downloads use OS temp space but are moved back into Kopi-managed directories before use
+- Path traversal attempts (e.g., `../../../etc/passwd`) are blocked by `shim::security::SecurityValidator::validate_path`
+- Symlinks are validated (`validate_symlink`) to ensure they remain inside Kopi home
 
 ### Version String Validation
 
@@ -99,8 +99,8 @@ Kopi implements several security measures to ensure safe operation:
 
 ### Auto-Install Security
 
-- Auto-installation prompts require explicit user confirmation
-- Timeout protection prevents hanging on user input
+- When `auto_install.prompt` is enabled (default), Kopi asks for confirmation before fetching missing JDKs; disabling the prompt allows unattended installs
+- Installation subprocesses are terminated if they exceed the configurable `auto_install.timeout_secs` budget
 - Version strings are validated before installation attempts
 
 ### Best Practices
@@ -114,12 +114,11 @@ Kopi implements several security measures to ensure safe operation:
 
 ### Shim Overhead
 
-Kopi's shims are designed for minimal performance impact:
+Kopi's shims are designed for minimal performance impact. The automated regression in `tests/shim_performance_test.rs` keeps average invocation latency below 50 ms and validates that metadata caching further improves warm-path execution on Unix-like platforms.
 
-- **Cold start**: < 10ms (first invocation)
-- **Warm start**: < 5ms (subsequent invocations)
-- **Total overhead**: Typically < 20ms including version resolution
-- **Binary size**: < 1MB for optimized release builds
+- **Cold start (average)**: < 50 ms in the cross-platform performance suite
+- **Warm start**: Faster once `<distribution>-<version>.meta.json` descriptors exist alongside the JDK
+- **Total overhead**: Remains well below JVM startup times, keeping overall session cost dominated by the Java process
 
 ### Performance Optimizations
 
@@ -128,12 +127,12 @@ Kopi's shims are designed for minimal performance impact:
    - Single codegen unit for better optimization
    - Debug symbols stripped
 
-2. **Efficient Tool Detection**: Uses a static registry for O(1) tool lookups
+2. **Centralised Tool Registry**: `shim::tools::ToolRegistry` defines the supported command surface, keeping validation and discovery consistent across distributions
 
 3. **Fast Version Resolution**:
-   - Caches version file locations
-   - Minimal file I/O operations
-   - Early exit on environment variable override
+   - Checks `KOPI_JAVA_VERSION` before touching the filesystem
+   - Walks parent directories for `.kopi-version` / `.java-version` and stops at the first match
+   - Falls back to the global default stored in `~/.kopi/version`
 
 4. **Platform-Specific Optimizations**:
    - Direct process replacement on Unix (exec)
@@ -143,8 +142,8 @@ Kopi's shims are designed for minimal performance impact:
 
 The shim overhead is negligible compared to JVM startup time:
 
-- JVM cold start: 100-500ms
-- Shim overhead: 5-20ms (2-4% of total)
+- JVM cold start: typically hundreds of milliseconds
+- Shim overhead: < 50 ms average in continuous tests (a small fraction of total startup time)
 
 ## Debugging Environment Variables
 
@@ -155,14 +154,16 @@ The shim overhead is negligible compared to JVM startup time:
 Kopi uses specific exit codes to help with scripting and automation:
 
 - `0`: Success
-- `1`: General error
+- `1`: General error (fallback for uncategorised failures)
 - `2`: Invalid input or configuration error
 - `3`: No local version found
 - `4`: JDK not installed
-- `10`: Active JDK (reserved for future use)
+- `5`: Requested tool not found in the active JDK
+- `6`: Shell detection failed
+- `7`: Unsupported shell
 - `13`: Permission denied
-- `14`: Partial removal failure
 - `17`: Resource already exists
-- `20`: Network error
+- `20`: Network, HTTP, or metadata fetch error
 - `28`: Disk space error
-- `127`: Command not found
+- `75`: Lock acquisition cancelled by user signal
+- `127`: Command or shell not found
