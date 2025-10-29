@@ -469,6 +469,10 @@ impl KopiConfig {
             Environment::with_prefix("KOPI")
                 .prefix_separator("_")
                 .separator("__")
+                .list_separator(",")
+                .with_list_parse_key("additional_distributions")
+                .with_list_parse_key("shims.additional_tools")
+                .with_list_parse_key("shims.exclude_tools")
                 .try_parsing(true),
         );
 
