@@ -547,7 +547,7 @@ fn platform_processes_using_path(target: &Path) -> Result<Vec<ProcessInfo>> {
 
     let info_ptr = buffer.as_ptr() as *const SystemHandleInformationEx;
     let handle_info = unsafe { &*info_ptr };
-    let handle_count = handle_info.NumberOfHandles as usize;
+    let handle_count = handle_info.NumberOfHandles;
     let handle_slice = unsafe { slice::from_raw_parts(handle_info.Handles.as_ptr(), handle_count) };
 
     let mut collector = WindowsProcessCollector::new(target);
