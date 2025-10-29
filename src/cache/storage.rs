@@ -83,9 +83,10 @@ pub fn save_cache(
 
     #[cfg(not(unix))]
     {
-        let mut permissions = temp_file.metadata().map_err(|e| {
+        let metadata = temp_file.metadata().map_err(|e| {
             KopiError::ConfigError(format!("Failed to inspect cache temp file metadata: {e}"))
         })?;
+        let mut permissions = metadata.permissions();
         #[allow(clippy::permissions_set_readonly_false)]
         permissions.set_readonly(false);
         fs::set_permissions(&temp_path, permissions).map_err(|e| {
