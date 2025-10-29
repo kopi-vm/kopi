@@ -33,6 +33,9 @@ use std::os::windows::ffi::OsStrExt;
 use winapi::um::fileapi::{GetFileAttributesW, INVALID_FILE_ATTRIBUTES, SetFileAttributesW};
 
 #[cfg(target_os = "windows")]
+use winapi::um::winbase::{MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH, MoveFileExW};
+
+#[cfg(target_os = "windows")]
 use winapi::um::winnt::FILE_ATTRIBUTE_READONLY;
 
 /// Outcome of attempting to acquire an exclusive lock on a file.
@@ -149,17 +152,43 @@ pub fn make_writable(path: &Path) -> std::io::Result<()> {
 /// Atomically rename a file from source to destination.
 ///
 /// On Unix systems, rename is atomic by default.
-/// On Windows, we need to remove the destination file first if it exists,
-/// as Windows rename fails if the destination already exists.
+/// On Windows, fall back to `MoveFileExW` so the destination can be replaced atomically.
+#[cfg(windows)]
 pub fn atomic_rename(from: &Path, to: &Path) -> std::io::Result<()> {
-    #[cfg(windows)]
-    {
-        // On Windows, rename fails if destination exists, so remove it first
-        if to.exists() {
-            fs::remove_file(to)?;
-        }
+    match fs::rename(from, to) {
+        Ok(()) => return Ok(()),
+        Err(err) if err.kind() == ErrorKind::AlreadyExists => {}
+        Err(err) => return Err(err),
     }
 
+    let to_wide: Vec<u16> = to
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0u16))
+        .collect();
+    let from_wide: Vec<u16> = from
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0u16))
+        .collect();
+
+    let success = unsafe {
+        MoveFileExW(
+            from_wide.as_ptr(),
+            to_wide.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        ) != 0
+    };
+
+    if success {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
+    }
+}
+
+#[cfg(not(windows))]
+pub fn atomic_rename(from: &Path, to: &Path) -> std::io::Result<()> {
     fs::rename(from, to)
 }
 
