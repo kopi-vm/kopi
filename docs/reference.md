@@ -39,7 +39,7 @@ kopi --no-progress uninstall --all       # Batch uninstall without progress
 - This is a global flag that must come before the subcommand
 - Error messages are still displayed even with this flag
 - Combines well with other output control flags like `--quiet` or `--json`
-- Lock wait notifications fall back to simple textual updates when progress is disabled
+- Lock wait notifications are suppressed entirely when progress output is disabled
 
 ### `-v, --verbose`
 
@@ -293,8 +293,8 @@ kopi default corretto@21                 # Using 'default' alias
 
 **Notes:**
 
-- Automatically installs the JDK if not already installed
-- Updates the global configuration in `~/.kopi/config.toml`
+- Prompts to install missing JDKs when auto-install is enabled; the command fails if installation is declined or disabled
+- Writes the selected version to `~/.kopi/version`
 - Takes effect in new shell sessions
 
 ### `kopi local`
@@ -319,7 +319,7 @@ kopi pin temurin@21.0.1                  # Using 'pin' alias
 
 **Notes:**
 
-- Automatically installs the JDK if not already installed
+- Offers to install missing JDKs when auto-install is enabled; otherwise reports that the requested JDK is not installed
 - Creates `.kopi-version` file in the current directory
 - Takes precedence over global settings
 - Affects all subdirectories (walks up to find config)
@@ -340,18 +340,18 @@ kopi list                                # List installed JDK versions
 
 **Output includes:**
 
-- Distribution name and icon
-- Full version number
-- Disk space usage
-- Installation path
+- Distribution and version (with `+fx` suffix when JavaFX is bundled)
+- Approximate disk space usage for each installation
+- Totals for the number of installed JDKs and their combined size
 
 **Example output:**
 
 ```text
 Installed JDKs:
-  ☕ temurin       21.0.5+11        489 MB   ~/.kopi/jdks/temurin-21.0.5+11
-  🌳 corretto      17.0.13.11.1     324 MB   ~/.kopi/jdks/corretto-17.0.13.11.1
-  🔷 zulu          11.0.25+9        298 MB   ~/.kopi/jdks/zulu-11.0.25+9
+  temurin@21.0.5+11 (489.0 MB)
+  corretto@17.0.13.11.1 (324.0 MB)
+
+Total disk usage: 813.0 MB (2 JDKs)
 ```
 
 ### `kopi current`
@@ -375,13 +375,21 @@ kopi current --json                      # Output in JSON format
 
 ```bash
 kopi current
-# Output: ☕ temurin 21.0.5+11 (current: shell)
+# Output: temurin@21.0.5+11 (set by .kopi-version)
 
 kopi current -q
 # Output: 21.0.5+11
 
 kopi current --json
-# Output: {"distribution":"temurin","version":"21.0.5+11","source":"shell"}
+# Output:
+# {
+#   "version": "21.0.5+11",
+#   "source": ".kopi-version",
+#   "source_path": "/path/to/project/.kopi-version",
+#   "installed": true,
+#   "installation_path": "/home/user/.kopi/jdks/temurin-21.0.5+11",
+#   "distribution": "temurin"
+# }
 ```
 
 ### `kopi which`
@@ -412,7 +420,14 @@ kopi which                               # /home/user/.kopi/jdks/temurin-21.0.5+
 kopi which 17                            # /home/user/.kopi/jdks/temurin-17.0.13+11/bin/java
 kopi which --tool javac                  # /home/user/.kopi/jdks/temurin-21.0.5+11/bin/javac
 kopi which --home                        # /home/user/.kopi/jdks/temurin-21.0.5+11
-kopi which corretto@21 --json           # {"path":"/home/user/.kopi/jdks/corretto-21.0.5.12.1/bin/java",...}
+kopi which corretto@21 --json           # {
+                                        #   "distribution": "corretto",
+                                        #   "version": "21.0.5.12.1",
+                                        #   "tool": "java",
+                                        #   "tool_path": "/home/user/.kopi/jdks/corretto-21.0.5.12.1/bin/java",
+                                        #   "jdk_home": "/home/user/.kopi/jdks/corretto-21.0.5.12.1",
+                                        #   "source": "global default"
+                                        # }
 ```
 
 ## Setup and Maintenance Commands
@@ -623,16 +638,13 @@ kopi -v doctor                           # See detailed check information
 - `0`: All checks passed
 - `1`: One or more checks failed
 - `2`: Warnings detected (no failures)
-- `20`: Network error or timeout
 
 **Features:**
 
-- Parallel execution of independent checks for fast results
-- Progress indicator for long-running checks
+- Progress indicator when run without `--json`
 - Actionable suggestions for fixing detected issues
-- Platform-specific recommendations (Windows, macOS, Linux)
-- Performance optimization with caching of expensive operations
-- Total timeout protection (30 seconds maximum)
+- Category filters via `--check`
+- JSON output with detailed results and summary metadata
 
 ## Cache Management Commands
 
