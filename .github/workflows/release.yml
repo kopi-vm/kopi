@@ -314,6 +314,12 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  publish-winget:
+    runs-on: windows-latest
+    needs:
+      - release
+
+    steps:
     - name: Publish to Winget
       uses: vedantmgoyal9/winget-releaser@19e706d4c9121098010096f9c495a70a7518b30f
       with:
