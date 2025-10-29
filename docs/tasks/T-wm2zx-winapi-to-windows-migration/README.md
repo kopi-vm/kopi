@@ -3,7 +3,7 @@
 ## Metadata
 
 - Type: Task
-- Status: Draft
+- Status: Cancelled
   <!-- Draft: Under discussion | In Progress: Actively working | Complete: Code complete | Cancelled: Work intentionally halted -->
 
 ## Links
@@ -21,7 +21,23 @@
 
 ## Summary
 
-Track the migration from the legacy `winapi` crate to the modern `windows` crate so Kopi aligns with maintained Windows bindings while reducing unsafe and duplicate FFI surface.
+The proposed migration to replace `winapi` with the `windows` crate is cancelled. The current dependency graph shows multiple direct and transitive paths to `winapi`, and key crates we rely on today still require it:
+
+```
+cargo tree -i winapi --target all
+winapi v0.3.9
+├── crossterm v0.28.1
+│   └── comfy-table v7.1.4
+│       └── kopi v0.1.4 (/workspaces/kopi-workspace/first)
+├── crossterm_winapi v0.9.1
+│   └── crossterm v0.28.1 (*)
+├── kopi v0.1.4 (/workspaces/kopi-workspace/first)
+└── ntapi v0.4.1
+    └── sysinfo v0.31.4
+        └── kopi v0.1.4 (/workspaces/kopi-workspace/first)
+```
+
+We cannot drop `comfy-table` or `sysinfo` because they provide essential table rendering and system insight features for Kopi. Even if Kopi declared only the `windows` crate as a direct dependency, these transitive `winapi` dependencies would remain, leading to duplicated linker modules and an unjustified increase in the Windows binary size.
 
 ## Scope
 
