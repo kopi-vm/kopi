@@ -62,12 +62,17 @@ use winapi::um::fileapi::{GetFileType, GetFinalPathNameByHandleW};
 #[cfg(windows)]
 use winapi::um::handleapi::{CloseHandle, DuplicateHandle, INVALID_HANDLE_VALUE};
 #[cfg(windows)]
-use winapi::um::processthreadsapi::{GetCurrentProcess, OpenProcess};
+use winapi::um::processthreadsapi::{GetCurrentProcess, OpenProcess, TerminateProcess};
 #[cfg(windows)]
-use winapi::um::winbase::{FILE_TYPE_DISK, QueryFullProcessImageNameW, VOLUME_NAME_DOS};
+use winapi::um::synchapi::WaitForSingleObject;
+#[cfg(windows)]
+use winapi::um::winbase::{
+    FILE_TYPE_DISK, QueryFullProcessImageNameW, VOLUME_NAME_DOS, WAIT_OBJECT_0,
+};
 #[cfg(windows)]
 use winapi::um::winnt::{
     DUPLICATE_SAME_ACCESS, HANDLE, PROCESS_DUP_HANDLE, PROCESS_QUERY_LIMITED_INFORMATION,
+    PROCESS_TERMINATE, SYNCHRONIZE,
 };
 
 #[cfg(windows)]
@@ -95,6 +100,69 @@ pub struct ProcessInfo {
 pub fn processes_using_path(target: &Path) -> Result<Vec<ProcessInfo>> {
     let canonical_target = normalize_target(target)?;
     platform_processes_using_path(&canonical_target)
+}
+
+/// Attempt to terminate a process by PID.
+pub fn terminate_process(pid: u32) -> Result<()> {
+    platform_terminate_process(pid)
+}
+
+#[cfg(windows)]
+fn platform_terminate_process(pid: u32) -> Result<()> {
+    unsafe {
+        let handle = OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, FALSE, pid);
+        if handle.is_null() {
+            return Err(KopiError::SystemError(format!(
+                "Failed to open process {pid}: {}",
+                std::io::Error::last_os_error()
+            )));
+        }
+
+        if TerminateProcess(handle, 1) == 0 {
+            let err = std::io::Error::last_os_error();
+            CloseHandle(handle);
+            return Err(KopiError::SystemError(format!(
+                "Failed to terminate process {pid}: {err}"
+            )));
+        }
+
+        let wait_result = WaitForSingleObject(handle, 5_000);
+        if wait_result != WAIT_OBJECT_0 {
+            CloseHandle(handle);
+            return Err(KopiError::SystemError(format!(
+                "Timed out waiting for process {pid} to exit (wait result {wait_result})"
+            )));
+        }
+
+        if CloseHandle(handle) == 0 {
+            return Err(KopiError::SystemError(format!(
+                "Failed to close process handle for {pid}: {}",
+                std::io::Error::last_os_error()
+            )));
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(unix)]
+fn platform_terminate_process(pid: u32) -> Result<()> {
+    let result = unsafe { libc::kill(pid as libc::pid_t, libc::SIGTERM) };
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(KopiError::SystemError(format!(
+            "Failed to terminate process {pid}: {}",
+            std::io::Error::last_os_error()
+        )))
+    }
+}
+
+#[cfg(not(any(unix, windows)))]
+fn platform_terminate_process(_pid: u32) -> Result<()> {
+    Err(KopiError::SystemError(
+        "Process termination is not supported on this platform".to_string(),
+    ))
 }
 
 fn normalize_target(target: &Path) -> Result<PathBuf> {

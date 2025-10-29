@@ -229,7 +229,32 @@ impl<'a> UninstallHandler<'a> {
                         process.exe_path.display(),
                         handle_summary
                     ));
+
+                    match platform::process::terminate_process(process.pid) {
+                        Ok(()) => {
+                            reporter.step(&format!(
+                                "Terminated PID {} ({})",
+                                process.pid,
+                                process.exe_path.display()
+                            ));
+                        }
+                        Err(err) => {
+                            warn!(
+                                "Failed to terminate PID {} ({}): {err}",
+                                process.pid,
+                                process.exe_path.display()
+                            );
+                            reporter.step(&format!(
+                                "Failed to terminate PID {} ({}): {err}",
+                                process.pid,
+                                process.exe_path.display()
+                            ));
+                        }
+                    }
                 }
+
+                // Allow the operating system time to release file handles.
+                std::thread::sleep(Duration::from_millis(200));
             }
         }
 

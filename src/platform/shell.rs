@@ -111,6 +111,33 @@ pub fn detect_shell() -> Result<(Shell, PathBuf)> {
     // On Windows, we couldn't find a shell in the process tree
     #[cfg(windows)]
     {
+        if let Ok(comspec) = env::var("COMSPEC") {
+            let comspec_path = PathBuf::from(&comspec);
+            if comspec_path.exists() {
+                let shell_type = comspec_path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .map(|name| name.to_ascii_lowercase())
+                    .map(|name| {
+                        if name.contains("powershell") {
+                            Shell::PowerShell
+                        } else {
+                            Shell::Cmd
+                        }
+                    })
+                    .unwrap_or(Shell::Cmd);
+                return Ok((shell_type, comspec_path));
+            }
+        }
+
+        if let Ok(powershell_path) = find_shell_in_path(&Shell::PowerShell) {
+            return Ok((Shell::PowerShell, powershell_path));
+        }
+
+        if let Ok(cmd_path) = find_shell_in_path(&Shell::Cmd) {
+            return Ok((Shell::Cmd, cmd_path));
+        }
+
         Err(KopiError::ShellDetectionError(
             "Cannot detect shell in process tree. Please specify shell type with --shell option"
                 .to_string(),
