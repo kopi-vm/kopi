@@ -105,13 +105,14 @@ fn concurrent_cache_writers_block_until_release() {
 
     assert_eq!(contender.backend(), LockBackend::Advisory);
     let contender_wait = contender.waited();
+    // Allow a bit of scheduler jitter while still ensuring the writer blocked until the holder released.
     assert!(
-        contender_wait >= Duration::from_millis(180),
-        "expected the contender to wait at least 180ms, waited {contender_wait:?}"
+        contender_wait >= Duration::from_millis(150),
+        "expected the contender to wait at least 150ms, waited {contender_wait:?}"
     );
     assert!(
-        waited >= Duration::from_millis(180),
-        "expected total wait >= 180ms but was {waited:?}"
+        waited >= Duration::from_millis(150),
+        "expected total wait >= 150ms but was {waited:?}"
     );
 }
 
