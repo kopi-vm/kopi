@@ -469,6 +469,7 @@ impl KopiConfig {
             Environment::with_prefix("KOPI")
                 .prefix_separator("_")
                 .separator("__")
+                .list_separator(",")
                 .try_parsing(true),
         );
 
