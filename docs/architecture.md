@@ -17,6 +17,7 @@ kopi/
 │   ├── indicator/       # Progress indicator and user feedback
 │   ├── locking/         # Lock controller, fallback strategy, hygiene runner
 │   ├── installation/    # JDK installation management
+│   ├── logging.rs       # Logging setup and verbosity control
 │   ├── metadata/        # Metadata management and parsing
 │   │   └── generator/   # Metadata generation utilities
 │   ├── models/          # Data models and structures
@@ -27,6 +28,7 @@ kopi/
 │   ├── storage/         # Storage and disk space management
 │   ├── test/            # Test utilities and helpers
 │   ├── uninstall/       # JDK uninstallation functionality
+│   ├── user_agent.rs    # User-Agent helpers for outbound HTTP clients
 │   └── version/         # Version parsing and handling
 ├── tests/               # Integration tests
 │   └── common/          # Common test utilities
@@ -100,6 +102,11 @@ kopi/
 - `src/commands/current.rs` - Display current JDK version
 - `src/commands/env.rs` - Shell environment setup
 
+### Runtime Infrastructure
+
+- `src/logging.rs` - Maps CLI verbosity (`-v`) to env_logger filters and formatting
+- `src/user_agent.rs` - Provides consistent User-Agent identifiers for all HTTP clients
+
 ### Documentation & Process
 
 - `CLAUDE.md` - Repository conventions and AI assistant guidance
@@ -123,6 +130,7 @@ kopi/
 - **CLI Interface**: Subcommand-based architecture using `clap` derive API
 - **Command Registry**: Centralized command dispatch in `src/commands/mod.rs`
 - **Subcommands**: Install, uninstall, cache, current, env, doctor, shell, local, global, etc.
+- **Global Flags**: `-v/--verbose`, `--no-progress`, and `--lock-timeout` configure logging (`src/logging.rs`), progress indicators (`src/indicator/`), and lock acquisition (`src/locking/timeout.rs`) before command execution
 - **Exit Codes**: Standardized error codes for different failure scenarios (see `src/error/exit_codes.rs`)
 
 ### Metadata Management
@@ -200,7 +208,7 @@ kopi/
 - **Advisory Backend**: Uses `std::fs::File` locks for supported filesystems with RAII release semantics (`src/locking/handle.rs`)
 - **Atomic Fallback**: `create_new`-based locking for network filesystems with JSON metadata and marker files (`src/locking/fallback.rs`)
 - **Lock Hygiene Runner**: Startup sweep that removes stale fallback artifacts and staging files (`src/locking/hygiene.rs`, invoked from `src/main.rs`)
-- **Configuration**: `locking.mode` (`auto`, `advisory`, `fallback`) and `locking.timeout` control acquisition strategy and hygiene thresholds (`src/config.rs`)
+- **Configuration**: `locking.mode` (`auto`, `advisory`, `fallback`) and `locking.timeout` control acquisition strategy and hygiene thresholds (`src/config.rs`); `LockTimeoutResolver` combines CLI overrides (`--lock-timeout`), the `KOPI_LOCK_TIMEOUT` environment variable, and config values into an effective `LockTimeoutValue` (`src/locking/timeout.rs`)
 - **Wait Instrumentation**: `LockFeedbackBridge` charts wait lifecycle events through shared progress indicators (TTY, non-TTY, or silent), while `StatusReporterObserver` falls back to textual messaging when no indicator is available; timeout errors continue to record both the resolved value and its provenance (CLI flag, environment variable, configuration, or default).
 - **Installation Integration**: `InstallCommand` acquires a `ScopedPackageLockGuard` before touching staging directories or shims, surfaces wait feedback through the status reporter, and explicitly releases the guard to bubble up release failures (`src/commands/install.rs`).
 - **Uninstall Integration**: `UninstallHandler` and batch/recovery paths resolve the same scoped lock identifiers as installs, enforce acquisition before destructive work begins, and reuse status reporter wait messaging to expose contention (`src/uninstall/mod.rs`, `src/uninstall/batch.rs`, `src/uninstall/cleanup.rs`).
@@ -214,6 +222,7 @@ kopi/
 
 ## Configuration System
 
-- Global config stored at `~/.kopi/config.toml`
-- Loaded automatically by components via `KopiConfig::load()`
-- Uses sensible defaults when config file is missing
+- Global config stored at `~/.kopi/config.toml`; the loader creates directories as needed
+- `KopiConfig::load()` merges defaults, config file, and `KOPI_*` environment overrides (double underscore `__` separates nested fields)
+- CLI flag `--lock-timeout`, environment variable `KOPI_LOCK_TIMEOUT`, and the `locking.timeout` config value are resolved via `LockTimeoutResolver`
+- `KOPI_HOME` can override the base directory, with graceful fallback to `~/.kopi`

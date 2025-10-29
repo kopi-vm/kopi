@@ -17,6 +17,7 @@ Failed API calls or downloads
 - Implement retry logic with exponential backoff
 - Provide offline fallback when possible (cached metadata)
 - Show progress indicators for long operations
+- Covers `KopiError::NetworkError`, HTTP transport errors, and metadata fetch failures (`KopiError::Http`, `KopiError::MetadataFetch`)
 - Exit code: 20
 
 ### 3. System Errors
@@ -38,6 +39,7 @@ Failure to coordinate cross-process access (advisory or fallback locking)
 - Hygiene failures should log WARN but not abort the CLI; acquisition failures bubble up to commands with actionable text
 - Distinguish user cancellations with `KopiError::LockingCancelled` so scripts can differentiate manual interrupts from timeouts
 - Timeout errors include the resolved timeout value and its provenance (CLI flag, environment variable, configuration file, or built-in default) so users can see which override to adjust
+- Encourage users to tune lock behaviour via `--lock-timeout`, `KOPI_LOCK_TIMEOUT`, or `locking.timeout` in the config file
 
 ## Error Message Format
 
@@ -110,6 +112,8 @@ The `ErrorContext` system automatically provides:
 | 28   | Disk space            | Insufficient disk space for operation                            |
 | 75   | Lock wait cancelled   | User interrupted lock acquisition (e.g., Ctrl-C)                 |
 | 127  | Command not found     | Kopi command not found or shell not found                        |
+
+Lock acquisition timeouts (`KopiError::LockingTimeout`) currently map to exit code `1` because the operation exhausted the configured deadline. Recommend documenting the elapsed wait time and pointing users to the timeout overrides when raising this error.
 
 ## Best Practices
 

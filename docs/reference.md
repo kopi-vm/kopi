@@ -24,6 +24,7 @@ Suppresses all progress indicators including progress bars, spinners, and status
 - Non-interactive scripts and automation
 - Situations where terminal output needs to be minimal
 - Piping output to other commands
+- Operations where you do not want lock acquisition wait messages
 
 **Usage:**
 
@@ -38,10 +39,16 @@ kopi --no-progress uninstall --all       # Batch uninstall without progress
 - This is a global flag that must come before the subcommand
 - Error messages are still displayed even with this flag
 - Combines well with other output control flags like `--quiet` or `--json`
+- Lock wait notifications fall back to simple textual updates when progress is disabled
 
 ### `-v, --verbose`
 
-Enables verbose output for debugging and detailed information.
+Increases Kopi's log verbosity. Each `-v` raises the log level:
+
+- no flag: warnings only
+- `-v`: info
+- `-vv`: debug
+- `-vvv` (and higher): trace
 
 **Usage:**
 
@@ -49,6 +56,26 @@ Enables verbose output for debugging and detailed information.
 kopi -v install 21                       # Show detailed installation steps
 kopi -v doctor                           # Detailed diagnostic information
 ```
+
+### `--lock-timeout <seconds|infinite>`
+
+Overrides the global lock acquisition timeout. Accepts an integer number of seconds or the word `infinite`.
+
+- Default timeout: 600 seconds
+- Precedence order: CLI flag → `KOPI_LOCK_TIMEOUT` environment variable → `locking.timeout` in `~/.kopi/config.toml` → built-in default
+- Applies to installation, uninstall, cache refresh, shim management, and any other operation that acquires Kopi locks
+
+**Usage:**
+
+```bash
+kopi --lock-timeout 30 install temurin@21           # Fail fast if the install lock is busy
+kopi --lock-timeout infinite cache refresh          # Wait indefinitely for cache writer lock
+```
+
+**Notes:**
+
+- Use this flag before the subcommand
+- Errors report the effective timeout value and where it was sourced from, making it easy to tune
 
 ## Installation & Setup Commands
 
@@ -78,8 +105,13 @@ kopi install zulu@11.0.15                # Zulu JDK version 11.0.15
 - `--force`: Reinstall even if already installed
 - `--dry-run`: Show what would be installed without actually installing
 - `--no-progress`: Disable progress indicators
-- `--timeout <seconds>`: Download timeout in seconds (default: 120)
-- `--javafx-bundled`: Include packages regardless of JavaFX bundled status
+- `--timeout <seconds>`: Download timeout in seconds (default: 300)
+
+**JavaFX packages:**
+
+- Append `+fx` to the version to install a JavaFX-bundled build (e.g., `temurin@21+fx`, `liberica@17.0.8+fx`)
+- Installed JavaFX builds are tagged with `+fx` in `kopi list`
+- The installer automatically refreshes metadata when the cache is stale and acquires installation locks to avoid conflicts
 
 **Metadata and Performance:**
 Starting from version 0.8, kopi creates metadata files for newly installed JDKs that contain information about their directory structure. This metadata significantly improves performance when switching between JDK versions, particularly on macOS where different JDK distributions may use different directory layouts:
@@ -518,8 +550,12 @@ Update metadata cache from configured sources. This is an alias for `kopi cache 
 
 ```bash
 kopi refresh                             # Update metadata cache from configured sources
-kopi refresh --javafx-bundled            # Include JavaFX bundled packages
 ```
+
+**Notes:**
+
+- Alias for `kopi cache refresh`; respects global flags like `--no-progress` and `--lock-timeout`
+- Always fetches both standard and JavaFX metadata packages when available
 
 ### `kopi search`
 
@@ -544,6 +580,10 @@ kopi search latest                       # Show latest version of each distribut
 kopi search 21 --detailed                # Show full details
 kopi search 21 --lts-only                # Only show LTS versions
 ```
+
+**Advanced filters:**
+
+- For `--java-version` or `--distribution-version` selectors, use `kopi cache search`
 
 ### `kopi doctor`
 
@@ -613,7 +653,6 @@ Update the metadata cache from configured sources.
 
 ```bash
 kopi cache refresh                       # Refresh metadata for all distributions
-kopi cache refresh --javafx-bundled      # Include JavaFX bundled packages
 kopi --no-progress cache refresh         # Refresh without progress indicator
 ```
 
@@ -621,6 +660,7 @@ kopi --no-progress cache refresh         # Refresh without progress indicator
 
 - Shows a progress spinner by default during metadata fetch
 - Use the global `--no-progress` flag to suppress the spinner
+- Lock acquisition uses the effective timeout resolved from CLI/env/config
 
 #### `kopi cache search`
 
@@ -634,6 +674,8 @@ kopi cache search <query> --compact      # Minimal display (default)
 kopi cache search <query> --detailed     # Full information display
 kopi cache search <query> --json         # JSON output for programmatic use
 kopi cache search <query> --lts-only     # Filter to show only LTS versions
+kopi cache search <query> --java-version # Force matching on java_version field
+kopi cache search <query> --distribution-version  # Force matching on distribution_version field
 kopi --no-progress cache search <query>  # Search without progress indicators
 ```
 
@@ -651,11 +693,16 @@ kopi cache search temurin@21             # Find Temurin Java 21 versions
 # Special queries
 kopi cache search latest                 # Show latest version of each distribution
 kopi cache search jre@17                 # Search for JRE packages only
+kopi cache search 21+fx                  # List JavaFX-enabled packages
 
 # Display options
 kopi cache search 21 --detailed          # Show full details (OS/Arch, Status, Size)
 kopi cache search 21 --json              # Output as JSON
 kopi cache search 21 --lts-only          # Only show LTS versions
+
+# Disambiguate overlapping version formats
+kopi cache search corretto@21.0.7 --java-version
+kopi cache search corretto@21.0.7 --distribution-version
 ```
 
 **Display Modes:**
@@ -790,7 +837,15 @@ additional_distributions = ["company-jdk", "custom-build"]
 [storage]
 # Minimum required disk space in MB for JDK installation (default: 500)
 min_disk_space_mb = 1024
+
+[locking]
+# Acquisition strategy: auto, advisory, or fallback
+mode = "auto"
+# Timeout accepts seconds or the string "infinite"
+timeout = 600
 ```
+
+`locking.timeout` participates in the same precedence chain as `--lock-timeout` and `KOPI_LOCK_TIMEOUT`. Kopi resolves overrides in the following order: CLI flag → environment variable → configuration file → default (600 seconds). Use `"infinite"` to wait without timing out.
 
 #### Additional Distributions Configuration
 
@@ -898,41 +953,41 @@ The `kopi shell` command provides an alternative to shims:
 
 ## Version Specification Format
 
-Kopi supports exact version specifications with flexible formats to accommodate different JDK distributions:
+Kopi expects explicit semantic versions for installations while supporting distribution qualifiers, package type hints, and JavaFX suffixes. All commands share the same parser, so version strings behave consistently across `install`, `local`, `global`, `shell`, and other subcommands.
 
 ### Standard Version Formats
 
-- `21` - Latest Java 21 (uses default distribution)
-- `21.0.1` - Specific version (uses default distribution)
-- `temurin@17.0.2` - Specific distribution and version
-- `corretto@21` - Latest Java 21 from Amazon Corretto
-- `latest` - Latest available version
-- `latest --lts` - Latest LTS version
+- `21` – Resolves to the most recent Java 21 package from the default distribution (`temurin`)
+- `21.0.1` – Exact version using the default distribution
+- `temurin@17.0.2` – Specific distribution and version
+- `jre@17.0.2` – Request a JRE package instead of a JDK
+- `liberica@21+fx` – JavaFX-bundled build (append `+fx`)
+- `corretto@21.0.7.6.1` – Extended distribution version
+- `temurin@17.0.8+7` – Build metadata included
+- `graalvm-ce@21.0.1-rc.1` – Pre-release builds
 
 ### Extended Version Formats
 
-Many JDK distributions use extended version formats with more than 3 components:
+Many JDK distributions publish both a `java_version` (SemVer-style) and a `distribution_version` (vendor-specific components). Kopi detects the correct interpretation automatically based on the number of components and the presence of build metadata.
 
-- **Amazon Corretto**: 4-5 components (e.g., `corretto@21.0.7.6.1`)
-- **Alibaba Dragonwell**: 6 components (e.g., `dragonwell@21.0.7.0.7.6`)
-- **Standard with build**: `temurin@21.0.7+6`
-- **Pre-release versions**: `graalvm-ce@21.0.1-rc.1`
+- **Amazon Corretto**: `corretto@21.0.7.6.1`
+- **Alibaba Dragonwell**: `dragonwell@21.0.7.0.7.6`
+- **Build metadata**: `temurin@21.0.7+6`
+- **JavaFX**: append `+fx` to any of the above
 
 ### Version Search Behavior
 
-Kopi can search by both `java_version` and `distribution_version`:
+A few tips when locating packages:
 
 ```bash
-# Searches by java_version (standard format)
-kopi install temurin@21.0.7+6
-
-# Searches by distribution_version (4+ components auto-detected)
-kopi install corretto@21.0.7.6.1
-
-# For ambiguous cases, specify explicitly
-kopi install corretto@21.0.7 --java-version
-kopi install corretto@21.0.7 --distribution-version
+# Inspect available builds
+kopi cache search temurin@21              # Compact table of Temurin 21 builds
+kopi cache search corretto@21.0.7 --java-version        # Force java_version matching
+kopi cache search corretto@21.0.7 --distribution-version # Force distribution_version matching
 ```
+
+- `kopi install` requires a concrete version. Use `kopi cache search` or `kopi search` to discover the latest patch level, then install the exact identifier.
+- The aliases `latest` and `<distribution>@latest` are supported for search commands, not for installation.
 
 ### Version Pattern Matching
 
@@ -942,6 +997,7 @@ When using commands like `uninstall` or `use`, partial version patterns match in
 - Pattern `21.0` matches any version starting with `21.0`
 - Pattern `21.0.7` matches any version starting with `21.0.7`
 - Pattern `21.0.7.6` matches any version starting with `21.0.7.6`
+- Add `+fx` to the pattern to match only JavaFX bundles (e.g., `temurin@21+fx`)
 
 **Note**: Kopi does not support version ranges or wildcards:
 
@@ -958,8 +1014,16 @@ Kopi respects the following environment variables:
 ### Kopi-specific Variables
 
 - `KOPI_HOME` - Override default kopi home directory (default: `~/.kopi`)
+- `KOPI_LOCK_TIMEOUT` - Override lock acquisition timeout (`<seconds>` or `infinite`)
 - `JAVA_HOME` - Set by kopi when switching JDK versions
 - `PATH` - Modified by kopi to include JDK bin directory
+
+Nested configuration keys can also be overridden using the `KOPI_<SECTION>__<FIELD>` pattern. For example:
+
+```bash
+export KOPI_AUTO_INSTALL__ENABLED=false
+export KOPI_SHIMS__AUTO_CREATE_SHIMS=false
+```
 
 ### HTTP Proxy Configuration
 
@@ -1029,7 +1093,7 @@ Kopi uses a flexible metadata system that can fetch JDK information from multipl
 
 ### Configuration
 
-The metadata system can be configured in `~/.kopi/config/config.toml`:
+The metadata system can be configured in `~/.kopi/config.toml`:
 
 ```toml
 [metadata]
